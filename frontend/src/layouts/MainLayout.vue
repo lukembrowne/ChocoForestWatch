@@ -2,22 +2,44 @@
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
       <q-toolbar>
+        <q-btn
+          flat
+          dense
+          round
+          icon="menu"
+          aria-label="Menu"
+          @click="toggleLeftDrawer"
+        />
+
         <q-toolbar-title>
           Choco Forest Watch
         </q-toolbar-title>
-
-        <q-btn flat label="Upload Data" @click="goTo('/upload')" />
-        <q-btn flat label="Draw Polygons" @click="goTo('/draw')" />
-        <q-btn flat label="Review Polygons" @click="goTo('/review')" />
-        <q-btn flat label="Train Model" @click="goTo('/train')" />
-        <q-btn flat label="Predict Land Use" @click="goTo('/predict')" />
-        <q-btn flat label="Visualize Results" @click="goTo('/visualize')" />
-
-        <q-space />
-
-        <div></div>
       </q-toolbar>
     </q-header>
+
+    <q-drawer
+      v-model="leftDrawerOpen"
+      show-if-above
+      bordered
+    >
+      <q-list>
+        <q-item to="/model-training" clickable v-ripple>
+          <q-item-section>
+            <q-item-label>Model Training</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item to="/prediction" clickable v-ripple>
+          <q-item-section>
+            <q-item-label>Prediction</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item to="/analysis" clickable v-ripple>
+          <q-item-section>
+            <q-item-label>Analysis</q-item-label>
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-drawer>
 
     <q-page-container>
       <router-view />
@@ -26,11 +48,11 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { ref } from 'vue'
 
-const router = useRouter()
+const leftDrawerOpen = ref(false)
 
-function goTo(route) {
-  router.push(route)
+function toggleLeftDrawer () {
+  leftDrawerOpen.value = !leftDrawerOpen.value
 }
 </script>

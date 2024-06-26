@@ -53,5 +53,21 @@ def extract_pixels():
 
     return jsonify(extracted_values)
 
+
+@app.route('/upload_raster', methods=['POST'])
+def upload_raster():
+    if 'raster' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+
+    file = request.files['raster']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    if file:
+        filename = file.filename
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        file_url = f"http://127.0.0.1:5000/uploads/{filename}"
+        return jsonify({'url': file_url}), 200
+
 if __name__ == '__main__':
     app.run(debug=True)
