@@ -1,0 +1,9 @@
+# Ignore node_modules for frontend
+frontend/node_modules/
+
+# Ignore Python virtual environment for backend
+backend/venv/
+
+# General ignores
+.DS_Store
+*.log
