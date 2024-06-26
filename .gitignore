@@ -1,6 +1,7 @@
 # Ignore node_modules for frontend
 frontend/node_modules/
 frontend_old/node_modules/
+frontend_old/
 
 # Ignore Python virtual environment for backend
 backend/venv/
