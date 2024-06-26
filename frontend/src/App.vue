@@ -1,27 +1,18 @@
+// App.vue
 <template>
   <div id="app">
-    <MapComponent />
+    <NavigationBar />
+    <router-view />
   </div>
 </template>
 
 <script>
-import MapComponent from './components/MapComponent.vue';
+import NavigationBar from './components/NavigationBar.vue'
 
 export default {
   name: 'App',
   components: {
-    MapComponent,
-  },
-};
-</script>
-
-<style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
+    NavigationBar
+  }
 }
-</style>
+</script>
