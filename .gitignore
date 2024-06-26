@@ -3,6 +3,14 @@ frontend/node_modules/
 
 # Ignore Python virtual environment for backend
 backend/venv/
+/venv/
+
+# Ignore data
+backend/data/
+backend/uploads/
+code_old/
+
+backend/__pycache__/
 
 # General ignores
 .DS_Store
