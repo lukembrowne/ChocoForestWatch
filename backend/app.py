@@ -23,6 +23,8 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 def data_files(filename):
     return send_from_directory('data', filename)
 
+
+# Extract pixel values from a raster file for a given polygon
 @app.route('/extract_pixels', methods=['POST'])
 def extract_pixels():
     # Get the uploaded file
@@ -40,8 +42,8 @@ def extract_pixels():
     extracted_values = []
 
     with rasterio.open(filepath) as src:
-        for polygon in polygons:
-            geom = shape(polygon['geometry'])
+        for feature in polygons:
+            geom = shape(feature['geometry']['geometry'])  # Ensure this is the geometry object
             out_image, out_transform = mask(src, [mapping(geom)], crop=True)
             out_image = np.ma.masked_equal(out_image, src.nodata)
             extracted_values.append(out_image.data.tolist())
