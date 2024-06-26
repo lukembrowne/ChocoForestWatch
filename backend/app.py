@@ -28,6 +28,11 @@ def data_files(filename):
 def upload_files(filename):
     return send_from_directory('uploads', filename)
 
+@app.route('/list_rasters', methods=['GET'])
+def list_rasters():
+    files = [{'name': f} for f in os.listdir(UPLOAD_FOLDER) if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))]
+    return jsonify(files)
+
 
 # Extract pixel values from a raster file for a given polygon
 @app.route('/extract_pixels', methods=['POST'])
