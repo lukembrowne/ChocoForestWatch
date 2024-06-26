@@ -9,7 +9,7 @@
           <q-linear-progress v-if="uploading" :value="uploadProgress / 100" buffer-color="grey-5" color="primary" class="q-mt-md"></q-linear-progress>
         </q-card-section>
       </q-card>
-      <map-component v-if="rasterUrl" :raster-url="rasterUrl" class="q-mt-md" />
+      <map-component :raster-url="rasterUrl" class="q-mt-md" />
     </div>
   </q-page>
 </template>
@@ -46,12 +46,8 @@ export default {
           const response = await fetch('http://127.0.0.1:5000/upload_raster', {
             method: 'POST',
             body: formData,
-            onprogress: (e) => {
-              if (e.lengthComputable) {
-                this.uploadProgress = (e.loaded / e.total) * 100;
-              }
-            }
           });
+
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }

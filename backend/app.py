@@ -23,6 +23,11 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 def data_files(filename):
     return send_from_directory('data', filename)
 
+# Serve static files from the 'data' directory
+@app.route('/uploads/<path:filename>')
+def upload_files(filename):
+    return send_from_directory('uploads', filename)
+
 
 # Extract pixel values from a raster file for a given polygon
 @app.route('/extract_pixels', methods=['POST'])
