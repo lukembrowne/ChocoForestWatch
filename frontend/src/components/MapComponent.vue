@@ -12,6 +12,8 @@
       <q-btn label="Extract Pixels" color="primary" @click="extractPixels" class="q-ml-md" />
     </div>
     <div class="map-container" id="map"></div>
+    <div>Selected Raster in MapComponent: {{ selectedRaster ? selectedRaster.filename : 'None' }}</div>
+
   </div>
 </template>
 
@@ -29,19 +31,23 @@ import { Style, Fill, Stroke } from 'ol/style';
 import ImageLayer from 'ol/layer/Image';
 import ImageStatic from 'ol/source/ImageStatic';
 import { fromUrl } from 'geotiff';
+import { fromLonLat } from 'ol/proj';
+
 
 
 export default {
   name: 'MapComponent',
   props: {
-    rasterUrl: {
-      type: String,
-      required: true
+    selectedRaster: {
+      type: Object,
+      default: null
     }
   },
   data() {
     return {
       map: null,
+      error: null,
+      mapInitialized: false,
       vectorLayer: null,
       rasterLayer: null,
       drawInteraction: null,
@@ -58,17 +64,23 @@ export default {
     };
   },
   watch: {
-    rasterUrl: {
-      handler(url) {
-        if (this.map && url) {
+    selectedRaster: {
+      handler(newRaster) {
+        console.log('MapComponent - selectedRaster watcher triggered');
+        console.log('New raster:', newRaster);
+        if (newRaster && newRaster.filename) {
+          const url = `http://127.0.0.1:5000/rasters/${newRaster.filename}`;
           this.loadRaster(url);
+        } else {
+          console.log('No valid raster selected');
         }
       },
-      immediate: true
+      deep: true
     }
   },
   mounted() {
     this.initMap();
+    this.mapInitialized = true;
     window.addEventListener('keydown', this.handleKeyDown);
   },
   beforeUnmount() {
@@ -76,8 +88,27 @@ export default {
   },
   methods: {
     async loadRaster(url) {
+      console.log('Loading raster:', url);
+      this.error = null;
+
+      if (!this.mapInitialized) {
+        console.log('Map not initialized yet, waiting...');
+        await new Promise(resolve => {
+          const checkInitialization = setInterval(() => {
+            if (this.mapInitialized) {
+              clearInterval(checkInitialization);
+              resolve();
+            }
+          }, 100);
+        });
+      }
+
+      if (this.rasterLayer) {
+        this.map.removeLayer(this.rasterLayer);
+      }
+
       if (!url) {
-        console.error('Invalid URL:', url);
+        this.error = 'Invalid raster URL';
         return;
       }
 
@@ -88,13 +119,11 @@ export default {
         const height = image.getHeight();
         const bbox = image.getBoundingBox();
 
-        // Read the raster data (assuming 3-band RGB image)
         const rasterData = await image.readRasters({
           interleave: true,
-          samples: [0, 1, 2] // Assuming the GeoTIFF has RGB bands in these positions
+          samples: [0, 1, 2]
         });
 
-        // Create a canvas to draw the raster data
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
@@ -104,20 +133,15 @@ export default {
         const data = imageData.data;
 
         for (let i = 0; i < width * height; i++) {
-          data[i * 4] = rasterData[i * 3];       // Red
-          data[i * 4 + 1] = rasterData[i * 3 + 1];   // Green
-          data[i * 4 + 2] = rasterData[i * 3 + 2];   // Blue
-          data[i * 4 + 3] = 255;                // Alpha
+          data[i * 4] = rasterData[i * 3];
+          data[i * 4 + 1] = rasterData[i * 3 + 1];
+          data[i * 4 + 2] = rasterData[i * 3 + 2];
+          data[i * 4 + 3] = 255;
         }
         context.putImageData(imageData, 0, 0);
 
         const imageUrl = canvas.toDataURL();
-        const extent = [bbox[0], bbox[1], bbox[2], bbox[3]];
-
-        // Remove the existing raster layer if it exists
-        if (this.rasterLayer) {
-          this.map.removeLayer(this.rasterLayer);
-        }
+        const extent = bbox;
 
         this.rasterLayer = new ImageLayer({
           source: new ImageStatic({
@@ -128,16 +152,84 @@ export default {
 
         this.rasterLayer.getSource().on('imageloaderror', () => {
           console.error('Error loading raster image:', url);
+          this.error = 'Failed to load raster image';
         });
 
         this.map.addLayer(this.rasterLayer);
 
-        // Fit the view to the extent of the raster image
         this.map.getView().fit(extent, { duration: 1000 });
       } catch (error) {
         console.error('Error loading raster:', error);
+        this.error = 'Failed to load raster: ' + error.message;
       }
     },
+
+  
+  
+  
+    // async loadRaster(url) {
+    //   if (!url) {
+    //     console.error('Invalid URL:', url);
+    //     return;
+    //   }
+
+    //   try {
+    //     const tiff = await fromUrl(url);
+    //     const image = await tiff.getImage();
+    //     const width = image.getWidth();
+    //     const height = image.getHeight();
+    //     const bbox = image.getBoundingBox();
+
+    //     // Read the raster data (assuming 3-band RGB image)
+    //     const rasterData = await image.readRasters({
+    //       interleave: true,
+    //       samples: [0, 1, 2] // Assuming the GeoTIFF has RGB bands in these positions
+    //     });
+
+    //     // Create a canvas to draw the raster data
+    //     const canvas = document.createElement('canvas');
+    //     canvas.width = width;
+    //     canvas.height = height;
+    //     const context = canvas.getContext('2d');
+
+    //     const imageData = context.createImageData(width, height);
+    //     const data = imageData.data;
+
+    //     for (let i = 0; i < width * height; i++) {
+    //       data[i * 4] = rasterData[i * 3];       // Red
+    //       data[i * 4 + 1] = rasterData[i * 3 + 1];   // Green
+    //       data[i * 4 + 2] = rasterData[i * 3 + 2];   // Blue
+    //       data[i * 4 + 3] = 255;                // Alpha
+    //     }
+    //     context.putImageData(imageData, 0, 0);
+
+    //     const imageUrl = canvas.toDataURL();
+    //     const extent = [bbox[0], bbox[1], bbox[2], bbox[3]];
+
+    //     // Remove the existing raster layer if it exists
+    //     if (this.rasterLayer) {
+    //       this.map.removeLayer(this.rasterLayer);
+    //     }
+
+    //     this.rasterLayer = new ImageLayer({
+    //       source: new ImageStatic({
+    //         url: imageUrl,
+    //         imageExtent: extent,
+    //       }),
+    //     });
+
+    //     this.rasterLayer.getSource().on('imageloaderror', () => {
+    //       console.error('Error loading raster image:', url);
+    //     });
+
+    //     this.map.addLayer(this.rasterLayer);
+
+    //     // Fit the view to the extent of the raster image
+    //     this.map.getView().fit(extent, { duration: 1000 });
+    //   } catch (error) {
+    //     console.error('Error loading raster:', error);
+    //   }
+    // },
     initMap() {
       this.vectorLayer = new VectorLayer({
         source: new VectorSource(),

@@ -14,21 +14,24 @@
       <q-card>
         <q-card-section>
           <div class="text-h6">Available Rasters</div>
-          <q-table :rows="rasters" :columns="columns" row-key="name" class="q-mt-md">
+          <q-table :rows="rasters" :columns="columns" row-key="id" class="q-mt-md">
             <template v-slot:body-cell-actions="props">
               <q-td>
-                <q-btn dense flat label="Select" color="primary" @click="selectRaster(props.row.filename)" />
+                <q-btn dense flat label="Select" color="primary" @click="selectRaster(props.row)" />
               </q-td>
             </template>
           </q-table>
         </q-card-section>
       </q-card>
-      <map-component :raster-url="rasterUrl" class="q-mt-md" />
+      <map-component :selectedRaster="selectedRaster" class="q-mt-md" />
     </div>
+    <div>Selected Raster in ModelTraining: {{ selectedRaster ? selectedRaster.filename : 'None' }}</div>
+
   </q-page>
 </template>
 
 <script>
+import axios from 'axios';
 import MapComponent from 'components/MapComponent.vue';
 
 export default {
@@ -38,16 +41,17 @@ export default {
   },
   data() {
     return {
-      rasterUrl: '',
+      selectedRaster: null,
       uploading: false,
       uploadProgress: 0,
       description: '',
       rasters: [],
       columns: [
-        { name: 'filename', required: true, label: 'Filename', align: 'left', field: row => row.filename, format: val => `${val}`, sortable: true },
+        { name: 'id', required: true, label: 'ID', align: 'left', field: 'id', sortable: true },
+        { name: 'filename', required: true, label: 'Filename', align: 'left', field: 'filename', sortable: true },
         { name: 'description', required: true, label: 'Description', align: 'left', field: 'description', sortable: true },
         { name: 'actions', label: 'Actions', align: 'right' }
-      ]
+    ]
     };
   },
   methods: {
@@ -61,7 +65,7 @@ export default {
         this.uploadProgress = 0;
 
         const formData = new FormData();
-        formData.append('raster', file);
+        formData.append('file', file);
         formData.append('description', this.description);
 
         try {
@@ -90,18 +94,20 @@ export default {
     },
     async fetchRasters() {
       try {
-        const response = await fetch('http://127.0.0.1:5000/list_rasters');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        this.rasters = await response.json();
+        const response = await axios.get('http://127.0.0.1:5000/api/rasters');
+        this.rasters = response.data;
+        console.log('Fetched rasters:', this.rasters);
       } catch (error) {
         console.error('Error fetching rasters:', error);
       }
     },
-    selectRaster(rasterName) {
-      console.log(`http://127.0.0.1:5000/uploads/${rasterName}`);
-      this.rasterUrl = `http://127.0.0.1:5000/uploads/${rasterName}`;
+    selectRaster(raster) {
+      console.log('Selecting raster:', raster);
+      this.selectedRaster = null; // First, set to null
+      this.$nextTick(() => {
+        this.selectedRaster = { ...raster }; // Then set the new value
+        console.log('Selected raster updated:', this.selectedRaster);
+      });
     }
   },
   mounted() {

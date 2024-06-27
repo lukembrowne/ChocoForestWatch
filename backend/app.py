@@ -8,7 +8,8 @@ import numpy as np
 import os
 from werkzeug.utils import secure_filename
 import requests
-
+from flask_sqlalchemy import SQLAlchemy
+from geoalchemy2 import Geometry
 
 
 app = Flask(__name__)
@@ -20,15 +21,40 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://cfwuser:1234d@localhost/cfwdb'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+# Define models
+class Raster(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(100), nullable=False)
+    filepath = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.String(200))
+
+class VectorData(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    geom = db.Column(Geometry('POLYGON'))
+
+# Create tables
+with app.app_context():
+    db.create_all()
+
+
+
+
 # Serve static files from the 'data' directory
 @app.route('/data/<path:filename>')
 def data_files(filename):
     return send_from_directory('data', filename)
 
 # Serve static files from the 'data' directory
-@app.route('/uploads/<path:filename>')
+@app.route('/rasters/<path:filename>')
 def upload_files(filename):
-    return send_from_directory('uploads', filename)
+    return send_from_directory('rasters', filename)
 
 
 # Extract pixel values from a raster file for a given polygon
@@ -70,44 +96,52 @@ def extract_pixels():
 # Upload raster and save description
 @app.route('/upload_raster', methods=['POST'])
 def upload_raster():
-    if 'raster' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
-
-    file = request.files['raster']
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files['file']
     description = request.form.get('description', '')
-
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
-
-    if file:
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-
-        # Save the metadata
-        metadata = {
-            'filename': filename,
-            'description': description
-        }
-        with open(os.path.join(app.config['UPLOAD_FOLDER'], f'{filename}.json'), 'w') as f:
-            json.dump(metadata, f)
-
-        file_url = f"http://127.0.0.1:5000/uploads/{filename}"
-        return jsonify({'url': file_url}), 200
     
-@app.route('/list_rasters', methods=['GET'])
-def list_rasters():
-    files = []
-    for filename in os.listdir(app.config['UPLOAD_FOLDER']):
-        if filename.endswith('.tiff'):
-            metadata_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{filename}.json')
-            if os.path.exists(metadata_file):
-                with open(metadata_file) as f:
-                    metadata = json.load(f)
-            else:
-                metadata = {'filename': filename, 'description': ''}
-            files.append(metadata)
-    return jsonify(files)   
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+    
+    if file:
+        filename = file.filename
+        filepath = os.path.join('rasters', filename)  # Assuming a 'rasters' directory in your project
+        os.makedirs('rasters', exist_ok=True)  # Create the 'rasters' directory if it doesn't exist
+        file.save(filepath)
+        
+        new_raster = Raster(filename=filename, filepath=filepath, description=description)
+        db.session.add(new_raster)
+        db.session.commit()
+        
+        return jsonify({"message": "File uploaded successfully", "id": new_raster.id}), 200
+    
+
+@app.route('/upload_vector', methods=['POST'])
+def upload_vector():
+    data = request.json
+    if not data or 'name' not in data or 'geometry' not in data:
+        return jsonify({"error": "Invalid data"}), 400
+
+    new_vector = VectorData(name=data['name'], geom=data['geometry'])
+    db.session.add(new_vector)
+    db.session.commit()
+    
+    return jsonify({"message": "Vector data uploaded successfully", "id": new_vector.id}), 200
+
+    
+@app.route('/api/rasters', methods=['GET'])
+def get_rasters():
+    rasters = Raster.query.all()
+    raster_list = []
+    for raster in rasters:
+        raster_list.append({
+            'id': raster.id,
+            'filename': raster.filename,
+            'filepath': raster.filepath,
+            'description': raster.description
+        })
+    return jsonify(raster_list)
 
 
 if __name__ == '__main__':
