@@ -28,11 +28,6 @@ def data_files(filename):
 def upload_files(filename):
     return send_from_directory('uploads', filename)
 
-@app.route('/list_rasters', methods=['GET'])
-def list_rasters():
-    files = [{'name': f} for f in os.listdir(UPLOAD_FOLDER) if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))]
-    return jsonify(files)
-
 
 # Extract pixel values from a raster file for a given polygon
 @app.route('/extract_pixels', methods=['POST'])
@@ -64,20 +59,48 @@ def extract_pixels():
     return jsonify(extracted_values)
 
 
+# Upload raster and save description
 @app.route('/upload_raster', methods=['POST'])
 def upload_raster():
     if 'raster' not in request.files:
         return jsonify({'error': 'No file part'}), 400
 
     file = request.files['raster']
+    description = request.form.get('description', '')
+
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
     if file:
-        filename = file.filename
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        # Save the metadata
+        metadata = {
+            'filename': filename,
+            'description': description
+        }
+        with open(os.path.join(app.config['UPLOAD_FOLDER'], f'{filename}.json'), 'w') as f:
+            json.dump(metadata, f)
+
         file_url = f"http://127.0.0.1:5000/uploads/{filename}"
         return jsonify({'url': file_url}), 200
+    
+@app.route('/list_rasters', methods=['GET'])
+def list_rasters():
+    files = []
+    for filename in os.listdir(app.config['UPLOAD_FOLDER']):
+        if filename.endswith('.tiff'):
+            metadata_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{filename}.json')
+            if os.path.exists(metadata_file):
+                with open(metadata_file) as f:
+                    metadata = json.load(f)
+            else:
+                metadata = {'filename': filename, 'description': ''}
+            files.append(metadata)
+    return jsonify(files)   
+
 
 if __name__ == '__main__':
     app.run(debug=True)
