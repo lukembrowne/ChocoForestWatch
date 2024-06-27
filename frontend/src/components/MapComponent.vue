@@ -9,6 +9,7 @@
         class="q-ml-md" />
       <q-btn label="Load from Local Storage" color="primary" @click="loadPolygonsFromLocalStorage" class="q-ml-md" />
       <q-btn label="Load Raster" color="primary" @click="loadRaster" class="q-ml-md" />
+      <q-btn label="Extract Pixels" color="primary" @click="extractPixels" class="q-ml-md" />
     </div>
     <div class="map-container" id="map"></div>
   </div>
@@ -33,7 +34,10 @@ import { fromUrl } from 'geotiff';
 export default {
   name: 'MapComponent',
   props: {
-    rasterUrl: String
+    rasterUrl: {
+      type: String,
+      required: true
+    }
   },
   data() {
     return {
@@ -56,7 +60,7 @@ export default {
   watch: {
     rasterUrl: {
       handler(url) {
-        if (this.map) {
+        if (this.map && url) {
           this.loadRaster(url);
         }
       },
@@ -291,6 +295,35 @@ export default {
         this.classLabel = 'forest';
       } else if (event.key === '2') {
         this.classLabel = 'non-forest';
+      }
+    },
+    // Existing methods
+    async extractPixels() {
+      if (this.polygons.length === 0) {
+        console.error('No polygons drawn.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('raster', this.rasterUrl);
+      formData.append('polygons', JSON.stringify(this.polygons.map(polygon => ({
+        geometry: new GeoJSON().writeFeatureObject(polygon.feature)
+      }))));
+
+      try {
+        const response = await fetch('http://127.0.0.1:5000/extract_pixels', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Extracted Pixel Values:', data);
+      } catch (error) {
+        console.error('Error extracting pixels:', error);
       }
     },
   },

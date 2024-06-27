@@ -7,6 +7,8 @@ from rasterio.mask import mask
 import numpy as np
 import os
 from werkzeug.utils import secure_filename
+import requests
+
 
 
 app = Flask(__name__)
@@ -32,29 +34,35 @@ def upload_files(filename):
 # Extract pixel values from a raster file for a given polygon
 @app.route('/extract_pixels', methods=['POST'])
 def extract_pixels():
-    # Get the uploaded file
-    if 'raster' not in request.files:
-        return jsonify({'error': 'No raster file provided'}), 400
-
-    file = request.files['raster']
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(filepath)
+    # Get the raster URL
+    raster_url = request.form.get('raster')
+    if not raster_url:
+        return jsonify({'error': 'No raster URL provided'}), 400
 
     # Get the polygons
     polygons = json.loads(request.form['polygons'])
     
+    # Download the raster file
+    try:
+        response = requests.get(raster_url)
+        response.raise_for_status()
+        raster_filename = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_raster.tif')
+        with open(raster_filename, 'wb') as f:
+            f.write(response.content)
+    except requests.RequestException as e:
+        return jsonify({'error': str(e)}), 500
+
     extracted_values = []
 
-    with rasterio.open(filepath) as src:
+    with rasterio.open(raster_filename) as src:
         for feature in polygons:
             geom = shape(feature['geometry']['geometry'])  # Ensure this is the geometry object
             out_image, out_transform = mask(src, [mapping(geom)], crop=True)
             out_image = np.ma.masked_equal(out_image, src.nodata)
             extracted_values.append(out_image.data.tolist())
     
-    # Clean up the uploaded file
-    os.remove(filepath)
+    # Clean up the downloaded file
+    os.remove(raster_filename)
 
     return jsonify(extracted_values)
 
