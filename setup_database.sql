@@ -23,9 +23,10 @@ CREATE TABLE raster (
     description VARCHAR(200)
 );
 
-CREATE TABLE vector_data (
+CREATE TABLE vectors (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
+    filename VARCHAR(100) NOT NULL,
+     description VARCHAR(200),
     geom GEOMETRY(POLYGON, 4326)
 );
 

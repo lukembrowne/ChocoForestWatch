@@ -10,6 +10,10 @@ from werkzeug.utils import secure_filename
 import requests
 from flask_sqlalchemy import SQLAlchemy
 from geoalchemy2 import Geometry
+from geoalchemy2.shape import to_shape
+from geoalchemy2.functions import ST_AsGeoJSON
+from sqlalchemy.exc import SQLAlchemyError
+
 
 
 app = Flask(__name__)
@@ -34,17 +38,15 @@ class Raster(db.Model):
     filepath = db.Column(db.String(200), nullable=False)
     description = db.Column(db.String(200))
 
-class VectorData(db.Model):
+class Vectors(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
+    filename = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(200))
     geom = db.Column(Geometry('POLYGON'))
 
 # Create tables
 with app.app_context():
     db.create_all()
-
-
-
 
 # Serve static files from the 'data' directory
 @app.route('/data/<path:filename>')
@@ -116,21 +118,8 @@ def upload_raster():
         
         return jsonify({"message": "File uploaded successfully", "id": new_raster.id}), 200
     
-
-@app.route('/upload_vector', methods=['POST'])
-def upload_vector():
-    data = request.json
-    if not data or 'name' not in data or 'geometry' not in data:
-        return jsonify({"error": "Invalid data"}), 400
-
-    new_vector = VectorData(name=data['name'], geom=data['geometry'])
-    db.session.add(new_vector)
-    db.session.commit()
     
-    return jsonify({"message": "Vector data uploaded successfully", "id": new_vector.id}), 200
-
-    
-@app.route('/api/rasters', methods=['GET'])
+@app.route('/api/list_rasters', methods=['GET'])
 def get_rasters():
     rasters = Raster.query.all()
     raster_list = []
@@ -142,6 +131,73 @@ def get_rasters():
             'description': raster.description
         })
     return jsonify(raster_list)
+
+@app.route('/api/list_vectors', methods=['GET'])
+def list_vectors():
+    vectors = Vectors.query.all()
+    return jsonify([{
+        "id": v.id,
+        "filename": v.filename,
+        "description": v.description
+    } for v in vectors])
+
+
+
+@app.route('/upload_vector', methods=['POST'])
+def upload_vector():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files['file']
+    description = request.form.get('description', '')
+    
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+    
+    if file and file.filename.endswith('.geojson'):
+        filename = file.filename
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        with open(filepath, 'r') as f:
+            geojson = json.load(f)
+        
+        # Assuming the GeoJSON contains a single feature
+        feature = geojson['features'][0]
+        geom = shape(feature['geometry'])
+        
+        new_vector = Vectors(filename=filename, description=description, geom=geom.wkt)
+        db.session.add(new_vector)
+        db.session.commit()
+        
+        return jsonify({"message": "Vector file uploaded successfully", "id": new_vector.id}), 200
+    
+    return jsonify({"error": "Invalid file format"}), 400
+
+
+
+@app.route('/get_vector/<int:vector_id>', methods=['GET'])
+def get_vector(vector_id):
+    try:
+        vector = Vectors.query.get(vector_id)
+        if vector is None:
+            abort(404, description="Vector not found")
+        
+        geom_geojson = db.session.scalar(ST_AsGeoJSON(vector.geom))
+        
+        return jsonify({
+            "type": "Feature",
+            "geometry": json.loads(geom_geojson),
+            "properties": {
+                "id": vector.id,
+                "filename": vector.filename,
+                "description": vector.description
+            }
+        }), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        abort(500, description=str(e))
+
+
 
 
 if __name__ == '__main__':

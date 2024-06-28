@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "new_scratch_layer",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "tessellate": -1, "extrude": 0, "visibility": -1 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ -79.887441252663194, 0.525987527279121 ], [ -79.499389575655599, 0.526419371873908 ], [ -79.498925161828495, 0.274738809801282 ], [ -79.8897713081858, 0.275552387120767 ], [ -79.887441252663194, 0.525987527279121 ] ] ] } }
+]
+}
