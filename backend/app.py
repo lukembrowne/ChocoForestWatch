@@ -97,7 +97,7 @@ def extract_pixels():
 
 
 # Upload raster and save description
-@app.route('/upload_raster', methods=['POST'])
+@app.route('/api/upload_raster', methods=['POST'])
 def upload_raster():
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
@@ -144,7 +144,7 @@ def list_vectors():
     } for v in vectors])
 
 
-@app.route('/upload_vector', methods=['POST'])
+@app.route('/api/upload_vector', methods=['POST'])
 def upload_vector():
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
@@ -188,7 +188,7 @@ def upload_vector():
 
 
 
-@app.route('/get_vector/<int:vector_id>', methods=['GET'])
+@app.route('/api/get_vector/<int:vector_id>', methods=['GET'])
 def get_vector(vector_id):
     vector = Vectors.query.get_or_404(vector_id)
     return jsonify(vector.geojson)
