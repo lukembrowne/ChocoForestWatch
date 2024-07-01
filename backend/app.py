@@ -14,6 +14,7 @@ from geoalchemy2.shape import to_shape
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.dialects.postgresql import JSONB
+import datetime
 
 
 
@@ -192,6 +193,45 @@ def upload_vector():
 def get_vector(vector_id):
     vector = Vectors.query.get_or_404(vector_id)
     return jsonify(vector.geojson)
+
+@app.route('/api/save_drawn_polygons', methods=['POST'])
+def save_drawn_polygons():
+    data = request.json
+    if not data or 'polygons' not in data:
+        return jsonify({"error": "No polygon data provided"}), 400
+
+    description = data.get('description', '')
+    polygons = data['polygons']
+
+    geojson = {
+        "type": "FeatureCollection",
+        "features": []
+    }
+
+    for polygon in polygons:
+        feature = {
+            "type": "Feature",
+            "properties": {
+                "classLabel": polygon['classLabel']
+            },
+            "geometry": polygon['geometry']
+        }
+        geojson['features'].append(feature)
+
+    new_vector = Vectors(
+        filename=f"drawn_polygons.geojson",
+        description=description,
+        geojson=geojson
+    )
+
+    db.session.add(new_vector)
+    db.session.commit()
+
+    return jsonify({
+        "message": "Drawn polygons saved successfully.",
+        "id": new_vector.id,
+        "feature_count": len(geojson['features'])
+    }), 200
 
 
 

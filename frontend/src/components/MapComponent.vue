@@ -1,19 +1,32 @@
 <template>
-  <div>
+  <div class="map-container">
     <div class="toolbar">
       <q-btn label="Draw Polygon" color="primary" @click="startDrawing" />
       <q-btn v-if="drawing" label="Stop Drawing" color="negative" @click="stopDrawing" class="q-ml-md" />
-      <q-select v-if="drawing" v-model="classLabel" :options="classOptions" label="Class Label" class="q-ml-md" />
-      <q-btn label="Save GeoJSON" color="primary" @click="saveGeoJSON" class="q-ml-md" />
-      <q-btn label="Extract Pixels" color="primary" @click="extractPixels" class="q-ml-md" />
+      <q-select v-model="classLabel" :options="classOptions" label="Class Label" class="q-ml-md" />
+      <q-btn label="Save Drawn Polygons" color="primary" @click="saveDrawnPolygons" class="q-ml-md" />
     </div>
-    <div class="map-container" ref="mapContainer"></div>
-    <div v-if="error" class="error-message">{{ error }}</div>
+    <div class="map-and-sidebar">
+      <div ref="mapContainer" class="map"></div>
+      <div class="sidebar">
+        <h6>Drawn Polygons</h6>
+        <q-list>
+          <q-item v-for="(polygon, index) in polygons" :key="index" clickable @click="selectPolygon(polygon)">
+            <q-item-section>
+              <q-item-label>{{ polygon.classLabel }} - {{ index + 1 }}</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-btn flat round icon="delete" @click.stop="deletePolygon(polygon)" />
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, watch, onBeforeUnmount } from 'vue';
+import { ref, onMounted, watch, onBeforeUnmount, onUnmounted } from 'vue';
 import 'ol/ol.css';
 import { Map, View } from 'ol';
 import TileLayer from 'ol/layer/Tile';
@@ -28,6 +41,8 @@ import ImageLayer from 'ol/layer/Image';
 import ImageStatic from 'ol/source/ImageStatic';
 import { fromUrl } from 'geotiff';
 import { fromLonLat } from 'ol/proj';
+import axios from 'axios';
+
 
 
 
@@ -50,8 +65,17 @@ export default {
     const mapInitialized = ref(false);
     const rasterLayer = ref(null);
     const vectorLayer = ref(null);
+    const drawInteraction = ref(null);
+    const modifyInteraction = ref(null);
+    const selectInteraction = ref(null);
+    const drawing = ref(false);
+    const classLabel = ref('forest');
+    const polygons = ref([]);
 
-
+    const classOptions = [
+      { label: 'Forest', value: 'forest' },
+      { label: 'Non-Forest', value: 'non-forest' },
+    ];
 
 
     const initMap = () => {
@@ -62,7 +86,8 @@ export default {
             new TileLayer({
               source: new XYZ({
                 url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-              })
+              }),
+              zIndex: 0
             })
           ],
           view: new View({
@@ -70,7 +95,130 @@ export default {
             zoom: 2
           })
         });
+
+        vectorLayer.value = new VectorLayer({
+          source: new VectorSource(),
+          style: featureStyleFunction
+        });
+
+        map.value.addLayer(vectorLayer.value);
+
+        initInteractions();
+
         mapInitialized.value = true;
+      }
+    };
+    const initInteractions = () => {
+      selectInteraction.value = new Select({
+        condition: click,
+        style: featureStyleFunction,
+        zIndex: 1 // Ensure vector layer is on top
+      });
+
+      modifyInteraction.value = new Modify({
+        features: selectInteraction.value.getFeatures()
+      });
+
+      map.value.addInteraction(selectInteraction.value);
+      map.value.addInteraction(modifyInteraction.value);
+    };
+
+    const featureStyleFunction = (feature) => {
+      const classLabel = feature.get('classLabel');
+      const color = classLabel === 'forest' ? 'rgba(0, 128, 0, 0.5)' : 'rgba(255, 255, 0, 0.5)';
+      const strokeColor = classLabel === 'forest' ? '#008000' : '#FFFF00';
+
+      return new Style({
+        fill: new Fill({ color }),
+        stroke: new Stroke({ color: strokeColor, width: 2 }),
+      });
+    };
+
+    const startDrawing = () => {
+      drawing.value = true;
+      drawInteraction.value = new Draw({
+        source: vectorLayer.value.getSource(),
+        type: 'Polygon',
+        freehand: true,
+      });
+
+      drawInteraction.value.on('drawend', (event) => {
+        const feature = event.feature;
+        feature.set('classLabel', classLabel.value);
+        polygons.value.push(feature);
+        bringVectorToFront(); // Ensure vector layer is on top after drawing
+        savePolygonToDatabase(feature);
+      });
+
+      map.value.addInteraction(drawInteraction.value);
+    };
+
+    const stopDrawing = () => {
+      map.value.removeInteraction(drawInteraction.value);
+      drawing.value = false;
+    };
+
+    const selectPolygon = (polygon) => {
+      selectInteraction.value.getFeatures().clear();
+      selectInteraction.value.getFeatures().push(polygon);
+    };
+
+    const deletePolygon = (polygon) => {
+      vectorLayer.value.getSource().removeFeature(polygon);
+      polygons.value = polygons.value.filter(p => p !== polygon);
+      deletePolygonFromDatabase(polygon);
+    };
+
+    const saveDrawnPolygons = async () => {
+      const features = vectorLayer.value.getSource().getFeatures();
+      const polygonsData = features.map(feature => {
+        // Clone the geometry to avoid modifying the original
+        const geometry = feature.getGeometry().clone();
+
+        // Transform the geometry from EPSG:3857 to EPSG:4326
+        geometry.transform('EPSG:3857', 'EPSG:4326');
+
+        return {
+          classLabel: feature.get('classLabel'),
+          geometry: new GeoJSON().writeGeometryObject(geometry)
+        };
+      });
+
+      try {
+        const response = await axios.post('http://127.0.0.1:5000/api/save_drawn_polygons', {
+          description: 'Drawn polygons set',
+          polygons: polygonsData
+        });
+        console.log('Polygons saved successfully:', response.data);
+        // Optionally, update UI to reflect successful save
+      } catch (error) {
+        console.error('Error saving polygons:', error);
+        // Handle error (e.g., show error message to user)
+      }
+    };
+
+    const savePolygonToDatabase = (feature) => {
+      // Implement save to database logic here
+      console.log('Saving polygon to database:', feature);
+    };
+
+    const deletePolygonFromDatabase = (polygon) => {
+      // Implement delete from database logic here
+      console.log('Deleting polygon from database:', polygon);
+    };
+
+    const bringVectorToFront = () => {
+      if (vectorLayer.value && map.value) {
+        map.value.removeLayer(vectorLayer.value);
+        map.value.addLayer(vectorLayer.value);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === '1') {
+        classLabel.value = 'forest';
+      } else if (event.key === '2') {
+        classLabel.value = 'non-forest';
       }
     };
 
@@ -135,6 +283,7 @@ export default {
             url: imageUrl,
             imageExtent: extent,
           }),
+          zIndex: 0  // Place raster layer between base map and vector layer
         });
 
         rasterLayer.value.getSource().on('imageloaderror', () => {
@@ -143,7 +292,7 @@ export default {
         });
 
         map.value.addLayer(rasterLayer.value);
-
+        bringVectorToFront(); // Ensure vector layer is on top
         map.value.getView().fit(extent, { duration: 1000 });
       } catch (error) {
         console.error('Error loading raster:', error);
@@ -193,6 +342,7 @@ export default {
 
     onMounted(() => {
       initMap();
+      window.addEventListener('keydown', handleKeyDown);
     });
 
     // Watch for changes in the selectedRaster prop
@@ -217,6 +367,10 @@ export default {
       }
     });
 
+    onUnmounted(() => {
+      window.removeEventListener('keydown', handleKeyDown);
+    });
+
     return {
       mapContainer,
       loadRaster,
@@ -225,7 +379,17 @@ export default {
       rasterLayer,
       loadVector,
       vectorLayer,
-      mapInitialized
+      mapInitialized,
+      drawing,
+      classLabel,
+      classOptions,
+      polygons,
+      startDrawing,
+      stopDrawing,
+      selectPolygon,
+      deletePolygon,
+      bringVectorToFront,
+      saveDrawnPolygons
     };
   }
 };
@@ -233,12 +397,32 @@ export default {
 
 <style scoped>
 .map-container {
-  width: 100%;
-  height: 600px;
+  height: 100vh;
+  /* This will make the map container take the full viewport height */
+  display: flex;
+  flex-direction: column;
 }
 
-.error-message {
-  color: red;
-  margin-top: 10px;
+.map-and-sidebar {
+  display: flex;
+  flex-grow: 1;
+}
+
+.map {
+  flex-grow: 1;
+  min-height: 800px;
+  /* This sets a minimum height for the map */
+}
+
+.sidebar {
+  width: 250px;
+  padding: 10px;
+  background-color: #f0f0f0;
+  overflow-y: auto;
+}
+
+.toolbar {
+  padding: 10px;
+  background-color: #e0e0e0;
 }
 </style>
