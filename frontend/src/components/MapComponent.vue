@@ -5,15 +5,9 @@
       <q-btn v-if="drawing" label="Stop Drawing" color="negative" @click="stopDrawing" class="q-ml-md" />
       <q-select v-if="drawing" v-model="classLabel" :options="classOptions" label="Class Label" class="q-ml-md" />
       <q-btn label="Save GeoJSON" color="primary" @click="saveGeoJSON" class="q-ml-md" />
-      <q-btn label="Save Polygons to Local Storage" color="primary" @click="savePolygonsToLocalStorage"
-        class="q-ml-md" />
-      <q-btn label="Load from Local Storage" color="primary" @click="loadPolygonsFromLocalStorage" class="q-ml-md" />
-      <q-btn label="Load Raster" color="primary" @click="loadRaster" class="q-ml-md" />
       <q-btn label="Extract Pixels" color="primary" @click="extractPixels" class="q-ml-md" />
     </div>
     <div class="map-container" id="map"></div>
-    <div>Selected Raster in MapComponent: {{ selectedRaster ? selectedRaster.filename : 'None' }}</div>
-
   </div>
 </template>
 
@@ -305,40 +299,6 @@ export default {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    },
-    savePolygonsToLocalStorage() {
-      const format = new GeoJSON();
-      const features = this.vectorLayer.getSource().getFeatures();
-      const transformedFeatures = features.map(feature => {
-        const geom = feature.getGeometry();
-        geom.transform('EPSG:3857', 'EPSG:4326');
-        return feature;
-      });
-      const geojson = format.writeFeaturesObject(transformedFeatures);
-      localStorage.setItem('polygons', JSON.stringify(geojson));
-    },
-    loadPolygonsFromLocalStorage() {
-      const polygons = localStorage.getItem('polygons');
-      if (polygons) {
-        const format = new GeoJSON();
-        const features = format.readFeatures(JSON.parse(polygons), {
-          featureProjection: 'EPSG:3857',
-        });
-
-        this.vectorLayer.getSource().clear();
-
-        this.vectorLayer.getSource().addFeatures(features);
-
-        this.polygons = [];
-        features.forEach(feature => {
-          const classLabel = feature.get('classLabel') || 'unknown';
-          this.polygons.push({ feature, classLabel });
-
-          this.updatePolygonStyle(feature);
-        });
-
-        this.vectorLayer.setVisible(true);
-      }
     },
     updatePolygonStyle(feature) {
       const classLabel = feature.get('classLabel');
