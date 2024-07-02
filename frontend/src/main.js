@@ -1,17 +1,20 @@
 import { createApp } from 'vue'
-import App from './App.vue'
 import { createRouter, createWebHistory } from 'vue-router'
-import routes from './router/routes.js'
 import { Quasar } from 'quasar'
 import quasarUserOptions from './quasar-user-options'
+import routes from './router/routes'
+import App from './App.vue'
+
 import 'quasar/src/css/index.sass'
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes: routes // Make sure this is correct
 })
 
 const app = createApp(App)
-app.use(router)
+
 app.use(Quasar, quasarUserOptions)
+app.use(router)
+
 app.mount('#app')
