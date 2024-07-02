@@ -2,7 +2,9 @@
   <div class="map-container">
     <div class="toolbar">
       <q-btn label="Draw Polygon" color="primary" @click="startDrawing" />
-      <q-btn v-if="drawing" label="Stop Drawing" color="negative" @click="stopDrawing" class="q-ml-md" />
+      <q-btn :label="drawing ? 'Stop Drawing' : 'Start Drawing'" 
+             :color="drawing ? 'negative' : 'primary'" 
+             @click="toggleDrawing" />
       <q-select v-model="classLabel" :options="classOptions" label="Class Label" class="q-ml-md" />
       <q-input v-model="description" :label="`Description`" class="q-mt-md" />
       <q-btn label="Save Training polygons" color="primary" @click="saveDrawnPolygons" class="q-ml-md" />
@@ -12,9 +14,16 @@
       <div class="sidebar">
         <h6>Drawn Polygons</h6>
         <q-list>
-          <q-item v-for="(polygon, index) in polygons" :key="index" clickable @click="selectPolygon(polygon)">
+          <q-item
+            v-for="(polygon, index) in polygons"
+            :key="index"
+            clickable
+            @click="selectPolygon(polygon)"
+            :active="selectedPolygon === polygon"
+            :class="{ 'bg-primary text-white': selectedPolygon === polygon }"
+          >
             <q-item-section>
-              <q-item-label>{{ polygon.classLabel }} - {{ index + 1 }}</q-item-label>
+              <q-item-label>{{ index + 1 }} - {{ polygon.get('classLabel') }}</q-item-label>
             </q-item-section>
             <q-item-section side>
               <q-btn flat round icon="delete" @click.stop="deletePolygon(polygon)" />
@@ -79,6 +88,8 @@ export default {
       { label: 'Forest', value: 'forest' },
       { label: 'Non-Forest', value: 'non-forest' },
     ];
+    const selectedPolygon = ref(null);
+
 
 
     const initMap = () => {
@@ -120,6 +131,15 @@ export default {
         zIndex: 1 // Ensure vector layer is on top
       });
 
+      selectInteraction.value.on('select', (event) => {
+        if (event.selected.length > 0) {
+          selectPolygon(event.selected[0]);
+        } else {
+          selectedPolygon.value = null;
+        }
+        updateVectorLayerStyle();
+      });
+
       modifyInteraction.value = new Modify({
         features: selectInteraction.value.getFeatures()
       });
@@ -130,17 +150,35 @@ export default {
 
     const featureStyleFunction = (feature) => {
       const classLabel = feature.get('classLabel');
-      const color = classLabel === 'forest' ? 'rgba(0, 128, 0, 0.5)' : 'rgba(255, 255, 0, 0.5)';
-      const strokeColor = classLabel === 'forest' ? '#008000' : '#FFFF00';
+      const isSelected = feature === selectedPolygon.value;
+      
+      let color, strokeColor, strokeWidth;
+      
+      if (isSelected) {
+        color = classLabel === 'forest' ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 255, 0, 0.5)';
+        strokeColor = '#FF4136';
+        strokeWidth = 3;
+      } else {
+        color = classLabel === 'forest' ? 'rgba(0, 128, 0, 0.5)' : 'rgba(255, 255, 0, 0.3)';
+        strokeColor = classLabel === 'forest' ? '#008000' : '#FFFF00';
+        strokeWidth = 2;
+      }
 
       return new Style({
         fill: new Fill({ color }),
-        stroke: new Stroke({ color: strokeColor, width: 2 }),
+        stroke: new Stroke({ color: strokeColor, width: strokeWidth }),
       });
+    };
+
+    const updateVectorLayerStyle = () => {
+      console.log("Updating vector styles..");
+      vectorLayer.value.setStyle(featureStyleFunction);
+      vectorLayer.value.changed();
     };
     
 
     const startDrawing = () => {
+
       drawing.value = true;
       drawInteraction.value = new Draw({
         source: vectorLayer.value.getSource(),
@@ -153,9 +191,18 @@ export default {
         feature.set('classLabel', classLabel.value);
         polygons.value.push(feature);
         bringVectorToFront(); // Ensure vector layer is on top after drawing
+        updateVectorLayerStyle();
       });
 
       map.value.addInteraction(drawInteraction.value);
+    };
+
+    const toggleDrawing = () => {
+      if (drawing.value) {
+        stopDrawing();
+      } else {
+        startDrawing();
+      }
     };
 
     const stopDrawing = () => {
@@ -164,13 +211,17 @@ export default {
     };
 
     const selectPolygon = (polygon) => {
-      selectInteraction.value.getFeatures().clear();
-      selectInteraction.value.getFeatures().push(polygon);
+      selectedPolygon.value = polygon;
+      updateVectorLayerStyle();
     };
 
     const deletePolygon = (polygon) => {
       vectorLayer.value.getSource().removeFeature(polygon);
       polygons.value = polygons.value.filter(p => p !== polygon);
+      if (selectedPolygon.value === polygon) {
+        selectedPolygon.value = null;
+      }
+      vectorLayer.value.changed(); // Ensure the vector layer updates
     };
 
     const saveDrawnPolygons = async () => {
@@ -214,6 +265,11 @@ export default {
         classLabel.value = 'forest';
       } else if (event.key === '2') {
         classLabel.value = 'non-forest';
+      } else if (event.key === 'Delete' && selectedPolygon.value) {
+        deletePolygon(selectedPolygon.value);
+      } else if (event.key === ' ' && !event.repeat) { // Spacebar for toggle drawing
+        event.preventDefault(); // Prevent page scrolling
+        toggleDrawing();
       }
     };
 
@@ -406,7 +462,9 @@ export default {
       deletePolygon,
       bringVectorToFront,
       saveDrawnPolygons,
-      description
+      description,
+      selectedPolygon,
+      toggleDrawing
     };
   }
 };
@@ -441,5 +499,9 @@ export default {
 .toolbar {
   padding: 10px;
   background-color: #e0e0e0;
+}
+
+.q-item.bg-primary {
+  background-color: #1976D2 !important;
 }
 </style>
