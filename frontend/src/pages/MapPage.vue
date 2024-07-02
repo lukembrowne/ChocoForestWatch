@@ -4,7 +4,8 @@
       <q-btn label="Draw Polygon" color="primary" @click="startDrawing" />
       <q-btn v-if="drawing" label="Stop Drawing" color="negative" @click="stopDrawing" class="q-ml-md" />
       <q-select v-model="classLabel" :options="classOptions" label="Class Label" class="q-ml-md" />
-      <q-btn label="Save Drawn Polygons" color="primary" @click="saveDrawnPolygons" class="q-ml-md" />
+      <q-input v-model="description" :label="`Description`" class="q-mt-md" />
+      <q-btn label="Save Training polygons" color="primary" @click="saveDrawnPolygons" class="q-ml-md" />
     </div>
     <div class="map-and-sidebar">
       <div ref="mapContainer" class="map"></div>
@@ -73,7 +74,7 @@ export default {
     const drawing = ref(false);
     const classLabel = ref('forest');
     const polygons = ref([]);
-
+    const description = ref(null);
     const classOptions = [
       { label: 'Forest', value: 'forest' },
       { label: 'Non-Forest', value: 'non-forest' },
@@ -137,6 +138,7 @@ export default {
         stroke: new Stroke({ color: strokeColor, width: 2 }),
       });
     };
+    
 
     const startDrawing = () => {
       drawing.value = true;
@@ -151,7 +153,6 @@ export default {
         feature.set('classLabel', classLabel.value);
         polygons.value.push(feature);
         bringVectorToFront(); // Ensure vector layer is on top after drawing
-        savePolygonToDatabase(feature);
       });
 
       map.value.addInteraction(drawInteraction.value);
@@ -170,10 +171,10 @@ export default {
     const deletePolygon = (polygon) => {
       vectorLayer.value.getSource().removeFeature(polygon);
       polygons.value = polygons.value.filter(p => p !== polygon);
-      deletePolygonFromDatabase(polygon);
     };
 
     const saveDrawnPolygons = async () => {
+      console.log('Saving polygon to database:');
       const features = vectorLayer.value.getSource().getFeatures();
       const polygonsData = features.map(feature => {
         // Clone the geometry to avoid modifying the original
@@ -190,7 +191,7 @@ export default {
 
       try {
         const response = await axios.post('http://127.0.0.1:5000/api/save_drawn_polygons', {
-          description: 'Drawn polygons set',
+          description: description.value,
           polygons: polygonsData
         });
         console.log('Polygons saved successfully:', response.data);
@@ -199,16 +200,6 @@ export default {
         console.error('Error saving polygons:', error);
         // Handle error (e.g., show error message to user)
       }
-    };
-
-    const savePolygonToDatabase = (feature) => {
-      // Implement save to database logic here
-      console.log('Saving polygon to database:', feature);
-    };
-
-    const deletePolygonFromDatabase = (polygon) => {
-      // Implement delete from database logic here
-      console.log('Deleting polygon from database:', polygon);
     };
 
     const bringVectorToFront = () => {
@@ -348,13 +339,18 @@ export default {
         });
 
         vectorLayer.value = new VectorLayer({
-          source: vectorSource
+          source: vectorSource,
+          style: featureStyleFunction
         });
 
         map.value.addLayer(vectorLayer.value);
 
         const extent = vectorSource.getExtent();
         map.value.getView().fit(extent, { padding: [50, 50, 50, 50], duration: 1000 });
+
+        // Add to sidebar
+        polygons.value = vectorSource.getFeatures();
+
       } catch (error) {
         console.error('Error loading vector:', error);
         error.value = 'Failed to load vector: ' + error.message;
@@ -409,7 +405,8 @@ export default {
       selectPolygon,
       deletePolygon,
       bringVectorToFront,
-      saveDrawnPolygons
+      saveDrawnPolygons,
+      description
     };
   }
 };
