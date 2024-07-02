@@ -28,4 +28,12 @@ export default {
   fetchVectors() {
     return axios.get(`${API_URL}/list_vectors`);
   },
+
+  extractPixels(JSON) {
+    return axios.post(`${API_URL}/extract_pixels`, JSON, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+  },
 };

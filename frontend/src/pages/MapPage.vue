@@ -2,26 +2,20 @@
   <div class="map-container">
     <div class="toolbar">
       <q-btn label="Draw Polygon" color="primary" @click="startDrawing" />
-      <q-btn :label="drawing ? 'Stop Drawing' : 'Start Drawing'" 
-             :color="drawing ? 'negative' : 'primary'" 
-             @click="toggleDrawing" />
+      <q-btn :label="drawing ? 'Stop Drawing' : 'Start Drawing'" :color="drawing ? 'negative' : 'primary'"
+        @click="toggleDrawing" />
       <q-select v-model="classLabel" :options="classOptions" label="Class Label" class="q-ml-md" />
       <q-input v-model="description" :label="`Description`" class="q-mt-md" />
       <q-btn label="Save Training polygons" color="primary" @click="saveDrawnPolygons" class="q-ml-md" />
+      <q-btn label="Extract Pixel Information" color="secondary" @click="extractPixels" />
     </div>
     <div class="map-and-sidebar">
       <div ref="mapContainer" class="map"></div>
       <div class="sidebar">
         <h6>Drawn Polygons</h6>
         <q-list>
-          <q-item
-            v-for="(polygon, index) in polygons"
-            :key="index"
-            clickable
-            @click="selectPolygon(polygon)"
-            :active="selectedPolygon === polygon"
-            :class="{ 'bg-primary text-white': selectedPolygon === polygon }"
-          >
+          <q-item v-for="(polygon, index) in polygons" :key="index" clickable @click="selectPolygon(polygon)"
+            :active="selectedPolygon === polygon" :class="{ 'bg-primary text-white': selectedPolygon === polygon }">
             <q-item-section>
               <q-item-label>{{ index + 1 }} - {{ polygon.get('classLabel') }}</q-item-label>
             </q-item-section>
@@ -151,9 +145,9 @@ export default {
     const featureStyleFunction = (feature) => {
       const classLabel = feature.get('classLabel');
       const isSelected = feature === selectedPolygon.value;
-      
+
       let color, strokeColor, strokeWidth;
-      
+
       if (isSelected) {
         color = classLabel === 'forest' ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 255, 0, 0.5)';
         strokeColor = '#FF4136';
@@ -175,7 +169,7 @@ export default {
       vectorLayer.value.setStyle(featureStyleFunction);
       vectorLayer.value.changed();
     };
-    
+
 
     const startDrawing = () => {
 
@@ -284,87 +278,87 @@ export default {
 
       if (raster) {
         const filepath = raster.filepath;
-        const url =  `http://127.0.0.1:5000/${filepath}`;
+        const url = `http://127.0.0.1:5000/${filepath}`;
 
         if (!mapInitialized.value) {
-        console.log('Map not initialized yet, waiting...');
-        await new Promise(resolve => {
-          const checkInitialization = setInterval(() => {
-            if (mapInitialized.value) {
-              clearInterval(checkInitialization);
-              resolve();
-            }
-          }, 100);
-        });
-      }
-
-      if (rasterLayer.value) {
-        map.value.removeLayer(rasterLayer.value);
-      }
-
-      if (!url) {
-        error.value = 'Invalid raster URL';
-        return;
-      }
-
-      try {
-        const tiff = await fromUrl(url);
-        const image = await tiff.getImage();
-        const width = image.getWidth();
-        const height = image.getHeight();
-        const bbox = image.getBoundingBox();
-
-        const rasterData = await image.readRasters({
-          interleave: true,
-          samples: [0, 1, 2]
-        });
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext('2d');
-
-        const imageData = context.createImageData(width, height);
-        const data = imageData.data;
-
-        for (let i = 0; i < width * height; i++) {
-          data[i * 4] = rasterData[i * 3];
-          data[i * 4 + 1] = rasterData[i * 3 + 1];
-          data[i * 4 + 2] = rasterData[i * 3 + 2];
-          data[i * 4 + 3] = 255;
+          console.log('Map not initialized yet, waiting...');
+          await new Promise(resolve => {
+            const checkInitialization = setInterval(() => {
+              if (mapInitialized.value) {
+                clearInterval(checkInitialization);
+                resolve();
+              }
+            }, 100);
+          });
         }
-        context.putImageData(imageData, 0, 0);
 
-        const imageUrl = canvas.toDataURL();
-        const extent = bbox;
+        if (rasterLayer.value) {
+          map.value.removeLayer(rasterLayer.value);
+        }
 
-        rasterLayer.value = new ImageLayer({
-          source: new ImageStatic({
-            url: imageUrl,
-            imageExtent: extent,
-          }),
-          zIndex: 0  // Place raster layer between base map and vector layer
-        });
+        if (!url) {
+          error.value = 'Invalid raster URL';
+          return;
+        }
 
-        rasterLayer.value.getSource().on('imageloaderror', () => {
-          console.error('Error loading raster image:', url);
-          error.value = 'Failed to load raster image';
-        });
+        try {
+          const tiff = await fromUrl(url);
+          const image = await tiff.getImage();
+          const width = image.getWidth();
+          const height = image.getHeight();
+          const bbox = image.getBoundingBox();
 
-        map.value.addLayer(rasterLayer.value);
-        bringVectorToFront(); // Ensure vector layer is on top
-        map.value.getView().fit(extent, { duration: 1000 });
-      } catch (error) {
-        console.error('Error loading raster:', error);
-        error.value = 'Failed to load raster: ' + error.message;
-      }
+          const rasterData = await image.readRasters({
+            interleave: true,
+            samples: [0, 1, 2]
+          });
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext('2d');
+
+          const imageData = context.createImageData(width, height);
+          const data = imageData.data;
+
+          for (let i = 0; i < width * height; i++) {
+            data[i * 4] = rasterData[i * 3];
+            data[i * 4 + 1] = rasterData[i * 3 + 1];
+            data[i * 4 + 2] = rasterData[i * 3 + 2];
+            data[i * 4 + 3] = 255;
+          }
+          context.putImageData(imageData, 0, 0);
+
+          const imageUrl = canvas.toDataURL();
+          const extent = bbox;
+
+          rasterLayer.value = new ImageLayer({
+            source: new ImageStatic({
+              url: imageUrl,
+              imageExtent: extent,
+            }),
+            zIndex: 0  // Place raster layer between base map and vector layer
+          });
+
+          rasterLayer.value.getSource().on('imageloaderror', () => {
+            console.error('Error loading raster image:', url);
+            error.value = 'Failed to load raster image';
+          });
+
+          map.value.addLayer(rasterLayer.value);
+          bringVectorToFront(); // Ensure vector layer is on top
+          map.value.getView().fit(extent, { duration: 1000 });
+        } catch (error) {
+          console.error('Error loading raster:', error);
+          error.value = 'Failed to load raster: ' + error.message;
+        }
       } else {
         console.error('Raster not found');
         error.value = 'Failed to load raster: Raster not found';
       }
 
 
-      
+
     };
 
     const loadPolygons = async (vectorId) => {
@@ -410,6 +404,34 @@ export default {
       } catch (error) {
         console.error('Error loading vector:', error);
         error.value = 'Failed to load vector: ' + error.message;
+      }
+    };
+
+    const extractPixels = async () => {
+      if (polygons.value.length === 0) {
+        console.error('No polygons drawn.');
+        return;
+      }
+
+      try {
+
+        const polygonsData = polygons.value.map(polygon => ({
+          geometry: new GeoJSON().writeFeatureObject(polygon),
+          properties: {
+            classLabel: polygon.get('classLabel')
+          }
+        }));
+
+        const response = await apiService.extractPixels({
+          rasterId: props.rasterId,
+          polygons: polygonsData
+        },);
+
+        console.log('Extracted Pixel Values:', response.data);
+        // Here you can handle the extracted pixel data, e.g., display it or store it
+      } catch (error) {
+        console.error('Error extracting pixels:', error);
+        // Handle error (e.g., show error message to user)
       }
     };
 
@@ -464,7 +486,8 @@ export default {
       saveDrawnPolygons,
       description,
       selectedPolygon,
-      toggleDrawing
+      toggleDrawing,
+      extractPixels
     };
   }
 };

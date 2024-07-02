@@ -5,7 +5,7 @@
         <q-toolbar-title>
           Choco Forest Watch
         </q-toolbar-title>
-        <q-btn flat label="Landing Page" @click="navigateTo('')" />
+        <q-btn flat label="Landing Page" @click="navigateTo('/')" />
         <q-btn flat label="Map Page" @click="navigateTo('map/')" />
         <q-btn flat label="Prediction" @click="navigateTo('prediction')" />
         <q-btn flat label="Analysis" @click="navigateTo('analysis')" />

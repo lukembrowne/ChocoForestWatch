@@ -14,6 +14,8 @@ from geoalchemy2.shape import to_shape
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm.exc import NoResultFound
+
 import datetime
 
 
@@ -60,41 +62,57 @@ def data_files(filename):
 def upload_files(filename):
     return send_from_directory('rasters', filename)
 
-
-# Extract pixel values from a raster file for a given polygon
-@app.route('/extract_pixels', methods=['POST'])
+# Extract pixel values from raster based on polygons
+@app.route('/api/extract_pixels', methods=['POST'])
 def extract_pixels():
-    # Get the raster URL
-    raster_url = request.form.get('raster')
-    if not raster_url:
-        return jsonify({'error': 'No raster URL provided'}), 400
+    data = request.json
+    raster_id = data.get('rasterId')
+    polygons = data.get('polygons')
 
-    # Get the polygons
-    polygons = json.loads(request.form['polygons'])
-    
-    # Download the raster file
-    try:
-        response = requests.get(raster_url)
-        response.raise_for_status()
-        raster_filename = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_raster.tif')
-        with open(raster_filename, 'wb') as f:
-            f.write(response.content)
-    except requests.RequestException as e:
-        return jsonify({'error': str(e)}), 500
+    if not raster_id or not polygons:
+        return jsonify({'error': 'Missing raster ID or polygons'}), 400
+
+    # Fetch raster file path from database based on raster_id
+    raster_file = fetch_raster_file_path(raster_id)  # You need to implement this function
+
+    if not os.path.exists(raster_file):
+        return jsonify({'error': 'Raster file not found'}), 404
 
     extracted_values = []
 
-    with rasterio.open(raster_filename) as src:
+    with rasterio.open(raster_file) as src:
+
         for feature in polygons:
-            geom = shape(feature['geometry']['geometry'])  # Ensure this is the geometry object
-            out_image, out_transform = mask(src, [mapping(geom)], crop=True)
+            geom = shape(feature['geometry']['geometry'])
+            class_label = feature['properties']['classLabel']
+            
+            out_image, out_transform = mask(src, [geom], crop=True)
             out_image = np.ma.masked_equal(out_image, src.nodata)
-            extracted_values.append(out_image.data.tolist())
-    
-    # Clean up the downloaded file
-    os.remove(raster_filename)
+            
+            # Calculate statistics for the masked area
+            stats = {
+                'min': float(out_image.min()),
+                'max': float(out_image.max()),
+                'mean': float(out_image.mean()),
+                'std': float(out_image.std())
+            }
+
+            extracted_values.append({
+                'classLabel': class_label,
+                'stats': stats,
+                'data': out_image.data.tolist()
+            })
 
     return jsonify(extracted_values)
+
+
+
+def fetch_raster_file_path(raster_id):
+    try:
+        raster = Raster.query.filter_by(id=raster_id).one()
+        return raster.filepath
+    except NoResultFound:
+        abort(404, description=f"Raster with id {raster_id} not found")
 
 
 # Upload raster and save description
