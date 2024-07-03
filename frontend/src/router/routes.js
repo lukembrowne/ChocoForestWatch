@@ -9,7 +9,8 @@ const routes = [
         name: 'map',
         component: () => import('pages/MapPage.vue'),
         props: true
-      }
+      },
+      {path: 'model-training', component: () => import('pages/ModelTraining.vue') }
     ]
   },
 

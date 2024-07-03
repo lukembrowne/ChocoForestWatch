@@ -15,7 +15,11 @@ from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm.exc import NoResultFound
-
+import h5py
+from sklearn.model_selection import train_test_split, cross_val_score
+from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score, classification_report
+import joblib
 import datetime
 
 
@@ -48,6 +52,14 @@ class Vectors(db.Model):
     description = db.Column(db.String(200))
     geojson = db.Column(JSONB)
 
+
+class PixelDataset(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    raster_id = db.Column(db.Integer, db.ForeignKey('raster.id'))
+    file_path = db.Column(db.String(255))
+    num_pixels = db.Column(db.Integer)
+    class_distribution = db.Column(db.String)  # JSON string of class counts
+
 # Create tables
 with app.app_context():
     db.create_all()
@@ -61,6 +73,45 @@ def data_files(filename):
 @app.route('/rasters/<path:filename>')
 def upload_files(filename):
     return send_from_directory('rasters', filename)
+
+# 
+def store_pixel_data(raster_id, pixel_data, class_labels):
+    
+    # Print working directory
+    print(os.getcwd())
+    file_path = f"./training_data/pixel_data_{raster_id}.h5"
+
+    # Convert class labels to ASCII if they're Unicode
+    if class_labels.dtype.kind == 'U':
+        class_labels = np.array([label.encode('ascii', 'ignore') for label in class_labels])
+
+    
+    # Store pixel data in HDF5 file
+    with h5py.File(file_path, 'w') as f:
+        f.create_dataset('pixels', data=pixel_data)
+        f.create_dataset('labels', data=class_labels, dtype=h5py.special_dtype(vlen=str))
+    
+    # Store metadata in database
+    dataset = PixelDataset(
+        raster_id=raster_id,
+        file_path=file_path,
+        num_pixels=len(pixel_data),
+        class_distribution=str(dict(zip(*np.unique(class_labels, return_counts=True))))
+    )
+    db.session.add(dataset)
+    db.session.commit()
+
+def load_pixel_data(raster_id):
+    dataset = PixelDataset.query.filter_by(raster_id=raster_id).first()
+    if dataset:
+        with h5py.File(dataset.file_path, 'r') as f:
+            pixel_data = f['pixels'][:]
+            class_labels = f['labels'][:].astype(str)
+        return pixel_data, class_labels
+    return None, None
+
+
+
 
 # Extract pixel values from raster based on polygons
 @app.route('/api/extract_pixels', methods=['POST'])
@@ -78,7 +129,8 @@ def extract_pixels():
     if not os.path.exists(raster_file):
         return jsonify({'error': 'Raster file not found'}), 404
 
-    extracted_values = []
+    all_pixels = []
+    all_labels = []
 
     with rasterio.open(raster_file) as src:
 
@@ -89,21 +141,18 @@ def extract_pixels():
             out_image, out_transform = mask(src, [geom], crop=True)
             out_image = np.ma.masked_equal(out_image, src.nodata)
             
-            # Calculate statistics for the masked area
-            stats = {
-                'min': float(out_image.min()),
-                'max': float(out_image.max()),
-                'mean': float(out_image.mean()),
-                'std': float(out_image.std())
-            }
+            pixels = out_image.compressed()
+            labels = np.full(pixels.shape, class_label, dtype=object)
+            
+            all_pixels.extend(pixels)
+            all_labels.extend(labels)
+    
+    all_pixels = np.array(all_pixels)
+    all_labels = np.array(all_labels)
 
-            extracted_values.append({
-                'classLabel': class_label,
-                'stats': stats,
-                'data': out_image.data.tolist()
-            })
+    store_pixel_data(raster_id, all_pixels, all_labels)
 
-    return jsonify(extracted_values)
+    return jsonify({"message": "Pixel data extracted and stored successfully"})
 
 
 
@@ -252,7 +301,50 @@ def save_drawn_polygons():
     }), 200
 
 
+@app.route('/api/train_model', methods=['POST'])
+def train_model():
+    # Get parameters from request
+    params = request.json
+    raster_id = params['raster_id']
+    n_estimators = params.get('n_estimators', 100)
+    max_depth = params.get('max_depth', 3)
+    learning_rate = params.get('learning_rate', 0.1)
+    n_folds = params.get('n_folds', 5)
 
+    pixel_data, class_labels = load_pixel_data(raster_id)
+    
+    if pixel_data is None or class_labels is None:
+        return jsonify({"error": "No pixel data found for the given raster ID"}), 404
+
+
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(pixel_data, class_labels, test_size=0.2, random_state=42)
+
+    # Create and train model
+    model = XGBClassifier(
+        n_estimators=params.get('n_estimators', 100),
+        max_depth=params.get('max_depth', 3),
+        learning_rate=params.get('learning_rate', 0.1)
+    )
+    model.fit(X_train, y_train)
+
+    # Cross-validation
+    cv_scores = cross_val_score(model, X_train, y_train, cv=n_folds)
+
+    # Predictions and metrics
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(y_test, y_pred, target_names=['non-forest', 'forest'])
+
+    # Save model
+    joblib.dump(model, 'xgboost_model.joblib')
+
+    return jsonify({
+        "message": "Model trained successfully",
+        "accuracy": accuracy,
+        "cv_scores": cv_scores.tolist(),
+        "classification_report": report
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -10,6 +10,7 @@ backend/venv/
 # Ignore data
 backend/data/
 backend/uploads/
+backend/training_data/
 code_old/
 
 backend/__pycache__/

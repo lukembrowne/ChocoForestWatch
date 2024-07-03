@@ -1,116 +1,57 @@
 <template>
-  <q-page>
-    <div class="q-pa-md">
-      <file-upload-card 
-        data-type="Raster"
-        accepted-file-types=".tif,.tiff"
-        @file-uploaded="handleRasterUploaded"
-      />
-      <file-upload-card 
-        data-type="Vector"
-        accepted-file-types=".geojson"
-        @file-uploaded="handleVectorUploaded"
-      />
-      
-      <data-table
-        title="Available Rasters"
-        :rows="rasters"
-        :columns="rasterColumns"
-        @row-selected="selectRaster"
-      />
-      
-      <data-table
-        title="Available Vectors"
-        :rows="vectors"
-        :columns="vectorColumns"
-        @row-selected="selectVector"
-      />
-
-      <map-component 
-        :selected-raster="selectedRaster" 
-        :selected-vector="selectedVector" 
-        class="q-mt-md" 
-      />
+  <div class="model-training">
+    <h2>XGBoost Model Training</h2>
+    <q-form @submit="trainModel" class="q-gutter-md">
+      <q-input v-model.number="n_estimators" type="number" label="Number of Trees" />
+      <q-input v-model.number="max_depth" type="number" label="Max Depth" />
+      <q-input v-model.number="learning_rate" type="number" label="Learning Rate" step="0.01" />
+      <q-input v-model.number="n_folds" type="number" label="Number of Cross-validation Folds" />
+      <q-btn label="Train Model" type="submit" color="primary"/>
+    </q-form>
+    <div v-if="results" class="q-mt-md">
+      <h3>Training Results</h3>
+      <p>Accuracy: {{ results.accuracy }}</p>
+      <p>Cross-validation Scores: {{ results.cv_scores.join(', ') }}</p>
+      <pre>{{ results.classification_report }}</pre>
     </div>
-  </q-page>
+  </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
-import FileUploadCard from '../components/FileUploadCard.vue';
-import DataTable from '../components/DataTable.vue';
-import MapComponent from '../components/MapComponent.vue';
-import apiService from '../services/api';
+import { ref } from 'vue';
+import axios from 'axios';
 
 export default {
-  name: 'ModelTrainingPage',
-  components: {
-    FileUploadCard,
-    DataTable,
-    MapComponent
-  },
   setup() {
-    const rasters = ref([]);
-    const vectors = ref([]);
-    const selectedRaster = ref(null);
-    const selectedVector = ref(null);
+    const n_estimators = ref(100);
+    const max_depth = ref(3);
+    const learning_rate = ref(0.1);
+    const n_folds = ref(5);
+    const results = ref(null);
 
-    const fetchData = async () => {
+    const trainModel = async () => {
       try {
-        const [rasterResponse, vectorResponse] = await Promise.all([
-          apiService.fetchRasters(),
-          apiService.fetchVectors()
-        ]);
-        rasters.value = rasterResponse.data;
-        vectors.value = vectorResponse.data;
+        const response = await axios.post('http://127.0.0.1:5000/api/train_model', {
+          raster_id: 1,
+          n_estimators: n_estimators.value,
+          max_depth: max_depth.value,
+          learning_rate: learning_rate.value,
+          n_folds: n_folds.value
+        });
+        results.value = response.data;
       } catch (error) {
-        console.error('Error fetching data:', error);
-        // TODO: Show error message to user
+        console.error('Error training model:', error);
       }
     };
 
-    onMounted(fetchData);
-
-    const handleRasterUploaded = () => {
-      fetchData();
-      // TODO: Show success message to user
-    };
-
-    const handleVectorUploaded = () => {
-      fetchData();
-      // TODO: Show success message to user
-    };
-
-    const selectRaster = (raster) => {
-      selectedRaster.value = raster;
-    };
-
-    const selectVector = (vector) => {
-      selectedVector.value = vector;
-    };
-
     return {
-      rasters,
-      vectors,
-      selectedRaster,
-      selectedVector,
-      handleRasterUploaded,
-      handleVectorUploaded,
-      selectRaster,
-      selectVector,
-      rasterColumns: [
-        { name: 'id', required: true, label: 'ID', align: 'left', field: 'id', sortable: true },
-        { name: 'filename', required: true, label: 'Filename', align: 'left', field: 'filename', sortable: true },
-        { name: 'description', required: true, label: 'Description', align: 'left', field: 'description', sortable: true },
-        { name: 'actions', label: 'Actions', align: 'right' }
-      ],
-      vectorColumns: [
-        { name: 'id', required: true, label: 'ID', align: 'left', field: 'id', sortable: true },
-        { name: 'filename', required: true, label: 'Filename', align: 'left', field: 'filename', sortable: true },
-        { name: 'description', required: true, label: 'Description', align: 'left', field: 'description', sortable: true },
-        { name: 'actions', label: 'Actions', align: 'right' }
-      ]
+      n_estimators,
+      max_depth,
+      learning_rate,
+      n_folds,
+      results,
+      trainModel
     };
   }
-};
+}
 </script>
