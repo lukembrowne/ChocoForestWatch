@@ -28,6 +28,16 @@ export default {
   fetchVectors() {
     return axios.get(`${API_URL}/list_vectors`);
   },
+  fetchModels() {
+    return axios.get(`${API_URL}/list_models`);
+  },
+  predictLandcover(JSON) {
+    return axios.post(`${API_URL}/predict_landcover`, JSON, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+  },
 
   extractPixels(JSON) {
     return axios.post(`${API_URL}/extract_pixels`, JSON, {

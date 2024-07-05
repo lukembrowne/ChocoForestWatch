@@ -13,7 +13,13 @@ const routes = [
       {
         path: '/model-training/',
         name: 'ModelTraining',
-        component: () => import('pages/ModelTraining.vue') },
+        component: () => import('pages/ModelTraining.vue')
+      },
+      {
+        path: '/prediction/',
+        name: 'Prediction',
+        component: () => import('pages/PredictionPage.vue')
+      },
     ]
   },
 

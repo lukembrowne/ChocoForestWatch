@@ -11,6 +11,8 @@ backend/venv/
 backend/data/
 backend/uploads/
 backend/training_data/
+backend/predictions/
+backend/trained_models/
 code_old/
 
 backend/__pycache__/

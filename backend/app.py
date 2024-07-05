@@ -22,7 +22,8 @@ from sklearn.metrics import accuracy_score, classification_report
 import joblib
 from sklearn.preprocessing import LabelEncoder
 import pdb
-
+from datetime import datetime
+from rasterio.windows import Window
 
 
 app = Flask(__name__)
@@ -61,6 +62,37 @@ class PixelDataset(db.Model):
     num_pixels = db.Column(db.Integer)
     class_distribution = db.Column(db.String)  # JSON string of class counts
 
+
+
+class TrainedModel(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    file_path = db.Column(db.String(255), nullable=False)
+    pixel_dataset_id = db.Column(db.Integer, db.ForeignKey('pixel_dataset.id'))
+    accuracy = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @classmethod
+    def save_model(cls, model, name, pixel_dataset_id, accuracy):
+        model_dir = './trained_models'
+        os.makedirs(model_dir, exist_ok=True)
+        file_path = os.path.join(model_dir, f"{name}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.joblib")
+        
+        joblib.dump(model, file_path)
+        
+        new_model = cls(name=name, file_path=file_path, pixel_dataset_id=pixel_dataset_id, accuracy=accuracy)
+        db.session.add(new_model)
+        db.session.commit()
+        return new_model
+
+    @classmethod
+    def load_model(cls, model_id):
+        model_record = cls.query.get(model_id)
+        if model_record:
+            return joblib.load(model_record.file_path)
+        return None
+
+
 # Create tables
 with app.app_context():
     db.create_all()
@@ -74,6 +106,12 @@ def data_files(filename):
 @app.route('/rasters/<path:filename>')
 def upload_files(filename):
     return send_from_directory('rasters', filename)
+
+# Serve static files from the 'predictions' directory
+@app.route('/predictions/<path:filename>')
+def prediction_files(filename):
+    return send_from_directory('predictions', filename)
+
 
 # 
 def store_pixel_data(raster_id, pixel_data, class_labels):
@@ -236,6 +274,21 @@ def list_vectors():
     } for v in vectors])
 
 
+@app.route('/api/list_models', methods=['GET'])
+def get_models():
+    models = TrainedModel.query.all()
+    model_list = []
+    for model in models:
+        model_list.append({
+            'id': model.id,
+            'name': model.name,
+            'filepath': model.file_path,
+            'pixel_dataset_id': model.pixel_dataset_id,
+            'accuracy': model.accuracy,
+            'created_at': model.created_at
+        })
+    return jsonify(model_list)
+
 @app.route('/api/upload_vector', methods=['POST'])
 def upload_vector():
     if 'file' not in request.files:
@@ -328,15 +381,13 @@ def save_drawn_polygons():
 def train_model():
     params = request.json
     pixel_dataset_id = params['pixel_dataset_id']
+    model_name = params.get('model_name', 'XGBoost_LandCover')
     
     dataset = PixelDataset.query.get(pixel_dataset_id)
-  
-
     if not dataset:
         return jsonify({"error": "Pixel dataset not found"}), 404
 
     pixel_data, class_labels = load_pixel_data(dataset.file_path)
-
     if pixel_data is None or class_labels is None:
         return jsonify({"error": "Failed to load pixel data"}), 500
 
@@ -349,10 +400,6 @@ def train_model():
 
    # pdb.set_trace()
 
-    # Print dimensions of X_train
-   # print(X_train.shape)
-   # print(y_train.shape)
-
     # Create and train model
     model = XGBClassifier(
         n_estimators=params.get('n_estimators', 100),
@@ -361,6 +408,7 @@ def train_model():
     )
     model.fit(X_train, y_train)
 
+
     # Cross-validation
     cv_scores = cross_val_score(model, X_train, y_train, cv=params.get('n_folds', 5))
 
@@ -368,16 +416,74 @@ def train_model():
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
     report = classification_report(y_test, y_pred, target_names=le.classes_)
+    
+    # Save the trained model
+    saved_model = TrainedModel.save_model(model, model_name, pixel_dataset_id, accuracy)
+
 
     return jsonify({
         "message": "Model trained successfully",
+        "model_id": saved_model.id,
         "accuracy": float(accuracy),
         "cv_scores": cv_scores.tolist(),
         "classification_report": report
     })
 
+
+# Predict landcover using a trained model
+@app.route('/api/predict_landcover', methods=['POST'])
+def predict_landcover():
+    params = request.json
+    model_id = params['model_id']
+    raster_id = params['raster_id']
+    
+    model = TrainedModel.load_model(model_id)
+    if model is None:
+        return jsonify({"error": "Model not found"}), 404
+    
+    raster = Raster.query.get(raster_id)
+    if raster is None:
+        return jsonify({"error": "Raster not found"}), 404
+    
+    raster_file = raster.filepath
+    if not os.path.exists(raster_file):
+        return jsonify({"error": "Raster file not found"}), 404
+    
+    with rasterio.open(raster_file) as src:
+        data = src.read()
+        meta = src.meta
+        
+        reshaped_data = data.reshape(data.shape[0], -1).T
+        predictions = model.predict(reshaped_data)
+        prediction_map = predictions.reshape(data.shape[1], data.shape[2])
+        
+        output_meta = {
+            'driver': 'GTiff',
+            'dtype': 'uint8',
+            'nodata': None,
+            'width': meta['width'],
+            'height': meta['height'],
+            'count': 1,
+            'crs': meta['crs'],
+            'transform': meta['transform'],
+            'compress': 'lzw',
+        }
+        
+        output_file = f"./predictions/landcover_prediction_{raster_id}.tif"
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        
+        with rasterio.open(output_file, 'w', **output_meta) as dst:
+            dst.write(prediction_map.astype(rasterio.uint8), 1)
+    
+    return jsonify({
+        "message": "Landcover prediction completed",
+        "prediction_file": output_file
+    })
+
+
+
+
 if __name__ == '__main__':
     app.run(debug=True)
 
 
-    

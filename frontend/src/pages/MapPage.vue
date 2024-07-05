@@ -81,6 +81,7 @@ export default {
       { label: 'Non-Forest', value: 'non-forest' },
     ];
     const selectedPolygon = ref(null);
+    const pixelsExtracted = ref(false);
 
     const initMap = () => {
       if (mapContainer.value) {
@@ -486,7 +487,8 @@ export default {
       description,
       selectedPolygon,
       toggleDrawing,
-      extractPixels
+      extractPixels,
+      pixelsExtracted
     };
   }
 };
