@@ -20,7 +20,8 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import joblib
-import datetime
+from sklearn.preprocessing import LabelEncoder
+import pdb
 
 
 
@@ -77,9 +78,8 @@ def upload_files(filename):
 # 
 def store_pixel_data(raster_id, pixel_data, class_labels):
     
-    # Print working directory
-    print(os.getcwd())
-    file_path = f"./training_data/pixel_data_{raster_id}.h5"
+    file_name = f"pixel_data_{raster_id}.h5"
+    file_path = os.path.join('./training_data', file_name)
 
     # Convert class labels to ASCII if they're Unicode
     if class_labels.dtype.kind == 'U':
@@ -88,8 +88,10 @@ def store_pixel_data(raster_id, pixel_data, class_labels):
     
     # Store pixel data in HDF5 file
     with h5py.File(file_path, 'w') as f:
-        f.create_dataset('pixels', data=pixel_data)
+        f.create_dataset('pixels', data=pixel_data, dtype='float32')
         f.create_dataset('labels', data=class_labels, dtype=h5py.special_dtype(vlen=str))
+        f.attrs['band_count'] = pixel_data.shape[1]
+        f.attrs['pixel_count'] = pixel_data.shape[0]
     
     # Store metadata in database
     dataset = PixelDataset(
@@ -101,19 +103,30 @@ def store_pixel_data(raster_id, pixel_data, class_labels):
     db.session.add(dataset)
     db.session.commit()
 
-def load_pixel_data(raster_id):
-    dataset = PixelDataset.query.filter_by(raster_id=raster_id).first()
-    if dataset:
-        with h5py.File(dataset.file_path, 'r') as f:
-            pixel_data = f['pixels'][:]
-            class_labels = f['labels'][:].astype(str)
-        return pixel_data, class_labels
-    return None, None
+def load_pixel_data(file_path):
+    with h5py.File(file_path, 'r') as f:
+        pixel_data = f['pixels'][:].astype(np.float32)  # Ensure float type for pixel data
+        class_labels = f['labels'][:].astype(str)
+    return pixel_data, class_labels
+
+@app.route('/api/list_pixel_datasets', methods=['GET'])
+def list_pixel_datasets():
+    datasets = db.session.query(PixelDataset, Raster.filename).\
+        join(Raster, PixelDataset.raster_id == Raster.id).all()
+    
+    return jsonify([{
+        'id': dataset.PixelDataset.id,
+        'raster_id': dataset.PixelDataset.raster_id,
+        'raster_filename': dataset.filename,
+        'num_pixels': dataset.PixelDataset.num_pixels,
+        'class_distribution': dataset.PixelDataset.class_distribution
+    } for dataset in datasets])
 
 
 
 
 # Extract pixel values from raster based on polygons
+@app.route('/api/extract_pixels', methods=['POST'])
 @app.route('/api/extract_pixels', methods=['POST'])
 def extract_pixels():
     data = request.json
@@ -123,8 +136,7 @@ def extract_pixels():
     if not raster_id or not polygons:
         return jsonify({'error': 'Missing raster ID or polygons'}), 400
 
-    # Fetch raster file path from database based on raster_id
-    raster_file = fetch_raster_file_path(raster_id)  # You need to implement this function
+    raster_file = fetch_raster_file_path(raster_id)
 
     if not os.path.exists(raster_file):
         return jsonify({'error': 'Raster file not found'}), 404
@@ -133,27 +145,39 @@ def extract_pixels():
     all_labels = []
 
     with rasterio.open(raster_file) as src:
+        if src.count != 4:
+            return jsonify({'error': 'Raster file does not have 4 bands'}), 400
 
         for feature in polygons:
             geom = shape(feature['geometry']['geometry'])
             class_label = feature['properties']['classLabel']
             
-            out_image, out_transform = mask(src, [geom], crop=True)
+            out_image, out_transform = mask(src, [geom], crop=True, all_touched=True)
             out_image = np.ma.masked_equal(out_image, src.nodata)
             
-            pixels = out_image.compressed()
-            labels = np.full(pixels.shape, class_label, dtype=object)
+            # Reshape the output to have pixels as rows and bands as columns
+            pixels = out_image.reshape(out_image.shape[0], -1).T
             
-            all_pixels.extend(pixels)
-            all_labels.extend(labels)
-    
+            # Remove any pixels where all bands are masked
+            valid_pixels = pixels[~np.all(pixels.mask, axis=1)]
+            
+            if valid_pixels.size > 0:
+                all_pixels.extend(valid_pixels.data)
+                all_labels.extend([class_label] * valid_pixels.shape[0])
+
     all_pixels = np.array(all_pixels)
     all_labels = np.array(all_labels)
 
+    if all_pixels.size == 0:
+        return jsonify({'error': 'No valid pixels extracted'}), 400
+
     store_pixel_data(raster_id, all_pixels, all_labels)
 
-    return jsonify({"message": "Pixel data extracted and stored successfully"})
-
+    return jsonify({
+        "message": "Pixel data extracted and stored successfully",
+        "pixel_count": all_pixels.shape[0],
+        "band_count": all_pixels.shape[1]
+    })
 
 
 def fetch_raster_file_path(raster_id):
@@ -300,25 +324,34 @@ def save_drawn_polygons():
         "feature_count": len(geojson['features'])
     }), 200
 
-
 @app.route('/api/train_model', methods=['POST'])
 def train_model():
-    # Get parameters from request
     params = request.json
-    raster_id = params['raster_id']
-    n_estimators = params.get('n_estimators', 100)
-    max_depth = params.get('max_depth', 3)
-    learning_rate = params.get('learning_rate', 0.1)
-    n_folds = params.get('n_folds', 5)
-
-    pixel_data, class_labels = load_pixel_data(raster_id)
+    pixel_dataset_id = params['pixel_dataset_id']
     
-    if pixel_data is None or class_labels is None:
-        return jsonify({"error": "No pixel data found for the given raster ID"}), 404
+    dataset = PixelDataset.query.get(pixel_dataset_id)
+  
 
+    if not dataset:
+        return jsonify({"error": "Pixel dataset not found"}), 404
+
+    pixel_data, class_labels = load_pixel_data(dataset.file_path)
+
+    if pixel_data is None or class_labels is None:
+        return jsonify({"error": "Failed to load pixel data"}), 500
+
+    # Encode class labels
+    le = LabelEncoder()
+    y = le.fit_transform(class_labels)
 
     # Split data
-    X_train, X_test, y_train, y_test = train_test_split(pixel_data, class_labels, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(pixel_data, y, test_size=0.2, random_state=42)
+
+   # pdb.set_trace()
+
+    # Print dimensions of X_train
+   # print(X_train.shape)
+   # print(y_train.shape)
 
     # Create and train model
     model = XGBClassifier(
@@ -329,22 +362,22 @@ def train_model():
     model.fit(X_train, y_train)
 
     # Cross-validation
-    cv_scores = cross_val_score(model, X_train, y_train, cv=n_folds)
+    cv_scores = cross_val_score(model, X_train, y_train, cv=params.get('n_folds', 5))
 
     # Predictions and metrics
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, target_names=['non-forest', 'forest'])
-
-    # Save model
-    joblib.dump(model, 'xgboost_model.joblib')
+    report = classification_report(y_test, y_pred, target_names=le.classes_)
 
     return jsonify({
         "message": "Model trained successfully",
-        "accuracy": accuracy,
+        "accuracy": float(accuracy),
         "cv_scores": cv_scores.tolist(),
         "classification_report": report
     })
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+    

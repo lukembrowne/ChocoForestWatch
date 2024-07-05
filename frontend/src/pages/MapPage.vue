@@ -47,10 +47,7 @@ import { fromUrl } from 'geotiff';
 import { fromLonLat } from 'ol/proj';
 import axios from 'axios';
 import apiService from '../services/api';
-
-
-
-
+import { useRouter } from 'vue-router';
 
 export default {
   name: 'MapComponent',
@@ -65,6 +62,7 @@ export default {
     }
   },
   setup(props) {
+    const router = useRouter();
     const mapContainer = ref(null);
     const map = ref(null);
     const error = ref(null);
@@ -83,8 +81,6 @@ export default {
       { label: 'Non-Forest', value: 'non-forest' },
     ];
     const selectedPolygon = ref(null);
-
-
 
     const initMap = () => {
       if (mapContainer.value) {
@@ -427,7 +423,10 @@ export default {
           polygons: polygonsData
         },);
 
-        console.log('Extracted Pixel Values:', response.data);
+        // After successful extraction
+        pixelsExtracted.value = true;
+
+        console.log('Pixels extracted');
         // Here you can handle the extracted pixel data, e.g., display it or store it
       } catch (error) {
         console.error('Error extracting pixels:', error);
