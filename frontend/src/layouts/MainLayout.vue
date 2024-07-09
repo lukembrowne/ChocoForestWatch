@@ -1,18 +1,42 @@
 <template>
-  <q-layout view="hHh Lpr fFf">
-    <q-header elevated>
+  <q-layout view="hHh LpR fFf">
+    <q-header elevated class="bg-primary text-white">
       <q-toolbar>
         <q-toolbar-title>
           Choco Forest Watch
         </q-toolbar-title>
-        <q-tabs>
-          <q-route-tab to="/" label="Landing Page" />
-          <q-route-tab to="/map" label="Map Page" />
-          <q-route-tab to="/model-training" label="Model Training" />
-          <q-route-tab to="/prediction" label="Prediction" />
-        </q-tabs>
       </q-toolbar>
     </q-header>
+
+    <q-drawer show-if-above v-model="leftDrawerOpen" side="left" bordered>
+      <q-list>
+        <q-item-label header>Navigation</q-item-label>
+        <q-item clickable v-ripple to="/" exact>
+          <q-item-section avatar>
+            <q-icon name="home" />
+          </q-item-section>
+          <q-item-section>Home</q-item-section>
+        </q-item>
+        <q-item clickable v-ripple to="/map">
+          <q-item-section avatar>
+            <q-icon name="map" />
+          </q-item-section>
+          <q-item-section>Map</q-item-section>
+        </q-item>
+        <q-item clickable v-ripple to="/model-training">
+          <q-item-section avatar>
+            <q-icon name="school" />
+          </q-item-section>
+          <q-item-section>Model Training</q-item-section>
+        </q-item>
+        <q-item clickable v-ripple to="/prediction">
+          <q-item-section avatar>
+            <q-icon name="insights" />
+          </q-item-section>
+          <q-item-section>Prediction</q-item-section>
+        </q-item>
+      </q-list>
+    </q-drawer>
 
     <q-page-container>
       <router-view />
@@ -21,7 +45,16 @@
 </template>
 
 <script>
+import { ref } from 'vue';
+
 export default {
-  name: 'MainLayout'
+  name: 'MainLayout',
+  setup() {
+    const leftDrawerOpen = ref(false);
+
+    return {
+      leftDrawerOpen
+    };
+  }
 };
 </script>
