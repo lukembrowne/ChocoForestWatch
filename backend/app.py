@@ -42,6 +42,24 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # Define models
+
+class Project(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    raster_id = db.Column(db.Integer, db.ForeignKey('raster.id'))
+    vector_id = db.Column(db.Integer, db.ForeignKey('vectors.id'))
+    pixel_dataset_id = db.Column(db.Integer, db.ForeignKey('pixel_dataset.id'))
+    model_id = db.Column(db.Integer, db.ForeignKey('trained_model.id'))
+
+    raster = db.relationship('Raster', backref='projects')
+    vector = db.relationship('Vectors', backref='projects')
+    pixel_dataset = db.relationship('PixelDataset', backref='projects')
+    model = db.relationship('TrainedModel', backref='projects')
+
+
 class Raster(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(100), nullable=False)
@@ -146,6 +164,65 @@ def load_pixel_data(file_path):
         pixel_data = f['pixels'][:].astype(np.float32)  # Ensure float type for pixel data
         class_labels = f['labels'][:].astype(str)
     return pixel_data, class_labels
+
+
+@app.route('/api/projects', methods=['GET'])
+def get_projects():
+    projects = Project.query.all()
+    return jsonify([{
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "created_at": project.created_at,
+        "updated_at": project.updated_at,
+        "raster_id": project.raster_id,
+        "vector_id": project.vector_id,
+        "pixel_dataset_id": project.pixel_dataset_id,
+        "model_id": project.model_id
+    } for project in projects])
+
+@app.route('/api/projects/<int:project_id>', methods=['GET'])
+def get_project(project_id):
+    project = Project.query.get_or_404(project_id)
+    return jsonify({
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "created_at": project.created_at,
+        "updated_at": project.updated_at,
+        "raster_id": project.raster_id,
+        "vector_id": project.vector_id,
+        "pixel_dataset_id": project.pixel_dataset_id,
+        "model_id": project.model_id
+    })
+
+@app.route('/api/projects/<int:project_id>', methods=['PUT'])
+def update_project(project_id):
+    project = Project.query.get_or_404(project_id)
+    data = request.json
+    project.name = data.get('name', project.name)
+    project.description = data.get('description', project.description)
+    project.raster_id = data.get('raster_id', project.raster_id)
+    project.vector_id = data.get('vector_id', project.vector_id)
+    project.pixel_dataset_id = data.get('pixel_dataset_id', project.pixel_dataset_id)
+    project.model_id = data.get('model_id', project.model_id)
+    db.session.commit()
+    return jsonify({"message": "Project updated successfully"})
+
+@app.route('/api/projects/<int:project_id>', methods=['DELETE'])
+def delete_project(project_id):
+    project = Project.query.get_or_404(project_id)
+    db.session.delete(project)
+    db.session.commit()
+    return jsonify({"message": "Project deleted successfully"})
+
+
+
+
+
+
+
+
 
 @app.route('/api/list_pixel_datasets', methods=['GET'])
 def list_pixel_datasets():

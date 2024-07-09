@@ -4,6 +4,7 @@ const routes = [
     component: () => import('layouts/MainLayout.vue'),
     children: [
       { path: '', component: () => import('pages/HomePage.vue') },
+      { path: 'projects', component: () => import('components/ProjectManagement.vue') },
       {
         path: '',
         component: () => import('components/ProjectWizard.vue'),
@@ -28,6 +29,9 @@ const routes = [
       }
     ],
   },
+
+  // Always leave this as last one,
+  // but you can also remove it
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),

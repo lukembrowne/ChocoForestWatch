@@ -4,6 +4,28 @@ import axios from 'axios';
 const API_URL = 'http://127.0.0.1:5000/api';
 
 export default {
+
+
+  createProject(projectData) {
+    return axios.post(`${API_URL}/projects`, projectData);
+  },
+
+  getProjects() {
+    return axios.get(`${API_URL}/projects`);
+  },
+
+  getProject(id) {
+    return axios.get(`${API_URL}/projects/${id}`);
+  },
+
+  updateProject(id, projectData) {
+    return axios.put(`${API_URL}/projects/${id}`, projectData);
+  },
+
+  deleteProject(id) {
+    return axios.delete(`${API_URL}/projects/${id}`);
+  },
+
   uploadRaster(formData) {
     return axios.post(`${API_URL}/upload_raster`, formData, {
       headers: {
