@@ -1,5 +1,9 @@
 <template>
   <div class="map-container">
+    <div v-if="!rasterId" class="no-raster-message">
+      <p>No raster selected. Please select a raster from the landing page.</p>
+      <q-btn label="Go to Landing Page" color="primary" @click="$router.push('/')" />
+      </div>
     <div class="toolbar">
       <q-btn label="Draw Polygon" color="primary" @click="startDrawing" />
       <q-btn :label="drawing ? 'Stop Drawing' : 'Start Drawing'" :color="drawing ? 'negative' : 'primary'"
@@ -54,11 +58,11 @@ export default {
   props: {
     rasterId: {
       type: String,
-      required: true
+      required: false
     },
     polygonSetId: {
       type: String,
-      required: true
+      required: false
     }
   },
   setup(props) {
@@ -84,7 +88,7 @@ export default {
     const pixelsExtracted = ref(false);
 
     const initMap = () => {
-      if (mapContainer.value) {
+      if (mapContainer.value && props.rasterId) {
         map.value = new Map({
           target: mapContainer.value,
           layers: [
@@ -527,5 +531,14 @@ export default {
 
 .q-item.bg-primary {
   background-color: #1976D2 !important;
+}
+
+.no-raster-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
 }
 </style>

@@ -17,6 +17,8 @@ code_old/
 
 backend/__pycache__/
 
+*.md
+
 # General ignores
 .DS_Store
 *.log

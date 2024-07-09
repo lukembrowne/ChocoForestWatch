@@ -5,11 +5,12 @@
         <q-toolbar-title>
           Choco Forest Watch
         </q-toolbar-title>
-        <q-btn flat label="Landing Page" @click="navigateTo('/')" />
-        <q-btn flat label="Map Page" @click="navigateTo('map/')" />
-        <q-btn flat label="Model-training" @click="navigateTo('model-training/')" />
-        <q-btn flat label="Prediction" @click="navigateTo('prediction')" />
-        <q-btn flat label="Analysis" @click="navigateTo('analysis')" />
+        <q-tabs>
+          <q-route-tab to="/" label="Landing Page" />
+          <q-route-tab to="/map" label="Map Page" />
+          <q-route-tab to="/model-training" label="Model Training" />
+          <q-route-tab to="/prediction" label="Prediction" />
+        </q-tabs>
       </q-toolbar>
     </q-header>
 
@@ -21,11 +22,6 @@
 
 <script>
 export default {
-  name: 'MainLayout',
-  methods: {
-    navigateTo(path) {
-      this.$router.push({ path });
-    }
-  }
+  name: 'MainLayout'
 };
 </script>

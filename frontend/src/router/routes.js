@@ -5,10 +5,10 @@ const routes = [
     children: [
       { path: '', component: () => import('pages/LandingPage.vue') },
       {
-        path: 'map/:rasterId/:polygonSetId',
+        path: 'map',
         name: 'map',
         component: () => import('pages/MapPage.vue'),
-        props: true
+        props: route => ({ rasterId: route.query.rasterId, polygonSetId: route.query.polygonSetId })
       },
       {
         path: '/model-training/',
