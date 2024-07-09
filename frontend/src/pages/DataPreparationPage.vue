@@ -1,5 +1,10 @@
 <template>
-  <div class="data-preparation q-pa-md">
+
+<div class="selected-info"></div>
+  <div>Selected Raster: {{ selectedRaster ? selectedRaster.filename : 'None' }}</div>
+  <div>Selected Vector: {{ selectedVector ? selectedVector.filename : 'None' }}</div>
+
+  <div class="data-prepar</div>ation q-pa-md">
     <div class="row q-col-gutter-md">
       <div class="col-12 col-md-8">
         <MapComponent

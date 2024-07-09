@@ -18,12 +18,24 @@ export default {
       }
     });
   },
-  fetchRasterById(id) {
-    return axios.get(`${API_URL}/rasters/${id}`);
+  async fetchRasterById(id) {
+    try {
+      const response = await axios.get(`${API_URL}/rasters/${id}`);
+      return response.data;  // This line is crucial
+    } catch (error) {
+      console.error('Error fetching raster:', error);
+      throw error;
+    }
   },
 
-  fetchVectorById(id) {
-    return axios.get(`${API_URL}/vectors/${id}`);
+  async fetchVectorById(id) {
+    try {
+      const response = await axios.get(`${API_URL}/vectors/${id}`);
+      return response.data;  // This line is crucial
+    } catch (error) {
+      console.error('Error fetching vector:', error);
+      throw error;
+    }
   },
   fetchRasters() {
     // const response = await axios.get(`${API_URL}/list_rasters`);

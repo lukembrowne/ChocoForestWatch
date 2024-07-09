@@ -247,30 +247,61 @@ export default {
     };
 
     const loadRaster = async (id) => {
+      console.log('Loading raster:', id);
       if (!id) return;
       try {
-        const rasterData = await apiService.fetchRasterById(id);
-        const url = `http://127.0.0.1:5000/${rasterData.filepath}`;
+        const response = await apiService.fetchRasterById(id);
+        console.log('Raster data:', response.filepath);
+        const url = `http://127.0.0.1:5000/${response.filepath}`;
         const tiff = await fromUrl(url);
         const image = await tiff.getImage();
         const bbox = image.getBoundingBox();
+        const width = image.getWidth();
+        const height = image.getHeight();
 
-        if (rasterLayer.value) {
-          map.value.removeLayer(rasterLayer.value);
+        const rasterData = await image.readRasters({
+          interleave: true,
+          samples: [0, 1, 2]
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+
+        const imageData = context.createImageData(width, height);
+        const data = imageData.data;
+
+        for (let i = 0; i < width * height; i++) {
+          data[i * 4] = rasterData[i * 3];
+          data[i * 4 + 1] = rasterData[i * 3 + 1];
+          data[i * 4 + 2] = rasterData[i * 3 + 2];
+          data[i * 4 + 3] = 255;
         }
+        context.putImageData(imageData, 0, 0);
+
+        const imageUrl = canvas.toDataURL();
+        const extent = bbox;
 
         rasterLayer.value = new ImageLayer({
           source: new ImageStatic({
-            url: url,
-            imageExtent: bbox,
+            url: imageUrl,
+            imageExtent: extent,
           }),
           zIndex: 0  // Place raster layer between base map and vector layer
         });
 
+        rasterLayer.value.getSource().on('imageloaderror', () => {
+          console.error('Error loading raster image:', url);
+          error.value = 'Failed to load raster image';
+        });
+
         map.value.addLayer(rasterLayer.value);
-        map.value.getView().fit(bbox, { padding: [20, 20, 20, 20] });
+        bringVectorToFront(); // Ensure vector layer is on top
+        map.value.getView().fit(extent, { duration: 1000 });
       } catch (error) {
         console.error('Error loading raster:', error);
+        error.value = 'Failed to load raster: ' + error.message;
       }
     };
 
@@ -293,6 +324,12 @@ export default {
         emit('polygons-drawn', polygons.value);
       } catch (error) {
         console.error('Error loading vector:', error);
+      }
+    };
+    const bringVectorToFront = () => {
+      if (vectorLayer.value && map.value) {
+        map.value.removeLayer(vectorLayer.value);
+        map.value.addLayer(vectorLayer.value);
       }
     };
 
@@ -319,7 +356,8 @@ export default {
       startDrawing,
       toggleDrawing,
       selectPolygon,
-      deletePolygon
+      deletePolygon,
+      bringVectorToFront
     };
   }
 };
