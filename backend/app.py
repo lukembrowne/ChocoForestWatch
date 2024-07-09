@@ -165,7 +165,6 @@ def list_pixel_datasets():
 
 # Extract pixel values from raster based on polygons
 @app.route('/api/extract_pixels', methods=['POST'])
-@app.route('/api/extract_pixels', methods=['POST'])
 def extract_pixels():
     data = request.json
     raster_id = data.get('rasterId')
@@ -331,12 +330,35 @@ def upload_vector():
     return jsonify({"error": "Invalid file format"}), 400
 
 
+@app.route('/api/rasters/<int:raster_id>', methods=['GET'])
+def get_raster_by_id(raster_id):
+    try:
+        raster = Raster.query.get(raster_id)
+        if raster is None:
+            return jsonify({"error": "Raster not found"}), 404
+        return jsonify({
+            "id": raster.id,
+            "filename": raster.filename,
+            "filepath": raster.filepath,
+            "description": raster.description
+        })
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
 
-
-@app.route('/api/get_vector/<int:vector_id>', methods=['GET'])
-def get_vector(vector_id):
-    vector = Vectors.query.get_or_404(vector_id)
-    return jsonify(vector.geojson)
+@app.route('/api/vectors/<int:vector_id>', methods=['GET'])
+def get_vector_by_id(vector_id):
+    try:
+        vector = Vectors.query.get(vector_id)
+        if vector is None:
+            return jsonify({"error": "Vector not found"}), 404
+        return jsonify({
+            "id": vector.id,
+            "filename": vector.filename,
+            "description": vector.description,
+            "geojson": vector.geojson
+        })
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/save_drawn_polygons', methods=['POST'])
 def save_drawn_polygons():

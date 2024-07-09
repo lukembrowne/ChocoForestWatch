@@ -18,6 +18,13 @@ export default {
       }
     });
   },
+  fetchRasterById(id) {
+    return axios.get(`${API_URL}/rasters/${id}`);
+  },
+
+  fetchVectorById(id) {
+    return axios.get(`${API_URL}/vectors/${id}`);
+  },
   fetchRasters() {
     // const response = await axios.get(`${API_URL}/list_rasters`);
     // const rasters = response.data; // Extract data array from response
