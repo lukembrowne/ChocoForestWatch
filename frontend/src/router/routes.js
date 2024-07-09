@@ -3,32 +3,38 @@ const routes = [
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
     children: [
-      { path: '', component: () => import('pages/LandingPage.vue') },
+      { path: '', component: () => import('pages/HomePage.vue') },
       {
-        path: 'map',
-        name: 'map',
-        component: () => import('pages/MapPage.vue'),
-        props: route => ({ rasterId: route.query.rasterId, polygonSetId: route.query.polygonSetId })
-      },
-      {
-        path: '/model-training/',
-        name: 'ModelTraining',
-        component: () => import('pages/ModelTraining.vue')
-      },
-      {
-        path: '/prediction/',
-        name: 'Prediction',
-        component: () => import('pages/PredictionPage.vue')
-      },
-    ]
+        path: '',
+        component: () => import('components/ProjectWizard.vue'),
+        children: [
+          { 
+            path: 'project-setup',
+            component: () => import('pages/ProjectSetupPage.vue')
+          },
+          { 
+            path: 'data-preparation',
+            component: () => import('pages/DataPreparationPage.vue')
+          },
+          { 
+            path: 'model-training',
+            component: () => import('pages/ModelTrainingPage.vue')
+          },
+          { 
+            path: 'prediction',
+            component: () => import('pages/PredictionPage.vue')
+          },
+        ]
+      }
+    ],
   },
 
   // Always leave this as last one,
   // but you can also remove it
   {
     path: '/:catchAll(.*)*',
-    component: () => import('pages/ErrorNotFound.vue')
-  }
-]
+    component: () => import('pages/ErrorNotFound.vue'),
+  },
+];
 
-export default routes
+export default routes;

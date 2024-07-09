@@ -2,6 +2,7 @@
   <q-layout view="hHh LpR fFf">
     <q-header elevated class="bg-primary text-white">
       <q-toolbar>
+        <q-btn dense flat round icon="menu" @click="toggleLeftDrawer" />
         <q-toolbar-title>
           Choco Forest Watch
         </q-toolbar-title>
@@ -17,11 +18,17 @@
           </q-item-section>
           <q-item-section>Home</q-item-section>
         </q-item>
-        <q-item clickable v-ripple to="/map">
+        <q-item clickable v-ripple to="/project-setup">
+          <q-item-section avatar>
+            <q-icon name="add_circle" />
+          </q-item-section>
+          <q-item-section>Project Setup</q-item-section>
+        </q-item>
+        <q-item clickable v-ripple to="/data-preparation">
           <q-item-section avatar>
             <q-icon name="map" />
           </q-item-section>
-          <q-item-section>Map</q-item-section>
+          <q-item-section>Data Preparation</q-item-section>
         </q-item>
         <q-item clickable v-ripple to="/model-training">
           <q-item-section avatar>
@@ -52,8 +59,13 @@ export default {
   setup() {
     const leftDrawerOpen = ref(false);
 
+    const toggleLeftDrawer = () => {
+      leftDrawerOpen.value = !leftDrawerOpen.value;
+    };
+
     return {
-      leftDrawerOpen
+      leftDrawerOpen,
+      toggleLeftDrawer
     };
   }
 };
