@@ -52,7 +52,7 @@ const publicPath = `/`
 async function start ({
   app,
   router
-  
+  , store
 }) {
   
 

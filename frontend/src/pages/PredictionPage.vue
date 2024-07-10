@@ -1,20 +1,19 @@
 <template>
-  <div>
-    <div ref="mapContainer" class="map-container"></div>
-    <div class="controls">
-      <data-table title="Available Models" :rows="modelOptions" :columns="modelColumns"
-        @row-selected="handleModelSelection" />
-      <data-table title="Available Rasters" :rows="rasterOptions" :columns="rasterColumns"
-        @row-selected="handleRasterSelection" />
-      <p v-if="selectedRaster">Selected Raster: ID: {{ selectedRaster.id }} Filename: {{ selectedRaster.filename }}
-        Description: {{ selectedRaster.description }}</p>
-        <p v-if="selectedModel">Selected Model: ID: {{ selectedModel.id }} Name: {{ selectedModel.name }}</p>
-
-      <q-btn label="Predict Landcover" @click="predictLandcover" />
-      <q-btn label="Display Prediction" @click="displayPrediction" />
-
+  <q-page padding>
+    <h2 class="text-h4 q-mb-md">Land Cover Prediction</h2>
+    <div class="row q-col-gutter-md">
+      <div class="col-12 col-md-6">
+        <data-table title="Available Models" :rows="modelOptions" :columns="modelColumns" @row-selected="handleModelSelection" />
+      </div>
+      <div class="col-12 col-md-6">
+        <data-table title="Available Rasters" :rows="rasterOptions" :columns="rasterColumns" @row-selected="handleRasterSelection" />
+      </div>
     </div>
-  </div>
+    <div v-if="selectedRaster && selectedModel" class="q-mt-md">
+      <q-btn label="Predict Landcover" @click="predictLandcover" color="primary" />
+    </div>
+    <div ref="mapContainer" class="map-container q-mt-md"></div>
+  </q-page>
 </template>
 
 <script>
@@ -216,16 +215,10 @@ export default {
 };
 </script>
 
+
 <style scoped>
 .map-container {
   width: 100%;
   height: 500px;
-}
-.controls {
-  margin-top: 10px;
-}
-.error-message {
-  color: red;
-  margin-top: 10px;
 }
 </style>

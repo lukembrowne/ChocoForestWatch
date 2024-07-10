@@ -1,41 +1,25 @@
+import { createRouter, createWebHistory } from 'vue-router'
+
 const routes = [
   {
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
     children: [
       { path: '', component: () => import('pages/HomePage.vue') },
-      { path: 'projects', component: () => import('components/ProjectManagement.vue') },
-      {
-        path: '',
-        component: () => import('components/ProjectWizard.vue'),
-        children: [
-          { 
-            path: 'project-setup',
-            component: () => import('pages/ProjectSetupPage.vue')
-          },
-          { 
-            path: 'data-preparation',
-            component: () => import('pages/DataPreparationPage.vue')
-          },
-          { 
-            path: 'model-training',
-            component: () => import('pages/ModelTrainingPage.vue')
-          },
-          { 
-            path: 'prediction',
-            component: () => import('pages/PredictionPage.vue')
-          },
-        ]
-      }
+      { path: 'training', component: () => import('pages/TrainingPage.vue') },
+      { path: 'prediction', component: () => import('pages/PredictionPage.vue') },
+      { path: 'analysis', component: () => import('pages/AnalysisPage.vue') },
     ],
   },
-
-  // Always leave this as last one,
-  // but you can also remove it
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),
   },
-];
+]
 
-export default routes;
+const router = createRouter({
+  history: createWebHistory(process.env.BASE_URL),
+  routes,
+})
+
+export default router
