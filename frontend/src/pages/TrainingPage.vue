@@ -85,6 +85,10 @@
         icon="edit"
         :done="step > 2"
       >
+        <MapComponent
+          @polygons-drawn="onPolygonsDrawn"
+          ref="mapComponent"
+        />
         <div class="q-mb-md">
           <q-btn
             label="Extract Pixels"
@@ -101,10 +105,6 @@
             :disable="drawnPolygons.length === 0"
           />
         </div>
-        <MapComponent
-          @polygons-drawn="onPolygonsDrawn"
-          ref="mapComponent"
-        />
       </q-step>
 
       <q-step
@@ -192,6 +192,7 @@ export default {
       { name: 'id', field: 'id', label: 'ID', sortable: true },
       { name: 'filename', field: 'filename', label: 'Filename', sortable: true },
       { name: 'description', field: 'description', label: 'Description', sortable: true },
+      { name: 'created_at', field: 'created_at', label: 'created_at', sortable: true}
     ];
 
     const canExtractPixels = computed(() => 

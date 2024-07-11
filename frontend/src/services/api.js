@@ -59,11 +59,15 @@ export default {
       throw error;
     }
   },
+
+  saveDrawnPolygons(polygonData) {
+    return axios.post(`${API_URL}/save_drawn_polygons`, polygonData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+  },
   fetchRasters() {
-    // const response = await axios.get(`${API_URL}/list_rasters`);
-    // const rasters = response.data; // Extract data array from response
-    // console.log('Rasters from fetchRasters:', rasters);
-    // return rasters;
     return axios.get(`${API_URL}/list_rasters`);
   },
   fetchVectors() {

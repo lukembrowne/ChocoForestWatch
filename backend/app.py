@@ -49,11 +49,13 @@ class Raster(db.Model):
     filepath = db.Column(db.String(200), nullable=False)
     description = db.Column(db.String(200))
 
-class Vectors(db.Model):
+class TrainingPolygons(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(200))
     geojson = db.Column(JSONB)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 
 class PixelDataset(db.Model):
@@ -267,7 +269,7 @@ def get_rasters():
 
 @app.route('/api/list_vectors', methods=['GET'])
 def list_vectors():
-    vectors = Vectors.query.all()
+    vectors = TrainingPolygons.query.all()
     return jsonify([{
         "id": v.id,
         "filename": v.filename,
@@ -316,7 +318,7 @@ def upload_vector():
                 "features": [geojson] if geojson['type'] == 'Feature' else []
             }
         
-        new_vector = Vectors(
+        new_vector = TrainingPolygons(
             filename=filename,
             description=description,
             geojson=geojson
@@ -331,6 +333,52 @@ def upload_vector():
         }), 200
     
     return jsonify({"error": "Invalid file format"}), 400
+
+
+
+@app.route('/api/save_drawn_polygons', methods=['POST'])
+def save_drawn_polygons():
+    data = request.json
+    if not data or 'polygons' not in data:
+        return jsonify({"error": "No polygon data provided"}), 400
+
+    description = data.get('description', 'Drawn polygons')
+    polygons = data['polygons']
+
+    geojson = {
+        "type": "FeatureCollection",
+        "features": []
+    }
+
+    for polygon in polygons:
+        feature = {
+            "type": "Feature",
+            "properties": {
+                "classLabel": polygon['properties']['classLabel']
+            },
+            "geometry": polygon['geometry']
+        }
+        geojson['features'].append(feature)
+
+    new_vector = TrainingPolygons(
+        filename=f"drawn_polygons_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.geojson",
+        description=description,
+        geojson=geojson
+    )
+
+    try:
+        db.session.add(new_vector)
+        db.session.commit()
+
+        return jsonify({
+            "message": "Drawn polygons saved successfully",
+            "id": new_vector.id,
+            "filename": new_vector.filename,
+            "feature_count": len(geojson['features'])
+        }), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/rasters/<int:raster_id>', methods=['GET'])
@@ -351,7 +399,7 @@ def get_raster_by_id(raster_id):
 @app.route('/api/vectors/<int:vector_id>', methods=['GET'])
 def get_vector_by_id(vector_id):
     try:
-        vector = Vectors.query.get(vector_id)
+        vector = TrainingPolygons.query.get(vector_id)
         if vector is None:
             return jsonify({"error": "Vector not found"}), 404
         return jsonify({
@@ -362,45 +410,6 @@ def get_vector_by_id(vector_id):
         })
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
-
-@app.route('/api/save_drawn_polygons', methods=['POST'])
-def save_drawn_polygons():
-    data = request.json
-    if not data or 'polygons' not in data:
-        return jsonify({"error": "No polygon data provided"}), 400
-
-    description = data.get('description', '')
-    polygons = data['polygons']
-
-    geojson = {
-        "type": "FeatureCollection",
-        "features": []
-    }
-
-    for polygon in polygons:
-        feature = {
-            "type": "Feature",
-            "properties": {
-                "classLabel": polygon['classLabel']
-            },
-            "geometry": polygon['geometry']
-        }
-        geojson['features'].append(feature)
-
-    new_vector = Vectors(
-        filename=f"drawn_polygons.geojson",
-        description=description,
-        geojson=geojson
-    )
-
-    db.session.add(new_vector)
-    db.session.commit()
-
-    return jsonify({
-        "message": "Drawn polygons saved successfully.",
-        "id": new_vector.id,
-        "feature_count": len(geojson['features'])
-    }), 200
 
 @app.route('/api/train_model', methods=['POST'])
 def train_model():

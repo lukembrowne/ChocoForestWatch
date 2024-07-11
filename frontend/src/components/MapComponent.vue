@@ -107,8 +107,13 @@ export default {
 
       initInteractions();
 
+      // Load raster and vector layers if selected
       if (selectedRaster.value) {
         loadRaster(selectedRaster.value.id);
+      }
+
+      if (selectedVector.value) {
+        loadVector(selectedVector.value.id);
       }
 
     };
