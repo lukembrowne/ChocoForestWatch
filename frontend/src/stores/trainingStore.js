@@ -8,7 +8,8 @@ export const useTrainingStore = defineStore('training', {
     selectedVector: null,
     drawnPolygons: [],
     pixelsExtracted: false,
-    extractionError: null
+    extractionError: null,
+    selectedPolygon: null,
   }),
 
   getters: {
@@ -27,6 +28,19 @@ export const useTrainingStore = defineStore('training', {
 
     setDrawnPolygons(polygons) {
       this.drawnPolygons = polygons
+    },
+
+    addPolygon(polygon) {
+      this.drawnPolygons.push(polygon);
+    },
+    removePolygon(id) {
+      this.drawnPolygons = this.drawnPolygons.filter(p => p.id !== id);
+    },
+    updatePolygon(index, updatedPolygon) {
+      this.drawnPolygons[index] = updatedPolygon;
+    },
+    setSelectedPolygon(polygon) {
+      this.selectedPolygon = polygon;
     },
 
     async extractPixels(polygonsToUse) {
