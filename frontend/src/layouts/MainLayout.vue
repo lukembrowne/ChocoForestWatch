@@ -50,6 +50,15 @@
             <q-item-label>Analysis</q-item-label>
           </q-item-section>
         </q-item>
+
+        <q-item to="/debug" exact>
+          <q-item-section avatar>
+            <q-icon name="bug_report" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Debug</q-item-label>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 

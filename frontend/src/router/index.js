@@ -9,6 +9,7 @@ const routes = [
       { path: 'training', component: () => import('pages/TrainingPage.vue') },
       { path: 'prediction', component: () => import('pages/PredictionPage.vue') },
       { path: 'analysis', component: () => import('pages/AnalysisPage.vue') },
+      { path: 'debug', component: () => import('pages/DebugPage.vue') }, // Make sure this line is present
     ],
   },
   {

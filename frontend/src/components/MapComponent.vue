@@ -1,13 +1,15 @@
 <template>
   <div class="map-container">
-    <div class="toolbar">
+  <div ref="mapContainer" class="map"></div>
+    <div class="map-controls">
       <q-btn label="Draw Polygon" color="primary" @click="startDrawing" />
       <q-btn :label="drawing ? 'Stop Drawing' : 'Start Drawing'" :color="drawing ? 'negative' : 'primary'"
         @click="toggleDrawing" class="q-ml-sm" />
       <q-select v-model="classLabel" :options="classOptions" label="Class Label" class="q-ml-md"
         style="width: 150px;" />
     </div>
-    <div class="map-and-sidebar">
+  </div>
+    <!-- <div class="map-and-sidebar">
       <div ref="mapContainer" class="map"></div>
       <div class="sidebar">
         <h6>Drawn Polygons</h6>
@@ -23,8 +25,7 @@
           </q-item>
         </q-list>
       </div>
-    </div>
-  </div>
+    </div> -->
 </template>
 
 <script>
@@ -46,20 +47,14 @@ import { fromLonLat } from 'ol/proj';
 import { fromUrl } from 'geotiff';
 import apiService from 'src/services/api';
 import { DragPan } from 'ol/interaction';
+import { useTrainingStore } from '../stores/trainingStore';
+import { storeToRefs } from 'pinia';
+
+
 
 
 export default {
   name: 'MapComponent',
-  props: {
-    rasterId: {
-      type: [Number, String],
-      default: null
-    },
-    vectorId: {
-      type: [Number, String],
-      default: null
-    }
-  },
   emits: ['polygons-drawn'],
   setup(props, { emit }) {
     const mapContainer = ref(null);
@@ -77,6 +72,9 @@ export default {
       { label: 'Forest', value: 'forest' },
       { label: 'Non-Forest', value: 'non-forest' },
     ];
+    const trainingStore = useTrainingStore();
+    const { selectedRaster, selectedVector, drawnPolygons } = storeToRefs(trainingStore);
+
 
     onMounted(() => {
       initMap();
@@ -108,6 +106,11 @@ export default {
       map.value.addLayer(vectorLayer.value);
 
       initInteractions();
+
+      if (selectedRaster.value) {
+        loadRaster(selectedRaster.value.id);
+      }
+
     };
 
     const initInteractions = () => {
@@ -333,8 +336,13 @@ export default {
       }
     };
 
-    watch(() => props.rasterId, loadRaster);
-    watch(() => props.vectorId, loadVector);
+    watch(selectedRaster, (newRaster) => {
+      loadRaster(newRaster);
+    });
+
+    watch(selectedVector, (newVector) => {
+      loadVector(newVector);
+    });
 
     onBeforeUnmount(() => {
       if (map.value) {
@@ -365,34 +373,22 @@ export default {
 
 <style scoped>
 .map-container {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 50px);
-  /* Adjust 50px based on your header height */
+  width: 100%;
+  height: 600px;
+  position: relative;
 }
-
-.toolbar {
-  padding: 10px;
-  background-color: #f0f0f0;
-}
-
-.map-and-sidebar {
-  display: flex;
-  flex-grow: 1;
-  height: calc(100% - 60px);
-  /* Adjust based on your toolbar height */
-}
-
 .map {
-  flex-grow: 1;
+  width: 100%;
   height: 100%;
 }
-
-.sidebar {
-  width: 250px;
+.map-controls {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  background-color: rgba(255, 255, 255, 0.8);
   padding: 10px;
-  background-color: #f0f0f0;
-  overflow-y: auto;
+  border-radius: 4px;
 }
 
 .q-item.bg-primary {
