@@ -22,7 +22,7 @@ export default {
     props: {
         center: {
             type: Array,
-            default: () => [-79.81822466589962,  0.460628082970743]
+            default: () => [-79.81822466589962, 0.460628082970743]
         },
         zoom: {
             type: Number,
@@ -36,13 +36,28 @@ export default {
         const rasterLayer = ref(null);
         const vectorLayer = ref(null);
 
+        const apiKey = process.env.VUE_APP_PLANET_API_KEY;
+        if (!apiKey) {
+            console.error('API key is not defined. Please check your .env file.');
+            return;
+        }
+
         const initMap = () => {
             map.value = new Map({
                 target: mapContainer.value,
+                // layers: [
+                //     new TileLayer({
+                //         source: new XYZ({
+                //             url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                //         }),
+                //         zIndex: 0
+                //     })
+                // ],
+
                 layers: [
                     new TileLayer({
                         source: new XYZ({
-                            url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                            url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_2022-08_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
                         }),
                         zIndex: 0
                     })

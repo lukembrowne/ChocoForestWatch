@@ -10,9 +10,14 @@
 
 
 const { configure } = require('quasar/wrappers');
+const { config } = require('dotenv');
+
 
 
 module.exports = configure(function (/* ctx */) {
+
+  config();
+
   return {
     // https://v2.quasar.dev/quasar-cli-vite/prefetch-feature
     // preFetch: true,
@@ -50,6 +55,9 @@ module.exports = configure(function (/* ctx */) {
         browser: ['es2019', 'edge88', 'firefox78', 'chrome87', 'safari13.1'],
         node: 'node20'
       },
+
+      env: {
+        VUE_APP_PLANET_API_KEY: process.env.VUE_APP_PLANET_API_KEY      },
 
       vueRouterMode: 'hash', // available values: 'hash', 'history'
       // vueRouterBase,

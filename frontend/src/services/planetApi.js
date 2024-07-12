@@ -6,6 +6,7 @@ const planetApi = axios.create({
   baseURL: API_URL
 });
 
+
 export default {
   getAvailableQuads: async (areaOfInterest, mosaicName = 'planet_medres_normalized_analytic_2022-08_mosaic') => {
     try {
