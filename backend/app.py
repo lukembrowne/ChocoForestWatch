@@ -24,6 +24,25 @@ from sklearn.preprocessing import LabelEncoder
 import pdb
 from datetime import datetime
 from rasterio.windows import Window
+from dotenv import load_dotenv
+
+
+
+# Load environment variables from the .env file
+load_dotenv()
+
+# Load the Planet API key from an environment variable
+PLANET_API_KEY = os.getenv('PLANET_API_KEY')
+
+if not PLANET_API_KEY:
+    raise ValueError("No PLANET_API_KEY set for Flask application. Did you follow the setup instructions?")
+
+# Setup Planet base URL
+API_URL = "https://api.planet.com/basemaps/v1/mosaics"
+
+# Setup session
+session = requests.Session()
+session.auth = (PLANET_API_KEY, "")
 
 
 app = Flask(__name__)
@@ -515,6 +534,60 @@ def predict_landcover():
     })
 
 
+
+@app.route('/api/planet/quads', methods=['POST'])
+def get_available_quads():
+    try:
+        data = request.json
+        bbox = data.get('bbox')
+        mosaic_name = data.get('mosaic_name', 'planet_medres_normalized_analytic_2022-08_mosaic')  # You can change the default or always require it from the frontend
+        
+        if not bbox or len(bbox) != 4:
+            return jsonify({"error": "Invalid bounding box"}), 400
+
+        # First, get the mosaic ID
+        parameters = {
+            "name__is": mosaic_name
+        }
+        res = session.get(API_URL, params=parameters)
+        if res.status_code != 200:
+            return jsonify({"error": f"Failed to fetch mosaic. Status code: {res.status_code}"}), res.status_code
+
+        mosaic_data = res.json()
+        if not mosaic_data['mosaics']:
+            return jsonify({"error": "No mosaic found with the given name"}), 404
+
+        mosaic_id = mosaic_data['mosaics'][0]['id']
+
+        # Now, search for quads using the provided bbox
+        string_bbox = ','.join(map(str, bbox))
+        search_parameters = {
+            'bbox': string_bbox,
+            'minimal': True
+        }
+
+        quads_url = f"{API_URL}/{mosaic_id}/quads"
+        res = session.get(quads_url, params=search_parameters)
+        if res.status_code != 200:
+            return jsonify({"error": f"Failed to fetch quads. Status code: {res.status_code}"}), res.status_code
+
+        quads_data = res.json()
+        items = quads_data['items']
+
+        # Process the quads data
+        quads = []
+        for item in items:
+            quads.append({
+                "id": item['id'],
+                "name": item.get('name', 'N/A'),
+                "date": item.get('acquired', 'N/A'),
+                "download_link": item['_links']['download']
+            })
+
+        return jsonify(quads)
+
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 
 if __name__ == '__main__':

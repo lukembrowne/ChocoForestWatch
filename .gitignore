@@ -19,6 +19,9 @@ backend/__pycache__/
 
 *.md
 
+frontend/.env
+
 # General ignores
 .DS_Store
 *.log
+backend/.env

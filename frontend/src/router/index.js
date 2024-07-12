@@ -10,6 +10,8 @@ const routes = [
       { path: 'prediction', component: () => import('pages/PredictionPage.vue') },
       { path: 'analysis', component: () => import('pages/AnalysisPage.vue') },
       { path: 'debug', component: () => import('pages/DebugPage.vue') }, // Make sure this line is present
+      { path: 'satellite-browser', component: () => import('pages/SatelliteImageBrowser.vue') }, // Add this line
+
     ],
   },
   {

@@ -22,11 +22,11 @@ export default {
     props: {
         center: {
             type: Array,
-            default: () => [0, 0]
+            default: () => [-79.81822466589962,  0.460628082970743]
         },
         zoom: {
             type: Number,
-            default: 2
+            default: 12
         }
     },
     emits: ['map-ready'],
