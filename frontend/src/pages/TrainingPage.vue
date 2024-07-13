@@ -55,15 +55,33 @@
 
     <div class="col">
       <div class="map-container" style="height: calc(100vh - 50px);">
-        <BaseMapComponent ref="baseMap" @map-ready="onMapReady" class="full-height full-width" />
+        <BaseMapComponent ref="baseMap" @map-ready="onMapReady" @basemap-error="handleBasemapError"
+          :basemapDate="selectedBasemapDate" class="full-height full-width" />
       </div>
     </div>
+
+    <q-dialog v-model="showErrorDialog">
+      <q-card>
+        <q-card-section>
+          <div class="text-h6">Error</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          {{ errorMessage }}
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="OK" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useDrawing } from '../composables/useDrawing';
 import BaseMapComponent from 'components/BaseMapComponent.vue'
@@ -91,6 +109,9 @@ export default {
     const leftDrawerOpen = ref(true)
     const selectedSavedPolygons = ref(null)
     const selectedBasemapDate = ref(null)
+    const $q = useQuasar()
+    const showErrorDialog = ref(false)
+    const errorMessage = ref('')
 
     // Define vector layers
     const aoiLayer = ref(null);
@@ -139,7 +160,7 @@ export default {
       const projectId = route.params.projectId
       // project.value = await projectStore.loadProject(projectId)
       const vectorResponse = await apiService.fetchVectors();
-        trainingPolygons.value = vectorResponse.data;
+      trainingPolygons.value = vectorResponse.data;
 
       window.addEventListener('keydown', handleKeyDown);
 
@@ -288,11 +309,27 @@ export default {
       }
     }
 
-    const updateBasemap = () => {
-      if (!selectedBasemapDate.value || !baseMap.value) return
-      // Implementation to update the basemap based on the selected date
-      // This will depend on how you're handling the Planet basemaps
+    const handleBasemapError = (error) => {
+      errorMessage.value = error;
+      showErrorDialog.value = true;
     }
+
+    const updateBasemap = () => {
+      if (!selectedBasemapDate.value || !baseMap.value) return;
+      // Show loading indicator
+      // $q.loading.show({
+      //   message: 'Loading basemap...'
+      // });
+      // Force the BaseMapComponent to update
+      // baseMap.value = null;
+      // nextTick(() => {
+      //   baseMap.value = baseMap.value;
+      //   // Hide loading indicator after a short delay
+      //   setTimeout(() => {
+      //     $q.loading.hide();
+      //   }, 500);
+      // });
+    };
 
     const extractPixels = async () => {
       extractingPixels.value = true;
@@ -346,7 +383,11 @@ export default {
       loadSavedPolygons,
       updateBasemap,
       extractPixels,
-      setClassLabel
+      setClassLabel,
+      toggleDrawing,
+      showErrorDialog,
+      errorMessage,
+      handleBasemapError
     }
   }
 }
