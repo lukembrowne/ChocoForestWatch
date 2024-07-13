@@ -45,23 +45,23 @@ export default {
         const initMap = () => {
             map.value = new Map({
                 target: mapContainer.value,
-                // layers: [
-                //     new TileLayer({
-                //         source: new XYZ({
-                //             url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                //         }),
-                //         zIndex: 0
-                //     })
-                // ],
-
                 layers: [
                     new TileLayer({
                         source: new XYZ({
-                            url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_2022-08_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
+                            url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png'
                         }),
                         zIndex: 0
                     })
                 ],
+
+                // layers: [
+                //     new TileLayer({
+                //         source: new XYZ({
+                //             url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_2022-08_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
+                //         }),
+                //         zIndex: 0
+                //     })
+                // ],
                 view: new View({
                     center: fromLonLat(props.center),
                     zoom: props.zoom

@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 import requests
 from flask_sqlalchemy import SQLAlchemy
 from geoalchemy2 import Geometry
-from geoalchemy2.shape import to_shape
+from geoalchemy2.shape import to_shape, from_shape
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.dialects.postgresql import JSONB
@@ -61,6 +61,26 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # Define models
+
+class Project(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(500))
+    aoi = db.Column(Geometry('POLYGON'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'aoi': db.session.scalar(self.aoi.ST_AsGeoJSON()),
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }
+
+
 
 class Raster(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -113,6 +133,7 @@ class TrainedModel(db.Model):
         if model_record:
             return joblib.load(model_record.file_path)
         return None
+        
 
 
 # Create tables
@@ -133,6 +154,60 @@ def upload_files(filename):
 @app.route('/predictions/<path:filename>')
 def prediction_files(filename):
     return send_from_directory('predictions', filename)
+
+
+# Project routes
+@app.route('/api/projects', methods=['POST'])
+def create_project():
+    data = request.json
+    aoi_geojson = data.get('aoi')
+    aoi_shape = shape(aoi_geojson)
+    
+    project = Project(
+        name=data.get('name', 'Untitled Project'),
+        description=data.get('description', ''),
+        aoi=from_shape(aoi_shape, srid=4326)
+    )
+    
+    db.session.add(project)
+    db.session.commit()
+    
+    return jsonify(project.to_dict()), 201
+
+@app.route('/api/projects/<int:project_id>', methods=['GET'])
+def get_project(project_id):
+    project = Project.query.get_or_404(project_id)
+    return jsonify(project.to_dict())
+
+@app.route('/api/projects/<int:project_id>', methods=['PUT'])
+def update_project(project_id):
+    project = Project.query.get_or_404(project_id)
+    data = request.json
+    
+    if 'name' in data:
+        project.name = data['name']
+    if 'description' in data:
+        project.description = data['description']
+    if 'aoi' in data:
+        aoi_shape = shape(data['aoi'])
+        project.aoi = from_shape(aoi_shape, srid=4326)
+    
+    db.session.commit()
+    return jsonify(project.to_dict())
+
+@app.route('/api/projects', methods=['GET'])
+def list_projects():
+    projects = Project.query.all()
+    return jsonify([project.to_dict() for project in projects])
+
+
+
+
+
+
+
+
+
 
 
 # 

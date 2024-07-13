@@ -4,9 +4,7 @@
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
         <q-toolbar-title>
-          <q-btn flat no-caps no-wrap class="q-ml-sm" to="/">
-            Choco Forest Watch
-          </q-btn>
+          Choco Forest Watch
         </q-toolbar-title>
       </q-toolbar>
     </q-header>
@@ -94,3 +92,9 @@ export default {
   }
 }
 </script>
+
+<style lang="scss">
+.q-page-container {
+  padding: 0 !important;
+}
+</style>

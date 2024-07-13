@@ -91,4 +91,18 @@ export default {
       }
     });
   },
+
+
+  createProject(projectData) {
+    return axios.post(`${API_URL}/projects`, projectData);
+  },
+
+  getProject(id) {
+    return axios.get(`${API_URL}/projects/${id}`);
+  },
+
+  updateProject(id, projectData) {
+    return axios.put(`${API_URL}/projects/${id}`, projectData);
+  },
+
 };
