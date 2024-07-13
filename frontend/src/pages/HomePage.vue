@@ -32,11 +32,6 @@
     <div class="col">
       <div class="map-container" style="height: calc(100vh - 50px);">
         <BaseMapComponent ref="baseMap" @map-ready="onMapReady" class="full-height full-width" />
-
-        <div class="map-overlay bottom-right">
-          <q-btn fab icon="edit" color="primary" @click="startDrawingAOI" />
-          <q-btn fab icon="check" color="positive" class="q-ml-sm" @click="createProject" :disable="!aoiDrawn" />
-        </div>
       </div>
     </div>
   </q-page>

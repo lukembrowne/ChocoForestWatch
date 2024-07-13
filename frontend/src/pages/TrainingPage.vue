@@ -18,7 +18,7 @@
 
           <q-item>
             <q-item-section>
-              <q-select v-model="currentClass" :options="classOptions" label="Class" />
+              <q-select v-model="classLabel" :options="classOptions" label="Class" />
             </q-item-section>
           </q-item>
 
@@ -46,7 +46,7 @@
 
           <q-item>
             <q-item-section>
-              <q-btn label="Save Polygons" color="positive" @click="savePolygons" class="full-width q-mt-md" />
+              <q-btn label="Save Polygons" color="positive" @click="saveDrawnPolygons" class="full-width q-mt-md" />
             </q-item-section>
           </q-item>
         </q-list>
@@ -56,19 +56,16 @@
     <div class="col">
       <div class="map-container" style="height: calc(100vh - 50px);">
         <BaseMapComponent ref="baseMap" @map-ready="onMapReady" class="full-height full-width" />
-
-        <div class="map-overlay bottom-right">
-          <q-btn fab icon="menu" color="primary" @click="toggleLeftDrawer" class="q-mb-md" />
-        </div>
       </div>
     </div>
   </q-page>
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProjectStore } from 'src/stores/projectStore'
+import { useDrawing } from '../composables/useDrawing';
 import BaseMapComponent from 'components/BaseMapComponent.vue'
 import { Draw } from 'ol/interaction'
 import VectorSource from 'ol/source/Vector'
@@ -90,7 +87,7 @@ export default {
     const baseMap = ref(null)
     const project = ref({})
     const trainingPolygons = ref([])
-    const currentClass = ref(null)
+    const classLabel = ref('forest');
     const leftDrawerOpen = ref(true)
     const selectedSavedPolygons = ref(null)
     const selectedBasemapDate = ref(null)
@@ -102,8 +99,6 @@ export default {
     const classOptions = [
       { label: 'Forest', value: 'forest' },
       { label: 'Non-Forest', value: 'non_forest' },
-      { label: 'Water', value: 'water' },
-      { label: 'Urban', value: 'urban' }
     ]
 
     const savedPolygonsOptions = ref([])
@@ -123,10 +118,31 @@ export default {
       return options
     })
 
+    const {
+      drawing,
+      polygons,
+      startDrawing,
+      stopDrawing,
+      getDrawnPolygonsGeoJSON,
+      setClassLabel
+    } = useDrawing(baseMap);
+
+    const toggleDrawing = () => {
+      if (drawing.value) {
+        stopDrawing();
+      } else {
+        startDrawing();
+      }
+    };
+
     onMounted(async () => {
       const projectId = route.params.projectId
-      project.value = await projectStore.loadProject(projectId)
-      await fetchSavedPolygons()
+      // project.value = await projectStore.loadProject(projectId)
+      const vectorResponse = await apiService.fetchVectors();
+        trainingPolygons.value = vectorResponse.data;
+
+      window.addEventListener('keydown', handleKeyDown);
+
     })
 
     const onMapReady = (map) => {
@@ -179,40 +195,62 @@ export default {
       }
     }
 
-    const startDrawing = () => {
-      if (!baseMap.value || !baseMap.value.map) return
 
-      const draw = new Draw({
-        source: baseMap.value.map.getLayers().getArray().find(layer => layer instanceof VectorLayer).getSource(),
-        type: 'Polygon'
-      })
-
-      draw.on('drawend', (event) => {
-        const feature = event.feature
-        trainingPolygons.value.push({
-          id: Date.now(),
-          feature: feature,
-          class: currentClass.value
-        })
-        baseMap.value.map.removeInteraction(draw)
-      })
-
-      baseMap.value.map.addInteraction(draw)
-    }
-
-    const savePolygons = async () => {
-      try {
-        const polygonsToSave = trainingPolygons.value.map(p => ({
-          geometry: new GeoJSON().writeGeometryObject(p.feature.getGeometry()),
-          class: p.class
-        }))
-        await apiService.saveTrainingPolygons(project.value.id, polygonsToSave)
-        // Show success message
-      } catch (error) {
-        console.error('Error saving polygons:', error)
-        // Show error message
+    const handleKeyDown = (event) => {
+      if (event.key === '1') {
+        console.log('Setting class label to forest');
+        classLabel.value = 'forest';
+      } else if (event.key === '2') {
+        classLabel.value = 'non-forest';
+      } else if (event.key === 'Delete' && selectedPolygon.value) {
+        deletePolygon(selectedPolygon.value);
+      } else if (event.key === ' ' && !event.repeat) {
+        event.preventDefault();
+        toggleDrawing();
       }
-    }
+    };
+
+
+    const saveDrawnPolygons = async () => {
+      try {
+        const geoJSONFormat = new GeoJSON();
+        const features = drawnPolygons.value.map(polygon => {
+          const feature = geoJSONFormat.writeFeatureObject(polygon, {
+            dataProjection: 'EPSG:4326',
+            featureProjection: 'EPSG:3857'
+          });
+          return {
+            type: 'Feature',
+            geometry: feature.geometry,
+            properties: {
+              classLabel: polygon.get('classLabel')
+            }
+          };
+        });
+
+        const response = await apiService.saveDrawnPolygons({
+          description: 'Drawn training polygons',
+          polygons: features
+        });
+
+        trainingPolygons.value.push(response.data);
+        trainingStore.setSelectedVector(response.data);
+
+        $q.notify({
+          type: 'positive',
+          message: 'Polygons saved successfully',
+          icon: 'check'
+        });
+      } catch (error) {
+        console.error('Error saving drawn polygons:', error);
+        $q.notify({
+          type: 'negative',
+          message: 'Failed to save drawn polygons',
+          icon: 'error'
+        });
+      }
+    };
+
 
     const fetchSavedPolygons = async () => {
       try {
@@ -256,15 +294,46 @@ export default {
       // This will depend on how you're handling the Planet basemaps
     }
 
-    const toggleLeftDrawer = () => {
-      leftDrawerOpen.value = !leftDrawerOpen.value
-    }
+    const extractPixels = async () => {
+      extractingPixels.value = true;
+      try {
+        const polygonsToUse = selectedVector.value
+          ? selectedVector.value.geojson.features
+          : drawnPolygons.value;
+
+        const response = await apiService.extractPixels({
+          rasterId: selectedRaster.value.id,
+          polygons: polygonsToUse
+        });
+
+        pixelsExtracted.value = true;
+        pixelDatasetId.value = response.data.pixel_dataset_id;
+        $q.notify({
+          type: 'positive',
+          message: 'Pixels extracted successfully',
+          icon: 'check'
+        });
+      } catch (error) {
+        console.error('Error extracting pixels:', error);
+        $q.notify({
+          type: 'negative',
+          message: 'Failed to extract pixels',
+          icon: 'error'
+        });
+      } finally {
+        extractingPixels.value = false;
+      }
+    };
+
+    watch(classLabel, (newLabel) => {
+      setClassLabel(newLabel);
+    });
 
     return {
       baseMap,
       project,
       trainingPolygons,
-      currentClass,
+      classLabel,
       classOptions,
       leftDrawerOpen,
       selectedSavedPolygons,
@@ -273,10 +342,11 @@ export default {
       basemapDateOptions,
       onMapReady,
       startDrawing,
-      savePolygons,
+      saveDrawnPolygons,
       loadSavedPolygons,
       updateBasemap,
-      toggleLeftDrawer
+      extractPixels,
+      setClassLabel
     }
   }
 }
