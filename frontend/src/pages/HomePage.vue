@@ -1,13 +1,6 @@
 <template>
   <q-page class="row">
-    <q-drawer
-      v-model="leftDrawerOpen"
-      show-if-above
-      :width="300"
-      :breakpoint="400"
-      bordered
-      class="bg-grey-3"
-    >
+    <q-drawer v-model="leftDrawerOpen" show-if-above :width="300" :breakpoint="400" bordered class="bg-grey-3">
       <q-scroll-area class="fit">
         <q-list>
           <q-item-label header>Instructions</q-item-label>
@@ -28,7 +21,8 @@
           </q-item>
           <q-item>
             <q-item-section>
-              <q-btn label="Create Project" color="positive" @click="createProject" :disable="!aoiDrawn" class="full-width" />
+              <q-btn label="Create Project" color="positive" @click="createProject" :disable="!aoiDrawn"
+                class="full-width" />
             </q-item-section>
           </q-item>
         </q-list>
@@ -38,7 +32,7 @@
     <div class="col">
       <div class="map-container" style="height: calc(100vh - 50px);">
         <BaseMapComponent ref="baseMap" @map-ready="onMapReady" class="full-height full-width" />
-        
+
         <div class="map-overlay bottom-right">
           <q-btn fab icon="edit" color="primary" @click="startDrawingAOI" />
           <q-btn fab icon="check" color="positive" class="q-ml-sm" @click="createProject" :disable="!aoiDrawn" />
@@ -103,6 +97,11 @@ export default {
       drawInteraction.value.on('drawend', (event) => {
         const feature = event.feature;
         const geometry = feature.getGeometry();
+
+        // Debugging: Log feature and geometry objects
+        console.log('Feature:', feature);
+        console.log('Geometry:', geometry);
+
         projectStore.setAOI(geometry);
         aoiDrawn.value = true;
         baseMap.value.map.removeInteraction(drawInteraction.value);

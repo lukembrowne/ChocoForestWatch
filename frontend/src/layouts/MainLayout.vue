@@ -8,6 +8,8 @@
           <q-route-tab to="/training" label="Training" icon="school" />
           <q-route-tab to="/prediction" label="Prediction" icon="map" />
           <q-route-tab to="/analysis" label="Analysis" icon="insert_chart" />
+          <q-route-tab to="/debug" label="Debug" icon="insert_chart" />
+
         </q-tabs>
       </q-toolbar>
     </q-header>

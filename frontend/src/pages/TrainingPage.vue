@@ -1,448 +1,292 @@
 <template>
-  <q-page padding>
-    <h2 class="text-h4 q-mb-md">Model Training</h2>
+  <q-page class="row">
+    <q-drawer v-model="leftDrawerOpen" show-if-above :width="300" :breakpoint="400" bordered class="bg-grey-3">
+      <q-scroll-area class="fit">
+        <q-list>
+          <q-item-label header>Instructions</q-item-label>
+          <q-item>
+            <q-item-section>
+              <ol>
+                <li>Choose a class from the dropdown below.</li>
+                <li>Click the "Draw Polygon" button to start drawing.</li>
+                <li>Click on the map to add points to your polygon.</li>
+                <li>Double-click to finish drawing the polygon.</li>
+                <li>Repeat for different classes as needed.</li>
+              </ol>
+            </q-item-section>
+          </q-item>
 
-    <!-- Horizontal Stepper -->
-    <q-stepper v-model="step" ref="stepper" color="primary" animated flat>
-      <q-step :name="1" title="Select Training Data" icon="folder_open" :done="step > 1">
-        <h4>Select Raster</h4>
-        <q-table :rows="rasters" :columns="rasterColumns" row-key="id" :pagination="{ rowsPerPage: 5 }"
-          :filter="rasterFilter" @row-click="onRasterRowClick">
-          <template v-slot:top-right>
-            <q-input dense debounce="300" v-model="rasterFilter" placeholder="Search">
-              <template v-slot:append>
-                <q-icon name="search" />
-              </template>
-            </q-input>
-          </template>
-        </q-table>
-        <q-file v-model="newRasterFile" label="Upload new raster" accept=".tif,.tiff" class="q-mt-md" />
-        <q-btn label="Upload Raster" color="primary" class="q-mt-sm" @click="uploadRaster" :disable="!newRasterFile" />
+          <q-item>
+            <q-item-section>
+              <q-select v-model="currentClass" :options="classOptions" label="Class" />
+            </q-item-section>
+          </q-item>
 
-        <h4 class="q-mt-lg">Select or Upload Training Polygons</h4>
-        <q-table :rows="vectors" :columns="vectorColumns" row-key="id" :pagination="{ rowsPerPage: 5 }"
-          :filter="vectorFilter" @row-click="onVectorRowClick">
-          <template v-slot:top-right>
-            <q-input dense debounce="300" v-model="vectorFilter" placeholder="Search">
-              <template v-slot:append>
-                <q-icon name="search" />
-              </template>
-            </q-input>
-          </template>
-        </q-table>
-        <q-file v-model="newVectorFile" label="Upload new vector" accept=".geojson" class="q-mt-md" />
-        <q-btn label="Upload Vector" color="primary" class="q-mt-sm" @click="uploadVector" :disable="!newVectorFile" />
-      </q-step>
+          <q-item>
+            <q-item-section>
+              <q-btn label="Draw Polygon" color="primary" @click="startDrawing" class="full-width" />
+            </q-item-section>
+          </q-item>
 
-      <q-step :name="2" title="Draw Polygons & Extract Pixels" icon="edit" :done="step > 2">
-        <div style="width: 100%; height: 400px;">
-          <BaseMapComponent ref="baseMap" @map-ready="onMapReady" />
+          <q-item-label header>Load Saved Polygons</q-item-label>
+          <q-item>
+            <q-item-section>
+              <q-select v-model="selectedSavedPolygons" :options="savedPolygonsOptions" label="Saved Polygons"
+                @update:model-value="loadSavedPolygons" />
+            </q-item-section>
+          </q-item>
+
+          <q-item-label header>Select Basemap Date</q-item-label>
+          <q-item>
+            <q-item-section>
+              <q-select v-model="selectedBasemapDate" :options="basemapDateOptions" label="Basemap Date"
+                @update:model-value="updateBasemap" />
+            </q-item-section>
+          </q-item>
+
+          <q-item>
+            <q-item-section>
+              <q-btn label="Save Polygons" color="positive" @click="savePolygons" class="full-width q-mt-md" />
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-scroll-area>
+    </q-drawer>
+
+    <div class="col">
+      <div class="map-container" style="height: calc(100vh - 50px);">
+        <BaseMapComponent ref="baseMap" @map-ready="onMapReady" class="full-height full-width" />
+
+        <div class="map-overlay bottom-right">
+          <q-btn fab icon="menu" color="primary" @click="toggleLeftDrawer" class="q-mb-md" />
         </div>
-        <div class="toolbar q-mt-md">
-          <q-btn :label="drawing ? 'Stop Drawing' : 'Start Drawing'" :color="drawing ? 'negative' : 'primary'"
-            @click="toggleDrawing" class="q-mr-sm" />
-          <q-select v-model="classLabel" :options="classOptions" label="Class Label" class="q-ml-md"
-            style="width: 150px;" />
-          <q-btn label="Extract Pixels" color="secondary" @click="extractPixels" :loading="extractingPixels"
-            :disable="!canExtractPixels" class="q-ml-sm" />
-          <q-btn label="Delete Selected Polygon" color="negative" @click="deleteSelectedPolygon"
-            :disable="!selectedPolygon" class="q-ml-sm" />
-          <q-btn label="Save Drawn Polygons" color="secondary" class="q-ml-sm" @click="saveDrawnPolygons"
-            :disable="polygons?.length === 0" />
-        </div>
-      </q-step>
-
-      <q-step :name="3" title="Train Model" icon="school">
-        <ModelTraining :pixel-dataset-id="pixelDatasetId" @model-trained="onModelTrained" />
-      </q-step>
-    </q-stepper>
-
-    <!-- Navigation Buttons -->
-    <div class="q-mt-md">
-      <q-btn v-if="step > 1" flat color="primary" @click="step--" label="Back" class="q-mr-sm" />
-      <q-btn v-if="step < 3" color="primary" @click="step++" label="Continue" :disable="!canProceedToNextStep" />
-      <q-btn v-else color="positive" @click="finishTraining" label="Finish" :disable="!modelTrained" />
+      </div>
     </div>
   </q-page>
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue';
-import { useQuasar } from 'quasar';
-import ModelTraining from 'components/ModelTraining.vue';
-import { useTrainingStore } from '../stores/trainingStore';
-import { storeToRefs } from 'pinia';
-import apiService from '../services/api';
-import GeoJSON from 'ol/format/GeoJSON';
-import { useDrawing } from '../composables/useDrawing';
-import BaseMapComponent from '../components/BaseMapComponent.vue';
+import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { useProjectStore } from 'src/stores/projectStore'
+import BaseMapComponent from 'components/BaseMapComponent.vue'
+import { Draw } from 'ol/interaction'
+import VectorSource from 'ol/source/Vector'
+import VectorLayer from 'ol/layer/Vector'
+import { GeoJSON } from 'ol/format'
+import apiService from 'src/services/api'
+import { Style, Fill, Stroke } from 'ol/style';
+import Feature from 'ol/Feature';
 
 
 export default {
   name: 'TrainingPage',
   components: {
-    BaseMapComponent,
-    ModelTraining,
+    BaseMapComponent
   },
   setup() {
-    const $q = useQuasar();
-    const trainingStore = useTrainingStore();
-    const { selectedRaster, selectedVector, drawnPolygons, selectedPolygon } = storeToRefs(trainingStore);
+    const route = useRoute()
+    const projectStore = useProjectStore()
+    const baseMap = ref(null)
+    const project = ref({})
+    const trainingPolygons = ref([])
+    const currentClass = ref(null)
+    const leftDrawerOpen = ref(true)
+    const selectedSavedPolygons = ref(null)
+    const selectedBasemapDate = ref(null)
 
-    const step = ref(1);
-    const baseMap = ref(null);
-    const rasters = ref([]);
-    const vectors = ref([]);
-    const newRasterFile = ref(null);
-    const newVectorFile = ref(null);
-    const extractingPixels = ref(false);
-    const pixelsExtracted = ref(false);
-    const pixelDatasetId = ref(null);
-    const modelTrained = ref(false);
-    const mapComponent = ref(null);
-    const rasterFilter = ref('');
-    const vectorFilter = ref('');
-    const classLabel = ref('forest');
+    // Define vector layers
+    const aoiLayer = ref(null);
+    const trainingLayer = ref(null);
+
     const classOptions = [
       { label: 'Forest', value: 'forest' },
-      { label: 'Non-Forest', value: 'non-forest' },
-    ];
+      { label: 'Non-Forest', value: 'non_forest' },
+      { label: 'Water', value: 'water' },
+      { label: 'Urban', value: 'urban' }
+    ]
 
+    const savedPolygonsOptions = ref([])
 
-    const rasterColumns = [
-      { name: 'id', field: 'id', label: 'ID', sortable: true },
-      { name: 'filename', field: 'filename', label: 'Filename', sortable: true },
-      { name: 'description', field: 'description', label: 'Description', sortable: true },
-      { name: 'date', field: 'date', label: 'Date', sortable: true },
-    ];
-
-    const vectorColumns = [
-      { name: 'id', field: 'id', label: 'ID', sortable: true },
-      { name: 'filename', field: 'filename', label: 'Filename', sortable: true },
-      { name: 'description', field: 'description', label: 'Description', sortable: true },
-      { name: 'created_at', field: 'created_at', label: 'created_at', sortable: true }
-    ];
-
-    const canExtractPixels = computed(() =>
-      selectedRaster.value && (selectedVector.value || drawnPolygons.value.length > 0)
-    );
-
-    const canProceedToNextStep = computed(() => {
-      switch (step.value) {
-        case 1: return selectedRaster.value !== null;
-        case 2: return pixelsExtracted.value;
-        default: return true;
+    const basemapDateOptions = computed(() => {
+      const options = []
+      for (let year = 2022; year <= 2024; year++) {
+        for (let month = 1; month <= 12; month++) {
+          if (year === 2024 && month > 1) break
+          const date = new Date(year, month - 1)
+          options.push({
+            label: date.toLocaleString('default', { month: 'long', year: 'numeric' }),
+            value: `${year}-${month.toString().padStart(2, '0')}`
+          })
+        }
       }
-    });
-
-    const onMapReady = (map) => {
-      loadRasterAndVector();
-    };
-
-    const {
-      drawing,
-      polygons,
-      startDrawing,
-      stopDrawing,
-      getDrawnPolygonsGeoJSON,
-      setClassLabel
-    } = useDrawing(baseMap);
-
-    const toggleDrawing = () => {
-      if (drawing.value) {
-        stopDrawing();
-      } else {
-        startDrawing();
-      }
-    };
-
-    const deleteSelectedPolygon = () => {
-      if (selectedPolygon.value) {
-        deletePolygon(selectedPolygon.value);
-      }
-    };
-
-    const loadRasterAndVector = async () => {
-      if (baseMap.value && selectedRaster.value) {
-        await baseMap.value.loadRaster(selectedRaster.value.id);
-      }
-      if (baseMap.value && selectedVector.value) {
-        await baseMap.value.loadVector(selectedVector.value.id);
-      }
-    };
-
+      return options
+    })
 
     onMounted(async () => {
+      const projectId = route.params.projectId
+      project.value = await projectStore.loadProject(projectId)
+      await fetchSavedPolygons()
+    })
 
-      window.addEventListener('keydown', handleKeyDown);
+    const onMapReady = (map) => {
+      /// Initialize vector layer for AOI
+      const aoiSource = new VectorSource();
+      aoiLayer.value = new VectorLayer({
+        source: aoiSource,
+        style: new Style({
+          fill: new Fill({
+            color: 'rgba(0, 0, 0, 0.1)',
+          }),
+          stroke: new Stroke({
+            color: 'black',
+            width: 2,
+          }),
+        }),
+      });
+      map.addLayer(aoiLayer.value);
 
-      try {
-        const [rasterResponse, vectorResponse] = await Promise.all([
-          apiService.fetchRasters(),
-          apiService.fetchVectors()
-        ]);
-        rasters.value = await Promise.all(rasterResponse.data.map(async (raster) => {
-          const date = null;
-          return { ...raster, date };
-        }));
-        vectors.value = vectorResponse.data;
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        $q.notify({
-          type: 'negative',
-          message: 'Failed to load rasters and vectors',
-          icon: 'error'
-        });
-      }
-    });
+      // Initialize vector layer for training polygons
+      const trainingSource = new VectorSource();
+      trainingLayer.value = new VectorLayer({
+        source: trainingSource,
+        style: new Style({
+          fill: new Fill({
+            color: 'rgba(255, 255, 255, 0.2)',
+          }),
+          stroke: new Stroke({
+            color: '#ffcc33',
+            width: 2,
+          }),
+        }),
+      });
+      map.addLayer(trainingLayer.value);
 
-    const extractDateFromRaster = async (rasterId) => {
-      try {
-        const response = await apiService.extractRasterDate(rasterId);
-        return response.data.date;
-      } catch (error) {
-        console.error('Error extracting date from raster:', error);
-        return 'Unknown';
-      }
-    };
-
-    const handleKeyDown = (event) => {
-      if (event.key === '1') {
-        classLabel.value = 'forest';
-      } else if (event.key === '2') {
-        classLabel.value = 'non-forest';
-      } else if (event.key === 'Delete' && selectedPolygon.value) {
-        deletePolygon(selectedPolygon.value);
-      } else if (event.key === ' ' && !event.repeat) {
-        event.preventDefault();
-        toggleDrawing();
-      }
-    };
-
-    const uploadRaster = async () => {
-      if (!newRasterFile.value) return;
-
-      try {
-        const formData = new FormData();
-        formData.append('file', newRasterFile.value);
-        formData.append('description', 'Uploaded raster');
-
-        const response = await apiService.uploadRaster(formData);
-        const date = null;
-        const newRaster = { ...response.data, date };
-        rasters.value.push(newRaster);
-        trainingStore.setSelectedRaster(newRaster);
-        newRasterFile.value = null;
-
-        $q.notify({
-          type: 'positive',
-          message: 'Raster uploaded successfully',
-          icon: 'check'
-        });
-      } catch (error) {
-        console.error('Error uploading raster:', error);
-        $q.notify({
-          type: 'negative',
-          message: 'Failed to upload raster',
-          icon: 'error'
-        });
-      }
-    };
-
-    const uploadVector = async () => {
-      if (!newVectorFile.value) return;
-
-      try {
-        const formData = new FormData();
-        formData.append('file', newVectorFile.value);
-        formData.append('description', 'Uploaded vector');
-
-        const response = await apiService.uploadVector(formData);
-        vectors.value.push(response.data);
-        trainingStore.setSelectedVector(response.data);
-        newVectorFile.value = null;
-
-        $q.notify({
-          type: 'positive',
-          message: 'Vector uploaded successfully',
-          icon: 'check'
-        });
-      } catch (error) {
-        console.error('Error uploading vector:', error);
-        $q.notify({
-          type: 'negative',
-          message: 'Failed to upload vector',
-          icon: 'error'
-        });
-      }
-    };
-
-    const onRasterRowClick = (evt, row) => {
-      trainingStore.setSelectedRaster(row);
-    };
-
-    const onVectorRowClick = (evt, row) => {
-      trainingStore.setSelectedVector(row);
-    };
-
-    const onPolygonsDrawn = (polygons) => {
-      trainingStore.setDrawnPolygons(polygons);
-    };
-
-    const saveDrawnPolygons = async () => {
-      try {
-        const geoJSONFormat = new GeoJSON();
-        const features = drawnPolygons.value.map(polygon => {
-          const feature = geoJSONFormat.writeFeatureObject(polygon, {
-            dataProjection: 'EPSG:4326',
-            featureProjection: 'EPSG:3857'
+      // Set view to project AOI and display it
+      if (projectStore.aoi) {
+        try {
+          // Convert geometry to feature
+          const aoiFeature = new Feature({
+            geometry: projectStore.aoi
           });
-          return {
-            type: 'Feature',
-            geometry: feature.geometry,
-            properties: {
-              classLabel: polygon.get('classLabel')
-            }
-          };
-        });
+          aoiLayer.value.getSource().addFeature(aoiFeature);
 
-        const response = await apiService.saveDrawnPolygons({
-          description: 'Drawn training polygons',
-          polygons: features
-        });
-
-        vectors.value.push(response.data);
-        trainingStore.setSelectedVector(response.data);
-
-        $q.notify({
-          type: 'positive',
-          message: 'Polygons saved successfully',
-          icon: 'check'
-        });
-      } catch (error) {
-        console.error('Error saving drawn polygons:', error);
-        $q.notify({
-          type: 'negative',
-          message: 'Failed to save drawn polygons',
-          icon: 'error'
-        });
+          const extent = projectStore.aoi.getExtent();
+          map.getView().fit(extent, { padding: [50, 50, 50, 50] });
+        } catch (error) {
+          console.error('Error getting AOI extent:', error);
+        }
       }
-    };
+    }
 
-    const extractPixels = async () => {
-      extractingPixels.value = true;
+    const startDrawing = () => {
+      if (!baseMap.value || !baseMap.value.map) return
+
+      const draw = new Draw({
+        source: baseMap.value.map.getLayers().getArray().find(layer => layer instanceof VectorLayer).getSource(),
+        type: 'Polygon'
+      })
+
+      draw.on('drawend', (event) => {
+        const feature = event.feature
+        trainingPolygons.value.push({
+          id: Date.now(),
+          feature: feature,
+          class: currentClass.value
+        })
+        baseMap.value.map.removeInteraction(draw)
+      })
+
+      baseMap.value.map.addInteraction(draw)
+    }
+
+    const savePolygons = async () => {
       try {
-        const polygonsToUse = selectedVector.value
-          ? selectedVector.value.geojson.features
-          : drawnPolygons.value;
-
-        const response = await apiService.extractPixels({
-          rasterId: selectedRaster.value.id,
-          polygons: polygonsToUse
-        });
-
-        pixelsExtracted.value = true;
-        pixelDatasetId.value = response.data.pixel_dataset_id;
-        $q.notify({
-          type: 'positive',
-          message: 'Pixels extracted successfully',
-          icon: 'check'
-        });
+        const polygonsToSave = trainingPolygons.value.map(p => ({
+          geometry: new GeoJSON().writeGeometryObject(p.feature.getGeometry()),
+          class: p.class
+        }))
+        await apiService.saveTrainingPolygons(project.value.id, polygonsToSave)
+        // Show success message
       } catch (error) {
-        console.error('Error extracting pixels:', error);
-        $q.notify({
-          type: 'negative',
-          message: 'Failed to extract pixels',
-          icon: 'error'
-        });
-      } finally {
-        extractingPixels.value = false;
+        console.error('Error saving polygons:', error)
+        // Show error message
       }
-    };
+    }
 
-    const onModelTrained = (modelInfo) => {
-      modelTrained.value = true;
-      $q.notify({
-        type: 'positive',
-        message: 'Model trained successfully',
-        icon: 'check'
-      });
-    };
-
-    const finishTraining = () => {
-      $q.notify({
-        type: 'positive',
-        message: 'Training process completed',
-        icon: 'check'
-      });
-      // Navigate to another page or reset the wizard
-    };
-
-
-    watch(classLabel, (newLabel) => {
-      setClassLabel(newLabel);
-    });
-
-    watch([selectedRaster, selectedVector], () => {
-      if (baseMap.value) {
-        loadRasterAndVector();
+    const fetchSavedPolygons = async () => {
+      try {
+        const response = await apiService.getSavedPolygonSets(project.value.id)
+        savedPolygonsOptions.value = response.data.map(set => ({
+          label: set.name,
+          value: set.id
+        }))
+      } catch (error) {
+        console.error('Error fetching saved polygon sets:', error)
       }
-    });
+    }
+
+    const loadSavedPolygons = async () => {
+      if (!selectedSavedPolygons.value) return
+      try {
+        const response = await apiService.getPolygonSet(selectedSavedPolygons.value)
+        // Clear existing polygons
+        const vectorSource = baseMap.value.map.getLayers().getArray().find(layer => layer instanceof VectorLayer).getSource()
+        vectorSource.clear()
+        // Add loaded polygons to the map
+        response.data.polygons.forEach(polygon => {
+          const feature = new GeoJSON().readFeature(polygon.geometry)
+          feature.set('class', polygon.class)
+          vectorSource.addFeature(feature)
+        })
+        // Update trainingPolygons ref
+        trainingPolygons.value = response.data.polygons.map(p => ({
+          id: p.id,
+          feature: new GeoJSON().readFeature(p.geometry),
+          class: p.class
+        }))
+      } catch (error) {
+        console.error('Error loading saved polygons:', error)
+      }
+    }
+
+    const updateBasemap = () => {
+      if (!selectedBasemapDate.value || !baseMap.value) return
+      // Implementation to update the basemap based on the selected date
+      // This will depend on how you're handling the Planet basemaps
+    }
+
+    const toggleLeftDrawer = () => {
+      leftDrawerOpen.value = !leftDrawerOpen.value
+    }
 
     return {
-      step,
-      rasters,
-      vectors,
-      selectedRaster,
-      selectedVector,
-      drawnPolygons,
-      newRasterFile,
-      newVectorFile,
-      extractingPixels,
-      pixelsExtracted,
-      pixelDatasetId,
-      modelTrained,
-      mapComponent,
-      rasterFilter,
-      vectorFilter,
-      rasterColumns,
-      vectorColumns,
-      canExtractPixels,
-      canProceedToNextStep,
-      uploadRaster,
-      uploadVector,
-      onRasterRowClick,
-      onVectorRowClick,
-      onPolygonsDrawn,
-      saveDrawnPolygons,
-      extractPixels,
-      onModelTrained,
-      finishTraining,
       baseMap,
-      polygons,
-      classLabel,
-      onMapReady,
-      drawing,
-      toggleDrawing,
+      project,
+      trainingPolygons,
+      currentClass,
       classOptions,
-      loadRasterAndVector,
-      selectedPolygon,
-      deleteSelectedPolygon,
-      setClassLabel,
-    };
+      leftDrawerOpen,
+      selectedSavedPolygons,
+      savedPolygonsOptions,
+      selectedBasemapDate,
+      basemapDateOptions,
+      onMapReady,
+      startDrawing,
+      savePolygons,
+      loadSavedPolygons,
+      updateBasemap,
+      toggleLeftDrawer
+    }
   }
-};
+}
 </script>
 
 <style scoped>
-.map-card {
-  height: 600px;
-  display: flex;
-  flex-direction: column;
-}
-
-.map-card .q-card__section:first-child {
-  flex-grow: 1;
-  overflow: hidden;
+.map-overlay {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1;
 }
 </style>
