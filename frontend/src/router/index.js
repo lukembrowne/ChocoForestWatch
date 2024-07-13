@@ -5,8 +5,12 @@ const routes = [
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
     children: [
-      { path: '', component: () => import('pages/HomePage.vue') },
-      { path: 'training', component: () => import('pages/TrainingPage.vue') },
+      {
+        path: '',
+        components: {
+          default: () => import('pages/HomePage.vue'),
+        }
+      }, { path: 'training', component: () => import('pages/TrainingPage.vue') },
       { path: 'prediction', component: () => import('pages/PredictionPage.vue') },
       { path: 'analysis', component: () => import('pages/AnalysisPage.vue') },
       { path: 'debug', component: () => import('pages/DebugPage.vue') }, // Make sure this line is present
