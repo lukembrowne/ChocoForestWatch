@@ -10,9 +10,10 @@ const routes = [
         components: {
           default: () => import('pages/HomePage.vue'),
         }
-      }, { path: 'training', component: () => import('pages/TrainingPage.vue') },
-      { path: 'prediction', component: () => import('pages/PredictionPage.vue') },
-      { path: 'analysis', component: () => import('pages/AnalysisPage.vue') },
+      }, 
+      { path: 'training', name: 'training', component: () => import('pages/TrainingPage.vue') },
+      { path: 'prediction', name: 'prediction', component: () => import('pages/PredictionPage.vue') },
+      { path: 'analysis', name: 'analysis', component: () => import('pages/AnalysisPage.vue') },
       { path: 'debug', component: () => import('pages/DebugPage.vue') }, // Make sure this line is present
       { path: 'satellite-browser', component: () => import('pages/SatelliteImageBrowser.vue') }, // Add this line
 
@@ -27,7 +28,7 @@ const routes = [
 export default function (/* { store } */) {
   const router = createRouter({
     scrollBehavior: () => ({ left: 0, top: 0 }),
-    routes,
+    routes, 
     history: createWebHistory()
   })
 

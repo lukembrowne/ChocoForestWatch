@@ -60,6 +60,19 @@ export default {
     }
   },
 
+
+  getTrainingPolygons(projectId) {
+    return axios.get(`${API_URL}/training_polygons/${projectId}`);
+  },
+
+  getSpecificTrainingPolygons(projectId, basemapDate) {
+    return axios.get(`${API_URL}/training_polygons/${projectId}/${basemapDate}`);
+  },
+
+  saveTrainingPolygons(data) {
+    return axios.post(`${API_URL}/training_polygons`, data);
+  },
+
   saveDrawnPolygons(polygonData) {
     return axios.post(`${API_URL}/save_drawn_polygons`, polygonData, {
       headers: {

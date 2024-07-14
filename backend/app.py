@@ -81,6 +81,16 @@ class Project(db.Model):
         }
 
 
+class TrainingPolygonSet(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    basemap_date = db.Column(db.Date, nullable=False)
+    polygons = db.Column(JSONB)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+    __table_args__ = (db.UniqueConstraint('project_id', 'basemap_date', name='uq_project_basemap_date'),)
+
 
 class Raster(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -161,7 +171,14 @@ def prediction_files(filename):
 def create_project():
     data = request.json
     aoi_geojson = data.get('aoi')
-    aoi_shape = shape(aoi_geojson)
+    
+    if not aoi_geojson:
+        return jsonify({"error": "AOI is required"}), 400
+    
+    try:
+        aoi_shape = shape(aoi_geojson)
+    except Exception as e:
+        return jsonify({"error": f"Invalid AOI geometry: {str(e)}"}), 400
     
     project = Project(
         name=data.get('name', 'Untitled Project'),
@@ -172,7 +189,12 @@ def create_project():
     db.session.add(project)
     db.session.commit()
     
-    return jsonify(project.to_dict()), 201
+    return jsonify({
+        "id": project.id,
+        "name": project.name,
+        "description": project.description,
+        "aoi": json.loads(db.session.scalar(project.aoi.ST_AsGeoJSON()))
+    }), 201
 
 @app.route('/api/projects/<int:project_id>', methods=['GET'])
 def get_project(project_id):
@@ -205,6 +227,41 @@ def list_projects():
 
 
 
+@app.route('/api/training_polygons', methods=['POST'])
+def save_training_polygons():
+    data = request.json
+    project_id = data['project_id']
+    basemap_date = data['basemap_date']
+    polygons = data['polygons']
+
+    training_set = TrainingPolygonSet.query.filter_by(project_id=project_id, basemap_date=basemap_date).first()
+    if training_set:
+        training_set.polygons = polygons
+    else:
+        training_set = TrainingPolygonSet(project_id=project_id, basemap_date=basemap_date, polygons=polygons)
+        db.session.add(training_set)
+
+    db.session.commit()
+    return jsonify({'message': 'Training polygons saved successfully'}), 200
+
+@app.route('/api/training_polygons/<int:project_id>', methods=['GET'])
+def get_training_polygons(project_id):
+    training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id).all()
+    result = [{
+        'id': ts.id,
+        'basemap_date': ts.basemap_date.isoformat(),
+        'has_polygons': bool(ts.polygons),
+        'updated_at': ts.updated_at.isoformat()
+    } for ts in training_sets]
+    return jsonify(result), 200
+
+@app.route('/api/training_polygons/<int:project_id>/<string:basemap_date>', methods=['GET'])
+def get_specific_training_polygons(project_id, basemap_date):
+    training_set = TrainingPolygonSet.query.filter_by(project_id=project_id, basemap_date=basemap_date).first()
+    if training_set:
+        return jsonify(training_set.polygons), 200
+    else:
+        return jsonify({'message': 'No training polygons found for this date'}), 404
 
 
 

@@ -17,11 +17,13 @@
             </q-item-section>
           </q-item>
 
-          <q-item-label header>Select Basemap Date</q-item-label>
-          <q-item>
+          <q-item-label header>Basemap Dates</q-item-label>
+          <q-item v-for="date in basemapDateOptions" :key="date.value">
             <q-item-section>
-              <q-select v-model="selectedBasemapDate" :options="basemapDateOptions" label="Basemap Date"
-                @update:model-value="updateBasemap" />
+              <q-btn :label="date.label" :color="date.hasPolygons ? 'primary' : 'grey'"
+                @click="selectBasemapDate(date.value)" class="full-width">
+                <q-badge v-if="date.hasPolygons" color="green" floating>✓</q-badge>
+              </q-btn>
             </q-item-section>
           </q-item>
 
@@ -73,7 +75,7 @@
 
 <script>
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useDrawing } from '../composables/useDrawing';
@@ -93,7 +95,7 @@ export default {
     BaseMapComponent
   },
   setup() {
-    const route = useRoute()
+    const router = useRouter()
     const projectStore = useProjectStore()
     const baseMap = ref(null)
     const project = ref({})
@@ -117,6 +119,8 @@ export default {
 
     const savedPolygonsOptions = ref([])
 
+    const currentProject = computed(() => projectStore.currentProject)
+
     const basemapDateOptions = computed(() => {
       const options = []
       for (let year = 2022; year <= 2024; year++) {
@@ -132,8 +136,10 @@ export default {
       return options
     })
 
-     // New data structure to associate basemap dates with polygon sets
-     const polygonSets = ref({})
+    const basemapDates = ref([])
+
+    // New data structure to associate basemap dates with polygon sets
+    const polygonSets = ref({})
 
     const {
       drawing,
@@ -154,16 +160,30 @@ export default {
     };
 
     onMounted(async () => {
-      const projectId = route.params.projectId
-      // project.value = await projectStore.loadProject(projectId)
-      const vectorResponse = await apiService.fetchVectors();
-      trainingPolygons.value = vectorResponse.data;
+
+      if (!projectStore.selectedProjectId) {
+        router.push('/') // Redirect to home page if no project is selected
+        return
+      }
+
+      if (!currentProject.value || currentProject.value.id !== projectStore.selectedProjectId) {
+        try {
+          await projectStore.loadProject(projectStore.selectedProjectId)
+        } catch (error) {
+          console.error('Error loading project:', error)
+          router.push('/') // Redirect to home page if project loading fails
+          return
+        }
+      }
+
+      await fetchBasemapDates(projectStore.selectedProjectId)
 
       window.addEventListener('keydown', handleKeyDown);
 
     })
 
     const onMapReady = (map) => {
+
       /// Initialize vector layer for AOI
       const aoiSource = new VectorSource();
       aoiLayer.value = new VectorLayer({
@@ -197,15 +217,17 @@ export default {
       map.addLayer(trainingLayer.value);
 
       // Set view to project AOI and display it
-      if (projectStore.aoi) {
+      if (projectStore.currentProject.aoi) {
         try {
-          // Convert geometry to feature
-          const aoiFeature = new Feature({
-            geometry: projectStore.aoi
-          });
-          aoiLayer.value.getSource().addFeature(aoiFeature);
 
-          const extent = projectStore.aoi.getExtent();
+        // Saved as GEOJSON so need to convert to geometry
+        const geojsonFormat = new GeoJSON();
+        const geometry = geojsonFormat.readGeometry(projectStore.currentProject.aoi);
+        const extent = geometry.getExtent();
+        const aoiFeature = new Feature({
+          geometry: geometry,
+        });
+        aoiLayer.value.getSource().addFeature(aoiFeature);
           map.getView().fit(extent, { padding: [50, 50, 50, 50] });
         } catch (error) {
           console.error('Error getting AOI extent:', error);
@@ -228,6 +250,58 @@ export default {
       }
     };
 
+    const fetchBasemapDates = async (projectId) => {
+      try {
+        const response = await apiService.getTrainingPolygons(projectId)
+        basemapDates.value = response.data.map(item => ({
+          label: new Date(item.basemap_date).toLocaleString('default', { month: 'long', year: 'numeric' }),
+          value: item.basemap_date,
+          hasPolygons: item.has_polygons
+        }))
+      } catch (error) {
+        console.error('Error fetching basemap dates:', error)
+        $q.notify({
+          type: 'negative',
+          message: 'Failed to fetch basemap dates',
+          icon: 'error'
+        })
+      }
+    }
+
+    const selectBasemapDate = async (date) => {
+      if (selectedBasemapDate.value && polygons.value.length > 0) {
+        const shouldSave = await $q.dialog({
+          title: 'Unsaved Changes',
+          message: 'Do you want to save your changes before switching dates?',
+          ok: 'Save',
+          cancel: 'Discard'
+        }).onOk(() => true).onCancel(() => false)
+
+        if (shouldSave) {
+          await saveDrawnPolygons()
+        }
+      }
+
+      selectedBasemapDate.value = date
+      clearDrawnPolygons()
+      await loadPolygonsForDate(date)
+      baseMap.value.updateBasemap(date)
+
+    }
+
+    const loadPolygonsForDate = async (date) => {
+      try {
+        const response = await apiService.getSpecificTrainingPolygons(projectStore.currentProject.id, date)
+        loadPolygons(response.data)
+      } catch (error) {
+        console.error('Error loading polygons:', error)
+        $q.notify({
+          type: 'negative',
+          message: 'Failed to load polygons for this date',
+          icon: 'error'
+        })
+      }
+    }
 
     const saveDrawnPolygons = async () => {
       if (!selectedBasemapDate.value) {
@@ -235,43 +309,38 @@ export default {
           type: 'warning',
           message: 'Please select a basemap date before saving polygons',
           icon: 'warning'
-        });
-        return;
+        })
+        return
       }
 
       try {
-        const geoJSONFormat = new GeoJSON();
-        const features = polygons.value.map(polygon => {
-          const feature = geoJSONFormat.writeFeatureObject(polygon, {
-            dataProjection: 'EPSG:4326',
-            featureProjection: 'EPSG:3857'
-          });
-          return {
-            type: 'Feature',
-            geometry: feature.geometry,
-            properties: {
-              classLabel: polygon.get('classLabel')
-            }
-          };
-        });
+        const polygonsGeoJSON = getDrawnPolygonsGeoJSON()
+        await apiService.saveTrainingPolygons({
+          project_id: projectStore.currentProject.id,
+          basemap_date: selectedBasemapDate.value,
+          polygons: polygonsGeoJSON
+        })
 
-        // Save the polygons associated with the current basemap date
-        polygonSets.value[selectedBasemapDate.value] = features;
+        // Update the basemapDates to reflect that this date now has polygons
+        const dateIndex = basemapDates.value.findIndex(d => d.value === selectedBasemapDate.value)
+        if (dateIndex !== -1) {
+          basemapDates.value[dateIndex].hasPolygons = true
+        }
 
         $q.notify({
           type: 'positive',
           message: 'Polygons saved successfully',
           icon: 'check'
-        });
+        })
       } catch (error) {
-        console.error('Error saving drawn polygons:', error);
+        console.error('Error saving drawn polygons:', error)
         $q.notify({
           type: 'negative',
           message: 'Failed to save drawn polygons',
           icon: 'error'
-        });
+        })
       }
-    };
+    }
 
 
     const fetchSavedPolygons = async () => {
@@ -317,7 +386,7 @@ export default {
 
     const updateBasemap = () => {
       if (!selectedBasemapDate.value || !baseMap.value) return;
-      
+
       // Clear current polygons
       clearDrawnPolygons();
 
@@ -391,7 +460,10 @@ export default {
       showErrorDialog,
       errorMessage,
       handleBasemapError,
-      updateBasemap
+      updateBasemap,
+      currentProject,
+      basemapDates,
+      selectBasemapDate
     }
   }
 }

@@ -2,27 +2,53 @@
   <q-page class="row">
     <q-drawer v-model="leftDrawerOpen" show-if-above :width="300" :breakpoint="400" bordered class="bg-grey-3">
       <q-scroll-area class="fit">
-        <q-list>
-          <q-item-label header>Instructions</q-item-label>
+        <q-list padding>
+          <q-item-label header>Create New Project</q-item-label>
           <q-item>
             <q-item-section>
-              <ol>
-                <li>Click the edit button to start drawing your Area of Interest (AOI) on the map.</li>
-                <li>Click on the map to add points to your AOI polygon.</li>
-                <li>Double-click to finish drawing the polygon.</li>
-                <li>Once you're satisfied with your AOI, click the check button to create your project.</li>
-              </ol>
+              <q-input v-model="newProject.name" label="Project Name" dense />
             </q-item-section>
           </q-item>
           <q-item>
             <q-item-section>
-              <q-btn label="Start Drawing AOI" color="primary" @click="startDrawingAOI" class="full-width" />
+              <q-input v-model="newProject.description" label="Description" type="textarea" dense />
             </q-item-section>
           </q-item>
           <q-item>
             <q-item-section>
-              <q-btn label="Create Project" color="positive" @click="createProject" :disable="!aoiDrawn"
+              <q-btn label="Create Project" color="primary" @click="createProject" :disable="!aoiDrawn"
                 class="full-width" />
+            </q-item-section>
+          </q-item>
+          <q-item v-if="!aoiDrawn">
+            <q-item-section>
+              <q-badge color="warning">
+                Please draw an AOI on the map before creating the project
+              </q-badge>
+            </q-item-section>
+          </q-item>
+
+          <q-separator spaced />
+
+
+          <div class="map-controls">
+            <q-btn label="Draw AOI" color="primary" @click="startDrawingAOI" :disable="isDrawing" />
+            <q-btn label="Clear AOI" color="negative" @click="clearAOI" :disable="!aoiDrawn" class="q-ml-sm" />
+          </div>
+
+          <q-separator spaced />
+
+          <q-item-label header>Saved Projects</q-item-label>
+          <q-item v-for="project in projects" :key="project.id" clickable v-ripple @click="selectProject(project.id)">
+            <q-item-section>
+              <q-item-label>{{ project.name }}</q-item-label>
+              <q-item-label caption>{{ project.description }}</q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <q-item v-if="projects.length === 0">
+            <q-item-section>
+              <q-item-label caption>No saved projects</q-item-label>
             </q-item-section>
           </q-item>
         </q-list>
@@ -34,13 +60,16 @@
         <BaseMapComponent ref="baseMap" @map-ready="onMapReady" class="full-height full-width" />
       </div>
     </div>
+
+
   </q-page>
 </template>
 
 <script>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useProjectStore } from 'stores/projectStore';
+import { useQuasar } from 'quasar';
 import BaseMapComponent from 'components/BaseMapComponent.vue';
 import Draw, {
   createBox,
@@ -57,11 +86,94 @@ export default {
   setup() {
     const router = useRouter();
     const projectStore = useProjectStore();
+    const showCreateProjectDialog = ref(false);
+    const newProject = ref({ name: '', description: '' });
+    const projects = ref([]);
     const baseMap = ref(null);
     const aoiDrawn = ref(false);
     const drawInteraction = ref(null);
     const vectorLayer = ref(null);
-    const leftDrawerOpen = ref(true)
+    const isDrawing = ref(false);
+    const leftDrawerOpen = ref(true);
+    const $q = useQuasar();
+
+
+
+    onMounted(async () => {
+      await fetchProjects();
+    });
+
+    const fetchProjects = async () => {
+      try {
+        await projectStore.fetchProjects();
+        projects.value = projectStore.projects;
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        // Handle error (show notification, etc.)
+      }
+    };
+
+    const createProject = async () => {
+      if (!aoiDrawn.value) {
+        $q.notify({
+          color: 'warning',
+          message: 'Please draw an Area of Interest before creating the project',
+          icon: 'warning'
+        });
+        return;
+      }
+
+      try {
+        const aoiFeature = vectorLayer.value.getSource().getFeatures()[0];
+        const aoiGeojson = new GeoJSON().writeFeatureObject(aoiFeature, {
+          dataProjection: 'EPSG:3857',
+          featureProjection: 'EPSG:3857'
+        });
+
+        const createdProject = await projectStore.createProject({
+          ...newProject.value,
+          aoi: aoiGeojson
+        });
+
+        showCreateProjectDialog.value = false;
+        clearAOI();
+        newProject.value = { name: '', description: '' };
+        await fetchProjects();
+
+        router.push({ name: 'training' });
+      } catch (error) {
+        console.error('Error creating project:', error);
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to create project: ' + error.message,
+          icon: 'error'
+        });
+      }
+    };
+
+    const loadProject = async (projectId) => {
+      try {
+        await projectStore.loadProject(projectId);
+        router.push({ name: 'training'});
+      } catch (error) {
+        console.error('Error loading project:', error);
+        // Handle error (show notification, etc.)
+      }
+    };
+
+    const selectProject = async (projectId) => {
+      try {
+        await projectStore.loadProject(projectId);
+        router.push({ name: 'training' });
+      } catch (error) {
+        console.error('Error loading project:', error);
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to load project',
+          icon: 'error'
+        });
+      }
+    };
 
 
     const onMapReady = (map) => {
@@ -80,6 +192,7 @@ export default {
     const startDrawingAOI = () => {
       if (!baseMap.value || !baseMap.value.map) return;
 
+      isDrawing.value = true;
       const source = vectorLayer.value.getSource();
       source.clear();  // Clear previous drawings
 
@@ -91,48 +204,36 @@ export default {
 
       drawInteraction.value.on('drawend', (event) => {
         const feature = event.feature;
-        const geometry = feature.getGeometry();
-
-        // Debugging: Log feature and geometry objects
-        console.log('Feature:', feature);
-        console.log('Geometry:', geometry);
-
-        projectStore.setAOI(geometry);
         aoiDrawn.value = true;
+        isDrawing.value = false;
         baseMap.value.map.removeInteraction(drawInteraction.value);
       });
 
       baseMap.value.map.addInteraction(drawInteraction.value);
     };
 
-    const createProject = async () => {
-      if (!aoiDrawn.value) return;
-
-      try {
-        const feature = vectorLayer.value.getSource().getFeatures()[0];
-        const geojson = new GeoJSON().writeFeatureObject(feature);
-
-        const project = await projectStore.createProject({
-          name: 'New Forest Monitoring Project',
-          description: 'Created from homepage',
-          aoi: geojson.geometry
-        });
-
-
-        router.push(`/training`);
-      } catch (error) {
-        console.error('Failed to create project:', error);
-        // Handle error (show notification, etc.)
+    const clearAOI = () => {
+      if (vectorLayer.value) {
+        vectorLayer.value.getSource().clear();
+        aoiDrawn.value = false;
       }
     };
+
 
     return {
       baseMap,
       aoiDrawn,
       onMapReady,
       startDrawingAOI,
+      showCreateProjectDialog,
+      newProject,
+      projects,
       createProject,
-      leftDrawerOpen
+      loadProject,
+      clearAOI,
+      isDrawing,
+      leftDrawerOpen,
+      selectProject
     };
   }
 };
