@@ -125,6 +125,13 @@ export function useDrawing(baseMapRef) {
     updateVectorLayerStyle();
   };
 
+  const clearDrawnPolygons = () => {
+    if (vectorLayer.value) {
+      vectorLayer.value.getSource().clear();
+    }
+    drawnPolygons.value = [];
+  };
+
   const updateVectorLayerStyle = () => {
     if (vectorLayer.value) {
       vectorLayer.value.setStyle(featureStyleFunction);
@@ -172,6 +179,7 @@ export function useDrawing(baseMapRef) {
     stopDrawing,
     deletePolygon,
     setClassLabel,
-    updateVectorLayerStyle
+    updateVectorLayerStyle,
+    clearDrawnPolygons
   };
 }

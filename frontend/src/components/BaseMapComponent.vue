@@ -96,6 +96,44 @@ export default {
             });
         };
 
+        const updateBasemap = (basemapDate) => {
+
+            isLoading.value = true;
+
+            const apiKey = process.env.VUE_APP_PLANET_API_KEY;
+            if (!apiKey) {
+                console.error('API key is not defined. Please check your .env file.');
+                return;
+            }
+
+            let source;
+            if (basemapDate === null) {
+                source = new XYZ({
+                    url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                });
+            } else {
+                const formattedDate = basemapDate.value.replace(/^(\d{4})-(\d{1,2})$/, (_, year, month) => `${year}-${month.padStart(2, '0')}`);
+                source = new XYZ({
+                    url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${formattedDate}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
+                });
+            }
+
+            // Add error handling for the source
+            source.on('tileloaderror', () => {
+                emit('basemap-error', `Failed to load basemap for date: ${formattedDate}`);
+            });
+
+            // Update the source of the first layer (basemap layer)
+            const layers = map.value.getLayers().getArray();
+            const basemapLayer = layers[0]; // Assuming the first layer is the basemap layer
+            basemapLayer.setSource(source);
+
+            map.value.once('rendercomplete', () => {
+                isLoading.value = false;
+                emit('map-ready', map.value);
+            });
+        };
+
         const loadRaster = async (id) => {
             try {
                 const response = await apiService.fetchRasterById(id);
@@ -190,10 +228,10 @@ export default {
         });
 
         watch(() => props.basemapDate, () => {
-            if (map.value) {
-                map.value.setTarget(null);
-            }
-            initMap();
+            // if (map.value) {
+            //     map.value.setTarget(null);
+            // }
+            // initMap();
         });
 
         const addLayer = (layer) => {
@@ -208,7 +246,7 @@ export default {
             }
         };
 
-        expose({ map, addLayer, removeLayer, loadRaster, loadVector });
+        expose({ map, addLayer, removeLayer, loadRaster, loadVector, updateBasemap });
 
         return {
             mapContainer,

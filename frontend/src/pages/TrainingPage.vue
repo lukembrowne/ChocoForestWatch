@@ -7,32 +7,13 @@
           <q-item>
             <q-item-section>
               <ol>
-                <li>Choose a class from the dropdown below.</li>
+                <li>Select a basemap date from the dropdown below.</li>
+                <li>Choose a class from the dropdown.</li>
                 <li>Click the "Draw Polygon" button to start drawing.</li>
                 <li>Click on the map to add points to your polygon.</li>
                 <li>Double-click to finish drawing the polygon.</li>
                 <li>Repeat for different classes as needed.</li>
               </ol>
-            </q-item-section>
-          </q-item>
-
-          <q-item>
-            <q-item-section>
-              <q-select v-model="classLabel" :options="classOptions" label="Class" />
-            </q-item-section>
-          </q-item>
-
-          <q-item>
-            <q-item-section>
-              <q-btn label="Draw Polygon" color="primary" @click="startDrawing" class="full-width" />
-            </q-item-section>
-          </q-item>
-
-          <q-item-label header>Load Saved Polygons</q-item-label>
-          <q-item>
-            <q-item-section>
-              <q-select v-model="selectedSavedPolygons" :options="savedPolygonsOptions" label="Saved Polygons"
-                @update:model-value="loadSavedPolygons" />
             </q-item-section>
           </q-item>
 
@@ -44,7 +25,19 @@
             </q-item-section>
           </q-item>
 
-          <q-item>
+          <q-item v-if="selectedBasemapDate">
+            <q-item-section>
+              <q-select v-model="classLabel" :options="classOptions" label="Class" />
+            </q-item-section>
+          </q-item>
+
+          <q-item v-if="selectedBasemapDate">
+            <q-item-section>
+              <q-btn label="Draw Polygon" color="primary" @click="startDrawing" class="full-width" />
+            </q-item-section>
+          </q-item>
+
+          <q-item v-if="selectedBasemapDate">
             <q-item-section>
               <q-btn label="Save Polygons" color="positive" @click="saveDrawnPolygons" class="full-width q-mt-md" />
             </q-item-section>
@@ -139,13 +132,17 @@ export default {
       return options
     })
 
+     // New data structure to associate basemap dates with polygon sets
+     const polygonSets = ref({})
+
     const {
       drawing,
       polygons,
       startDrawing,
       stopDrawing,
       getDrawnPolygonsGeoJSON,
-      setClassLabel
+      setClassLabel,
+      clearDrawnPolygons
     } = useDrawing(baseMap);
 
     const toggleDrawing = () => {
@@ -233,9 +230,18 @@ export default {
 
 
     const saveDrawnPolygons = async () => {
+      if (!selectedBasemapDate.value) {
+        $q.notify({
+          type: 'warning',
+          message: 'Please select a basemap date before saving polygons',
+          icon: 'warning'
+        });
+        return;
+      }
+
       try {
         const geoJSONFormat = new GeoJSON();
-        const features = drawnPolygons.value.map(polygon => {
+        const features = polygons.value.map(polygon => {
           const feature = geoJSONFormat.writeFeatureObject(polygon, {
             dataProjection: 'EPSG:4326',
             featureProjection: 'EPSG:3857'
@@ -249,13 +255,8 @@ export default {
           };
         });
 
-        const response = await apiService.saveDrawnPolygons({
-          description: 'Drawn training polygons',
-          polygons: features
-        });
-
-        trainingPolygons.value.push(response.data);
-        trainingStore.setSelectedVector(response.data);
+        // Save the polygons associated with the current basemap date
+        polygonSets.value[selectedBasemapDate.value] = features;
 
         $q.notify({
           type: 'positive',
@@ -316,19 +317,22 @@ export default {
 
     const updateBasemap = () => {
       if (!selectedBasemapDate.value || !baseMap.value) return;
-      // Show loading indicator
-      // $q.loading.show({
-      //   message: 'Loading basemap...'
-      // });
-      // Force the BaseMapComponent to update
-      // baseMap.value = null;
-      // nextTick(() => {
-      //   baseMap.value = baseMap.value;
-      //   // Hide loading indicator after a short delay
-      //   setTimeout(() => {
-      //     $q.loading.hide();
-      //   }, 500);
-      // });
+      
+      // Clear current polygons
+      clearDrawnPolygons();
+
+      // Load polygons for the selected basemap date
+      const savedPolygons = polygonSets.value[selectedBasemapDate.value] || [];
+      savedPolygons.forEach(feature => {
+        const olFeature = new GeoJSON().readFeature(feature, {
+          featureProjection: 'EPSG:3857'
+        });
+        olFeature.set('classLabel', feature.properties.classLabel);
+        trainingLayer.value.getSource().addFeature(olFeature);
+      });
+
+      // Update the basemap
+      baseMap.value.updateBasemap(selectedBasemapDate.value);
     };
 
     const extractPixels = async () => {
@@ -381,13 +385,13 @@ export default {
       startDrawing,
       saveDrawnPolygons,
       loadSavedPolygons,
-      updateBasemap,
       extractPixels,
       setClassLabel,
       toggleDrawing,
       showErrorDialog,
       errorMessage,
-      handleBasemapError
+      handleBasemapError,
+      updateBasemap
     }
   }
 }
