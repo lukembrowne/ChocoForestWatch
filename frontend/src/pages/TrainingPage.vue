@@ -20,9 +20,11 @@
           <q-item-label header>Basemap Dates</q-item-label>
           <q-item v-for="date in basemapDateOptions" :key="date.value">
             <q-item-section>
-              <q-btn :label="date.label" :color="date.hasPolygons ? 'primary' : 'grey'"
-                @click="selectBasemapDate(date.value)" class="full-width">
-                <q-badge v-if="date.hasPolygons" color="green" floating>✓</q-badge>
+              <q-btn :label="date.label" 
+                     :color="date.value === selectedBasemapDate ? 'primary' : 'grey'"
+                     @click="selectBasemapDate(date.value)" 
+                     class="full-width">
+                <q-badge v-if="hasPolygons(date.value)" color="green" floating>✓</q-badge>
               </q-btn>
             </q-item-section>
           </q-item>
@@ -136,7 +138,7 @@ export default {
       return options
     })
 
-    const basemapDates = ref([])
+    const datesWithPolygons = ref(new Set())
 
     // New data structure to associate basemap dates with polygon sets
     const polygonSets = ref({})
@@ -148,7 +150,8 @@ export default {
       stopDrawing,
       getDrawnPolygonsGeoJSON,
       setClassLabel,
-      clearDrawnPolygons
+      clearDrawnPolygons,
+      loadPolygons
     } = useDrawing(baseMap);
 
     const toggleDrawing = () => {
@@ -176,8 +179,7 @@ export default {
         }
       }
 
-      await fetchBasemapDates(projectStore.selectedProjectId)
-
+      await fetchExistingPolygonDates()
       window.addEventListener('keydown', handleKeyDown);
 
     })
@@ -220,14 +222,14 @@ export default {
       if (projectStore.currentProject.aoi) {
         try {
 
-        // Saved as GEOJSON so need to convert to geometry
-        const geojsonFormat = new GeoJSON();
-        const geometry = geojsonFormat.readGeometry(projectStore.currentProject.aoi);
-        const extent = geometry.getExtent();
-        const aoiFeature = new Feature({
-          geometry: geometry,
-        });
-        aoiLayer.value.getSource().addFeature(aoiFeature);
+          // Saved as GEOJSON so need to convert to geometry
+          const geojsonFormat = new GeoJSON();
+          const geometry = geojsonFormat.readGeometry(projectStore.currentProject.aoi);
+          const extent = geometry.getExtent();
+          const aoiFeature = new Feature({
+            geometry: geometry,
+          });
+          aoiLayer.value.getSource().addFeature(aoiFeature);
           map.getView().fit(extent, { padding: [50, 50, 50, 50] });
         } catch (error) {
           console.error('Error getting AOI extent:', error);
@@ -238,7 +240,6 @@ export default {
 
     const handleKeyDown = (event) => {
       if (event.key === '1') {
-        console.log('Setting class label to forest');
         classLabel.value = 'forest';
       } else if (event.key === '2') {
         classLabel.value = 'non-forest';
@@ -269,30 +270,45 @@ export default {
     }
 
     const selectBasemapDate = async (date) => {
-      if (selectedBasemapDate.value && polygons.value.length > 0) {
-        const shouldSave = await $q.dialog({
-          title: 'Unsaved Changes',
-          message: 'Do you want to save your changes before switching dates?',
-          ok: 'Save',
-          cancel: 'Discard'
-        }).onOk(() => true).onCancel(() => false)
+      // if (selectedBasemapDate.value && polygons.value.length > 0) {
+      //   const shouldSave = await $q.dialog({
+      //     title: 'Unsaved Changes',
+      //     message: 'Do you want to save your changes before switching dates?',
+      //     ok: 'Save',
+      //     cancel: 'Discard'
+      //   }).onOk(() => true).onCancel(() => false)
 
-        if (shouldSave) {
-          await saveDrawnPolygons()
-        }
-      }
+      //   if (shouldSave) {
+      //     await saveDrawnPolygons()
+      //   }
+      // }
 
       selectedBasemapDate.value = date
       clearDrawnPolygons()
-      await loadPolygonsForDate(date)
-      baseMap.value.updateBasemap(date)
 
+      if (hasPolygons(date)) {
+        await loadPolygonsForDate(date)
+      }
+
+      if (baseMap.value && typeof baseMap.value.updateBasemap === 'function') {
+        baseMap.value.updateBasemap(date)
+      } else {
+        console.error('BaseMapComponent is not properly initialized or doesn\'t have updateBasemap method')
+      }
     }
 
     const loadPolygonsForDate = async (date) => {
       try {
-        const response = await apiService.getSpecificTrainingPolygons(projectStore.currentProject.id, date)
-        loadPolygons(response.data)
+        console.log('Date:', date)
+        const response = await apiService.getSpecificTrainingPolygons(currentProject.value.id, date)
+        console.log('Polygons:', response.data.polygons)
+        console.log('response:', response)
+        if (response.data) {
+          loadPolygons(response.data)
+        } else {
+          console.warn('No polygons data found for the selected date')
+          clearDrawnPolygons()
+        }
       } catch (error) {
         console.error('Error loading polygons:', error)
         $q.notify({
@@ -315,17 +331,22 @@ export default {
 
       try {
         const polygonsGeoJSON = getDrawnPolygonsGeoJSON()
+        if (!polygonsGeoJSON || polygonsGeoJSON.features.length === 0) {
+          $q.notify({
+            type: 'warning',
+            message: 'No polygons drawn to save',
+            icon: 'warning'
+          })
+          return
+        }
+
         await apiService.saveTrainingPolygons({
-          project_id: projectStore.currentProject.id,
+          project_id: currentProject.value.id,
           basemap_date: selectedBasemapDate.value,
           polygons: polygonsGeoJSON
         })
 
-        // Update the basemapDates to reflect that this date now has polygons
-        const dateIndex = basemapDates.value.findIndex(d => d.value === selectedBasemapDate.value)
-        if (dateIndex !== -1) {
-          basemapDates.value[dateIndex].hasPolygons = true
-        }
+        datesWithPolygons.value.add(selectedBasemapDate.value)
 
         $q.notify({
           type: 'positive',
@@ -336,22 +357,9 @@ export default {
         console.error('Error saving drawn polygons:', error)
         $q.notify({
           type: 'negative',
-          message: 'Failed to save drawn polygons',
+          message: 'Failed to save drawn polygons: ' + error.message,
           icon: 'error'
         })
-      }
-    }
-
-
-    const fetchSavedPolygons = async () => {
-      try {
-        const response = await apiService.getSavedPolygonSets(project.value.id)
-        savedPolygonsOptions.value = response.data.map(set => ({
-          label: set.name,
-          value: set.id
-        }))
-      } catch (error) {
-        console.error('Error fetching saved polygon sets:', error)
       }
     }
 
@@ -435,6 +443,25 @@ export default {
       }
     };
 
+    const fetchExistingPolygonDates = async () => {
+      try {
+        const response = await apiService.getTrainingPolygons(currentProject.value.id)
+        datesWithPolygons.value = new Set(response.data.map(item => item.basemap_date))
+      } catch (error) {
+        console.error('Error fetching existing polygon dates:', error)
+        $q.notify({
+          type: 'negative',
+          message: 'Failed to fetch existing polygon dates',
+          icon: 'error'
+        })
+      }
+    }
+
+    const hasPolygons = (date) => {
+      return datesWithPolygons.value.has(date)
+    }
+
+
     watch(classLabel, (newLabel) => {
       setClassLabel(newLabel);
     });
@@ -462,8 +489,8 @@ export default {
       handleBasemapError,
       updateBasemap,
       currentProject,
-      basemapDates,
-      selectBasemapDate
+      selectBasemapDate,
+      hasPolygons
     }
   }
 }

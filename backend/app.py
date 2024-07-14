@@ -84,7 +84,7 @@ class Project(db.Model):
 class TrainingPolygonSet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
-    basemap_date = db.Column(db.Date, nullable=False)
+    basemap_date = db.Column(db.String(7), nullable=False)  # Store as 'YYYY-MM'
     polygons = db.Column(JSONB)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
@@ -230,26 +230,44 @@ def list_projects():
 @app.route('/api/training_polygons', methods=['POST'])
 def save_training_polygons():
     data = request.json
-    project_id = data['project_id']
-    basemap_date = data['basemap_date']
-    polygons = data['polygons']
+    project_id = data.get('project_id')
+    basemap_date = data.get('basemap_date')
+    polygons = data.get('polygons')
+
+    if not project_id or not basemap_date or not polygons:
+        return jsonify({'error': 'Missing required data'}), 400
+
+    # If basemap_date is an object, extract the value
+    if isinstance(basemap_date, dict):
+        basemap_date = basemap_date.get('value')
+
+    # Validate basemap_date format
+    try:
+        datetime.strptime(basemap_date, '%Y-%m')
+    except ValueError:
+        return jsonify({'error': 'Invalid basemap_date format. Use YYYY-MM.'}), 400
 
     training_set = TrainingPolygonSet.query.filter_by(project_id=project_id, basemap_date=basemap_date).first()
     if training_set:
         training_set.polygons = polygons
+        training_set.updated_at = datetime.utcnow()
     else:
         training_set = TrainingPolygonSet(project_id=project_id, basemap_date=basemap_date, polygons=polygons)
         db.session.add(training_set)
 
-    db.session.commit()
-    return jsonify({'message': 'Training polygons saved successfully'}), 200
+    try:
+        db.session.commit()
+        return jsonify({'message': 'Training polygons saved successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/training_polygons/<int:project_id>', methods=['GET'])
 def get_training_polygons(project_id):
     training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id).all()
     result = [{
         'id': ts.id,
-        'basemap_date': ts.basemap_date.isoformat(),
+        'basemap_date': ts.basemap_date,
         'has_polygons': bool(ts.polygons),
         'updated_at': ts.updated_at.isoformat()
     } for ts in training_sets]

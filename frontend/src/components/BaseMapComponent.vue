@@ -45,45 +45,24 @@ export default {
         const rasterLayer = ref(null);
         const vectorLayer = ref(null);
         const isLoading = ref(false);
-
+        const baseLayer = ref(null);
 
 
         const initMap = () => {
             isLoading.value = true;
 
-            const apiKey = process.env.VUE_APP_PLANET_API_KEY;
-            if (!apiKey) {
-                console.error('API key is not defined. Please check your .env file.');
-                return;
-            }
-
-            let source;
-            if (props.basemapDate === null) {
-                source = new XYZ({
-                    url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                });
-            } else {
-                const formattedDate = props.basemapDate.value.replace(/^(\d{4})-(\d{1,2})$/, (_, year, month) => `${year}-${month.padStart(2, '0')}`);
-                source = new XYZ({
-                    url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${formattedDate}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
-                });
-            }
-
-            // Add error handling for the source
-            source.on('tileloaderror', () => {
-                emit('basemap-error', `Failed to load basemap for date: ${formattedDate}`);
-                isLoading.value = false;
+            const source = new XYZ({
+                url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png'
             });
 
-            // Load map
+            baseLayer.value = new TileLayer({
+                source: source,
+                zIndex: 0
+            });
+
             map.value = new Map({
                 target: mapContainer.value,
-                layers: [
-                    new TileLayer({
-                        source: source,
-                        zIndex: 0
-                    })
-                ],
+                layers: [baseLayer.value],
                 view: new View({
                     center: fromLonLat(props.center),
                     zoom: props.zoom
@@ -96,42 +75,30 @@ export default {
             });
         };
 
-        const updateBasemap = (basemapDate) => {
+        const updateBasemap = (date) => {
+            if (!date || !map.value) return;
 
             isLoading.value = true;
-
             const apiKey = process.env.VUE_APP_PLANET_API_KEY;
             if (!apiKey) {
                 console.error('API key is not defined. Please check your .env file.');
                 return;
             }
 
-            let source;
-            if (basemapDate === null) {
-                source = new XYZ({
-                    url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                });
-            } else {
-                const formattedDate = basemapDate.value.replace(/^(\d{4})-(\d{1,2})$/, (_, year, month) => `${year}-${month.padStart(2, '0')}`);
-                source = new XYZ({
-                    url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${formattedDate}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
-                });
-            }
+            console.log('Updating basemap for date:', date);
 
-            // Add error handling for the source
-            source.on('tileloaderror', () => {
+            const formattedDate = date.replace(/^(\d{4})-(\d{1,2})$/, (_, year, month) => `${year}-${month.padStart(2, '0')}`);
+            const newSource = new XYZ({
+                url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${formattedDate}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
+            });
+
+            newSource.on('tileloaderror', () => {
                 emit('basemap-error', `Failed to load basemap for date: ${formattedDate}`);
-            });
-
-            // Update the source of the first layer (basemap layer)
-            const layers = map.value.getLayers().getArray();
-            const basemapLayer = layers[0]; // Assuming the first layer is the basemap layer
-            basemapLayer.setSource(source);
-
-            map.value.once('rendercomplete', () => {
                 isLoading.value = false;
-                emit('map-ready', map.value);
             });
+
+            baseLayer.value.setSource(newSource);
+            isLoading.value = false;
         };
 
         const loadRaster = async (id) => {
@@ -227,11 +194,10 @@ export default {
             }
         });
 
-        watch(() => props.basemapDate, () => {
-            // if (map.value) {
-            //     map.value.setTarget(null);
-            // }
-            // initMap();
+        watch(() => props.basemapDate, (newDate) => {
+            if (newDate) {
+                updateBasemap(newDate);
+            }
         });
 
         const addLayer = (layer) => {

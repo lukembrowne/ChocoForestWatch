@@ -165,6 +165,47 @@ export function useDrawing(baseMapRef) {
     currentClassLabel.value = label;
   };
 
+  const getDrawnPolygonsGeoJSON = () => {
+    if (!vectorLayer.value) return null;
+
+    const features = vectorLayer.value.getSource().getFeatures();
+    const geoJSONFormat = new GeoJSON();
+    const featureCollection = {
+      type: 'FeatureCollection',
+      features: features.map(feature => {
+        const geoJSONFeature = geoJSONFormat.writeFeatureObject(feature, {
+          dataProjection: 'EPSG:4326',
+          featureProjection: 'EPSG:3857'
+        });
+        geoJSONFeature.properties = {
+          classLabel: feature.get('classLabel')
+        };
+        return geoJSONFeature;
+      })
+    };
+
+    return featureCollection;
+  };
+
+  const loadPolygons = (polygonsData) => {
+    if (!vectorLayer.value) return;
+
+    clearDrawnPolygons();
+
+    const geoJSONFormat = new GeoJSON();
+    polygonsData.features.forEach(feature => {
+      const olFeature = geoJSONFormat.readFeature(feature, {
+        featureProjection: 'EPSG:3857'
+      });
+      olFeature.set('classLabel', feature.properties.classLabel);
+      vectorLayer.value.getSource().addFeature(olFeature);
+    });
+
+    drawnPolygons.value = vectorLayer.value.getSource().getFeatures();
+    updateVectorLayerStyle();
+  };
+
+
   watch(map, (newMap) => {
     if (newMap) {
       initVectorLayer();
@@ -180,6 +221,8 @@ export function useDrawing(baseMapRef) {
     deletePolygon,
     setClassLabel,
     updateVectorLayerStyle,
-    clearDrawnPolygons
+    clearDrawnPolygons,
+    getDrawnPolygonsGeoJSON,
+    loadPolygons
   };
 }
