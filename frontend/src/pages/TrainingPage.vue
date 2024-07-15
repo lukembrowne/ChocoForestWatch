@@ -1,72 +1,121 @@
 <template>
-  <q-page class="row">
-    <q-drawer v-model="leftDrawerOpen" show-if-above :width="300" :breakpoint="400" bordered class="bg-grey-3">
+  <q-page class="flex">
+    <!-- Left Drawer for Basemap Dates -->
+    <q-drawer
+      v-model="leftDrawerOpen"
+      show-if-above
+      :width="250"
+      :breakpoint="400"
+      bordered
+      class="bg-grey-3"
+      side="left"
+    >
       <q-scroll-area class="fit">
-        <q-list>
-          <q-item-label header>Instructions</q-item-label>
+        <q-list padding>
+          <q-item-label header>Basemap Dates</q-item-label>
+          <template v-for="(dates, year) in groupedBasemapDates" :key="year">
+            <q-expansion-item :label="year" header-class="text-primary" default-opened>
+              <q-list dense>
+                <q-item v-for="date in dates" :key="date.value" dense>
+                  <q-item-section>
+                    <q-btn
+                      flat
+                      :label="date.label.split(' ')[0]"
+                      :color="date.value === selectedBasemapDate ? 'primary' : 'grey-7'"
+                      @click="selectBasemapDate(date.value)"
+                      class="full-width text-left"
+                      :icon-right="hasPolygons(date.value) ? 'check_circle' : null"
+                      size="sm"
+                    />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-expansion-item>
+          </template>
+        </q-list>
+      </q-scroll-area>
+    </q-drawer>
+
+   
+
+    <!-- Map Container -->
+    <div class="col relative-position" style="height: calc(100vh - 50px);">
+      <BaseMapComponent
+        ref="baseMap"
+        @map-ready="onMapReady"
+        @basemap-error="handleBasemapError"
+        :basemapDate="selectedBasemapDate"
+        class="absolute-full"
+      />
+    </div>
+
+    <!-- Right Drawer for Drawing Controls and Polygon List -->
+   <q-drawer
+      v-model="rightDrawerOpen"
+      show-if-above
+      :width="300"
+      bordered
+      class="bg-grey-3"
+      side="right"
+    >
+      <q-scroll-area class="fit">
+        <q-list padding>
+          <q-item-label header>Drawing Controls</q-item-label>
           <q-item>
             <q-item-section>
-              <ol>
-                <li>Select a basemap date from the dropdown below.</li>
-                <li>Choose a class from the dropdown.</li>
-                <li>Click the "Draw Polygon" button to start drawing.</li>
-                <li>Click on the map to add points to your polygon.</li>
-                <li>Double-click to finish drawing the polygon.</li>
-                <li>Repeat for different classes as needed.</li>
-              </ol>
+              <q-select v-model="classLabel" :options="classOptions" label="Class" dense />
+            </q-item-section>
+          </q-item>
+          <q-item>
+            <q-item-section>
+              <q-btn
+                :label="drawing ? 'Stop Drawing' : 'Draw Polygon'"
+                :color="drawing ? 'negative' : 'primary'"
+                @click="toggleDrawing"
+                class="full-width"
+              />
+            </q-item-section>
+          </q-item>
+          <q-item>
+            <q-item-section>
+              <q-btn label="Save Polygons" color="positive" @click="saveDrawnPolygons" class="full-width" />
             </q-item-section>
           </q-item>
 
-          <q-item-label header>Basemap Dates</q-item-label>
-          <q-item v-for="date in basemapDateOptions" :key="date.value">
+          <q-separator spaced />
+
+          <q-item-label header>Polygon Summary</q-item-label>
+          <q-item v-for="(count, label) in polygonSummary" :key="label">
             <q-item-section>
-              <q-btn :label="date.label" 
-                     :color="date.value === selectedBasemapDate ? 'primary' : 'grey'"
-                     @click="selectBasemapDate(date.value)" 
-                     class="full-width">
-                <q-badge v-if="hasPolygons(date.value)" color="green" floating>✓</q-badge>
-              </q-btn>
+              <q-item-label>{{ label }}: {{ count }}</q-item-label>
             </q-item-section>
           </q-item>
 
-          <q-item v-if="selectedBasemapDate">
-            <q-item-section>
-              <q-select v-model="classLabel" :options="classOptions" label="Class" />
-            </q-item-section>
-          </q-item>
+          <q-separator spaced />
 
-          <q-item v-if="selectedBasemapDate">
+          <q-item-label header>Drawn Training Polygons</q-item-label>
+          <q-item v-for="(polygon, index) in drawnPolygons" :key="index">
             <q-item-section>
-              <q-btn label="Draw Polygon" color="primary" @click="startDrawing" class="full-width" />
+              <q-item-label>Polygon {{ index + 1 }}</q-item-label>
+              <q-item-label caption>Class: {{ polygon.properties.classLabel }}</q-item-label>
             </q-item-section>
-          </q-item>
-
-          <q-item v-if="selectedBasemapDate">
-            <q-item-section>
-              <q-btn label="Save Polygons" color="positive" @click="saveDrawnPolygons" class="full-width q-mt-md" />
+            <q-item-section side>
+              <q-btn flat round icon="delete" @click="deletePolygon(index)" color="negative" />
             </q-item-section>
           </q-item>
         </q-list>
       </q-scroll-area>
     </q-drawer>
 
-    <div class="col">
-      <div class="map-container" style="height: calc(100vh - 50px);">
-        <BaseMapComponent ref="baseMap" @map-ready="onMapReady" @basemap-error="handleBasemapError"
-          :basemapDate="selectedBasemapDate" class="full-height full-width" />
-      </div>
-    </div>
-
+    <!-- Error Dialog -->
     <q-dialog v-model="showErrorDialog">
       <q-card>
         <q-card-section>
           <div class="text-h6">Error</div>
         </q-card-section>
-
         <q-card-section class="q-pt-none">
           {{ errorMessage }}
         </q-card-section>
-
         <q-card-actions align="right">
           <q-btn flat label="OK" color="primary" v-close-popup />
         </q-card-actions>
@@ -80,6 +129,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
+import { useTrainingStore } from 'src/stores/trainingStore'
 import { useDrawing } from '../composables/useDrawing';
 import BaseMapComponent from 'components/BaseMapComponent.vue'
 import { Draw } from 'ol/interaction'
@@ -99,11 +149,13 @@ export default {
   setup() {
     const router = useRouter()
     const projectStore = useProjectStore()
+    const trainingStore = useTrainingStore()
     const baseMap = ref(null)
     const project = ref({})
     const trainingPolygons = ref([])
     const classLabel = ref('forest');
     const leftDrawerOpen = ref(true)
+    const rightDrawerOpen = ref(true)
     const selectedSavedPolygons = ref(null)
     const selectedBasemapDate = ref(null)
     const $q = useQuasar()
@@ -122,6 +174,7 @@ export default {
     const savedPolygonsOptions = ref([])
 
     const currentProject = computed(() => projectStore.currentProject)
+    const drawnPolygons = computed(() => trainingStore.drawnPolygons)
 
     const basemapDateOptions = computed(() => {
       const options = []
@@ -140,18 +193,27 @@ export default {
 
     const datesWithPolygons = ref(new Set())
 
+    const polygonSummary = computed(() => {
+      const summary = {}
+      drawnPolygons.value.forEach(polygon => {
+        const label = polygon.properties.classLabel
+        summary[label] = (summary[label] || 0) + 1
+      })
+      return summary
+    })
+
     // New data structure to associate basemap dates with polygon sets
     const polygonSets = ref({})
 
     const {
       drawing,
-      polygons,
       startDrawing,
       stopDrawing,
       getDrawnPolygonsGeoJSON,
       setClassLabel,
       clearDrawnPolygons,
-      loadPolygons
+      loadPolygons,
+      deletePolygon,
     } = useDrawing(baseMap);
 
     const toggleDrawing = () => {
@@ -161,6 +223,19 @@ export default {
         startDrawing();
       }
     };
+
+    // Add this computed property for grouping dates by year
+    const groupedBasemapDates = computed(() => {
+      const grouped = {};
+      basemapDateOptions.value.forEach(date => {
+        const year = date.value.split('-')[0];
+        if (!grouped[year]) {
+          grouped[year] = [];
+        }
+        grouped[year].push(date);
+      });
+      return grouped;
+    });
 
     onMounted(async () => {
 
@@ -243,8 +318,8 @@ export default {
         classLabel.value = 'forest';
       } else if (event.key === '2') {
         classLabel.value = 'non-forest';
-      } else if (event.key === 'Delete' && selectedPolygon.value) {
-        deletePolygon(selectedPolygon.value);
+      } else if ((event.key === 'Delete' || event.key === 'Backspace') && trainingStore.selectedPolygon !== null) {
+        deletePolygon(trainingStore.selectedPolygon)
       } else if (event.key === ' ' && !event.repeat) {
         event.preventDefault();
         toggleDrawing();
@@ -473,6 +548,7 @@ export default {
       classLabel,
       classOptions,
       leftDrawerOpen,
+      rightDrawerOpen,
       selectedSavedPolygons,
       savedPolygonsOptions,
       selectedBasemapDate,
@@ -490,7 +566,12 @@ export default {
       updateBasemap,
       currentProject,
       selectBasemapDate,
-      hasPolygons
+      hasPolygons,
+      groupedBasemapDates,
+      drawnPolygons,
+      deletePolygon,
+      polygonSummary,
+      drawing
     }
   }
 }

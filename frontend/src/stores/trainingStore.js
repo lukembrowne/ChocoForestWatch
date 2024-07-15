@@ -18,13 +18,6 @@ export const useTrainingStore = defineStore('training', {
   },
 
   actions: {
-    setSelectedRaster(raster) {
-      this.selectedRaster = raster
-    },
-
-    setSelectedVector(vector) {
-      this.selectedVector = vector
-    },
 
     setDrawnPolygons(polygons) {
       this.drawnPolygons = polygons
@@ -41,6 +34,9 @@ export const useTrainingStore = defineStore('training', {
     },
     setSelectedPolygon(polygon) {
       this.selectedPolygon = polygon;
+    },
+    clearPolygons() {
+      this.drawnPolygons = []
     },
 
     async extractPixels(polygonsToUse) {

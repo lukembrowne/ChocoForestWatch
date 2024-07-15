@@ -10,7 +10,7 @@ import { storeToRefs } from 'pinia';
 
 export function useDrawing(baseMapRef) {
   const trainingStore = useTrainingStore();
-  const { drawnPolygons, selectedPolygon } = storeToRefs(trainingStore);
+  const { selectedPolygon } = storeToRefs(trainingStore);
 
   const drawing = ref(false);
   const vectorLayer = ref(null);
@@ -20,6 +20,8 @@ export function useDrawing(baseMapRef) {
   const currentClassLabel = ref('forest');
 
   const map = computed(() => baseMapRef.value?.map);
+  const drawnPolygons = computed(() => trainingStore.drawnPolygons);
+
 
   const initVectorLayer = () => {
     if (!map.value) return;
@@ -111,25 +113,28 @@ export function useDrawing(baseMapRef) {
     drawing.value = false;
   };
 
-  const deletePolygon = (polygon) => {
-    if (!vectorLayer.value) return;
+  const addPolygon = (feature) => {
+    const geoJSONFormat = new GeoJSON();
+    const geoJSONFeature = geoJSONFormat.writeFeatureObject(feature, {
+      dataProjection: 'EPSG:3857',
+      featureProjection: 'EPSG:3857'
+    });
+    trainingStore.addPolygon(geoJSONFeature);
+  };
 
-    const feature = vectorLayer.value.getSource().getFeatureById(polygon.id);
-    if (feature) {
+  const deletePolygon = (index) => {
+    if (index >= 0 && index < drawnPolygons.value.length) {
+      const feature = vectorLayer.value.getSource().getFeatures()[index];
       vectorLayer.value.getSource().removeFeature(feature);
+      trainingStore.removePolygon(index);
     }
-    trainingStore.removePolygon(polygon.id);
-    if (selectedPolygon.value && selectedPolygon.value.id === polygon.id) {
-      trainingStore.setSelectedPolygon(null);
-    }
-    updateVectorLayerStyle();
   };
 
   const clearDrawnPolygons = () => {
     if (vectorLayer.value) {
       vectorLayer.value.getSource().clear();
     }
-    drawnPolygons.value = [];
+    trainingStore.clearPolygons();
   };
 
   const updateVectorLayerStyle = () => {
@@ -188,21 +193,15 @@ export function useDrawing(baseMapRef) {
   };
 
   const loadPolygons = (polygonsData) => {
-    if (!vectorLayer.value) return;
-
     clearDrawnPolygons();
-
     const geoJSONFormat = new GeoJSON();
     polygonsData.features.forEach(feature => {
       const olFeature = geoJSONFormat.readFeature(feature, {
         featureProjection: 'EPSG:3857'
       });
-      olFeature.set('classLabel', feature.properties.classLabel);
       vectorLayer.value.getSource().addFeature(olFeature);
     });
-
-    drawnPolygons.value = vectorLayer.value.getSource().getFeatures();
-    updateVectorLayerStyle();
+    trainingStore.setDrawnPolygons(polygonsData.features);
   };
 
 
