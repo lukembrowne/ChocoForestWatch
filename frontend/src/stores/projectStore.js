@@ -26,7 +26,7 @@ export const useProjectStore = defineStore('project', {
         const response = await api.createProject({
           name: projectData.name,
           description: projectData.description,
-          aoi: projectData.aoi.geometry  // Send only the geometry part of the GeoJSON
+          aoi: projectData.aoi.geometry 
         });
         this.currentProject = response.data;
         this.projects.push(response.data);

@@ -126,7 +126,7 @@ export default {
       try {
         const aoiFeature = vectorLayer.value.getSource().getFeatures()[0];
         const aoiGeojson = new GeoJSON().writeFeatureObject(aoiFeature, {
-          dataProjection: 'EPSG:3857',
+          dataProjection: 'EPSG:4326',
           featureProjection: 'EPSG:3857'
         });
 

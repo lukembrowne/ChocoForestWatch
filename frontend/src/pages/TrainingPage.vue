@@ -1,15 +1,8 @@
 <template>
   <q-page class="flex">
     <!-- Left Drawer for Basemap Dates -->
-    <q-drawer
-      v-model="leftDrawerOpen"
-      show-if-above
-      :width="250"
-      :breakpoint="400"
-      bordered
-      class="bg-grey-3"
-      side="left"
-    >
+    <q-drawer v-model="leftDrawerOpen" show-if-above :width="250" :breakpoint="400" bordered class="bg-grey-3"
+      side="left">
       <q-scroll-area class="fit">
         <q-list padding>
           <q-item-label header>Basemap Dates</q-item-label>
@@ -18,15 +11,10 @@
               <q-list dense>
                 <q-item v-for="date in dates" :key="date.value" dense>
                   <q-item-section>
-                    <q-btn
-                      flat
-                      :label="date.label.split(' ')[0]"
+                    <q-btn flat :label="date.label.split(' ')[0]"
                       :color="date.value === selectedBasemapDate ? 'primary' : 'grey-7'"
-                      @click="selectBasemapDate(date.value)"
-                      class="full-width text-left"
-                      :icon-right="hasPolygons(date.value) ? 'check_circle' : null"
-                      size="sm"
-                    />
+                      @click="selectBasemapDate(date.value)" class="full-width text-left"
+                      :icon-right="hasPolygons(date.value) ? 'check_circle' : null" size="sm" />
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -36,28 +24,16 @@
       </q-scroll-area>
     </q-drawer>
 
-   
+
 
     <!-- Map Container -->
     <div class="col relative-position" style="height: calc(100vh - 50px);">
-      <BaseMapComponent
-        ref="baseMap"
-        @map-ready="onMapReady"
-        @basemap-error="handleBasemapError"
-        :basemapDate="selectedBasemapDate"
-        class="absolute-full"
-      />
+      <BaseMapComponent ref="baseMap" @map-ready="onMapReady" @basemap-error="handleBasemapError"
+        :basemapDate="selectedBasemapDate" class="absolute-full" />
     </div>
 
     <!-- Right Drawer for Drawing Controls and Polygon List -->
-   <q-drawer
-      v-model="rightDrawerOpen"
-      show-if-above
-      :width="300"
-      bordered
-      class="bg-grey-3"
-      side="right"
-    >
+    <q-drawer v-model="rightDrawerOpen" show-if-above :width="300" bordered class="bg-grey-3" side="right">
       <q-scroll-area class="fit">
         <q-list padding>
           <q-item-label header>Drawing Controls</q-item-label>
@@ -68,12 +44,8 @@
           </q-item>
           <q-item>
             <q-item-section>
-              <q-btn
-                :label="drawing ? 'Stop Drawing' : 'Draw Polygon'"
-                :color="drawing ? 'negative' : 'primary'"
-                @click="toggleDrawing"
-                class="full-width"
-              />
+              <q-btn :label="drawing ? 'Stop Drawing' : 'Draw Polygon'" :color="drawing ? 'negative' : 'primary'"
+                @click="toggleDrawing" class="full-width" />
             </q-item-section>
           </q-item>
           <q-item>
@@ -81,6 +53,18 @@
               <q-btn label="Save Polygons" color="positive" @click="saveDrawnPolygons" class="full-width" />
             </q-item-section>
           </q-item>
+
+          <q-separator spaced />
+          <q-btn label="Train Model" color="primary" @click="trainModel" :loading="isTraining" class="full-width" />
+
+          <!-- Progress indicator -->
+          <q-linear-progress v-if="trainingProgress > 0" :value="trainingProgress" color="positive" />
+
+          <!-- Results display -->
+          <div v-if="trainingResults">
+            <h3>Training Results:</h3>
+            <pre>{{ JSON.stringify(trainingResults, null, 2) }}</pre>
+          </div>
 
           <q-separator spaced />
 
@@ -125,7 +109,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
@@ -139,6 +123,8 @@ import { GeoJSON } from 'ol/format'
 import apiService from 'src/services/api'
 import { Style, Fill, Stroke } from 'ol/style';
 import Feature from 'ol/Feature';
+import { io } from 'socket.io-client';
+import { transformExtent } from 'ol/proj';
 
 
 export default {
@@ -161,6 +147,11 @@ export default {
     const $q = useQuasar()
     const showErrorDialog = ref(false)
     const errorMessage = ref('')
+    const isTraining = ref(false);
+    const trainingProgress = ref(0);
+    const trainingResults = ref(null);
+    const socket = io('http://127.0.0.1:5000');
+
 
     // Define vector layers
     const aoiLayer = ref(null);
@@ -257,6 +248,17 @@ export default {
       await fetchExistingPolygonDates()
       window.addEventListener('keydown', handleKeyDown);
 
+
+      socket.on('training_update', (update) => {
+        if (update.projectId === currentProject.value.id) {
+          trainingProgress.value = update.progress;
+          console.log(update.message);
+          if (update.message) {
+            trainingResults.value = update.message;
+          }
+        }
+      });
+
     })
 
     const onMapReady = (map) => {
@@ -298,8 +300,20 @@ export default {
         try {
 
           // Saved as GEOJSON so need to convert to geometry
+          // const geojsonFormat = new GeoJSON();
+          // const geometry = geojsonFormat.readGeometry(projectStore.currentProject.aoi);
+
+          // Assuming projectStore.currentProject.aoi contains the GeoJSON string
+          const geojsonString = projectStore.currentProject.aoi;
+
+          // Initialize the GeoJSON format with the correct projections
           const geojsonFormat = new GeoJSON();
-          const geometry = geojsonFormat.readGeometry(projectStore.currentProject.aoi);
+
+          // Read the geometry from the GeoJSON string, specifying the projections
+          const geometry = geojsonFormat.readGeometry(geojsonString, {
+            dataProjection: 'EPSG:4326',    // The projection of the GeoJSON data
+            featureProjection: 'EPSG:3857'  // The projection to convert the data to
+          });
           const extent = geometry.getExtent();
           const aoiFeature = new Feature({
             geometry: geometry,
@@ -536,9 +550,63 @@ export default {
       return datesWithPolygons.value.has(date)
     }
 
+    // Convert aoi GeoJSON to an OpenLayers feature
+    const convertAoiToFeature = (aoiGeoJson) => {
+      const geojsonFormat = new GeoJSON();
+      const geometry = geojsonFormat.readGeometry(aoiGeoJson, {
+        dataProjection: 'EPSG:4326', // Assuming the AOI is in lat/long
+        featureProjection: 'EPSG:3857' // Convert to Web Mercator for OpenLayers
+      });
+
+      return new Feature({
+        geometry: geometry
+      });
+    };
+
+    const trainModel = async () => {
+      isTraining.value = true;
+      trainingProgress.value = 0;
+      trainingResults.value = null;
+
+      // Assuming projectStore.currentProject.aoi contains the GeoJSON string
+      const geojsonString = projectStore.currentProject.aoi;
+
+      // Initialize the GeoJSON format with the correct projections
+      const geojsonFormat = new GeoJSON();
+
+      // Read the geometry from the GeoJSON string, specifying the projections
+      const geometry = geojsonFormat.readGeometry(geojsonString, {
+        dataProjection: 'EPSG:4326',    // The projection of the GeoJSON data
+        featureProjection: 'EPSG:3857'  // The projection to convert the data to
+      });
+      const extent = geometry.getExtent();
+      const extentLatLon = transformExtent(extent, 'EPSG:3857', 'EPSG:4326');
+
+      try {
+        const response = await apiService.trainModel({
+          projectId: currentProject.value.id,
+          aoiExtent: extentLatLon,
+          basemapDate: selectedBasemapDate.value,
+          trainingPolygons: drawnPolygons.value
+        });
+
+        trainingResults.value = response.data;
+      } catch (error) {
+        console.error('Error training model:', error);
+        // Handle error (show notification, etc.)
+      } finally {
+        isTraining.value = false;
+      }
+    };
+
 
     watch(classLabel, (newLabel) => {
       setClassLabel(newLabel);
+    });
+
+    onUnmounted(() => {
+      socket.off('training_update');
+      socket.disconnect();
     });
 
     return {
@@ -571,7 +639,11 @@ export default {
       drawnPolygons,
       deletePolygon,
       polygonSummary,
-      drawing
+      drawing,
+      isTraining,
+      trainingProgress,
+      trainingResults,
+      trainModel
     }
   }
 }

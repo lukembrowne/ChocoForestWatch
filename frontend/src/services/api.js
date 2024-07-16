@@ -97,6 +97,10 @@ export default {
     });
   },
 
+  trainModel(data) {
+    return axios.post(`${API_URL}/train_model`, data);
+  },
+
   extractPixels(JSON) {
     return axios.post(`${API_URL}/extract_pixels`, JSON, {
       headers: {
