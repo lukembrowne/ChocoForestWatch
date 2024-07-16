@@ -25,7 +25,12 @@ import pdb
 from datetime import datetime
 from rasterio.windows import Window
 from dotenv import load_dotenv
-
+from werkzeug.utils import secure_filename
+from flask_socketio import SocketIO, emit
+import threading
+from requests.auth import HTTPBasicAuth
+from shapely.geometry import shape, box
+from pyproj import CRS, Transformer
 
 
 # Load environment variables from the .env file
@@ -33,6 +38,8 @@ load_dotenv()
 
 # Load the Planet API key from an environment variable
 PLANET_API_KEY = os.getenv('PLANET_API_KEY')
+QUAD_DOWNLOAD_DIR = './data/planet_quads'
+
 
 if not PLANET_API_KEY:
     raise ValueError("No PLANET_API_KEY set for Flask application. Did you follow the setup instructions?")
@@ -47,6 +54,8 @@ session.auth = (PLANET_API_KEY, "")
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+CORS(app, resources={r"/api/*": {"origins": "http://localhost:9000"}})
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Define a directory to temporarily store uploaded files
 UPLOAD_FOLDER = 'uploads'
@@ -219,6 +228,7 @@ def update_project(project_id):
 
 @app.route('/api/projects', methods=['GET'])
 def list_projects():
+    print("getting projects")
     projects = Project.query.all()
     return jsonify([project.to_dict() for project in projects])
 
@@ -579,58 +589,225 @@ def get_vector_by_id(vector_id):
         })
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
+    
+
+
+
+
+
+def get_planet_quads(aoi_extent, basemap_date):
+    if not PLANET_API_KEY:
+        raise ValueError("PLANET_API_KEY environment variable is not set")
+
+    year, month = basemap_date.split('-')
+    mosaic_name = f"planet_medres_normalized_analytic_{year}-{month}_mosaic"
+    
+    # Find the mosaic ID
+    mosaic_id = get_mosaic_id(mosaic_name)
+    
+    # Get quad info for the AOI
+    quads = get_quad_info(mosaic_id, aoi_extent)
+
+
+    ### PICK UP HERE    
+
+    # Download and process quads
+    processed_quads = download_and_process_quads(quads, year, month)
+    
+    return processed_quads
+
+def transform(func, geom):
+    if geom.is_empty:
+        return geom
+    if geom.type in ('Point', 'LineString', 'Polygon'):
+        return shapely.ops.transform(func, geom)
+    elif geom.type.startswith('Multi') or geom.type == 'GeometryCollection':
+        return shapely.geometry.collection.GeometryCollection([transform(func, part) for part in geom.geoms])
+    else:
+        raise ValueError('Type %r not recognized' % geom.type)
+
+def get_quad_info(mosaic_id, bbox):
+
+    # Get the bounding box
+    minx, miny, maxx, maxy = bbox
+    bbox_comma = f"{minx},{miny},{maxx},{maxy}"
+
+    url = f"https://api.planet.com/basemaps/v1/mosaics/{mosaic_id}/quads"
+    params = {
+        "bbox": bbox_comma,
+        "minimal": "true"  # Use string "true" instead of boolean True
+    }
+
+    response = requests.get(url, auth=HTTPBasicAuth(PLANET_API_KEY, ''), params=params)
+    response.raise_for_status()
+    return response.json().get('items', [])
+
+
+def get_mosaic_id(mosaic_name):
+    url = "https://api.planet.com/basemaps/v1/mosaics"
+    params = {"name__is": mosaic_name}
+    response = requests.get(url, auth=HTTPBasicAuth(PLANET_API_KEY, ''), params=params)
+    response.raise_for_status()
+    mosaics = response.json().get('mosaics', [])
+    if not mosaics:
+        raise ValueError(f"No mosaic found with name: {mosaic_name}")
+    
+
+
+    return mosaics[0]['id']
+
+
+def download_and_process_quads(quads, year, month):
+    processed_quads = []
+    for quad in quads:
+        quad_id = quad['id']
+        download_url = quad['_links']['download']
+        
+        # Create directory for storing quads
+        quad_dir = os.path.join(QUAD_DOWNLOAD_DIR, year, month)
+        os.makedirs(quad_dir, exist_ok=True)
+        
+        # Download the quad
+        local_filename = os.path.join(quad_dir, f"{quad_id}.tif")
+        if not os.path.exists(local_filename):
+            response = requests.get(download_url, auth=HTTPBasicAuth(PLANET_API_KEY, ''), stream=True)
+            response.raise_for_status()
+            with open(local_filename, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        
+        # Process the quad (e.g., reprojection, clipping)
+        # processed_filename = process_quad(local_filename, quad_id)
+        
+        processed_quads.append({
+            'id': quad_id,
+            # 'filename': processed_filename,
+            'bbox': quad['bbox']
+        })
+    
+    return processed_quads
+
+
+
 
 @app.route('/api/train_model', methods=['POST'])
 def train_model():
-    params = request.json
-    pixel_dataset_id = params['pixel_dataset_id']
-    model_name = params.get('model_name', 'XGBoost_LandCover')
-    
-    dataset = PixelDataset.query.get(pixel_dataset_id)
-    if not dataset:
-        return jsonify({"error": "Pixel dataset not found"}), 404
+    data = request.json
+    project_id = data['projectId']
+    aoi_extent = data['aoiExtent']
+    basemap_date = data['basemapDate']
+    training_polygons = data['trainingPolygons']
 
-    pixel_data, class_labels = load_pixel_data(dataset.file_path)
-    if pixel_data is None or class_labels is None:
-        return jsonify({"error": "Failed to load pixel data"}), 500
-
-    # Encode class labels
-    le = LabelEncoder()
-    y = le.fit_transform(class_labels)
-
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(pixel_data, y, test_size=0.2, random_state=42)
-
-   # pdb.set_trace()
-
-    # Create and train model
-    model = XGBClassifier(
-        n_estimators=params.get('n_estimators', 100),
-        max_depth=params.get('max_depth', 3),
-        learning_rate=params.get('learning_rate', 0.1)
-    )
-    model.fit(X_train, y_train)
+    # For debugging proces... 
+    get_planet_quads(aoi_extent, basemap_date)
 
 
-    # Cross-validation
-    cv_scores = cross_val_score(model, X_train, y_train, cv=params.get('n_folds', 5))
+    # Start a background task for the training process
+    thread = threading.Thread(target=run_training_process, args=(project_id, aoi, basemap_date, training_polygons))
+    thread.start()
 
-    # Predictions and metrics
-    y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, target_names=le.classes_)
-    
-    # Save the trained model
-    saved_model = TrainedModel.save_model(model, model_name, pixel_dataset_id, accuracy)
+    return jsonify({"message": "Training process started"}), 202
+
+def run_training_process(project_id, aoi, basemap_date, training_polygons):
+    try:
+        # Step 1: Get Planet quads
+        update_progress(project_id, 0.1, "Fetching Planet quads")
+        quads = get_planet_quads(aoi, basemap_date)
+        
+        # import time
+        # time.sleep(5)
+
+        # Step 2: Prepare data
+        update_progress(project_id, 0.3, "Preparing data")
+        # X, y = prepare_data(quads, training_polygons)
+
+        # Step 3: Train XGBoost model
+        update_progress(project_id, 0.6, "Training XGBoost model")
+        # model, metrics = train_xgboost_model(X, y)
+
+        # Step 4: Save model and results
+        update_progress(project_id, 0.9, "Saving model and results")
+        # save_model_and_results(project_id, model, metrics)
+
+        # Complete
+        # update_progress(project_id, 1.0, "Training complete", metrics)
+        update_progress(project_id, 1.0, "Training complete")
 
 
-    return jsonify({
-        "message": "Model trained successfully",
-        "model_id": saved_model.id,
-        "accuracy": float(accuracy),
-        "cv_scores": cv_scores.tolist(),
-        "classification_report": report
+    except Exception as e:
+        update_progress(project_id, 1.0, f"Error: {str(e)}")
+
+def update_progress(project_id, progress, message, data=None):
+    socketio.emit('training_update', {
+        'projectId': project_id,
+        'progress': progress,
+        'message': message,
+        'data': data
     })
+
+
+
+
+
+
+
+
+
+
+
+
+
+# @app.route('/api/train_model', methods=['POST'])
+# def train_model():
+#     params = request.json
+#     pixel_dataset_id = params['pixel_dataset_id']
+#     model_name = params.get('model_name', 'XGBoost_LandCover')
+    
+#     dataset = PixelDataset.query.get(pixel_dataset_id)
+#     if not dataset:
+#         return jsonify({"error": "Pixel dataset not found"}), 404
+
+#     pixel_data, class_labels = load_pixel_data(dataset.file_path)
+#     if pixel_data is None or class_labels is None:
+#         return jsonify({"error": "Failed to load pixel data"}), 500
+
+#     # Encode class labels
+#     le = LabelEncoder()
+#     y = le.fit_transform(class_labels)
+
+#     # Split data
+#     X_train, X_test, y_train, y_test = train_test_split(pixel_data, y, test_size=0.2, random_state=42)
+
+#    # pdb.set_trace()
+
+#     # Create and train model
+#     model = XGBClassifier(
+#         n_estimators=params.get('n_estimators', 100),
+#         max_depth=params.get('max_depth', 3),
+#         learning_rate=params.get('learning_rate', 0.1)
+#     )
+#     model.fit(X_train, y_train)
+
+
+#     # Cross-validation
+#     cv_scores = cross_val_score(model, X_train, y_train, cv=params.get('n_folds', 5))
+
+#     # Predictions and metrics
+#     y_pred = model.predict(X_test)
+#     accuracy = accuracy_score(y_test, y_pred)
+#     report = classification_report(y_test, y_pred, target_names=le.classes_)
+    
+#     # Save the trained model
+#     saved_model = TrainedModel.save_model(model, model_name, pixel_dataset_id, accuracy)
+
+
+#     return jsonify({
+#         "message": "Model trained successfully",
+#         "model_id": saved_model.id,
+#         "accuracy": float(accuracy),
+#         "cv_scores": cv_scores.tolist(),
+#         "classification_report": report
+#     })
 
 
 # Predict landcover using a trained model
