@@ -143,7 +143,6 @@ export default {
     const leftDrawerOpen = ref(true)
     const rightDrawerOpen = ref(true)
     const selectedSavedPolygons = ref(null)
-    const selectedBasemapDate = ref(null)
     const $q = useQuasar()
     const showErrorDialog = ref(false)
     const errorMessage = ref('')
@@ -181,6 +180,13 @@ export default {
       }
       return options
     })
+
+    // Use the stored selectedBasemapDate
+    const selectedBasemapDate = computed({
+      get: () => trainingStore.selectedBasemapDate,
+      set: (value) => trainingStore.setSelectedBasemapDate(value)
+    })
+
 
     const datesWithPolygons = ref(new Set())
 
@@ -247,6 +253,11 @@ export default {
 
       await fetchExistingPolygonDates()
       window.addEventListener('keydown', handleKeyDown);
+
+      // If there's a stored basemap date, load it
+      if (selectedBasemapDate.value) {
+        await selectBasemapDate(selectedBasemapDate.value)
+      }
 
 
       socket.on('training_update', (update) => {

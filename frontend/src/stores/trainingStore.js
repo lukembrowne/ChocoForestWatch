@@ -4,18 +4,12 @@ import apiService from '../services/api'
 
 export const useTrainingStore = defineStore('training', {
   state: () => ({
-    selectedRaster: null,
-    selectedVector: null,
     drawnPolygons: [],
     pixelsExtracted: false,
     extractionError: null,
     selectedPolygon: null,
+    selectedBasemapDate: null, // Add this new state property
   }),
-
-  getters: {
-    canExtractPixels: (state) =>
-      state.selectedRaster && (state.selectedVector || state.drawnPolygons.length > 0)
-  },
 
   actions: {
 
@@ -37,6 +31,9 @@ export const useTrainingStore = defineStore('training', {
     },
     clearPolygons() {
       this.drawnPolygons = []
+    },
+    setSelectedBasemapDate(date) { 
+      this.selectedBasemapDate = date;
     },
   }
 })
