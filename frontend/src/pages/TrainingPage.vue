@@ -254,12 +254,6 @@ export default {
       await fetchExistingPolygonDates()
       window.addEventListener('keydown', handleKeyDown);
 
-      // If there's a stored basemap date, load it
-      if (selectedBasemapDate.value) {
-        await selectBasemapDate(selectedBasemapDate.value)
-      }
-
-
       socket.on('training_update', (update) => {
         if (update.projectId === currentProject.value.id) {
           trainingProgress.value = update.progress;
@@ -335,6 +329,12 @@ export default {
           console.error('Error getting AOI extent:', error);
         }
       }
+
+      // If there's a stored basemap date, load it
+      if (selectedBasemapDate.value) {
+        selectBasemapDate(selectedBasemapDate.value)
+      }
+
     }
 
 
