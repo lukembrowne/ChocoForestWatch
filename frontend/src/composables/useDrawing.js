@@ -113,15 +113,6 @@ export function useDrawing(baseMapRef) {
     drawing.value = false;
   };
 
-  const addPolygon = (feature) => {
-    const geoJSONFormat = new GeoJSON();
-    const geoJSONFeature = geoJSONFormat.writeFeatureObject(feature, {
-      dataProjection: 'EPSG:3857',
-      featureProjection: 'EPSG:3857'
-    });
-    trainingStore.addPolygon(geoJSONFeature);
-  };
-
   const deletePolygon = (index) => {
     if (index >= 0 && index < drawnPolygons.value.length) {
       const feature = vectorLayer.value.getSource().getFeatures()[index];
@@ -179,7 +170,7 @@ export function useDrawing(baseMapRef) {
       type: 'FeatureCollection',
       features: features.map(feature => {
         const geoJSONFeature = geoJSONFormat.writeFeatureObject(feature, {
-          dataProjection: 'EPSG:4326',
+          dataProjection: 'EPSG:3857',
           featureProjection: 'EPSG:3857'
         });
         geoJSONFeature.properties = {
@@ -194,11 +185,10 @@ export function useDrawing(baseMapRef) {
 
   const loadPolygons = (polygonsData) => {
     clearDrawnPolygons();
+    console.log(polygonsData);
     const geoJSONFormat = new GeoJSON();
     polygonsData.features.forEach(feature => {
-      const olFeature = geoJSONFormat.readFeature(feature, {
-        featureProjection: 'EPSG:3857'
-      });
+      const olFeature = geoJSONFormat.readFeature(feature);
       vectorLayer.value.getSource().addFeature(olFeature);
     });
     trainingStore.setDrawnPolygons(polygonsData.features);

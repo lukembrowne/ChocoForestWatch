@@ -32,6 +32,9 @@ from requests.auth import HTTPBasicAuth
 from shapely.geometry import shape, box
 from loguru import logger
 import sys
+from flask.cli import with_appcontext
+import click
+
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -132,15 +135,6 @@ class Raster(db.Model):
     filepath = db.Column(db.String(200), nullable=False)
     description = db.Column(db.String(200))
 
-class TrainingPolygons(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    filename = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.String(200))
-    geojson = db.Column(JSONB)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-
-
 class PixelDataset(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     raster_id = db.Column(db.Integer, db.ForeignKey('raster.id'))
@@ -153,8 +147,6 @@ class PixelDataset(db.Model):
 class TrainedModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    file_path = db.Column(db.String(255), nullable=False)
-    pixel_dataset_id = db.Column(db.Integer, db.ForeignKey('pixel_dataset.id'))
     accuracy = db.Column(db.Float)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -166,7 +158,7 @@ class TrainedModel(db.Model):
         
         joblib.dump(model, file_path)
         
-        new_model = cls(name=name, file_path=file_path, pixel_dataset_id=pixel_dataset_id, accuracy=accuracy)
+        new_model = cls(name=name, accuracy=accuracy)
         db.session.add(new_model)
         db.session.commit()
         return new_model
@@ -183,6 +175,24 @@ class TrainedModel(db.Model):
 # Create tables
 with app.app_context():
     db.create_all()
+
+
+
+@click.command('clear_db')
+@with_appcontext
+def clear_db_command():
+    """Clear all data from the database."""
+    if click.confirm('Are you sure you want to delete all data from the database?', abort=True):
+        meta = db.metadata
+        for table in reversed(meta.sorted_tables):
+            click.echo(f'Clearing table {table}')
+            db.session.execute(table.delete())
+        db.session.commit()
+        click.echo('All data has been cleared from the database.')
+
+# Add this command to your Flask app
+app.cli.add_command(clear_db_command)
+
 
 # Serve static files from the 'data' directory
 @app.route('/data/<path:filename>')
@@ -369,63 +379,6 @@ def list_pixel_datasets():
     } for dataset in datasets])
 
 
-
-
-# Extract pixel values from raster based on polygons
-@app.route('/api/extract_pixels', methods=['POST'])
-def extract_pixels():
-    data = request.json
-    raster_id = data.get('rasterId')
-    polygons = data.get('polygons')
-
-    if not raster_id or not polygons:
-        return jsonify({'error': 'Missing raster ID or polygons'}), 400
-
-    raster_file = fetch_raster_file_path(raster_id)
-
-    if not os.path.exists(raster_file):
-        return jsonify({'error': 'Raster file not found'}), 404
-
-    all_pixels = []
-    all_labels = []
-
-    with rasterio.open(raster_file) as src:
-        if src.count != 4:
-            return jsonify({'error': 'Raster file does not have 4 bands'}), 400
-
-        for feature in polygons:
-
-            geom = shape(feature['geometry'])
-            class_label = feature['properties']['classLabel']
-            
-            out_image, out_transform = mask(src, [geom], crop=True, all_touched=True)
-            out_image = np.ma.masked_equal(out_image, src.nodata)
-            
-            # Reshape the output to have pixels as rows and bands as columns
-            pixels = out_image.reshape(out_image.shape[0], -1).T
-            
-            # Remove any pixels where all bands are masked
-            valid_pixels = pixels[~np.all(pixels.mask, axis=1)]
-            
-            if valid_pixels.size > 0:
-                all_pixels.extend(valid_pixels.data)
-                all_labels.extend([class_label] * valid_pixels.shape[0])
-
-    all_pixels = np.array(all_pixels)
-    all_labels = np.array(all_labels)
-
-    if all_pixels.size == 0:
-        return jsonify({'error': 'No valid pixels extracted'}), 400
-
-    store_pixel_data(raster_id, all_pixels, all_labels)
-
-    return jsonify({
-        "message": "Pixel data extracted and stored successfully",
-        "pixel_count": all_pixels.shape[0],
-        "band_count": all_pixels.shape[1]
-    })
-
-
 def fetch_raster_file_path(raster_id):
     try:
         raster = Raster.query.filter_by(id=raster_id).one()
@@ -471,17 +424,6 @@ def get_rasters():
         })
     return jsonify(raster_list)
 
-@app.route('/api/list_vectors', methods=['GET'])
-def list_vectors():
-    vectors = TrainingPolygons.query.all()
-    return jsonify([{
-        "id": v.id,
-        "filename": v.filename,
-        "description": v.description,
-        "feature_count": len(v.geojson['features'])
-    } for v in vectors])
-
-
 @app.route('/api/list_models', methods=['GET'])
 def get_models():
     models = TrainedModel.query.all()
@@ -496,93 +438,6 @@ def get_models():
             'created_at': model.created_at
         })
     return jsonify(model_list)
-
-@app.route('/api/upload_vector', methods=['POST'])
-def upload_vector():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-    file = request.files['file']
-    description = request.form.get('description', '')
-    
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-    
-    if file and file.filename.endswith('.geojson'):
-        filename = file.filename
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        
-        with open(filepath, 'r') as f:
-            geojson = json.load(f)
-        
-        # Ensure the GeoJSON is a FeatureCollections
-        if geojson['type'] != 'FeatureCollection':
-            geojson = {
-                "type": "FeatureCollection",
-                "features": [geojson] if geojson['type'] == 'Feature' else []
-            }
-        
-        new_vector = TrainingPolygons(
-            filename=filename,
-            description=description,
-            geojson=geojson
-        )
-        db.session.add(new_vector)
-        db.session.commit()
-        
-        return jsonify({
-            "message": "Vector file uploaded successfully.",
-            "id": new_vector.id,
-            "feature_count": len(geojson['features'])
-        }), 200
-    
-    return jsonify({"error": "Invalid file format"}), 400
-
-
-
-@app.route('/api/save_drawn_polygons', methods=['POST'])
-def save_drawn_polygons():
-    data = request.json
-    if not data or 'polygons' not in data:
-        return jsonify({"error": "No polygon data provided"}), 400
-
-    description = data.get('description', 'Drawn polygons')
-    polygons = data['polygons']
-
-    geojson = {
-        "type": "FeatureCollection",
-        "features": []
-    }
-
-    for polygon in polygons:
-        feature = {
-            "type": "Feature",
-            "properties": {
-                "classLabel": polygon['properties']['classLabel']
-            },
-            "geometry": polygon['geometry']
-        }
-        geojson['features'].append(feature)
-
-    new_vector = TrainingPolygons(
-        filename=f"drawn_polygons_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.geojson",
-        description=description,
-        geojson=geojson
-    )
-
-    try:
-        db.session.add(new_vector)
-        db.session.commit()
-
-        return jsonify({
-            "message": "Drawn polygons saved successfully",
-            "id": new_vector.id,
-            "filename": new_vector.filename,
-            "feature_count": len(geojson['features'])
-        }), 200
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/rasters/<int:raster_id>', methods=['GET'])
@@ -600,23 +455,58 @@ def get_raster_by_id(raster_id):
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/vectors/<int:vector_id>', methods=['GET'])
-def get_vector_by_id(vector_id):
+
+# Model training
+
+@app.route('/api/train_model', methods=['POST'])
+def train_model():
+    data = request.json
+    project_id = data['projectId']
+    aoi_extent = data['aoiExtent']
+    basemap_date = data['basemapDate']
+    training_polygons = data['trainingPolygons']
+
+    # Start a background task for the training process
+    thread = threading.Thread(target=run_training_process, args=(project_id, aoi_extent, basemap_date, training_polygons))
+    thread.start()
+
+    return jsonify({"message": "Training process started"}), 202
+
+def run_training_process(project_id, aoi, basemap_date, training_polygons):
     try:
-        vector = TrainingPolygons.query.get(vector_id)
-        if vector is None:
-            return jsonify({"error": "Vector not found"}), 404
-        return jsonify({
-            "id": vector.id,
-            "filename": vector.filename,
-            "description": vector.description,
-            "geojson": vector.geojson
-        })
-    except SQLAlchemyError as e:
-        return jsonify({"error": str(e)}), 500
-    
+        # Step 1: Get Planet quads
+        update_progress(project_id, 0.1, "Fetching Planet quads")
+        quads = get_planet_quads(aoi, basemap_date)
+        
+        # import time
+        # time.sleep(5)
 
+        # Step 2: Extract pixels from quads using training polygons
+        update_progress(project_id, 0.3, "Extracting pixels from quads")
+        X, y = extract_pixels_from_quads(quads, training_polygons)
 
+        # Step 3: Train XGBoost model
+        update_progress(project_id, 0.6, "Training XGBoost model")
+        model, metrics = train_xgboost_model(X, y)
+
+        # Step 4: Return results
+        update_progress(project_id, 1.0, "Training complete", metrics)
+
+    except Exception as e:
+        logger.exception(f"Error in training process: {str(e)}")
+        update_progress(project_id, 1.0, f"Error: {str(e)}")
+
+def update_progress(project_id, progress, message, data=None):
+    socketio.emit('training_update', {
+        'projectId': project_id,
+        'progress': progress,
+        'message': message,
+        'data': data
+    })
+
+    logger.info(f"Project {project_id}: {message} - Progress: {progress * 100}%")
+    if data:
+        logger.debug(f"Project {project_id}: Additional data - {data}")
 
 
 
@@ -712,57 +602,147 @@ def download_and_process_quads(quads, year, month):
 
 
 
+def extract_pixels_from_quads(quads, polygons):
+    all_pixels = []
+    all_labels = []
 
-@app.route('/api/train_model', methods=['POST'])
-def train_model():
-    data = request.json
-    project_id = data['projectId']
-    aoi_extent = data['aoiExtent']
-    basemap_date = data['basemapDate']
-    training_polygons = data['trainingPolygons']
+    for quad in quads:
+        with rasterio.open(quad['filename']) as src:
+            
+            for feature in polygons:
 
-    # Start a background task for the training process
-    thread = threading.Thread(target=run_training_process, args=(project_id, aoi_extent, basemap_date, training_polygons))
-    thread.start()
+                geom = shape(feature['geometry'])
+                class_label = feature['properties']['classLabel']
 
-    return jsonify({"message": "Training process started"}), 202
+                try:
+                    # Read only the first 4 bands
+                    out_image, out_transform = mask(src, [geom], crop=True, all_touched=True, indexes=[1, 2, 3, 4])
+                    
+                    # Handle nodata values
+                    if src.nodata is not None:
+                        out_image = np.ma.masked_equal(out_image, src.nodata)
+                    
+                    # Reshape the output to have pixels as rows and bands as columns
+                    pixels = out_image.reshape(4, -1).T
+                    
+                    # Remove any pixels where all bands are masked or invalid
+                    if isinstance(pixels, np.ma.MaskedArray):
+                        valid_pixels = pixels[~np.all(pixels.mask, axis=1)]
+                    else:
+                        # If it's not a masked array, we'll consider a pixel invalid if all bands are equal to nodata
+                        valid_pixels = pixels[~np.all(pixels == src.nodata, axis=1)] if src.nodata is not None else pixels
+                    
+                    if valid_pixels.size > 0:
+                        all_pixels.extend(valid_pixels.data if isinstance(valid_pixels, np.ma.MaskedArray) else valid_pixels)
+                        all_labels.extend([class_label] * valid_pixels.shape[0])
 
-def run_training_process(project_id, aoi, basemap_date, training_polygons):
-    try:
-        # Step 1: Get Planet quads
-        update_progress(project_id, 0.1, "Fetching Planet quads")
-        quads = get_planet_quads(aoi, basemap_date)
-        
-        # import time
-        # time.sleep(5)
+                except Exception as e:
+                    logger.warning(f"Error processing polygon in quad {quad['id']}: {str(e)}")
 
-        # Step 2: Prepare data
-        update_progress(project_id, 0.3, "Preparing data")
-        # X, y = prepare_data(quads, training_polygons)
-
-        # Step 3: Train XGBoost model
-        update_progress(project_id, 0.6, "Training XGBoost model")
-        # model, metrics = train_xgboost_model(X, y)
-
-        # Step 4: Save model and results
-        update_progress(project_id, 0.9, "Saving model and results")
-        # save_model_and_results(project_id, model, metrics)
-
-        # Complete
-        # update_progress(project_id, 1.0, "Training complete", metrics)
-        update_progress(project_id, 1.0, "Training complete")
+    if not all_pixels:
+        raise ValueError("No valid pixels extracted from quads")
+    
+    return np.array(all_pixels), np.array(all_labels)
 
 
-    except Exception as e:
-        update_progress(project_id, 1.0, f"Error: {str(e)}")
 
-def update_progress(project_id, progress, message, data=None):
-    socketio.emit('training_update', {
-        'projectId': project_id,
-        'progress': progress,
-        'message': message,
-        'data': data
-    })
+
+def train_xgboost_model(X, y, params=None):
+    if params is None:
+        params = {}
+
+
+    
+    # Encode class labels
+    le = LabelEncoder()
+    y_encoded = le.fit_transform(y)
+
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+
+    # Create and train model
+    model = XGBClassifier(
+        n_estimators=params.get('n_estimators', 100),
+        max_depth=params.get('max_depth', 3),
+        learning_rate=params.get('learning_rate', 0.1)
+    )
+    model.fit(X_train, y_train)
+
+    # Cross-validation
+    cv_scores = cross_val_score(model, X_train, y_train, cv=params.get('n_folds', 5))
+
+    # Predictions and metrics
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    report = classification_report(y_test, y_pred, target_names=le.classes_)
+
+    # Save the trained model
+    # saved_model = TrainedModel.save_model(model, accuracy)
+
+    metrics = {
+        "accuracy": float(accuracy),
+        "cv_scores": cv_scores.tolist(),
+        "classification_report": report
+    }
+
+    return model, metrics
+
+
+
+# # Extract pixel values from raster based on polygons
+# @app.route('/api/extract_pixels', methods=['POST'])
+# def extract_pixels():
+#     data = request.json
+#     raster_id = data.get('rasterId')
+#     polygons = data.get('polygons')
+
+#     if not raster_id or not polygons:
+#         return jsonify({'error': 'Missing raster ID or polygons'}), 400
+
+#     raster_file = fetch_raster_file_path(raster_id)
+
+#     if not os.path.exists(raster_file):
+#         return jsonify({'error': 'Raster file not found'}), 404
+
+#     all_pixels = []
+#     all_labels = []
+
+#     with rasterio.open(raster_file) as src:
+#         if src.count != 4:
+#             return jsonify({'error': 'Raster file does not have 4 bands'}), 400
+
+#         for feature in polygons:
+
+#             geom = shape(feature['geometry'])
+#             class_label = feature['properties']['classLabel']
+            
+#             out_image, out_transform = mask(src, [geom], crop=True, all_touched=True)
+#             out_image = np.ma.masked_equal(out_image, src.nodata)
+            
+#             # Reshape the output to have pixels as rows and bands as columns
+#             pixels = out_image.reshape(out_image.shape[0], -1).T
+            
+#             # Remove any pixels where all bands are masked
+#             valid_pixels = pixels[~np.all(pixels.mask, axis=1)]
+            
+#             if valid_pixels.size > 0:
+#                 all_pixels.extend(valid_pixels.data)
+#                 all_labels.extend([class_label] * valid_pixels.shape[0])
+
+#     all_pixels = np.array(all_pixels)
+#     all_labels = np.array(all_labels)
+
+#     if all_pixels.size == 0:
+#         return jsonify({'error': 'No valid pixels extracted'}), 400
+
+#     store_pixel_data(raster_id, all_pixels, all_labels)
+
+#     return jsonify({
+#         "message": "Pixel data extracted and stored successfully",
+#         "pixel_count": all_pixels.shape[0],
+#         "band_count": all_pixels.shape[1]
+#     })
+
 
 
 

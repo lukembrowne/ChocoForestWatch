@@ -340,23 +340,7 @@ export default {
       }
     };
 
-    const fetchBasemapDates = async (projectId) => {
-      try {
-        const response = await apiService.getTrainingPolygons(projectId)
-        basemapDates.value = response.data.map(item => ({
-          label: new Date(item.basemap_date).toLocaleString('default', { month: 'long', year: 'numeric' }),
-          value: item.basemap_date,
-          hasPolygons: item.has_polygons
-        }))
-      } catch (error) {
-        console.error('Error fetching basemap dates:', error)
-        $q.notify({
-          type: 'negative',
-          message: 'Failed to fetch basemap dates',
-          icon: 'error'
-        })
-      }
-    }
+
 
     const selectBasemapDate = async (date) => {
       // if (selectedBasemapDate.value && polygons.value.length > 0) {
@@ -388,10 +372,7 @@ export default {
 
     const loadPolygonsForDate = async (date) => {
       try {
-        console.log('Date:', date)
         const response = await apiService.getSpecificTrainingPolygons(currentProject.value.id, date)
-        console.log('Polygons:', response.data.polygons)
-        console.log('response:', response)
         if (response.data) {
           loadPolygons(response.data)
         } else {
@@ -550,18 +531,6 @@ export default {
       return datesWithPolygons.value.has(date)
     }
 
-    // Convert aoi GeoJSON to an OpenLayers feature
-    const convertAoiToFeature = (aoiGeoJson) => {
-      const geojsonFormat = new GeoJSON();
-      const geometry = geojsonFormat.readGeometry(aoiGeoJson, {
-        dataProjection: 'EPSG:4326', // Assuming the AOI is in lat/long
-        featureProjection: 'EPSG:3857' // Convert to Web Mercator for OpenLayers
-      });
-
-      return new Feature({
-        geometry: geometry
-      });
-    };
 
     const trainModel = async () => {
       isTraining.value = true;

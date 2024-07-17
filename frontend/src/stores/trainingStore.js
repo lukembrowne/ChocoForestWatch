@@ -38,29 +38,5 @@ export const useTrainingStore = defineStore('training', {
     clearPolygons() {
       this.drawnPolygons = []
     },
-
-    async extractPixels(polygonsToUse) {
-      if (!this.canExtractPixels) {
-        throw new Error('Cannot extract pixels: No raster or polygons selected');
-      }
-
-      this.extractionError = null;
-      this.pixelsExtracted = false;
-
-      try {
-        const response = await apiService.extractPixels({
-          rasterId: this.selectedRaster.id,
-          polygons: polygonsToUse
-        });
-
-        console.log('Pixel extraction response:', response);
-        this.pixelsExtracted = true;
-        return response;
-      } catch (error) {
-        console.error('Error extracting pixels:', error);
-        this.extractionError = error.message || 'An error occurred during pixel extraction';
-        throw error;
-      }
-    }
   }
 })
