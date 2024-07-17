@@ -34,6 +34,7 @@ from loguru import logger
 import sys
 from flask.cli import with_appcontext
 import click
+from flask import current_app
 
 
 # Load environment variables from the .env file
@@ -106,6 +107,8 @@ class Project(db.Model):
     aoi = db.Column(Geometry('POLYGON'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    training_polygon_sets = db.relationship("TrainingPolygonSet", back_populates="project")
+    trained_models = db.relationship("TrainedModel", back_populates="project")
 
     def to_dict(self):
         return {
@@ -128,6 +131,9 @@ class TrainingPolygonSet(db.Model):
 
     __table_args__ = (db.UniqueConstraint('project_id', 'basemap_date', name='uq_project_basemap_date'),)
 
+    project = db.relationship("Project", back_populates="training_polygon_sets")
+    trained_models = db.relationship("TrainedModel", back_populates="training_polygon_set")
+
 
 class Raster(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -143,22 +149,38 @@ class PixelDataset(db.Model):
     class_distribution = db.Column(db.String)  # JSON string of class counts
 
 
-
 class TrainedModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    training_polygon_set_id = db.Column(db.Integer, db.ForeignKey('training_polygon_set.id'), nullable=False)
+    basemap_date = db.Column(db.String(7), nullable=False)  # Store as 'YYYY-MM'
     accuracy = db.Column(db.Float)
+    file_path = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    parameters = db.Column(db.JSON)  # Store model parameters as JSON
+
+    project = db.relationship("Project", back_populates="trained_models")
+    training_polygon_set = db.relationship("TrainingPolygonSet", back_populates="trained_models")
 
     @classmethod
-    def save_model(cls, model, name, pixel_dataset_id, accuracy):
+    def save_model(cls, model, name, project_id, training_polygon_set_id, basemap_date, accuracy, parameters):
         model_dir = './trained_models'
         os.makedirs(model_dir, exist_ok=True)
-        file_path = os.path.join(model_dir, f"{name}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.joblib")
+        file_name = f"{name}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.joblib"
+        file_path = os.path.join(model_dir, file_name)
         
         joblib.dump(model, file_path)
         
-        new_model = cls(name=name, accuracy=accuracy)
+        new_model = cls(
+            name=name,
+            project_id=project_id,
+            training_polygon_set_id=training_polygon_set_id,
+            basemap_date=basemap_date,
+            accuracy=accuracy,
+            file_path=file_path,
+            parameters=parameters
+        )
         db.session.add(new_model)
         db.session.commit()
         return new_model
@@ -169,7 +191,18 @@ class TrainedModel(db.Model):
         if model_record:
             return joblib.load(model_record.file_path)
         return None
-        
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'project_id': self.project_id,
+            'training_polygon_set_id': self.training_polygon_set_id,
+            'basemap_date': self.basemap_date,
+            'accuracy': self.accuracy,
+            'created_at': self.created_at.isoformat(),
+            'parameters': self.parameters
+        }
 
 
 # Create tables
@@ -177,7 +210,7 @@ with app.app_context():
     db.create_all()
 
 
-
+# Command for clearing databases for testing
 @click.command('clear_db')
 @with_appcontext
 def clear_db_command():
@@ -326,7 +359,34 @@ def get_specific_training_polygons(project_id, basemap_date):
     else:
         return jsonify({'message': 'No training polygons found for this date'}), 404
 
+def get_training_polygon_set_id(project_id, basemap_date):
+    try:
+        # Try to find an existing TrainingPolygonSet
+        training_set = TrainingPolygonSet.query.filter_by(
+            project_id=project_id,
+            basemap_date=basemap_date
+        ).first()
 
+        if training_set:
+            return training_set.id
+
+        # If not found, create a new TrainingPolygonSet
+        new_training_set = TrainingPolygonSet(
+            project_id=project_id,
+            basemap_date=basemap_date
+        )
+        db.session.add(new_training_set)
+        db.session.commit()
+
+        return new_training_set.id
+
+    except SQLAlchemyError as e:
+        current_app.logger.error(f"Database error in get_training_polygon_set_id: {str(e)}")
+        db.session.rollback()
+        raise
+    except Exception as e:
+        current_app.logger.error(f"Unexpected error in get_training_polygon_set_id: {str(e)}")
+        raise
 
 
 
@@ -465,36 +525,50 @@ def train_model():
     aoi_extent = data['aoiExtent']
     basemap_date = data['basemapDate']
     training_polygons = data['trainingPolygons']
-
+    model_params = {
+            'n_estimators': data.get('n_estimators', 100),
+            'max_depth': data.get('max_depth', 3),
+            'learning_rate': data.get('learning_rate', 0.1),
+            'min_child_weight': data.get('min_child_weight', 1),
+            'gamma': data.get('gamma', 0)
+        }
     # Start a background task for the training process
-    thread = threading.Thread(target=run_training_process, args=(project_id, aoi_extent, basemap_date, training_polygons))
+    thread = threading.Thread(target=run_training_process, args=(app, project_id, aoi_extent, basemap_date, training_polygons, model_params))
     thread.start()
 
     return jsonify({"message": "Training process started"}), 202
 
-def run_training_process(project_id, aoi, basemap_date, training_polygons):
-    try:
-        # Step 1: Get Planet quads
-        update_progress(project_id, 0.1, "Fetching Planet quads")
-        quads = get_planet_quads(aoi, basemap_date)
-        
-        # import time
-        # time.sleep(5)
+def run_training_process(app, project_id, aoi, basemap_date, training_polygons, model_params):
+    with app.app_context():
+        try:
+            # Step 1: Get Planet quads
+            update_progress(project_id, 0.1, "Fetching Planet quads")
+            quads = get_planet_quads(aoi, basemap_date)
+            
+            # import time
+            # time.sleep(5)
 
-        # Step 2: Extract pixels from quads using training polygons
-        update_progress(project_id, 0.3, "Extracting pixels from quads")
-        X, y = extract_pixels_from_quads(quads, training_polygons)
+            # Step 2: Extract pixels from quads using training polygons
+            update_progress(project_id, 0.3, "Extracting pixels from quads")
 
-        # Step 3: Train XGBoost model
-        update_progress(project_id, 0.6, "Training XGBoost model")
-        model, metrics = train_xgboost_model(X, y)
+            X, y = extract_pixels_from_quads(quads, training_polygons)
 
-        # Step 4: Return results
-        update_progress(project_id, 1.0, "Training complete", metrics)
+            # Step 3: Train XGBoost model
+            update_progress(project_id, 0.6, "Training XGBoost model")
 
-    except Exception as e:
-        logger.exception(f"Error in training process: {str(e)}")
-        update_progress(project_id, 1.0, f"Error: {str(e)}")
+            training_polygon_set_id = get_training_polygon_set_id(project_id, basemap_date) 
+            saved_model, metrics = train_xgboost_model(X, y, project_id, training_polygon_set_id, basemap_date, model_params)
+
+
+            # Step 4: Return results
+            update_progress(project_id, 1.0, "Training complete", metrics)
+
+        except Exception as e:
+            logger.exception(f"Error in training process: {str(e)}")
+            update_progress(project_id, 1.0, f"Error: {str(e)}")
+
+
+
 
 def update_progress(project_id, progress, message, data=None):
     socketio.emit('training_update', {
@@ -607,6 +681,8 @@ def extract_pixels_from_quads(quads, polygons):
     all_labels = []
 
     for quad in quads:
+        logger.info(f"Extracting pixels from quad {quad['id']}")
+
         with rasterio.open(quad['filename']) as src:
             
             for feature in polygons:
@@ -647,12 +723,8 @@ def extract_pixels_from_quads(quads, polygons):
 
 
 
-def train_xgboost_model(X, y, params=None):
-    if params is None:
-        params = {}
+def train_xgboost_model(X, y,project_id, training_polygon_set_id, basemap_date, model_params):
 
-
-    
     # Encode class labels
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
@@ -660,16 +732,16 @@ def train_xgboost_model(X, y, params=None):
     # Split data
     X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
-    # Create and train model
-    model = XGBClassifier(
-        n_estimators=params.get('n_estimators', 100),
-        max_depth=params.get('max_depth', 3),
-        learning_rate=params.get('learning_rate', 0.1)
-    )
+   # Create and train model
+
+    logger.info(f"Training XGBoost model with parameters: {model_params}")
+
+
+    model = XGBClassifier(**model_params)
     model.fit(X_train, y_train)
 
     # Cross-validation
-    cv_scores = cross_val_score(model, X_train, y_train, cv=params.get('n_folds', 5))
+    cv_scores = cross_val_score(model, X_train, y_train, cv=model_params.get('n_folds', 5))
 
     # Predictions and metrics
     y_pred = model.predict(X_test)
@@ -677,7 +749,15 @@ def train_xgboost_model(X, y, params=None):
     report = classification_report(y_test, y_pred, target_names=le.classes_)
 
     # Save the trained model
-    # saved_model = TrainedModel.save_model(model, accuracy)
+    saved_model = TrainedModel.save_model(
+        model, 
+        f"XGBoost_Model_{datetime.now().strftime('%Y%m%d_%H%M%S')}", 
+        project_id, 
+        training_polygon_set_id, 
+        basemap_date, 
+        accuracy, 
+        model_params
+    )
 
     metrics = {
         "accuracy": float(accuracy),

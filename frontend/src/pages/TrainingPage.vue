@@ -54,12 +54,6 @@
             </q-item-section>
           </q-item>
 
-          <q-separator spaced />
-          <q-btn label="Train Model" color="primary" @click="trainModel" :loading="isTraining" class="full-width" />
-
-          <!-- Progress indicator -->
-          <q-linear-progress v-if="trainingProgress > 0" :value="trainingProgress" color="positive" />
-
           <!-- Results display -->
           <div v-if="trainingResults">
             <h3>Training Results:</h3>
@@ -105,13 +99,31 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+
+    <!-- Floating Action Button for Training -->
+    <q-page-sticky position="bottom" :offset="[0, 18]" class="absolute-center">
+      <q-btn fab icon="school" color="primary" @click="openTrainingOptions" class="training-fab">
+        <q-tooltip>Train Model</q-tooltip>
+      </q-btn>
+    </q-page-sticky>
+
+    <!-- Training Options Dialog -->
+    <q-dialog v-model="showTrainingOptions">
+      <TrainingOptionsCard @train="trainModel" @close="showTrainingOptions = false" />
+    </q-dialog>
+
+    <TrainingProgress :show="isTraining" :progress="trainingProgress" :progressMessage="trainingProgressMessage"
+      :error="trainingError" />
+
+
   </q-page>
 </template>
 
 <script>
 import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar'
+import { is, useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useTrainingStore } from 'src/stores/trainingStore'
 import { useDrawing } from '../composables/useDrawing';
@@ -125,12 +137,16 @@ import { Style, Fill, Stroke } from 'ol/style';
 import Feature from 'ol/Feature';
 import { io } from 'socket.io-client';
 import { transformExtent } from 'ol/proj';
+import TrainingOptionsCard from 'components/TrainingOptionsCard.vue';
+import TrainingProgress from 'components/TrainingProgress.vue';
 
 
 export default {
   name: 'TrainingPage',
   components: {
-    BaseMapComponent
+    BaseMapComponent,
+    TrainingOptionsCard,
+    TrainingProgress
   },
   setup() {
     const router = useRouter()
@@ -148,8 +164,12 @@ export default {
     const errorMessage = ref('')
     const isTraining = ref(false);
     const trainingProgress = ref(0);
+    const trainingProgressMessage = ref('');
+    const trainingError = ref('');
     const trainingResults = ref(null);
     const socket = io('http://127.0.0.1:5000');
+    const showTrainingOptions = ref(false);
+
 
 
     // Define vector layers
@@ -252,14 +272,28 @@ export default {
       }
 
       await fetchExistingPolygonDates()
+
       window.addEventListener('keydown', handleKeyDown);
 
-      socket.on('training_update', (update) => {
-        if (update.projectId === currentProject.value.id) {
-          trainingProgress.value = update.progress;
-          console.log(update.message);
-          if (update.message) {
-            trainingResults.value = update.message;
+      socket.on('training_update', (data) => {
+        console.log('Received training update:', data);
+        if (data.projectId === currentProject.value.id) {
+          trainingProgress.value = data.progress;
+          trainingProgressMessage.value = data.message;
+          if (data.error) {
+            trainingError.value = data.error;
+            isTraining.value = false;
+            $q.notify({
+              type: 'negative',
+              message: 'Error occurred during training.'
+            });
+          }
+          if (data.message === 'Training complete') {
+            isTraining.value = false;
+            $q.notify({
+              type: 'positive',
+              message: 'Training completed successfully!'
+            });
           }
         }
       });
@@ -542,11 +576,16 @@ export default {
       return datesWithPolygons.value.has(date)
     }
 
+    const openTrainingOptions = () => {
+      showTrainingOptions.value = true;
+    };
 
-    const trainModel = async () => {
+    const trainModel = async (options) => {
       isTraining.value = true;
+      console.log('setting is training to true', isTraining.value);
       trainingProgress.value = 0;
-      trainingResults.value = null;
+      trainingProgressMessage.value = 'Initializing training...';
+      trainingError.value = '';
 
       // Assuming projectStore.currentProject.aoi contains the GeoJSON string
       const geojsonString = projectStore.currentProject.aoi;
@@ -567,73 +606,82 @@ export default {
           projectId: currentProject.value.id,
           aoiExtent: extentLatLon,
           basemapDate: selectedBasemapDate.value,
-          trainingPolygons: drawnPolygons.value
+          trainingPolygons: drawnPolygons.value,
+          ...options // Includes XGboost parameters
         });
 
         trainingResults.value = response.data;
       } catch (error) {
         console.error('Error training model:', error);
-        // Handle error (show notification, etc.)
-      } finally {
-        isTraining.value = false;
+        trainingError.value = 'An error occurred during training. Please try again.';
       }
-    };
+
+      };
 
 
-    watch(classLabel, (newLabel) => {
-      setClassLabel(newLabel);
-    });
+      watch(classLabel, (newLabel) => {
+        setClassLabel(newLabel);
+      });
 
-    onUnmounted(() => {
-      socket.off('training_update');
-      socket.disconnect();
-    });
+      onUnmounted(() => {
+        socket.off('training_update');
+        socket.disconnect();
+      });
 
-    return {
-      baseMap,
-      project,
-      trainingPolygons,
-      classLabel,
-      classOptions,
-      leftDrawerOpen,
-      rightDrawerOpen,
-      selectedSavedPolygons,
-      savedPolygonsOptions,
-      selectedBasemapDate,
-      basemapDateOptions,
-      onMapReady,
-      startDrawing,
-      saveDrawnPolygons,
-      loadSavedPolygons,
-      extractPixels,
-      setClassLabel,
-      toggleDrawing,
-      showErrorDialog,
-      errorMessage,
-      handleBasemapError,
-      updateBasemap,
-      currentProject,
-      selectBasemapDate,
-      hasPolygons,
-      groupedBasemapDates,
-      drawnPolygons,
-      deletePolygon,
-      polygonSummary,
-      drawing,
-      isTraining,
-      trainingProgress,
-      trainingResults,
-      trainModel
+      return {
+        baseMap,
+        project,
+        trainingPolygons,
+        classLabel,
+        classOptions,
+        leftDrawerOpen,
+        rightDrawerOpen,
+        selectedSavedPolygons,
+        savedPolygonsOptions,
+        selectedBasemapDate,
+        basemapDateOptions,
+        onMapReady,
+        startDrawing,
+        saveDrawnPolygons,
+        loadSavedPolygons,
+        extractPixels,
+        setClassLabel,
+        toggleDrawing,
+        showErrorDialog,
+        errorMessage,
+        handleBasemapError,
+        updateBasemap,
+        currentProject,
+        selectBasemapDate,
+        hasPolygons,
+        groupedBasemapDates,
+        drawnPolygons,
+        deletePolygon,
+        polygonSummary,
+        drawing,
+        isTraining,
+        trainingProgress,
+        trainingProgressMessage,
+        trainingError,
+        trainingResults,
+        trainModel,
+        showTrainingOptions,
+        openTrainingOptions,
+      }
     }
   }
-}
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .map-overlay {
   position: absolute;
   bottom: 20px;
   right: 20px;
   z-index: 1;
+}
+
+.training-fab {
+  z-index: 1000; // Ensure it's above the map
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 </style>
