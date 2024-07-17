@@ -30,8 +30,8 @@ from flask_socketio import SocketIO, emit
 import threading
 from requests.auth import HTTPBasicAuth
 from shapely.geometry import shape, box
-from pyproj import CRS, Transformer
-
+from loguru import logger
+import sys
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -51,11 +51,36 @@ API_URL = "https://api.planet.com/basemaps/v1/mosaics"
 session = requests.Session()
 session.auth = (PLANET_API_KEY, "")
 
-
+# Create the Flask application
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:9000"}})
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+
+# Configure loguru logger
+log_file = "app.log"
+logger.remove()  # Remove default handler
+logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
+logger.add(log_file, rotation="10 MB", retention="10 days", level="DEBUG")
+
+# Middleware to log all requests
+@app.before_request
+def log_request_info():
+    logger.info(f"Request: {request.method} {request.url}")
+    logger.debug(f"Headers: {request.headers}")
+    logger.debug(f"Body: {request.get_data()}")
+
+@app.after_request
+def log_response_info(response):
+    logger.info(f"Response: {response.status}")
+    return response
+
+# Error handler to log exceptions
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.exception(f"An unhandled exception occurred: {str(e)}")
+    return jsonify(error=str(e)), 500
 
 # Define a directory to temporarily store uploaded files
 UPLOAD_FOLDER = 'uploads'
@@ -490,7 +515,7 @@ def upload_vector():
         with open(filepath, 'r') as f:
             geojson = json.load(f)
         
-        # Ensure the GeoJSON is a FeatureCollection
+        # Ensure the GeoJSON is a FeatureCollections
         if geojson['type'] != 'FeatureCollection':
             geojson = {
                 "type": "FeatureCollection",
@@ -608,23 +633,10 @@ def get_planet_quads(aoi_extent, basemap_date):
     # Get quad info for the AOI
     quads = get_quad_info(mosaic_id, aoi_extent)
 
-
-    ### PICK UP HERE    
-
     # Download and process quads
     processed_quads = download_and_process_quads(quads, year, month)
     
     return processed_quads
-
-def transform(func, geom):
-    if geom.is_empty:
-        return geom
-    if geom.type in ('Point', 'LineString', 'Polygon'):
-        return shapely.ops.transform(func, geom)
-    elif geom.type.startswith('Multi') or geom.type == 'GeometryCollection':
-        return shapely.geometry.collection.GeometryCollection([transform(func, part) for part in geom.geoms])
-    else:
-        raise ValueError('Type %r not recognized' % geom.type)
 
 def get_quad_info(mosaic_id, bbox):
 
@@ -640,6 +652,7 @@ def get_quad_info(mosaic_id, bbox):
 
     response = requests.get(url, auth=HTTPBasicAuth(PLANET_API_KEY, ''), params=params)
     response.raise_for_status()
+
     return response.json().get('items', [])
 
 
@@ -665,23 +678,33 @@ def download_and_process_quads(quads, year, month):
         
         # Create directory for storing quads
         quad_dir = os.path.join(QUAD_DOWNLOAD_DIR, year, month)
-        os.makedirs(quad_dir, exist_ok=True)
+        try:
+            os.makedirs(quad_dir, exist_ok=True)
+            logger.info(f"Created directory: {quad_dir}")
+        except Exception as e:
+            logger.error(f"Failed to create directory {quad_dir}: {str(e)}")
+            continue
         
         # Download the quad
-        local_filename = os.path.join(quad_dir, f"{quad_id}.tif")
+        local_filename = os.path.join(quad_dir, f"{quad_id}_{year}_{month}.tif")
         if not os.path.exists(local_filename):
-            response = requests.get(download_url, auth=HTTPBasicAuth(PLANET_API_KEY, ''), stream=True)
-            response.raise_for_status()
-            with open(local_filename, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-        
-        # Process the quad (e.g., reprojection, clipping)
-        # processed_filename = process_quad(local_filename, quad_id)
-        
+            logger.info(f"Downloading quad {quad_id} for {year}-{month}")
+            try:
+                response = requests.get(download_url, auth=HTTPBasicAuth(PLANET_API_KEY, ''), stream=True)
+                response.raise_for_status()
+                with open(local_filename, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                logger.success(f"Successfully downloaded quad {quad_id} to {local_filename}")
+            except Exception as e:
+                logger.error(f"Failed to download quad {quad_id}: {str(e)}")
+                continue
+        else:
+            logger.info(f"Quad {quad_id} already exists at {local_filename}, skipping download")
+
         processed_quads.append({
             'id': quad_id,
-            # 'filename': processed_filename,
+            'filename': local_filename,
             'bbox': quad['bbox']
         })
     
@@ -698,12 +721,8 @@ def train_model():
     basemap_date = data['basemapDate']
     training_polygons = data['trainingPolygons']
 
-    # For debugging proces... 
-    get_planet_quads(aoi_extent, basemap_date)
-
-
     # Start a background task for the training process
-    thread = threading.Thread(target=run_training_process, args=(project_id, aoi, basemap_date, training_polygons))
+    thread = threading.Thread(target=run_training_process, args=(project_id, aoi_extent, basemap_date, training_polygons))
     thread.start()
 
     return jsonify({"message": "Training process started"}), 202
@@ -744,16 +763,6 @@ def update_progress(project_id, progress, message, data=None):
         'message': message,
         'data': data
     })
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -861,63 +870,11 @@ def predict_landcover():
     })
 
 
-
-@app.route('/api/planet/quads', methods=['POST'])
-def get_available_quads():
-    try:
-        data = request.json
-        bbox = data.get('bbox')
-        mosaic_name = data.get('mosaic_name', 'planet_medres_normalized_analytic_2022-08_mosaic')  # You can change the default or always require it from the frontend
-        
-        if not bbox or len(bbox) != 4:
-            return jsonify({"error": "Invalid bounding box"}), 400
-
-        # First, get the mosaic ID
-        parameters = {
-            "name__is": mosaic_name
-        }
-        res = session.get(API_URL, params=parameters)
-        if res.status_code != 200:
-            return jsonify({"error": f"Failed to fetch mosaic. Status code: {res.status_code}"}), res.status_code
-
-        mosaic_data = res.json()
-        if not mosaic_data['mosaics']:
-            return jsonify({"error": "No mosaic found with the given name"}), 404
-
-        mosaic_id = mosaic_data['mosaics'][0]['id']
-
-        # Now, search for quads using the provided bbox
-        string_bbox = ','.join(map(str, bbox))
-        search_parameters = {
-            'bbox': string_bbox,
-            'minimal': True
-        }
-
-        quads_url = f"{API_URL}/{mosaic_id}/quads"
-        res = session.get(quads_url, params=search_parameters)
-        if res.status_code != 200:
-            return jsonify({"error": f"Failed to fetch quads. Status code: {res.status_code}"}), res.status_code
-
-        quads_data = res.json()
-        items = quads_data['items']
-
-        # Process the quads data
-        quads = []
-        for item in items:
-            quads.append({
-                "id": item['id'],
-                "name": item.get('name', 'N/A'),
-                "date": item.get('acquired', 'N/A'),
-                "download_link": item['_links']['download']
-            })
-
-        return jsonify(quads)
-
-    except Exception as e:
-        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
-
-
 if __name__ == '__main__':
+    logger.info("Starting Flask application")
     app.run(debug=True)
+
+
+
 
 
