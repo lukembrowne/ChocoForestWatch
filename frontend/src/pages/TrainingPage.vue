@@ -294,6 +294,10 @@ export default {
               type: 'positive',
               message: 'Training completed successfully!'
             });
+            router.push({
+              name: 'analysis',
+              params: { projectId: currentProject.value.id, modelId: data.model_id }
+            });
           }
         }
       });
@@ -616,60 +620,60 @@ export default {
         trainingError.value = 'An error occurred during training. Please try again.';
       }
 
-      };
+    };
 
 
-      watch(classLabel, (newLabel) => {
-        setClassLabel(newLabel);
-      });
+    watch(classLabel, (newLabel) => {
+      setClassLabel(newLabel);
+    });
 
-      onUnmounted(() => {
-        socket.off('training_update');
-        socket.disconnect();
-      });
+    onUnmounted(() => {
+      socket.off('training_update');
+      socket.disconnect();
+    });
 
-      return {
-        baseMap,
-        project,
-        trainingPolygons,
-        classLabel,
-        classOptions,
-        leftDrawerOpen,
-        rightDrawerOpen,
-        selectedSavedPolygons,
-        savedPolygonsOptions,
-        selectedBasemapDate,
-        basemapDateOptions,
-        onMapReady,
-        startDrawing,
-        saveDrawnPolygons,
-        loadSavedPolygons,
-        extractPixels,
-        setClassLabel,
-        toggleDrawing,
-        showErrorDialog,
-        errorMessage,
-        handleBasemapError,
-        updateBasemap,
-        currentProject,
-        selectBasemapDate,
-        hasPolygons,
-        groupedBasemapDates,
-        drawnPolygons,
-        deletePolygon,
-        polygonSummary,
-        drawing,
-        isTraining,
-        trainingProgress,
-        trainingProgressMessage,
-        trainingError,
-        trainingResults,
-        trainModel,
-        showTrainingOptions,
-        openTrainingOptions,
-      }
+    return {
+      baseMap,
+      project,
+      trainingPolygons,
+      classLabel,
+      classOptions,
+      leftDrawerOpen,
+      rightDrawerOpen,
+      selectedSavedPolygons,
+      savedPolygonsOptions,
+      selectedBasemapDate,
+      basemapDateOptions,
+      onMapReady,
+      startDrawing,
+      saveDrawnPolygons,
+      loadSavedPolygons,
+      extractPixels,
+      setClassLabel,
+      toggleDrawing,
+      showErrorDialog,
+      errorMessage,
+      handleBasemapError,
+      updateBasemap,
+      currentProject,
+      selectBasemapDate,
+      hasPolygons,
+      groupedBasemapDates,
+      drawnPolygons,
+      deletePolygon,
+      polygonSummary,
+      drawing,
+      isTraining,
+      trainingProgress,
+      trainingProgressMessage,
+      trainingError,
+      trainingResults,
+      trainModel,
+      showTrainingOptions,
+      openTrainingOptions,
     }
   }
+}
 </script>
 
 <style lang="scss" scoped>

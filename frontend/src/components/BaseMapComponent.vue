@@ -21,6 +21,8 @@ import VectorSource from 'ol/source/Vector';
 import GeoJSON from 'ol/format/GeoJSON';
 import { fromUrl } from 'geotiff';
 import apiService from '../services/api';
+import Static from 'ol/source/ImageStatic';
+
 
 export default {
     name: 'BaseMapComponent',
@@ -46,7 +48,7 @@ export default {
         const vectorLayer = ref(null);
         const isLoading = ref(false);
         const baseLayer = ref(null);
-
+        let predictionLayer = null;
 
         const initMap = () => {
             isLoading.value = true;
@@ -100,6 +102,34 @@ export default {
             baseLayer.value.setSource(newSource);
             isLoading.value = false;
         };
+
+
+        const addPredictionLayer = (rasterUrl, extent) => {
+            if (predictionLayer) {
+                map.value.removeLayer(predictionLayer);
+            }
+
+            predictionLayer = new ImageLayer({
+                source: new Static({
+                    url: rasterUrl,
+                    projection: getProjection('EPSG:3857'),
+                }),
+                opacity: 0.7 // Adjust opacity as needed
+            });
+
+            map.value.addLayer(predictionLayer);
+        };
+
+        const clearLayers = () => {
+            if (predictionLayer) {
+                map.value.removeLayer(predictionLayer);
+                predictionLayer = null;
+            }
+            // If you have other non-base layers, remove them here as well
+        };
+
+
+
 
         const loadRaster = async (id) => {
             try {
@@ -212,11 +242,13 @@ export default {
             }
         };
 
-        expose({ map, addLayer, removeLayer, loadRaster, loadVector, updateBasemap });
+        expose({ map, addLayer, removeLayer, loadRaster, loadVector, updateBasemap, clearLayers, addPredictionLayer });
 
         return {
             mapContainer,
-            isLoading
+            isLoading,
+            addPredictionLayer,
+            clearLayers
         };
     }
 };

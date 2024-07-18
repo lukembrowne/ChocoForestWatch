@@ -35,6 +35,9 @@ import sys
 from flask.cli import with_appcontext
 import click
 from flask import current_app
+from rasterio.merge import merge
+import rasterio
+from rasterio.warp import transform_geom
 
 
 # Load environment variables from the .env file
@@ -109,6 +112,7 @@ class Project(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     training_polygon_sets = db.relationship("TrainingPolygonSet", back_populates="project")
     trained_models = db.relationship("TrainedModel", back_populates="project")
+    predictions = db.relationship('Prediction', back_populates='project')
 
     def to_dict(self):
         return {
@@ -159,6 +163,7 @@ class TrainedModel(db.Model):
     file_path = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     parameters = db.Column(db.JSON)  # Store model parameters as JSON
+    predictions = db.relationship('Prediction', back_populates='model')
 
     project = db.relationship("Project", back_populates="trained_models")
     training_polygon_set = db.relationship("TrainingPolygonSet", back_populates="trained_models")
@@ -204,6 +209,17 @@ class TrainedModel(db.Model):
             'parameters': self.parameters
         }
 
+
+class Prediction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    model_id = db.Column(db.Integer, db.ForeignKey('trained_model.id'), nullable=False)
+    file_path = db.Column(db.String(255), nullable=False)
+    basemap_date = db.Column(db.String(7), nullable=False)  # Store as 'YYYY-MM'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    project = db.relationship('Project', back_populates='predictions')
+    model = db.relationship('TrainedModel', back_populates='predictions')
 
 # Create tables
 with app.app_context():
@@ -388,7 +404,31 @@ def get_training_polygon_set_id(project_id, basemap_date):
         current_app.logger.error(f"Unexpected error in get_training_polygon_set_id: {str(e)}")
         raise
 
+@app.route('/api/predictions/<int:project_id>', methods=['GET'])
+def get_predictions(project_id):
+    predictions = Prediction.query.filter_by(project_id=project_id).all()
+    return jsonify([{
+        'id': p.id,
+        'basemap_date': p.basemap_date,
+        'created_at': p.created_at.isoformat(),
+        'file_path': p.file_path
+    } for p in predictions])
 
+@app.route('/api/prediction/<int:prediction_id>', methods=['GET'])
+def get_prediction(prediction_id):
+    prediction = Prediction.query.get_or_404(prediction_id)
+    
+    # Read the extent from the GeoTIFF file
+    with rasterio.open(prediction.file_path) as src:
+        bounds = src.bounds
+
+    return jsonify({
+        'id': prediction.id,
+        'basemap_date': prediction.basemap_date,
+        'created_at': prediction.created_at.isoformat(),
+        'file_path': prediction.file_path,
+        'extent': [bounds.left, bounds.bottom, bounds.right, bounds.top]
+    })
 
 # 
 def store_pixel_data(raster_id, pixel_data, class_labels):
@@ -559,9 +599,26 @@ def run_training_process(app, project_id, aoi, basemap_date, training_polygons, 
             training_polygon_set_id = get_training_polygon_set_id(project_id, basemap_date) 
             saved_model, metrics = train_xgboost_model(X, y, project_id, training_polygon_set_id, basemap_date, model_params)
 
+            # Step 4: Predict land cover across AOI
+            update_progress(project_id, 0.6, "Predicting land cover across AOI")
+            prediction_file = predict_landcover_aoi(saved_model.id, quads, aoi, project_id, basemap_date)
 
-            # Step 4: Return results
-            update_progress(project_id, 1.0, "Training complete", metrics)
+            # Save prediction to database
+            prediction = Prediction(
+                project_id=project_id,
+                model_id=saved_model.id,
+                file_path=prediction_file,
+                basemap_date=basemap_date
+            )
+            db.session.add(prediction)
+            db.session.commit()
+
+           # Step 5: Return results
+            update_progress(project_id, 1.0, "Training and prediction complete", {
+                **metrics, 
+                "prediction_id": prediction.id,
+                "model_id": saved_model.id
+            })
 
         except Exception as e:
             logger.exception(f"Error in training process: {str(e)}")
@@ -765,169 +822,72 @@ def train_xgboost_model(X, y,project_id, training_polygon_set_id, basemap_date, 
         "classification_report": report
     }
 
-    return model, metrics
+    return saved_model, metrics
 
 
-
-# # Extract pixel values from raster based on polygons
-# @app.route('/api/extract_pixels', methods=['POST'])
-# def extract_pixels():
-#     data = request.json
-#     raster_id = data.get('rasterId')
-#     polygons = data.get('polygons')
-
-#     if not raster_id or not polygons:
-#         return jsonify({'error': 'Missing raster ID or polygons'}), 400
-
-#     raster_file = fetch_raster_file_path(raster_id)
-
-#     if not os.path.exists(raster_file):
-#         return jsonify({'error': 'Raster file not found'}), 404
-
-#     all_pixels = []
-#     all_labels = []
-
-#     with rasterio.open(raster_file) as src:
-#         if src.count != 4:
-#             return jsonify({'error': 'Raster file does not have 4 bands'}), 400
-
-#         for feature in polygons:
-
-#             geom = shape(feature['geometry'])
-#             class_label = feature['properties']['classLabel']
-            
-#             out_image, out_transform = mask(src, [geom], crop=True, all_touched=True)
-#             out_image = np.ma.masked_equal(out_image, src.nodata)
-            
-#             # Reshape the output to have pixels as rows and bands as columns
-#             pixels = out_image.reshape(out_image.shape[0], -1).T
-            
-#             # Remove any pixels where all bands are masked
-#             valid_pixels = pixels[~np.all(pixels.mask, axis=1)]
-            
-#             if valid_pixels.size > 0:
-#                 all_pixels.extend(valid_pixels.data)
-#                 all_labels.extend([class_label] * valid_pixels.shape[0])
-
-#     all_pixels = np.array(all_pixels)
-#     all_labels = np.array(all_labels)
-
-#     if all_pixels.size == 0:
-#         return jsonify({'error': 'No valid pixels extracted'}), 400
-
-#     store_pixel_data(raster_id, all_pixels, all_labels)
-
-#     return jsonify({
-#         "message": "Pixel data extracted and stored successfully",
-#         "pixel_count": all_pixels.shape[0],
-#         "band_count": all_pixels.shape[1]
-#     })
-
-
-
-
-# @app.route('/api/train_model', methods=['POST'])
-# def train_model():
-#     params = request.json
-#     pixel_dataset_id = params['pixel_dataset_id']
-#     model_name = params.get('model_name', 'XGBoost_LandCover')
-    
-#     dataset = PixelDataset.query.get(pixel_dataset_id)
-#     if not dataset:
-#         return jsonify({"error": "Pixel dataset not found"}), 404
-
-#     pixel_data, class_labels = load_pixel_data(dataset.file_path)
-#     if pixel_data is None or class_labels is None:
-#         return jsonify({"error": "Failed to load pixel data"}), 500
-
-#     # Encode class labels
-#     le = LabelEncoder()
-#     y = le.fit_transform(class_labels)
-
-#     # Split data
-#     X_train, X_test, y_train, y_test = train_test_split(pixel_data, y, test_size=0.2, random_state=42)
-
-#    # pdb.set_trace()
-
-#     # Create and train model
-#     model = XGBClassifier(
-#         n_estimators=params.get('n_estimators', 100),
-#         max_depth=params.get('max_depth', 3),
-#         learning_rate=params.get('learning_rate', 0.1)
-#     )
-#     model.fit(X_train, y_train)
-
-
-#     # Cross-validation
-#     cv_scores = cross_val_score(model, X_train, y_train, cv=params.get('n_folds', 5))
-
-#     # Predictions and metrics
-#     y_pred = model.predict(X_test)
-#     accuracy = accuracy_score(y_test, y_pred)
-#     report = classification_report(y_test, y_pred, target_names=le.classes_)
-    
-#     # Save the trained model
-#     saved_model = TrainedModel.save_model(model, model_name, pixel_dataset_id, accuracy)
-
-
-#     return jsonify({
-#         "message": "Model trained successfully",
-#         "model_id": saved_model.id,
-#         "accuracy": float(accuracy),
-#         "cv_scores": cv_scores.tolist(),
-#         "classification_report": report
-#     })
-
-
-# Predict landcover using a trained model
-@app.route('/api/predict_landcover', methods=['POST'])
-def predict_landcover():
-    params = request.json
-    model_id = params['model_id']
-    raster_id = params['raster_id']
-    
+def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
     model = TrainedModel.load_model(model_id)
     if model is None:
-        return jsonify({"error": "Model not found"}), 404
-    
-    raster = Raster.query.get(raster_id)
-    if raster is None:
-        return jsonify({"error": "Raster not found"}), 404
-    
-    raster_file = raster.filepath
-    if not os.path.exists(raster_file):
-        return jsonify({"error": "Raster file not found"}), 404
-    
-    with rasterio.open(raster_file) as src:
-        data = src.read()
-        meta = src.meta
-        
-        reshaped_data = data.reshape(data.shape[0], -1).T
-        predictions = model.predict(reshaped_data)
-        prediction_map = predictions.reshape(data.shape[1], data.shape[2])
-        
-        output_meta = {
-            'driver': 'GTiff',
-            'dtype': 'uint8',
-            'nodata': None,
-            'width': meta['width'],
-            'height': meta['height'],
-            'count': 1,
-            'crs': meta['crs'],
-            'transform': meta['transform'],
-            'compress': 'lzw',
-        }
-        
-        output_file = f"./predictions/landcover_prediction_{raster_id}.tif"
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        
-        with rasterio.open(output_file, 'w', **output_meta) as dst:
-            dst.write(prediction_map.astype(rasterio.uint8), 1)
-    
-    return jsonify({
-        "message": "Landcover prediction completed",
-        "prediction_file": output_file
-    })
+        raise ValueError("Model not found")
+
+    # Create a list to store the predicted rasters
+    predicted_rasters = []
+
+    for quad in quads:
+        with rasterio.open(quad['filename']) as src:
+            # Read only the first 4 bands
+            data = src.read(list(range(1, 5)))  # This reads bands 1, 2, 3, 4
+            meta = src.meta.copy()
+            meta.update(count=1)  # Update metadata to reflect single band output
+
+            # Reshape the data for prediction
+            reshaped_data = data.reshape(4, -1).T
+            predictions = model.predict(reshaped_data)
+            prediction_map = predictions.reshape(data.shape[1], data.shape[2])
+
+            # Create a temporary file for this quad's prediction
+            with rasterio.open('temp_prediction.tif', 'w', **meta) as tmp:
+                tmp.write(prediction_map.astype(rasterio.uint8), 1)
+
+            predicted_rasters.append(rasterio.open('temp_prediction.tif'))
+
+    # Merge all predicted rasters
+    mosaic, out_transform = merge(predicted_rasters)
+
+    # Create a temporary file for the merged prediction
+    with rasterio.open('temp_merged_prediction.tif', 'w', **meta) as tmp:
+        tmp.write(mosaic)
+
+    # Clip the raster to AOI
+    with rasterio.open('temp_merged_prediction.tif') as src:
+        # Ensure AOI is in the same CRS as the raster
+        aoi_geom = box(*aoi)
+        aoi_geom = transform_geom("EPSG:4326", src.crs, aoi_geom)
+        out_image, out_transform = mask(src, [aoi_geom], crop=True)
+        out_meta = src.meta.copy()
+        out_meta.update({
+            "driver": "GTiff",
+            "height": out_image.shape[1],
+            "width": out_image.shape[2],
+            "transform": out_transform,
+            "compress": 'lzw'
+        })
+
+    # Create the final output file
+    output_file = f"./predictions/landcover_prediction_project{project_id}_{basemap_date}.tif"
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+    # Write the clipped raster
+    with rasterio.open(output_file, "w", **out_meta) as dest:
+        dest.write(out_image)
+
+    # Clean up temporary files
+    for raster in predicted_rasters:
+        raster.close()
+    os.remove('temp_prediction.tif')
+    os.remove('temp_merged_prediction.tif')
+
+    return output_file
 
 
 if __name__ == '__main__':

@@ -146,4 +146,14 @@ export default {
     return axios.put(`${API_URL}/projects/${id}`, projectData);
   },
 
+  async getPredictions(projectId) {
+    const response = await axios.get(`${API_URL}/predictions/${projectId}`);
+    return response.data;
+  },
+
+  async getPrediction(predictionId) {
+    const response = await axios.get(`${API_URL}/prediction/${predictionId}`);
+    return response.data;
+  }
+
 };
