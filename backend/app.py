@@ -37,7 +37,7 @@ import click
 from flask import current_app
 from rasterio.merge import merge
 import rasterio
-from rasterio.warp import transform_geom
+from rasterio.warp import transform_bounds
 
 
 # Load environment variables from the .env file
@@ -830,65 +830,134 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
     if model is None:
         raise ValueError("Model not found")
 
+    logger.debug(f"AOI: {aoi}")
+
     # Create a list to store the predicted rasters
     predicted_rasters = []
+    temp_files = []  # To keep track of temporary files for cleanup
+    quad_bounds = []
 
-    for quad in quads:
+
+    for i, quad in enumerate(quads):
         with rasterio.open(quad['filename']) as src:
+            logger.debug(f"Processing quad: {quad['filename']}")
+            logger.debug(f"Quad CRS: {src.crs}")
+            logger.debug(f"Quad bounds: {src.bounds}")
+            quad_bounds.append(src.bounds)
+
             # Read only the first 4 bands
-            data = src.read(list(range(1, 5)))  # This reads bands 1, 2, 3, 4
+            data = src.read(list(range(1, 5)))
             meta = src.meta.copy()
-            meta.update(count=1)  # Update metadata to reflect single band output
+            meta.update(count=1)
 
             # Reshape the data for prediction
             reshaped_data = data.reshape(4, -1).T
             predictions = model.predict(reshaped_data)
             prediction_map = predictions.reshape(data.shape[1], data.shape[2])
 
-            # Create a temporary file for this quad's prediction
-            with rasterio.open('temp_prediction.tif', 'w', **meta) as tmp:
+            # Create a temporary file for this quad's prediction with a unique name
+            temp_filename = f'temp_prediction_{i}.tif'
+            with rasterio.open(temp_filename, 'w', **meta) as tmp:
                 tmp.write(prediction_map.astype(rasterio.uint8), 1)
 
-            predicted_rasters.append(rasterio.open('temp_prediction.tif'))
+            predicted_rasters.append(rasterio.open(temp_filename))
+            temp_files.append(temp_filename)
 
-    # Merge all predicted rasters
-    mosaic, out_transform = merge(predicted_rasters)
+    # # Check if quads are adjacent or overlapping
+    # are_quads_adjacent = check_quads_adjacent(quad_bounds)
+    # logger.debug(f"Are quads adjacent or overlapping: {are_quads_adjacent}")
 
+    # if are_quads_adjacent:
+    #     # Use rasterio merge if quads are adjacent or overlapping
+    #     mosaic, out_transform = merge(predicted_rasters)
+    # else:
+    #     # Manual merging if quads are not adjacent
+    #     mosaic, out_transform = manual_merge(predicted_rasters, quad_bounds)
+
+
+    # Ensure AOI is in the same CRS as the raster
+    aoi_geom = box(*aoi)
+    aoi_bounds = transform_bounds("EPSG:4326", src.crs, *aoi)
+    aoi_geom = box(*aoi_bounds)
+    logger.debug(f"Transformed AOI bounds: {aoi_bounds}")
+    mosaic, out_transform = merge(predicted_rasters, bounds = aoi_bounds)
+
+    
+    logger.debug(f"Merged raster shape: {mosaic.shape}")
+    logger.debug(f"Merged raster transform: {out_transform}")
+    
     # Create a temporary file for the merged prediction
-    with rasterio.open('temp_merged_prediction.tif', 'w', **meta) as tmp:
-        tmp.write(mosaic)
-
-    # Clip the raster to AOI
-    with rasterio.open('temp_merged_prediction.tif') as src:
-        # Ensure AOI is in the same CRS as the raster
-        aoi_geom = box(*aoi)
-        aoi_geom = transform_geom("EPSG:4326", src.crs, aoi_geom)
-        out_image, out_transform = mask(src, [aoi_geom], crop=True)
-        out_meta = src.meta.copy()
-        out_meta.update({
+    merged_temp_filename = 'temp_merged_prediction.tif'
+    merged_meta = src.meta.copy()
+    merged_meta.update({
             "driver": "GTiff",
-            "height": out_image.shape[1],
-            "width": out_image.shape[2],
+            "height": mosaic.shape[1],
+            "width": mosaic.shape[2],
             "transform": out_transform,
             "compress": 'lzw'
         })
+    merged_meta.update(count=1)
 
     # Create the final output file
     output_file = f"./predictions/landcover_prediction_project{project_id}_{basemap_date}.tif"
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
     # Write the clipped raster
-    with rasterio.open(output_file, "w", **out_meta) as dest:
-        dest.write(out_image)
+    with rasterio.open(output_file, "w", **merged_meta) as dest:
+        dest.write(mosaic)
 
     # Clean up temporary files
     for raster in predicted_rasters:
         raster.close()
-    os.remove('temp_prediction.tif')
-    os.remove('temp_merged_prediction.tif')
+    for temp_file in temp_files:
+        os.remove(temp_file)
+
+    logger.debug(f"Final prediction file: {output_file}")
 
     return output_file
 
+
+def check_quads_adjacent(bounds_list):
+    # Check if any pair of quads are adjacent or overlapping
+    for i in range(len(bounds_list)):
+        for j in range(i+1, len(bounds_list)):
+            if (bounds_list[i][0] < bounds_list[j][2] and bounds_list[i][2] > bounds_list[j][0] and
+                bounds_list[i][1] < bounds_list[j][3] and bounds_list[i][3] > bounds_list[j][1]):
+                return True
+    return False
+
+def manual_merge(rasters, bounds_list):
+    # Find the overall extent
+    min_x = min(bound[0] for bound in bounds_list)
+    min_y = min(bound[1] for bound in bounds_list)
+    max_x = max(bound[2] for bound in bounds_list)
+    max_y = max(bound[3] for bound in bounds_list)
+
+    # Calculate the dimensions of the merged raster
+    width = int((max_x - min_x) / rasters[0].transform[0])
+    height = int((max_y - min_y) / -rasters[0].transform[4])
+
+    # Create an empty array for the merged raster
+    merged_data = np.zeros((1, height, width), dtype=rasters[0].dtypes[0])
+
+    # New affine transform for the merged raster
+    out_transform = rasterio.transform.from_bounds(min_x, min_y, max_x, max_y, width, height)
+
+    # Place each raster in the correct position
+    for raster, bounds in zip(rasters, bounds_list):
+        # Calculate the position of this raster in the merged raster
+        col_off = int((bounds[0] - min_x) / raster.transform[0])
+        row_off = int((max_y - bounds[3]) / -raster.transform[4])
+        
+        # Read the raster data
+        raster_data = raster.read(1)
+        
+        # Place the data in the merged raster
+        window = Window(col_off, row_off, raster_data.shape[1], raster_data.shape[0])
+        merged_data[0, window.row_off:window.row_off+window.height, 
+                    window.col_off:window.col_off+window.width] = raster_data
+
+    return merged_data, out_transform
 
 if __name__ == '__main__':
     logger.info("Starting Flask application")
