@@ -123,7 +123,7 @@ export default {
 
         for (let i = 0; i < width * height; i++) {
           const value = rasterData[0][i];
-          const color = value === 0 ? [255, 255, 0, 255] : [0, 128, 0, 255]; // Yellow for non-forest, green for forest
+          const color = value === 1 ? [255, 255, 0, 255] : [0, 128, 0, 255]; // Yellow for non-forest, green for forest
           data[i * 4] = color[0];
           data[i * 4 + 1] = color[1];
           data[i * 4 + 2] = color[2];

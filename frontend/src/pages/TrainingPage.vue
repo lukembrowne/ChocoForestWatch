@@ -190,7 +190,7 @@ export default {
       const options = []
       for (let year = 2022; year <= 2024; year++) {
         for (let month = 1; month <= 12; month++) {
-          if (year === 2024 && month > 1) break
+          if (year === 2024 && month > 6) break
           const date = new Date(year, month - 1)
           options.push({
             label: date.toLocaleString('default', { month: 'long', year: 'numeric' }),
@@ -288,11 +288,11 @@ export default {
               message: 'Error occurred during training.'
             });
           }
-          if (data.message === 'Training complete') {
+          if (data.message === "Training and prediction complete") {
             isTraining.value = false;
             $q.notify({
               type: 'positive',
-              message: 'Training completed successfully!'
+              message: 'Training and prediction completed successfully!'
             });
             router.push({
               name: 'analysis',
