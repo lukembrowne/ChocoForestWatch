@@ -59,7 +59,7 @@ module.exports = configure(function (/* ctx */) {
       env: {
         VUE_APP_PLANET_API_KEY: process.env.VUE_APP_PLANET_API_KEY      },
 
-      vueRouterMode: 'hash', // available values: 'hash', 'history'
+      vueRouterMode: 'history', // available values: 'hash', 'history'
       // vueRouterBase,
       // vueDevtools,
       // vueOptionsAPI: false,

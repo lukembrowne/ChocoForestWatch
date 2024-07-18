@@ -1,29 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import MainLayout from '../layouts/MainLayout.vue'  // Static import
+
 
 const routes = [
   {
     path: '/',
-    component: () => import('layouts/MainLayout.vue'),
-    children: [
-      {
-        path: '',
-        components: {
-          default: () => import('pages/HomePage.vue'),
-        }
-      }, 
-      { path: 'training', name: 'training', component: () => import('pages/TrainingPage.vue') },
-      { path: 'prediction', name: 'prediction', component: () => import('pages/PredictionPage.vue') },
-      { path: 'analysis', name: 'analysis', component: () => import('pages/AnalysisPage.vue') },
-      { path: 'debug', component: () => import('pages/DebugPage.vue') }, // Make sure this line is present
-      { path: 'satellite-browser', component: () => import('pages/SatelliteImageBrowser.vue') }, // Add this line
-
-    ],
+    component: MainLayout,  // Use the imported component directly
+    children: [{ path: '', component: () => import('../pages/MainPage.vue') }]
   },
   {
     path: '/:catchAll(.*)*',
-    component: () => import('pages/ErrorNotFound.vue'),
+    component: () => import('../pages/ErrorNotFound.vue'),
   },
-]
+];
 
 export default function (/* { store } */) {
   const router = createRouter({

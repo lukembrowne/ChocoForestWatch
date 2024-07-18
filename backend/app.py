@@ -119,7 +119,7 @@ class Project(db.Model):
             'id': self.id,
             'name': self.name,
             'description': self.description,
-            'aoi': db.session.scalar(self.aoi.ST_AsGeoJSON()),
+            # 'aoi': db.session.scalar(self.aoi.ST_AsGeoJSON()),
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
@@ -263,20 +263,20 @@ def prediction_files(filename):
 @app.route('/api/projects', methods=['POST'])
 def create_project():
     data = request.json
-    aoi_geojson = data.get('aoi')
+    # aoi_geojson = data.get('aoi')
     
-    if not aoi_geojson:
-        return jsonify({"error": "AOI is required"}), 400
+    # if not aoi_geojson:
+    #     return jsonify({"error": "AOI is required"}), 400
     
-    try:
-        aoi_shape = shape(aoi_geojson)
-    except Exception as e:
-        return jsonify({"error": f"Invalid AOI geometry: {str(e)}"}), 400
+    # try:
+    #     aoi_shape = shape(aoi_geojson)
+    # except Exception as e:
+    #     return jsonify({"error": f"Invalid AOI geometry: {str(e)}"}), 400
     
     project = Project(
         name=data.get('name', 'Untitled Project'),
         description=data.get('description', ''),
-        aoi=from_shape(aoi_shape, srid=4326)
+        # aoi=from_shape(aoi_shape, srid=4326)
     )
     
     db.session.add(project)
@@ -286,7 +286,7 @@ def create_project():
         "id": project.id,
         "name": project.name,
         "description": project.description,
-        "aoi": json.loads(db.session.scalar(project.aoi.ST_AsGeoJSON()))
+        # "aoi": json.loads(db.session.scalar(project.aoi.ST_AsGeoJSON()))
     }), 201
 
 @app.route('/api/projects/<int:project_id>', methods=['GET'])
@@ -303,9 +303,9 @@ def update_project(project_id):
         project.name = data['name']
     if 'description' in data:
         project.description = data['description']
-    if 'aoi' in data:
-        aoi_shape = shape(data['aoi'])
-        project.aoi = from_shape(aoi_shape, srid=4326)
+    # if 'aoi' in data:
+    #     aoi_shape = shape(data['aoi'])
+    #     project.aoi = from_shape(aoi_shape, srid=4326)
     
     db.session.commit()
     return jsonify(project.to_dict())

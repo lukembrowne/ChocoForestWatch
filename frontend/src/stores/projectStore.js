@@ -1,14 +1,34 @@
 import { defineStore } from 'pinia';
 import api from 'src/services/api';
+import TileLayer from 'ol/layer/Tile'
+import OSM from 'ol/source/OSM'
+import { Map, View } from 'ol'
+
 
 export const useProjectStore = defineStore('project', {
   state: () => ({
     currentProject: null,
     projects: [],
     aoi: null,
-    selectedProjectId: null
+    selectedProjectId: null,
+    map: null,
+
   }),
   actions: {
+    initMap(target) {
+      this.map = new Map({
+        target: target,
+        layers: [
+          new TileLayer({
+            source: new OSM()
+          })
+        ],
+        view: new View({
+          center: [0, 0],
+          zoom: 2
+        })
+      })
+    },
     setAOI(geometry) {
       this.aoi = geometry;
     },
@@ -26,7 +46,7 @@ export const useProjectStore = defineStore('project', {
         const response = await api.createProject({
           name: projectData.name,
           description: projectData.description,
-          aoi: projectData.aoi.geometry 
+          // aoi: projectData.aoi.geometry 
         });
         this.currentProject = response.data;
         this.projects.push(response.data);
@@ -52,8 +72,15 @@ export const useProjectStore = defineStore('project', {
       this.currentProject = null;
       this.selectedProjectId = null;
     },
+    setCurrentProject(project) {
+      this.currentProject = project
+    },
     setSelectedProjectId(id) {
       this.selectedProjectId = id;
     }
   },
+  getters: {
+    getMap: (state) => state.map,
+    // ... other getters
+  }
 });
