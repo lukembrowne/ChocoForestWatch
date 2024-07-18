@@ -154,6 +154,13 @@ export default {
   async getPrediction(predictionId) {
     const response = await axios.get(`${API_URL}/prediction/${predictionId}`);
     return response.data;
-  }
+  },
+
+  analyzeChange(prediction1Id, prediction2Id) {
+    return axios.post(`${API_URL}/analyze_change`, {
+      prediction1_id: prediction1Id,
+      prediction2_id: prediction2Id
+    });
+  },
 
 };

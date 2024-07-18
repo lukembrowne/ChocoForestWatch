@@ -917,47 +917,67 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
     return output_file
 
 
-def check_quads_adjacent(bounds_list):
-    # Check if any pair of quads are adjacent or overlapping
-    for i in range(len(bounds_list)):
-        for j in range(i+1, len(bounds_list)):
-            if (bounds_list[i][0] < bounds_list[j][2] and bounds_list[i][2] > bounds_list[j][0] and
-                bounds_list[i][1] < bounds_list[j][3] and bounds_list[i][3] > bounds_list[j][1]):
-                return True
-    return False
 
-def manual_merge(rasters, bounds_list):
-    # Find the overall extent
-    min_x = min(bound[0] for bound in bounds_list)
-    min_y = min(bound[1] for bound in bounds_list)
-    max_x = max(bound[2] for bound in bounds_list)
-    max_y = max(bound[3] for bound in bounds_list)
+def analyze_change(prediction1_id, prediction2_id):
+    # Fetch the prediction rasters
+    prediction1 = Prediction.query.get_or_404(prediction1_id)
+    prediction2 = Prediction.query.get_or_404(prediction2_id)
 
-    # Calculate the dimensions of the merged raster
-    width = int((max_x - min_x) / rasters[0].transform[0])
-    height = int((max_y - min_y) / -rasters[0].transform[4])
+    # Read the rasters
+    with rasterio.open(prediction1.file_path) as src1, rasterio.open(prediction2.file_path) as src2:
+        # Ensure the rasters have the same extent and resolution
+        if src1.bounds != src2.bounds or src1.res != src2.res:
+            return jsonify({"error": "Predictions have different extents or resolutions"}), 400
 
-    # Create an empty array for the merged raster
-    merged_data = np.zeros((1, height, width), dtype=rasters[0].dtypes[0])
+        # Read the data
+        data1 = src1.read(1)
+        data2 = src2.read(1)
 
-    # New affine transform for the merged raster
-    out_transform = rasterio.transform.from_bounds(min_x, min_y, max_x, max_y, width, height)
+        # Calculate areas
+        pixel_area = src1.res[0] * src1.res[1] / 1_000_000  # Area in sq km
 
-    # Place each raster in the correct position
-    for raster, bounds in zip(rasters, bounds_list):
-        # Calculate the position of this raster in the merged raster
-        col_off = int((bounds[0] - min_x) / raster.transform[0])
-        row_off = int((max_y - bounds[3]) / -raster.transform[4])
-        
-        # Read the raster data
-        raster_data = raster.read(1)
-        
-        # Place the data in the merged raster
-        window = Window(col_off, row_off, raster_data.shape[1], raster_data.shape[0])
-        merged_data[0, window.row_off:window.row_off+window.height, 
-                    window.col_off:window.col_off+window.width] = raster_data
+        previous_forest = np.sum(data1 == 1) * pixel_area
+        previous_non_forest = np.sum(data1 == 0) * pixel_area
+        current_forest = np.sum(data2 == 1) * pixel_area
+        current_non_forest = np.sum(data2 == 0) * pixel_area
 
-    return merged_data, out_transform
+        # Calculate change
+        deforested = np.sum((data1 == 1) & (data2 == 0)) * pixel_area
+        reforested = np.sum((data1 == 0) & (data2 == 1)) * pixel_area
+
+        total_area = previous_forest + previous_non_forest
+        deforestation_rate = (deforested - reforested) / previous_forest * 100
+        total_area_changed = deforested + reforested
+
+        results = {
+            "previousForestArea": float(previous_forest),
+            "previousNonForestArea": float(previous_non_forest),
+            "currentForestArea": float(current_forest),
+            "currentNonForestArea": float(current_non_forest),
+            "deforestedArea": float(deforested),
+            "reforestedArea": float(reforested),
+            "deforestationRate": float(deforestation_rate),
+            "totalAreaChanged": float(total_area_changed),
+            "totalArea": float(total_area)
+        }
+
+        logger.info(f"Change analysis results: {results}")
+
+        return jsonify(results)
+
+# Add this route to your Flask app
+@app.route('/api/analyze_change', methods=['POST'])
+def api_analyze_change():
+    data = request.json
+    prediction1_id = data.get('prediction1_id')
+    prediction2_id = data.get('prediction2_id')
+    
+    if not prediction1_id or not prediction2_id:
+        return jsonify({"error": "Both prediction IDs are required"}), 400
+
+    return analyze_change(prediction1_id, prediction2_id)
+
+
 
 if __name__ == '__main__':
     logger.info("Starting Flask application")
