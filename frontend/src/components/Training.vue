@@ -1,7 +1,6 @@
 <template>
   <div class="training-component">
-    <h6>Land Cover Training</h6>
-
+    <p> Select basemap date:</p>
     <div class="basemap-selection q-mb-md">
       <q-select v-model="selectedBasemapDate" :options="basemapDateOptions" label="Select Basemap Date"
         @update:model-value="onBasemapDateChange" />
@@ -9,6 +8,7 @@
     
     <q-separator spaced />
 
+    <p> Drawing controls</p>
     <div class="class-selection q-mb-md">
       <q-item-section>
         <q-select v-model="selectedClass" :options="landCoverClasses" label="Class" dense />
@@ -26,7 +26,7 @@
       <q-list bordered separator>
         <q-item v-for="(polygon, index) in drawnPolygons" :key="index">
           <q-item-section>
-            {{ polygon.properties.classLabel }} - Area: {{ calculateArea(polygon).toFixed(2) }} m²
+            {{ polygon.properties.classLabel }} - Area: {{ (calculateArea(polygon)/10000).toFixed(2) }} ha
           </q-item-section>
           <q-item-section side>
             <q-btn flat round color="negative" icon="delete" @click="deletePolygon(index)" />
@@ -44,6 +44,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
+import { useTrainingStore } from 'src/stores/trainingStore'
 import { useQuasar } from 'quasar'
 import { getArea } from 'ol/sphere'
 import { GeoJSON } from 'ol/format'
@@ -55,10 +56,11 @@ export default {
   setup(props, { emit }) {
     const projectStore = useProjectStore()
     const mapStore = useMapStore()
+    const trainingStore = useTrainingStore()
     const $q = useQuasar()
 
     const selectedClass = computed(() => mapStore.selectedClass)
-    const drawnPolygons = ref([])
+    const drawnPolygons = computed(() => trainingStore.drawnPolygons)
     const selectedBasemapDate = ref(null)
     const isDrawing = computed(() => mapStore.isDrawing)
 
@@ -124,9 +126,7 @@ export default {
 
 
     const calculateArea = (polygon) => {
-      const feature = new GeoJSON().readFeature(polygon, {
-        featureProjection: projectStore.map.getView().getProjection()
-      })
+      const feature = new GeoJSON().readFeature(polygon)
       return getArea(feature.getGeometry())
     }
 
@@ -135,7 +135,7 @@ export default {
         await apiService.saveTrainingPolygons({
           project_id: projectStore.currentProject.id,
           basemap_date: selectedBasemapDate.value,
-          polygons: getDrawnPolygonsGeoJSON()
+          polygons: mapStore.getDrawnPolygonsGeoJSON()
         })
         $q.notify({
           color: 'positive',

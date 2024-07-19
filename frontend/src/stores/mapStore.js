@@ -368,6 +368,7 @@ export const useMapStore = defineStore('map', () => {
     deletePolygon,
     toggleDrawing,
     setClassLabel,
+    getDrawnPolygonsGeoJSON,
     // Getters
     getMap
   };
