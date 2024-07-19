@@ -37,7 +37,7 @@ export const useMapStore = defineStore('map', () => {
   const drawInteraction = ref(null);
   const modifyInteraction = ref(null);
   const selectInteraction = ref(null);
-  const currentClassLabel = ref('forest');
+  const selectedClass = ref('forest');
   const drawnPolygons = computed(() => trainingStore.drawnPolygons);
   const { selectedPolygon } = storeToRefs(trainingStore);
 
@@ -217,6 +217,14 @@ export const useMapStore = defineStore('map', () => {
     map.value.addInteraction(modifyInteraction.value);
   };
 
+  const toggleDrawing = () => {
+    if (drawing.value) {
+      stopDrawing();
+    } else {
+      startDrawing();
+    }
+  };
+
   const startDrawing = () => {
 
     console.log("Start drawing from within MapStore...");
@@ -231,7 +239,7 @@ export const useMapStore = defineStore('map', () => {
 
     drawInteraction.value.on('drawend', (event) => {
       const feature = event.feature;
-      feature.set('classLabel', currentClassLabel.value);
+      feature.set('classLabel', selectedClass.value);
       feature.setId(Date.now().toString()); // Generate a unique ID
       const newPolygon = new GeoJSON().writeFeatureObject(feature, {
         dataProjection: 'EPSG:3857',
@@ -297,7 +305,7 @@ export const useMapStore = defineStore('map', () => {
   };
 
   const setClassLabel = (label) => {
-    currentClassLabel.value = label;
+    selectedClass.value = label;
   };
 
   const getDrawnPolygonsGeoJSON = () => {
@@ -346,6 +354,7 @@ export const useMapStore = defineStore('map', () => {
     isLoading,
     isDrawing,
     aoiLayer,
+    selectedClass,
     // Actions
     initMap,
     setAOI,
@@ -357,6 +366,8 @@ export const useMapStore = defineStore('map', () => {
     stopDrawing,
     clearDrawnPolygons,
     deletePolygon,
+    toggleDrawing,
+    setClassLabel,
     // Getters
     getMap
   };

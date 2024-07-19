@@ -1,31 +1,26 @@
 <template>
   <div class="training-component">
     <h6>Land Cover Training</h6>
-    
+
     <div class="basemap-selection q-mb-md">
-      <q-select
-        v-model="selectedBasemapDate"
-        :options="basemapDateOptions"
-        label="Select Basemap Date"
-        @update:model-value="onBasemapDateChange"
-      />
+      <q-select v-model="selectedBasemapDate" :options="basemapDateOptions" label="Select Basemap Date"
+        @update:model-value="onBasemapDateChange" />
     </div>
     
+    <q-separator spaced />
+
     <div class="class-selection q-mb-md">
-      <q-btn-toggle
-        v-model="selectedClass"
-        :options="landCoverClasses"
-        color="primary"
-        @update:model-value="onClassSelect"
-      />
+      <q-item-section>
+        <q-select v-model="selectedClass" :options="landCoverClasses" label="Class" dense />
+      </q-item-section>
     </div>
-    
+
     <div class="drawing-controls q-mb-md">
       <q-btn label="Draw Polygon" color="primary" @click="startDrawing" :disable="isDrawing" />
       <q-btn label="Stop Drawing" color="negative" @click="stopDrawing" :disable="!isDrawing" class="q-ml-sm" />
       <q-btn label="Clear All" color="warning" @click="clearDrawnPolygons" class="q-ml-sm" />
     </div>
-    
+
     <div class="polygon-list q-mb-md">
       <h6>Training Polygons</h6>
       <q-list bordered separator>
@@ -39,8 +34,9 @@
         </q-item>
       </q-list>
     </div>
-    
-    <q-btn label="Save Training Data" color="positive" @click="saveDrawnPolygons" :disable="drawnPolygons.length === 0" />
+
+    <q-btn label="Save Training Data" color="positive" @click="saveDrawnPolygons"
+      :disable="drawnPolygons.length === 0" />
   </div>
 </template>
 
@@ -61,13 +57,13 @@ export default {
     const mapStore = useMapStore()
     const $q = useQuasar()
 
-    const selectedClass = ref('forest')
+    const selectedClass = computed(() => mapStore.selectedClass)
     const drawnPolygons = ref([])
     const selectedBasemapDate = ref(null)
     const isDrawing = computed(() => mapStore.isDrawing)
 
     // Destructure to use directly in the template
-    const { startDrawing, stopDrawing, clearDrawnPolygons, deletePolygon } = mapStore;
+    const { startDrawing, stopDrawing, clearDrawnPolygons, deletePolygon} = mapStore;
 
 
     const landCoverClasses = [
@@ -94,7 +90,7 @@ export default {
     const loadExistingTrainingData = async () => {
       try {
         const response = await apiService.getSpecificTrainingPolygons(
-          projectStore.currentProject.id, 
+          projectStore.currentProject.id,
           selectedBasemapDate.value
         )
         const existingPolygons = response.data
@@ -157,15 +153,39 @@ export default {
       }
     }
 
+    
+    
+    const handleKeyDown = (event) => {
+      if (event.key === '1') {
+        console.log("Selected class: forest")
+        mapStore.setClassLabel('forest');
+      } else if (event.key === '2') {
+        console.log("Selected class: non-forest")
+        mapStore.setClassLabel('non-forest');
+      } else if ((event.key === 'Delete' || event.key === 'Backspace') && trainingStore.selectedPolygon !== null) {
+        mapStore.deletePolygon(trainingStore.selectedPolygon)
+      } else if (event.key === ' ' && !event.repeat) {
+        event.preventDefault();
+        mapStore.toggleDrawing();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+
+    watch(selectedClass, (newLabel) => {
+      mapStore.setClassLabel(newLabel);
+    });
+    
+
     return {
       selectedClass,
       isDrawing,
       drawnPolygons,
       landCoverClasses,
       startDrawing,
-       stopDrawing,
-       clearDrawnPolygons,
-       deletePolygon,
+      stopDrawing,
+      clearDrawnPolygons,
+      deletePolygon,
       calculateArea,
       saveDrawnPolygons,
       onClassSelect,
