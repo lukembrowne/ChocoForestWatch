@@ -32,7 +32,7 @@ export default {
     const projectStore = useProjectStore()
     const mapStore = useMapStore()
     const $q = useQuasar()
-    const isLoading = computed(() => projectStore.isLoading)
+    const isLoading = computed(() => mapStore.isLoading)
     
 
     onMounted(() => {

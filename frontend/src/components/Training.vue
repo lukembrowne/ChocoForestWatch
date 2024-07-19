@@ -21,7 +21,7 @@
     </div>
     
     <div class="drawing-controls q-mb-md">
-      <q-btn label="Draw Polygon" color="primary" @click="startDrawing" :disable="isDrawing || !mapInitialized" />
+      <q-btn label="Draw Polygon" color="primary" @click="startDrawing" :disable="isDrawing" />
       <q-btn label="Stop Drawing" color="negative" @click="stopDrawing" :disable="!isDrawing" class="q-ml-sm" />
       <q-btn label="Clear All" color="warning" @click="clearDrawnPolygons" class="q-ml-sm" />
     </div>
@@ -47,10 +47,10 @@
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useProjectStore } from 'src/stores/projectStore'
+import { useMapStore } from 'src/stores/mapStore'
 import { useQuasar } from 'quasar'
 import { getArea } from 'ol/sphere'
 import { GeoJSON } from 'ol/format'
-import { useDrawing } from 'src/composables/useDrawing'
 import apiService from 'src/services/api'
 
 export default {
@@ -58,12 +58,17 @@ export default {
   emits: ['step-completed'],
   setup(props, { emit }) {
     const projectStore = useProjectStore()
+    const mapStore = useMapStore()
     const $q = useQuasar()
 
     const selectedClass = ref('forest')
-    const mapInitialized = computed(() => projectStore.mapInitialized)
     const drawnPolygons = ref([])
     const selectedBasemapDate = ref(null)
+    const isDrawing = computed(() => mapStore.isDrawing)
+
+    // Destructure to use directly in the template
+    const { startDrawing, stopDrawing, clearDrawnPolygons, deletePolygon } = mapStore;
+
 
     const landCoverClasses = [
       { label: 'Forest', value: 'forest' },
@@ -85,16 +90,6 @@ export default {
       return options
     })
 
-    const {
-      isDrawing,
-      startDrawing,
-      stopDrawing,
-      clearDrawnPolygons,
-      deletePolygon,
-      setClassLabel,
-      getDrawnPolygonsGeoJSON,
-      loadPolygons
-    } = useDrawing(() => projectStore.map)
 
     const loadExistingTrainingData = async () => {
       try {
@@ -127,19 +122,10 @@ export default {
     const onBasemapDateChange = async (date) => {
       console.log("Basemap date changed to: ", date)
       console.log("Updating basemap")
-      projectStore.setLoading()
-      updateBasemap(date)
+      mapStore.updateBasemap(date['value'])
       //await loadExistingTrainingData()
-      projectStore.clearLoading()
     }
 
-    const updateBasemap = (date) => {
-      if (projectStore.map) {
-        // Assuming you have a method in projectStore to update the basemap
-        projectStore.updateBasemap(date['value'])
-        console.log("end")
-      }
-    }
 
     const calculateArea = (polygon) => {
       const feature = new GeoJSON().readFeature(polygon, {
@@ -176,11 +162,10 @@ export default {
       isDrawing,
       drawnPolygons,
       landCoverClasses,
-      mapInitialized,
       startDrawing,
-      stopDrawing,
-      clearDrawnPolygons,
-      deletePolygon,
+       stopDrawing,
+       clearDrawnPolygons,
+       deletePolygon,
       calculateArea,
       saveDrawnPolygons,
       onClassSelect,
