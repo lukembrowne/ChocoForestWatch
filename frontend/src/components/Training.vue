@@ -90,14 +90,19 @@ export default {
 
 
     const loadExistingTrainingData = async () => {
+
+      console.log('selctedBasemapDate', selectedBasemapDate.value['value'])
       try {
         const response = await apiService.getSpecificTrainingPolygons(
           projectStore.currentProject.id,
-          selectedBasemapDate.value
+          selectedBasemapDate.value['value']
         )
         const existingPolygons = response.data
-        if (existingPolygons && existingPolygons.length > 0) {
-          loadPolygons({ type: 'FeatureCollection', features: existingPolygons })
+        console.log('existingPolygons', existingPolygons)
+        console.log('existingPolygons length', existingPolygons.features.length)
+        if (existingPolygons && existingPolygons.features.length > 0) {
+          console.log('Loading existing training data:', existingPolygons)
+          mapStore.loadPolygons(existingPolygons)
           drawnPolygons.value = existingPolygons
         } else {
           clearDrawnPolygons()
@@ -121,7 +126,7 @@ export default {
       console.log("Basemap date changed to: ", date)
       console.log("Updating basemap")
       mapStore.updateBasemap(date['value'])
-      //await loadExistingTrainingData()
+      await loadExistingTrainingData()
     }
 
 
