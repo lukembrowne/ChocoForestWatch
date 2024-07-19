@@ -2,6 +2,9 @@
   <q-page class="flex">
     <div class="full-width">
       <div id="map" style="width: 100%; height: 100%;"></div>
+      <q-inner-loading :showing="isLoading">
+            <q-spinner-gears size="50px" color="primary" />
+        </q-inner-loading>
     </div>
 
     <q-page-sticky position="bottom-left" :offset="[18, 18]">
@@ -14,7 +17,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useQuasar } from 'quasar'
 
@@ -26,6 +29,8 @@ export default {
     const baseMap = ref(null)
     const projectStore = useProjectStore()
     const $q = useQuasar()
+    const isLoading = computed(() => projectStore.isLoading)
+    
 
     onMounted(() => {
       console.log('Initializing map...')
@@ -61,7 +66,8 @@ export default {
       baseMap,
       onMapReady,
       saveCurrentStep,
-      runCurrentStep
+      runCurrentStep,
+      isLoading
     }
   }
 }

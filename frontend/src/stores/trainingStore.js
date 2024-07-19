@@ -1,6 +1,4 @@
 import { defineStore } from 'pinia'
-import apiService from '../services/api'
-
 
 export const useTrainingStore = defineStore('training', {
   state: () => ({
@@ -8,7 +6,7 @@ export const useTrainingStore = defineStore('training', {
     pixelsExtracted: false,
     extractionError: null,
     selectedPolygon: null,
-    selectedBasemapDate: null, // Add this new state property
+    selectedBasemapDate: null, 
   }),
 
   actions: {

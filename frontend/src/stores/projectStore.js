@@ -9,6 +9,8 @@ import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
 import GeoJSON from 'ol/format/GeoJSON'
 import { Style, Fill, Stroke } from 'ol/style'
+import XYZ from 'ol/source/XYZ';
+
 
 
 export const useProjectStore = defineStore('project', {
@@ -18,7 +20,8 @@ export const useProjectStore = defineStore('project', {
     aoi: null,
     selectedProjectId: null,
     map: null,
-    mapInitialized: false
+    mapInitialized: false,
+    isLoading: false
 
   }),
   actions: {
@@ -27,7 +30,8 @@ export const useProjectStore = defineStore('project', {
         target: target,
         layers: [
           new TileLayer({
-            source: new OSM()
+            source: new OSM(),
+            name: 'baseMap'
           })
         ],
         view: new View({
@@ -135,16 +139,52 @@ export const useProjectStore = defineStore('project', {
       // Zoom to AOI
       this.map.getView().fit(vectorSource.getExtent(), { padding: [50, 50, 50, 50] })
     },
-    
+
     clearAOI() {
       if (this.aoiLayer) {
         this.map.removeLayer(this.aoiLayer)
         this.aoiLayer = null
       }
-    }
+    },
+
+    setLoading(){
+      this.isLoading = true
+    },
+    clearLoading(){
+      this.isLoading = false
+    },
+
+    updateBasemap(date) {
+
+      const apiKey = process.env.VUE_APP_PLANET_API_KEY;
+      if (!apiKey) {
+        console.error('API key is not defined. Please check your .env file.');
+        return;
+      }
+
+      // const formattedDate = date.replace(/^(\d{4})-(\d{1,2})$/, (_, year, month) => `${year}-${month.padStart(2, '0')}`);
+      console.log("Updating basemap for date: ", date);
+      const newSource = new XYZ({
+        url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
+      });
+
+      newSource.on('tileloaderror', () => {
+        console.error('basemap-error', `Failed to load basemap for date: ${date}`);
+        this.clearLoading()
+      });
+      // Find the base layer and set the new source
+      this.map.getLayers().forEach(layer => {
+        if (layer.get('name') === 'baseMap') {
+          console.log("Setting source for updated basemap...");
+          layer.setSource(newSource);
+        }
+      });
+      },
+
+
   },
-  getters: {
-    getMap: (state) => state.map,
-    // ... other getters
-  }
-});
+    getters: {
+      getMap: (state) => state.map,
+      // ... other getters
+    }
+  });
