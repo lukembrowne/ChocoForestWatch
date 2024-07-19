@@ -3,6 +3,8 @@ import api from 'src/services/api';
 import TileLayer from 'ol/layer/Tile'
 import OSM from 'ol/source/OSM'
 import { Map, View } from 'ol'
+import { fromLonLat } from 'ol/proj';
+
 
 
 export const useProjectStore = defineStore('project', {
@@ -25,8 +27,8 @@ export const useProjectStore = defineStore('project', {
           })
         ],
         view: new View({
-          center: [0, 0],
-          zoom: 2
+          center: fromLonLat([-79.81822466589962, 0.460628082970743]),
+          zoom: 12
         })
       })
       console.log('Map initialized...')

@@ -1,12 +1,17 @@
 <template>
   <div>
     <h6>Define Area of Interest</h6>
+    <p v-if="!aoiDrawn">Please draw your Area of Interest on the map.</p>
     <q-btn label="Draw AOI" color="primary" @click="startDrawingAOI" :disable="isDrawing" />
     <q-btn label="Clear AOI" color="negative" @click="clearAOI" :disable="!aoiDrawn" class="q-ml-sm" />
     
-    <q-input v-model="aoiName" label="AOI Name" class="q-mt-md" />
+    <q-input v-if="aoiDrawn" v-model="aoiName" label="AOI Name" class="q-mt-md" />
     
-    <q-btn label="Save AOI" color="positive" @click="saveAOI" :disable="!aoiDrawn" class="q-mt-md" />
+    <q-btn v-if="aoiDrawn" label="Save AOI" color="positive" @click="saveAOI" :disable="!aoiName" class="q-mt-md" />
+    
+    <q-banner v-if="aoiDrawn && !aoiName" class="bg-yellow-1 text-grey-9 q-mt-md">
+      Please provide a name for your Area of Interest before saving.
+    </q-banner>
   </div>
 </template>
 
@@ -14,10 +19,13 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useQuasar } from 'quasar'
-import { Draw } from 'ol/interaction'
+import Draw, {
+  createBox,
+} from 'ol/interaction/Draw.js';
 import { Vector as VectorLayer } from 'ol/layer'
 import { Vector as VectorSource } from 'ol/source'
 import GeoJSON from 'ol/format/GeoJSON'
+
 
 export default {
   name: 'AOIDefinitionComponent',
@@ -86,7 +94,8 @@ export default {
       isDrawing.value = true
       drawInteraction = new Draw({
         source: vectorLayer.getSource(),
-        type: 'Polygon'
+        type: 'Circle',
+        geometryFunction: createBox()
       })
       
       drawInteraction.on('drawend', (event) => {
@@ -105,7 +114,7 @@ export default {
     }
 
     const saveAOI = async () => {
-      if (!aoiDrawn.value) return
+      if (!aoiDrawn.value || !aoiName.value) return
 
       const feature = vectorLayer.getSource().getFeatures()[0]
       const geojson = new GeoJSON().writeFeatureObject(feature)

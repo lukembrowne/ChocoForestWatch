@@ -20,7 +20,8 @@
       :label="step.label"
       :caption="step.caption"
       :disable="!currentProject || index > completedSteps"
-      :default-opened="index === 0 && currentProject && !currentProject.aoi"
+      :default-opened="index === activeStep"
+      @update:model-value="(val) => handleStepToggle(index, val)"
     >
       <q-card>
         <q-card-section>
@@ -32,7 +33,7 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import ProjectSelectionDialog from 'components/ProjectSelectionDialog.vue'
@@ -53,6 +54,7 @@ export default {
     const $q = useQuasar()
     const projectStore = useProjectStore()
     const completedSteps = ref(-1)
+    const activeStep = ref(-1)
 
     const currentProject = computed(() => projectStore.currentProject)
 
@@ -74,7 +76,10 @@ export default {
     const selectProject = async (project) => {
       await projectStore.setCurrentProject(project)
       if (project.isNew || !project.aoi) {
-        completedSteps.value = -1
+        completedSteps.value = 0
+        activeStep.value = 0 // Automatically open the AOI definition step
+        console.log("setting active step to 0")
+        console.log(activeStep.value)
         $q.notify({
           message: 'Please define the Area of Interest (AOI) for this project',
           color: 'info',
@@ -83,19 +88,35 @@ export default {
       } else {
         await projectStore.loadProjectAOI(project.id)
         completedSteps.value = 0
+        activeStep.value = 1 // Move to the next step if AOI is already defined
       }
     }
 
     const stepCompleted = (index) => {
       completedSteps.value = Math.max(completedSteps.value, index)
+      activeStep.value = index + 1 // Move to the next step
     }
+
+    const handleStepToggle = (index, isOpened) => {
+      if (isOpened) {
+        activeStep.value = index
+      }
+    }
+
+    watch(currentProject, (newProject) => {
+      if (newProject && (!newProject.aoi || newProject.isNew)) {
+        activeStep.value = 0 // Ensure AOI step is open when project changes
+      }
+    })
 
     return {
       currentProject,
       workflowSteps,
       completedSteps,
+      activeStep,
       openProjectDialog,
-      stepCompleted
+      stepCompleted,
+      handleStepToggle
     }
   }
 }
