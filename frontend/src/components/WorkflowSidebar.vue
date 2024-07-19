@@ -13,8 +13,15 @@
     <q-separator spaced />
 
     <q-item-label header>Workflow</q-item-label>
-    <q-expansion-item v-for="(step, index) in workflowSteps" :key="index" :icon="step.icon" :label="step.label"
-      :caption="step.caption" :disable="!currentProject || index > completedSteps">
+    <q-expansion-item
+      v-for="(step, index) in workflowSteps"
+      :key="index"
+      :icon="step.icon"
+      :label="step.label"
+      :caption="step.caption"
+      :disable="!currentProject || index > completedSteps"
+      :default-opened="index === 0 && currentProject && !currentProject.aoi"
+    >
       <q-card>
         <q-card-section>
           <component :is="step.component" @step-completed="stepCompleted(index)" />
@@ -37,7 +44,6 @@ import PredictionComponent from 'components/Prediction.vue'
 export default {
   name: 'WorkflowSidebar',
   components: {
-    ProjectSelectionDialog,
     AOIDefinitionComponent,
     TrainingComponent,
     PredictionComponent,
@@ -46,13 +52,12 @@ export default {
   setup() {
     const $q = useQuasar()
     const projectStore = useProjectStore()
-    const projectDialogOpen = ref(false)
     const completedSteps = ref(-1)
 
     const currentProject = computed(() => projectStore.currentProject)
 
     const workflowSteps = [
-      { label: 'Define AOI', icon: 'map', component: 'AOIDefinition', caption: 'Set the area of interest' },
+      { label: 'Define AOI', icon: 'map', component: 'AOIDefinitionComponent', caption: 'Set the area of interest' },
       { label: 'Training', icon: 'school', component: 'TrainingComponent', caption: 'Create training data' },
       { label: 'Prediction', icon: 'insights', component: 'PredictionComponent', caption: 'Run land cover prediction' },
       { label: 'Analysis', icon: 'analytics', component: 'AnalysisComponent', caption: 'Analyze changes' }
@@ -66,9 +71,19 @@ export default {
       })
     }
 
-    const selectProject = (project) => {
-      projectStore.setCurrentProject(project)
-      completedSteps.value = -1 // Reset completed steps when a new project is selected
+    const selectProject = async (project) => {
+      await projectStore.setCurrentProject(project)
+      if (project.isNew || !project.aoi) {
+        completedSteps.value = -1
+        $q.notify({
+          message: 'Please define the Area of Interest (AOI) for this project',
+          color: 'info',
+          icon: 'info'
+        })
+      } else {
+        await projectStore.loadProjectAOI(project.id)
+        completedSteps.value = 0
+      }
     }
 
     const stepCompleted = (index) => {
@@ -78,10 +93,8 @@ export default {
     return {
       currentProject,
       workflowSteps,
-      projectDialogOpen,
       completedSteps,
       openProjectDialog,
-      selectProject,
       stepCompleted
     }
   }

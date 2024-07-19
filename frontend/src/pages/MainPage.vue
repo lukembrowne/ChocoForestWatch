@@ -1,10 +1,10 @@
 <template>
   <q-page class="flex">
     <div class="full-width">
-      <div id="map" style="width: 100%; height: 400px;"></div>
+      <div id="map" style="width: 100%; height: 100%;"></div>
     </div>
 
-    <q-page-sticky position="bottom-right" :offset="[18, 18]">
+    <q-page-sticky position="bottom-left" :offset="[18, 18]">
       <q-fab icon="add" direction="up" color="primary">
         <q-fab-action color="primary" icon="save" label="Save" @click="saveCurrentStep" />
         <q-fab-action color="primary" icon="play_arrow" label="Run" @click="runCurrentStep" />
@@ -68,7 +68,5 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.full-height {
-  height: calc(100vh - 50px); // Adjust based on your header/footer height
-}
+
 </style>

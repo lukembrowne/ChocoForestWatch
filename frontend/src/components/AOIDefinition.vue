@@ -11,8 +11,8 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useProjectStore } from 'stores/projectStore'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { useProjectStore } from 'src/stores/projectStore'
 import { useQuasar } from 'quasar'
 import { Draw } from 'ol/interaction'
 import { Vector as VectorLayer } from 'ol/layer'
@@ -34,15 +34,20 @@ export default {
     let vectorLayer
 
     onMounted(() => {
-      initializeVectorLayer()
+      if (projectStore.mapInitialized) {
+        initializeVectorLayer()
+        if (projectStore.currentProject?.aoi) {
+          loadExistingAOI()
+        }
+      }
     })
 
-    onUnmounted(() => {
-      if (drawInteraction) {
-        projectStore.getMap.removeInteraction(drawInteraction)
+  onUnmounted(() => {
+      if (drawInteraction && projectStore.map) {
+        projectStore.map.removeInteraction(drawInteraction)
       }
-      if (vectorLayer) {
-        projectStore.getMap.removeLayer(vectorLayer)
+      if (vectorLayer && projectStore.map) {
+        projectStore.map.removeLayer(vectorLayer)
       }
     })
 
@@ -55,7 +60,26 @@ export default {
           'stroke-width': 2
         }
       })
-      projectStore.getMap.addLayer(vectorLayer)
+      projectStore.map.addLayer(vectorLayer)
+    }
+
+    watch(() => projectStore.mapInitialized, (initialized) => {
+      if (initialized) {
+        initializeVectorLayer()
+        if (projectStore.currentProject?.aoi) {
+          loadExistingAOI()
+        }
+      }
+    })
+
+    const loadExistingAOI = () => {
+      const format = new GeoJSON()
+      const feature = format.readFeature(projectStore.currentProject.aoi, {
+        featureProjection: 'EPSG:3857'
+      })
+      vectorLayer.getSource().addFeature(feature)
+      aoiDrawn.value = true
+      aoiName.value = projectStore.currentProject.aoiName || ''
     }
 
     const startDrawingAOI = () => {
@@ -68,10 +92,10 @@ export default {
       drawInteraction.on('drawend', (event) => {
         isDrawing.value = false
         aoiDrawn.value = true
-        projectStore.getMap.removeInteraction(drawInteraction)
+        projectStore.map.removeInteraction(drawInteraction)
       })
 
-      projectStore.getMap.addInteraction(drawInteraction)
+      projectStore.map.addInteraction(drawInteraction)
     }
 
     const clearAOI = () => {
@@ -80,24 +104,33 @@ export default {
       aoiName.value = ''
     }
 
-    const saveAOI = () => {
+    const saveAOI = async () => {
       if (!aoiDrawn.value) return
 
       const feature = vectorLayer.getSource().getFeatures()[0]
       const geojson = new GeoJSON().writeFeatureObject(feature)
 
-      projectStore.setProjectAOI({
-        name: aoiName.value,
-        geometry: geojson
-      })
+      try {
+        await projectStore.setProjectAOI({
+          name: aoiName.value,
+          geometry: geojson
+        })
 
-      $q.notify({
-        color: 'positive',
-        message: 'AOI saved successfully',
-        icon: 'check'
-      })
+        $q.notify({
+          color: 'positive',
+          message: 'AOI saved successfully',
+          icon: 'check'
+        })
 
-      emit('step-completed')
+        emit('step-completed')
+      } catch (error) {
+        console.error('Error saving AOI:', error)
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to save AOI',
+          icon: 'error'
+        })
+      }
     }
 
     return {
@@ -106,7 +139,8 @@ export default {
       aoiName,
       startDrawingAOI,
       clearAOI,
-      saveAOI
+      saveAOI,
+      mapInitialized: projectStore.mapInitialized
     }
   }
 }
