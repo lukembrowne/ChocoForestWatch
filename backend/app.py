@@ -293,7 +293,21 @@ def create_project():
 @app.route('/api/projects/<int:project_id>', methods=['GET'])
 def get_project(project_id):
     project = Project.query.get_or_404(project_id)
-    return jsonify(project.to_dict())
+    
+    project_data = {
+        'id': project.id,
+        'name': project.name,
+        'description': project.description,
+        'aoi': None
+    }
+    
+    if project.aoi:
+        # Convert the PostGIS geometry to a GeoJSON
+        shape = to_shape(project.aoi)
+        geojson = mapping(shape)
+        project_data['aoi'] = geojson
+
+    return jsonify(project_data), 200
 
 @app.route('/api/projects/<int:project_id>', methods=['PUT'])
 def update_project(project_id):

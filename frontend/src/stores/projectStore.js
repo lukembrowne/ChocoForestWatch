@@ -4,7 +4,11 @@ import TileLayer from 'ol/layer/Tile'
 import OSM from 'ol/source/OSM'
 import { Map, View } from 'ol'
 import { fromLonLat } from 'ol/proj';
-
+import 'ol/ol.css';
+import VectorLayer from 'ol/layer/Vector'
+import VectorSource from 'ol/source/Vector'
+import GeoJSON from 'ol/format/GeoJSON'
+import { Style, Fill, Stroke } from 'ol/style'
 
 
 export const useProjectStore = defineStore('project', {
@@ -63,16 +67,7 @@ export const useProjectStore = defineStore('project', {
     async setCurrentProject(project) {
       this.currentProject = project
     },
-    async loadProjectAOI(projectId) {
-      try {
-        const response = await api.getProjectAOI(projectId)
-        this.currentProject.aoi = response.data.aoi
-        this.currentProject.aoiName = response.data.aoiName
-      } catch (error) {
-        console.error('Error loading project AOI:', error)
-        throw error
-      }
-    },
+
     async setProjectAOI(aoiGeojson) {
       if (!this.currentProject) {
         throw new Error('No project selected')
@@ -86,15 +81,17 @@ export const useProjectStore = defineStore('project', {
         throw error
       }
     },
-    async loadProject(id) {
+    async loadProject(projectId) {
       try {
-        const response = await api.getProject(id);
-        this.currentProject = response.data;
-        this.selectedProjectId = id;
-        return this.currentProject;
+        const response = await api.getProject(projectId)
+        this.currentProject = response.data
+        if (this.currentProject.aoi && this.mapInitialized) {
+          this.displayAOI(this.currentProject.aoi)
+        }
+        return this.currentProject
       } catch (error) {
-        console.error('Failed to load project:', error);
-        throw error;
+        console.error('Error loading project:', error)
+        throw error
       }
     },
     clearCurrentProject() {
@@ -103,6 +100,47 @@ export const useProjectStore = defineStore('project', {
     },
     setSelectedProjectId(id) {
       this.selectedProjectId = id;
+    },
+    displayAOI(aoiGeojson) {
+
+      if (!this.map) return
+
+      // Remove existing AOI layer if it exists
+      if (this.aoiLayer) {
+        this.map.removeLayer(this.aoiLayer)
+      }
+
+      // Create new AOI layer
+      const format = new GeoJSON()
+      const feature = format.readFeature(aoiGeojson)
+      const vectorSource = new VectorSource({
+        features: [feature]
+      })
+      this.aoiLayer = new VectorLayer({
+        source: vectorSource,
+        style: new Style({
+          fill: new Fill({
+            color: 'rgba(255, 255, 255, 0.2)'
+          }),
+          stroke: new Stroke({
+            color: '#000000',
+            width: 2
+          })
+        })
+      })
+
+      // Add new AOI layer to map
+      this.map.addLayer(this.aoiLayer)
+
+      // Zoom to AOI
+      this.map.getView().fit(vectorSource.getExtent(), { padding: [50, 50, 50, 50] })
+    },
+    
+    clearAOI() {
+      if (this.aoiLayer) {
+        this.map.removeLayer(this.aoiLayer)
+        this.aoiLayer = null
+      }
     }
   },
   getters: {

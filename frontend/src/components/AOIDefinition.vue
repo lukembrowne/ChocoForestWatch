@@ -4,7 +4,7 @@
     <p v-if="!aoiDrawn">Please draw your Area of Interest on the map.</p>
     <q-btn label="Draw AOI" color="primary" @click="startDrawingAOI" :disable="isDrawing" />
     <q-btn label="Clear AOI" color="negative" @click="clearAOI" :disable="!aoiDrawn" class="q-ml-sm" />
-    
+
     <q-btn v-if="aoiDrawn" label="Save AOI" color="positive" @click="saveAOI" class="q-mt-md" />
   </div>
 </template>
@@ -28,23 +28,25 @@ export default {
   setup(props, { emit }) {
     const projectStore = useProjectStore()
     const $q = useQuasar()
-    
+
     const isDrawing = ref(false)
     const aoiDrawn = ref(false)
-    
+
     let drawInteraction
     let vectorLayer
 
     onMounted(() => {
       if (projectStore.mapInitialized) {
         initializeVectorLayer()
-        if (projectStore.currentProject?.aoi) {
-          loadExistingAOI()
+        if (projectStore.currentProject && projectStore.currentProject.aoi) {
+          console.log("Displaying AOI from AOIDefinition")
+          projectStore.displayAOI(projectStore.currentProject.aoi)
+          aoiDrawn.value = true
         }
       }
     })
 
-  onUnmounted(() => {
+    onUnmounted(() => {
       if (drawInteraction && projectStore.map) {
         projectStore.map.removeInteraction(drawInteraction)
       }
@@ -68,21 +70,9 @@ export default {
     watch(() => projectStore.mapInitialized, (initialized) => {
       if (initialized) {
         initializeVectorLayer()
-        if (projectStore.currentProject?.aoi) {
-          loadExistingAOI()
-        }
       }
     })
 
-    const loadExistingAOI = () => {
-      const format = new GeoJSON()
-      const feature = format.readFeature(projectStore.currentProject.aoi, {
-        featureProjection: 'EPSG:3857'
-      })
-      vectorLayer.getSource().addFeature(feature)
-      aoiDrawn.value = true
-      aoiName.value = projectStore.currentProject.aoiName || ''
-    }
 
     const startDrawingAOI = () => {
       isDrawing.value = true
@@ -91,7 +81,7 @@ export default {
         type: 'Circle',
         geometryFunction: createBox()
       })
-      
+
       drawInteraction.on('drawend', (event) => {
         isDrawing.value = false
         aoiDrawn.value = true

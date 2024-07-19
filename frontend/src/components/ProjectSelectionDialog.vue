@@ -67,6 +67,7 @@ export default {
 
     const createProject = async () => {
       try {
+        console.log("Creating project...")
         const createdProject = await projectStore.createProject(newProject.value)
         onDialogOK({ ...createdProject, isNew: true })
       } catch (error) {

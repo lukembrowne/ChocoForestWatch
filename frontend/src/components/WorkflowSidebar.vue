@@ -75,7 +75,8 @@ export default {
 
     const selectProject = async (project) => {
       await projectStore.setCurrentProject(project)
-      if (project.isNew || !project.aoi) {
+      await projectStore.loadProject(project.id)
+      if (project.isNew !== undefined || projectStore.currentProject.aoi === null) {
         completedSteps.value = 0
         activeStep.value = 0 // Automatically open the AOI definition step
         console.log("setting active step to 0")
@@ -86,9 +87,8 @@ export default {
           icon: 'info'
         })
       } else {
-        await projectStore.loadProjectAOI(project.id)
-        completedSteps.value = 0
-        activeStep.value = 1 // Move to the next step if AOI is already defined
+        completedSteps.value = 1
+        activeStep.value = 2 // Move to the next step if AOI is already defined
       }
     }
 
