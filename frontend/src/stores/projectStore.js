@@ -73,11 +73,14 @@ export const useProjectStore = defineStore('project', {
         throw error
       }
     },
-    async setProjectAOI(aoiData) {
+    async setProjectAOI(aoiGeojson) {
+      if (!this.currentProject) {
+        throw new Error('No project selected')
+      }
       try {
-        const response = await api.setProjectAOI(this.currentProject.id, aoiData)
+        const response = await api.setProjectAOI(this.currentProject.id, aoiGeojson)
         this.currentProject.aoi = response.data.aoi
-        this.currentProject.aoiName = response.data.aoiName
+        return response.data
       } catch (error) {
         console.error('Error setting project AOI:', error)
         throw error

@@ -5,15 +5,10 @@
     <q-btn label="Draw AOI" color="primary" @click="startDrawingAOI" :disable="isDrawing" />
     <q-btn label="Clear AOI" color="negative" @click="clearAOI" :disable="!aoiDrawn" class="q-ml-sm" />
     
-    <q-input v-if="aoiDrawn" v-model="aoiName" label="AOI Name" class="q-mt-md" />
-    
-    <q-btn v-if="aoiDrawn" label="Save AOI" color="positive" @click="saveAOI" :disable="!aoiName" class="q-mt-md" />
-    
-    <q-banner v-if="aoiDrawn && !aoiName" class="bg-yellow-1 text-grey-9 q-mt-md">
-      Please provide a name for your Area of Interest before saving.
-    </q-banner>
+    <q-btn v-if="aoiDrawn" label="Save AOI" color="positive" @click="saveAOI" class="q-mt-md" />
   </div>
 </template>
+
 
 <script>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
@@ -36,7 +31,6 @@ export default {
     
     const isDrawing = ref(false)
     const aoiDrawn = ref(false)
-    const aoiName = ref('')
     
     let drawInteraction
     let vectorLayer
@@ -114,16 +108,13 @@ export default {
     }
 
     const saveAOI = async () => {
-      if (!aoiDrawn.value || !aoiName.value) return
+      if (!aoiDrawn.value) return
 
       const feature = vectorLayer.getSource().getFeatures()[0]
       const geojson = new GeoJSON().writeFeatureObject(feature)
 
       try {
-        await projectStore.setProjectAOI({
-          name: aoiName.value,
-          geometry: geojson
-        })
+        await projectStore.setProjectAOI(geojson)
 
         $q.notify({
           color: 'positive',
@@ -145,7 +136,6 @@ export default {
     return {
       isDrawing,
       aoiDrawn,
-      aoiName,
       startDrawingAOI,
       clearAOI,
       saveAOI,

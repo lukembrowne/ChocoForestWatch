@@ -7,7 +7,6 @@ const API_URL = 'http://127.0.0.1:5000/api';
 
 export default {
 
-
   createProject(projectData) {
     return axios.post(`${API_URL}/projects`, projectData);
   },
@@ -27,7 +26,9 @@ export default {
   deleteProject(id) {
     return axios.delete(`${API_URL}/projects/${id}`);
   },
-
+  setProjectAOI(projectId, aoiGeojson) {
+    return axios.post(`${API_URL}/projects/${projectId}/aoi`, { aoi: aoiGeojson })
+  },
   uploadRaster(formData) {
     return axios.post(`${API_URL}/upload_raster`, formData, {
       headers: {
@@ -36,7 +37,7 @@ export default {
     });
   },
   uploadVector(formData) {
-    return axios.post(`${API_URL}/upload_vector`, formData, {
+  return axios.post(`${API_URL}/upload_vector`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

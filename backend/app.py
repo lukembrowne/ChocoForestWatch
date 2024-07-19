@@ -38,6 +38,7 @@ from flask import current_app
 from rasterio.merge import merge
 import rasterio
 from rasterio.warp import transform_bounds
+from shapely import geometry
 
 
 # Load environment variables from the .env file
@@ -107,7 +108,7 @@ class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(500))
-    aoi = db.Column(Geometry('POLYGON'))
+    aoi = db.Column(Geometry('GEOMETRY', srid=4326))  # This can store any geometry type
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     training_polygon_sets = db.relationship("TrainingPolygonSet", back_populates="project")
@@ -316,6 +317,29 @@ def list_projects():
     projects = Project.query.all()
     return jsonify([project.to_dict() for project in projects])
 
+@app.route('/api/projects/<int:project_id>/aoi', methods=['POST'])
+def set_project_aoi(project_id):
+    project = Project.query.get_or_404(project_id)
+    data = request.json
+
+    if 'aoi' not in data:
+        return jsonify({'error': 'AOI data is required'}), 400
+
+    try:
+        # Convert GeoJSON to shapely geometry
+        geojson = data['aoi']
+        shape = geometry.shape(geojson['geometry'])
+        
+        # Convert shapely geometry to WKT
+        wkt = shape.wkt
+        
+        # Create a PostGIS geometry from WKT
+        project.aoi = from_shape(shape, srid=4326)  # Assuming WGS84 projection
+        db.session.commit()
+        return jsonify({'message': 'AOI updated successfully', 'aoi': db.session.scalar(project.aoi.ST_AsGeoJSON())}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 
