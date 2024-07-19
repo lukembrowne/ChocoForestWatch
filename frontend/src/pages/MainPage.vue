@@ -19,6 +19,8 @@
 <script>
 import { ref, onMounted, computed } from 'vue'
 import { useProjectStore } from 'src/stores/projectStore'
+import { useMapStore } from 'src/stores/mapStore'
+
 import { useQuasar } from 'quasar'
 
 export default {
@@ -28,13 +30,14 @@ export default {
   setup() {
     const baseMap = ref(null)
     const projectStore = useProjectStore()
+    const mapStore = useMapStore()
     const $q = useQuasar()
     const isLoading = computed(() => projectStore.isLoading)
     
 
     onMounted(() => {
-      console.log('Initializing map...')
-      projectStore.initMap('map')
+      console.log('Initializing map from MainPage...')
+      mapStore.initMap('map')
     })
 
     const onMapReady = (map) => {

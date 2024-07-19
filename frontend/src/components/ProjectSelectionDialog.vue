@@ -36,6 +36,7 @@
 import { ref, onMounted } from 'vue'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
+import { useMapStore } from 'src/stores/mapStore'
 
 export default {
   name: 'ProjectSelectionDialog',
@@ -45,6 +46,7 @@ export default {
     const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
     const $q = useQuasar()
     const projectStore = useProjectStore()
+    const mapStore = useMapStore()
     const projects = ref([])
     const newProject = ref({ name: '', description: '' })
 
@@ -87,7 +89,7 @@ export default {
       onCancel: onDialogCancel,
       projects,
       newProject,
-      createProject
+      createProject,
     }
   }
 }

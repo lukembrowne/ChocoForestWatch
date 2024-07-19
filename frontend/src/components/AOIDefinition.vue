@@ -13,6 +13,7 @@
 <script>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useProjectStore } from 'src/stores/projectStore'
+import { useMapStore } from 'src/stores/mapStore'
 import { useQuasar } from 'quasar'
 import Draw, {
   createBox,
@@ -27,6 +28,7 @@ export default {
   emits: ['step-completed'],
   setup(props, { emit }) {
     const projectStore = useProjectStore()
+    const mapStore = useMapStore()
     const $q = useQuasar()
 
     const isDrawing = ref(false)
@@ -36,11 +38,11 @@ export default {
     let vectorLayer
 
     onMounted(() => {
-      if (projectStore.mapInitialized) {
+      if (mapStore.mapInitialized) {
         initializeVectorLayer()
-        if (projectStore.currentProject && projectStore.currentProject.aoi) {
+        if (projectStore.currentProject && mapStore.aoi) {
           console.log("Displaying AOI from AOIDefinition")
-          projectStore.displayAOI(projectStore.currentProject.aoi)
+          mapStore.displayAOI(mapStore.aoi)
           aoiDrawn.value = true
         }
       }
@@ -48,10 +50,10 @@ export default {
 
     onUnmounted(() => {
       if (drawInteraction && projectStore.map) {
-        projectStore.map.removeInteraction(drawInteraction)
+        mapStore.map.removeInteraction(drawInteraction)
       }
       if (vectorLayer && projectStore.map) {
-        projectStore.map.removeLayer(vectorLayer)
+        mapStore.map.removeLayer(vectorLayer)
       }
     })
 
@@ -64,10 +66,10 @@ export default {
           'stroke-width': 2
         }
       })
-      projectStore.map.addLayer(vectorLayer)
+      mapStore.map.addLayer(vectorLayer)
     }
 
-    watch(() => projectStore.mapInitialized, (initialized) => {
+    watch(() => mapStore.mapInitialized, (initialized) => {
       if (initialized) {
         initializeVectorLayer()
       }
@@ -85,10 +87,10 @@ export default {
       drawInteraction.on('drawend', (event) => {
         isDrawing.value = false
         aoiDrawn.value = true
-        projectStore.map.removeInteraction(drawInteraction)
+        mapStore.map.removeInteraction(drawInteraction)
       })
 
-      projectStore.map.addInteraction(drawInteraction)
+      mapStore.map.addInteraction(drawInteraction)
     }
 
     const clearAOI = () => {
@@ -104,7 +106,7 @@ export default {
       const geojson = new GeoJSON().writeFeatureObject(feature)
 
       try {
-        await projectStore.setProjectAOI(geojson)
+        await mapStore.setProjectAOI(geojson)
 
         $q.notify({
           color: 'positive',
@@ -129,7 +131,7 @@ export default {
       startDrawingAOI,
       clearAOI,
       saveAOI,
-      mapInitialized: projectStore.mapInitialized
+      mapInitialized: mapStore.mapInitialized
     }
   }
 }

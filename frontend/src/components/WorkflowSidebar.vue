@@ -74,7 +74,6 @@ export default {
     }
 
     const selectProject = async (project) => {
-      await projectStore.setCurrentProject(project)
       await projectStore.loadProject(project.id)
       if (project.isNew !== undefined || projectStore.currentProject.aoi === null) {
         completedSteps.value = 0

@@ -22,20 +22,23 @@
   import { usePredictionStore } from '../stores/predictionStore';
   import { useAnalysisStore } from '../stores/analysisStore';
   import { useProjectStore } from '../stores/projectStore';
-  
+  import { useMapStore } from '../stores/mapStore';
+
   export default defineComponent({
     name: 'DebugPage',
     setup() {
+      const mapStore = useMapStore();
       const trainingStore = useTrainingStore();
       const predictionStore = usePredictionStore();
       const analysisStore = useAnalysisStore();
       const projectStore = useProjectStore();
   
       const stores = reactive({
+        // MapStore: mapStore,
+        ProjectStore: projectStore,
         TrainingStore: trainingStore,
         PredictionStore: predictionStore,
         AnalysisStore: analysisStore,
-        ProjectStore: projectStore,
       });
   
       return {

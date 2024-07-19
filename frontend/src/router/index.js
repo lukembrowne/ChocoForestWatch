@@ -6,7 +6,10 @@ const routes = [
   {
     path: '/',
     component: MainLayout,  // Use the imported component directly
-    children: [{ path: '', component: () => import('../pages/MainPage.vue') }]
+    children: [{ path: '', component: () => import('../pages/MainPage.vue') },
+      { path: 'debug', component: () => import('pages/DebugPage.vue') }, // Make sure this line is present
+
+    ]
   },
   {
     path: '/:catchAll(.*)*',

@@ -3,6 +3,11 @@
     <q-header elevated class="bg-primary text-white">
       <q-toolbar>
         <q-toolbar-title>Choco Forest Watch</q-toolbar-title>
+        <q-tabs>
+          <q-route-tab to="/" label="Home" icon="home" />
+          <q-route-tab to="/debug" label="Debug" icon="insert_chart" />
+
+        </q-tabs>
       </q-toolbar>
     </q-header>
 
