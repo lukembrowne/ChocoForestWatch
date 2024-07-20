@@ -56,7 +56,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
 import { useQuasar } from 'quasar'
@@ -68,7 +68,7 @@ import { store } from 'quasar/wrappers'
 import { transformExtent } from 'ol/proj'
 import TrainingOptionsCard from 'components/TrainingOptionsCard.vue'
 import TrainingProgress from 'components/TrainingProgress.vue'
-
+import { io } from 'socket.io-client';
 
 
 export default {
@@ -96,6 +96,8 @@ export default {
     const trainingProgressMessage = ref('')
     const trainingError = ref('')
     const trainingResults = ref(null)
+    const socket = io('http://127.0.0.1:5000');
+
 
     // Destructure to use directly in the template
     const { startDrawing, stopDrawing, clearDrawnPolygons, deletePolygon} = mapStore;
@@ -119,6 +121,34 @@ export default {
         }
       }
       return options
+    })
+
+    onMounted(async () => {
+      window.addEventListener('keydown', handleKeyDown);
+
+      socket.on('training_update', (data) => {
+        console.log('Received training update:', data);
+        if (data.projectId === projectStore.currentProject.id) {
+          trainingProgress.value = data.progress;
+          trainingProgressMessage.value = data.message;
+          if (data.error) {
+            trainingError.value = data.error;
+            isTraining.value = false;
+            $q.notify({
+              type: 'negative',
+              message: 'Error occurred during training.'
+            });
+          }
+          if (data.message === "Training and prediction complete") {
+            mapStore.displayPrediction(data.data.prediction_filepath)
+            isTraining.value = false;
+            $q.notify({
+              type: 'positive',
+              message: 'Training and prediction completed successfully!'
+            });
+          }
+        }
+      });
     })
 
 
@@ -196,6 +226,7 @@ export default {
     }
 
     const trainModel = async (options) => {
+      showTrainingOptions.value = false
       isTraining.value = true
       trainingProgress.value = 0
       trainingProgressMessage.value = 'Initializing training...'
@@ -216,13 +247,6 @@ export default {
           ...options
         })
 
-        trainingResults.value = response.data
-        $q.notify({
-          color: 'positive',
-          message: 'Model trained successfully',
-          icon: 'check'
-        })
-        emit('step-completed')
       } catch (error) {
         console.error('Error training model:', error)
         trainingError.value = 'An error occurred during training. Please try again.'
@@ -231,12 +255,10 @@ export default {
           message: 'Failed to train model',
           icon: 'error'
         })
-      } finally {
         isTraining.value = false
-      }
+      } 
     }
 
-    
     
     const handleKeyDown = (event) => {
       if (event.key === '1') {
@@ -253,10 +275,13 @@ export default {
       }
     };
     
-    window.addEventListener('keydown', handleKeyDown);
-
     watch(selectedClass, (newLabel) => {
       mapStore.setClassLabel(newLabel);
+    });
+
+    onUnmounted(() => {
+      socket.off('training_update');
+      socket.disconnect();
     });
 
 
@@ -284,7 +309,7 @@ export default {
       isTraining,
       trainingProgress,
       trainingProgressMessage,
-      trainingError
+      trainingError,
     }
   }
 }

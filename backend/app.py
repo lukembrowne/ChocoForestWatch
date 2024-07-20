@@ -598,7 +598,8 @@ def run_training_process(app, project_id, aoi, basemap_date, training_polygons, 
             update_progress(project_id, 1.0, "Training and prediction complete", {
                 **metrics, 
                 "prediction_id": prediction.id,
-                "model_id": saved_model.id
+                "model_id": saved_model.id,
+                "prediction_filepath": prediction_file
             })
 
         except Exception as e:

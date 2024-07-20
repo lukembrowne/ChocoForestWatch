@@ -16,6 +16,10 @@ import { ref, watch, computed } from 'vue';
 import { Draw, Modify, Select } from 'ol/interaction';
 import { click } from 'ol/events/condition';
 import { storeToRefs } from 'pinia';
+import { fromUrl } from 'geotiff';
+import ImageLayer from 'ol/layer/Image';
+import ImageStatic from 'ol/source/ImageStatic';
+
 
 
 export const useMapStore = defineStore('map', () => {
@@ -28,7 +32,7 @@ export const useMapStore = defineStore('map', () => {
   const aoiLayer = ref(null);
   const drawnPolygons = ref([])
   const selectedPolygon = ref(null);
-
+  const predictionLayer = ref(null);
 
   // Internal state
   const projectStore = useProjectStore();
@@ -149,6 +153,65 @@ export const useMapStore = defineStore('map', () => {
 
     isLoading.value = false;
   };
+
+
+
+  const displayPrediction = async (predictionFilePath) => {
+    console.log('Displaying prediction:', predictionFilePath);
+    try {
+      const url = `http://127.0.0.1:5000/${predictionFilePath}`;
+      const tiff = await fromUrl(url);
+      const image = await tiff.getImage();
+      const width = image.getWidth();
+      const height = image.getHeight();
+      const bbox = image.getBoundingBox();
+
+      const rasterData = await image.readRasters();
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+
+      const imageData = context.createImageData(width, height);
+      const data = imageData.data;
+
+      for (let i = 0; i < width * height; i++) {
+        const value = rasterData[0][i];
+        const color = value === 0 ? [255, 255, 0, 255] : [0, 128, 0, 255]; // Yellow for non-forest, green for forest
+        data[i * 4] = color[0];
+        data[i * 4 + 1] = color[1];
+        data[i * 4 + 2] = color[2];
+        data[i * 4 + 3] = color[3];
+      }
+      context.putImageData(imageData, 0, 0);
+
+      const imageUrl = canvas.toDataURL();
+      const extent = bbox;
+
+      if (predictionLayer.value) {
+        map.value.removeLayer(predictionLayer.value);
+      }
+
+      predictionLayer.value = new ImageLayer({
+        source: new ImageStatic({
+          url: imageUrl,
+          imageExtent: extent,
+        }),
+        zIndex: 1,
+        opacity: 0.7
+      });
+
+      map.value.addLayer(predictionLayer.value);
+    } catch (error) {
+      console.error('Error displaying prediction:', error);
+      error.value = 'Failed to display prediction: ' + error.message;
+    }
+  };
+
+  
+
+
 
   const clearLoading = () => {
     isLoading.value = false;
@@ -354,6 +417,7 @@ export const useMapStore = defineStore('map', () => {
     selectedClass,
     selectedPolygon,
     drawnPolygons,
+    predictionLayer,
     // Actions
     initMap,
     setAOI,
@@ -369,6 +433,7 @@ export const useMapStore = defineStore('map', () => {
     setClassLabel,
     getDrawnPolygonsGeoJSON,
     loadPolygons,
+    displayPrediction,
     // Getters
     getMap
   };
