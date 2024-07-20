@@ -146,14 +146,6 @@ class Raster(db.Model):
     filepath = db.Column(db.String(200), nullable=False)
     description = db.Column(db.String(200))
 
-class PixelDataset(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    raster_id = db.Column(db.Integer, db.ForeignKey('raster.id'))
-    file_path = db.Column(db.String(255))
-    num_pixels = db.Column(db.Integer)
-    class_distribution = db.Column(db.String)  # JSON string of class counts
-
-
 class TrainedModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -468,54 +460,6 @@ def get_prediction(prediction_id):
         'extent': [bounds.left, bounds.bottom, bounds.right, bounds.top]
     })
 
-# 
-def store_pixel_data(raster_id, pixel_data, class_labels):
-    
-    file_name = f"pixel_data_{raster_id}.h5"
-    file_path = os.path.join('./training_data', file_name)
-
-    # Convert class labels to ASCII if they're Unicode
-    if class_labels.dtype.kind == 'U':
-        class_labels = np.array([label.encode('ascii', 'ignore') for label in class_labels])
-
-    
-    # Store pixel data in HDF5 file
-    with h5py.File(file_path, 'w') as f:
-        f.create_dataset('pixels', data=pixel_data, dtype='float32')
-        f.create_dataset('labels', data=class_labels, dtype=h5py.special_dtype(vlen=str))
-        f.attrs['band_count'] = pixel_data.shape[1]
-        f.attrs['pixel_count'] = pixel_data.shape[0]
-    
-    # Store metadata in database
-    dataset = PixelDataset(
-        raster_id=raster_id,
-        file_path=file_path,
-        num_pixels=len(pixel_data),
-        class_distribution=str(dict(zip(*np.unique(class_labels, return_counts=True))))
-    )
-    db.session.add(dataset)
-    db.session.commit()
-
-def load_pixel_data(file_path):
-    with h5py.File(file_path, 'r') as f:
-        pixel_data = f['pixels'][:].astype(np.float32)  # Ensure float type for pixel data
-        class_labels = f['labels'][:].astype(str)
-    return pixel_data, class_labels
-
-
-@app.route('/api/list_pixel_datasets', methods=['GET'])
-def list_pixel_datasets():
-    datasets = db.session.query(PixelDataset, Raster.filename).\
-        join(Raster, PixelDataset.raster_id == Raster.id).all()
-    
-    return jsonify([{
-        'id': dataset.PixelDataset.id,
-        'raster_id': dataset.PixelDataset.raster_id,
-        'raster_filename': dataset.filename,
-        'num_pixels': dataset.PixelDataset.num_pixels,
-        'class_distribution': dataset.PixelDataset.class_distribution
-    } for dataset in datasets])
-
 
 def fetch_raster_file_path(raster_id):
     try:
@@ -571,7 +515,6 @@ def get_models():
             'id': model.id,
             'name': model.name,
             'filepath': model.file_path,
-            'pixel_dataset_id': model.pixel_dataset_id,
             'accuracy': model.accuracy,
             'created_at': model.created_at
         })

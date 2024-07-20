@@ -126,15 +126,6 @@ export default {
   },
 
 
-  extractPixels(JSON) {
-    return axios.post(`${API_URL}/extract_pixels`, JSON, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-  },
-
-
   createProject(projectData) {
     return axios.post(`${API_URL}/projects`, projectData);
   },

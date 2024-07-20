@@ -38,6 +38,20 @@
 
     <q-btn label="Save Training Data" color="positive" @click="saveDrawnPolygons"
       :disable="drawnPolygons.length === 0" />
+
+    <q-btn label="Train Model" color="primary" @click="openTrainingOptions" class="q-ml-md"
+      :disable="drawnPolygons.length === 0" />
+
+    <q-dialog v-model="showTrainingOptions">
+      <training-options-card @train="trainModel" @close="showTrainingOptions = false" />
+    </q-dialog>
+
+    <training-progress
+      :show="isTraining"
+      :progress="trainingProgress"
+      :progressMessage="trainingProgressMessage"
+      :error="trainingError"
+    />
   </div>
 </template>
 
@@ -51,11 +65,19 @@ import { GeoJSON } from 'ol/format'
 import apiService from 'src/services/api'
 import { storeToRefs } from 'pinia';
 import { store } from 'quasar/wrappers'
+import { transformExtent } from 'ol/proj'
+import TrainingOptionsCard from 'components/TrainingOptionsCard.vue'
+import TrainingProgress from 'components/TrainingProgress.vue'
+
 
 
 export default {
   name: 'TrainingComponent',
   emits: ['step-completed'],
+  components: {
+    TrainingOptionsCard,
+    TrainingProgress
+  },
   setup(props, { emit }) {
     const projectStore = useProjectStore()
     const mapStore = useMapStore()
@@ -67,6 +89,13 @@ export default {
 
     const selectedBasemapDate = ref({label: 'August 2022', value: "2022-08"}) // Setting default
     const isDrawing = computed(() => mapStore.isDrawing)
+
+    const showTrainingOptions = ref(false)
+    const isTraining = ref(false)
+    const trainingProgress = ref(0)
+    const trainingProgressMessage = ref('')
+    const trainingError = ref('')
+    const trainingResults = ref(null)
 
     // Destructure to use directly in the template
     const { startDrawing, stopDrawing, clearDrawnPolygons, deletePolygon} = mapStore;
@@ -162,6 +191,51 @@ export default {
       }
     }
 
+    const openTrainingOptions = () => {
+      showTrainingOptions.value = true
+    }
+
+    const trainModel = async (options) => {
+      isTraining.value = true
+      trainingProgress.value = 0
+      trainingProgressMessage.value = 'Initializing training...'
+      trainingError.value = ''
+
+      const geojsonString = projectStore.currentProject.aoi
+      const geojsonFormat = new GeoJSON()
+      const geometry = geojsonFormat.readGeometry(geojsonString)
+      const extent = geometry.getExtent()
+      const extentLatLon = transformExtent(extent, 'EPSG:3857', 'EPSG:4326')
+
+      try {
+        const response = await apiService.trainModel({
+          projectId: projectStore.currentProject.id,
+          aoiExtent: extentLatLon,
+          basemapDate: selectedBasemapDate.value.value,
+          trainingPolygons: mapStore.drawnPolygons,
+          ...options
+        })
+
+        trainingResults.value = response.data
+        $q.notify({
+          color: 'positive',
+          message: 'Model trained successfully',
+          icon: 'check'
+        })
+        emit('step-completed')
+      } catch (error) {
+        console.error('Error training model:', error)
+        trainingError.value = 'An error occurred during training. Please try again.'
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to train model',
+          icon: 'error'
+        })
+      } finally {
+        isTraining.value = false
+      }
+    }
+
     
     
     const handleKeyDown = (event) => {
@@ -203,7 +277,14 @@ export default {
       basemapDateOptions,
       selectedBasemapDate,
       onBasemapDateChange,
-      loadExistingTrainingData
+      loadExistingTrainingData,
+      showTrainingOptions,
+      openTrainingOptions,
+      trainModel,
+      isTraining,
+      trainingProgress,
+      trainingProgressMessage,
+      trainingError
     }
   }
 }
