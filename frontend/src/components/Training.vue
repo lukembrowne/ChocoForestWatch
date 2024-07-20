@@ -19,6 +19,7 @@
       <q-btn label="Draw Polygon" color="primary" @click="startDrawing" :disable="isDrawing" />
       <q-btn label="Stop Drawing" color="negative" @click="stopDrawing" :disable="!isDrawing" class="q-ml-sm" />
       <q-btn label="Clear All" color="warning" @click="clearDrawnPolygons" class="q-ml-sm" />
+      <q-btn label="Load" color="warning" @click="loadExistingTrainingData" class="q-ml-sm" />
     </div>
 
     <div class="polygon-list q-mb-md">
@@ -61,7 +62,7 @@ export default {
 
     const selectedClass = computed(() => mapStore.selectedClass)
     const drawnPolygons = computed(() => trainingStore.drawnPolygons)
-    const selectedBasemapDate = ref(null)
+    const selectedBasemapDate = ref({label: 'August 2022', value: "2022-08"})
     const isDrawing = computed(() => mapStore.isDrawing)
 
     // Destructure to use directly in the template
@@ -196,7 +197,8 @@ export default {
       onClassSelect,
       basemapDateOptions,
       selectedBasemapDate,
-      onBasemapDateChange
+      onBasemapDateChange,
+      loadExistingTrainingData
     }
   }
 }

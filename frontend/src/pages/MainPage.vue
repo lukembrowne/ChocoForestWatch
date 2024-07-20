@@ -38,6 +38,8 @@ export default {
     onMounted(() => {
       console.log('Initializing map from MainPage...')
       mapStore.initMap('map')
+
+
     })
 
     const onMapReady = (map) => {

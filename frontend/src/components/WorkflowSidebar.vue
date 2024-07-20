@@ -13,7 +13,7 @@
     <q-separator spaced />
 
     <q-item-label header>Workflow</q-item-label>
-    <q-expansion-item
+    <!-- <q-expansion-item
       v-for="(step, index) in workflowSteps"
       :key="index"
       :icon="step.icon"
@@ -28,14 +28,32 @@
           <component :is="step.component" @step-completed="stepCompleted(index)" />
         </q-card-section>
       </q-card>
-    </q-expansion-item>
+    </q-expansion-item> -->
+
+    <q-card
+      v-for="(step, index) in workflowSteps"
+      :key="index"
+      :icon="step.icon"
+      :label="step.label"
+      :caption="step.caption"
+      :disable="!currentProject || index > completedSteps"
+      :default-opened="index === activeStep"
+      @update:model-value="(val) => handleStepToggle(index, val)"
+    >
+      <q-card>
+        <q-card-section>
+          <component :is="step.component" @step-completed="stepCompleted(index)" />
+        </q-card-section>
+      </q-card>
+    </q-card>
   </q-list>
 </template>
 
 <script>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
+import { useMapStore } from 'src/stores/mapStore'
 import ProjectSelectionDialog from 'components/ProjectSelectionDialog.vue'
 import AOIDefinitionComponent from 'components/AOIDefinition.vue'
 import TrainingComponent from 'components/Training.vue'
@@ -53,6 +71,7 @@ export default {
   setup() {
     const $q = useQuasar()
     const projectStore = useProjectStore()
+    const mapStore = useMapStore()
     const completedSteps = ref(-1)
     const activeStep = ref(-1)
 
@@ -64,6 +83,22 @@ export default {
       { label: 'Prediction', icon: 'insights', component: 'PredictionComponent', caption: 'Run land cover prediction' },
       { label: 'Analysis', icon: 'analytics', component: 'AnalysisComponent', caption: 'Analyze changes' }
     ]
+
+    onMounted(() => {
+      
+      // Load default project and map date to make things easier
+      console.log('Loading default project...')
+      // mapStore.initMap('map')
+      // Sleep 2 seconds
+      projectStore.loadProject(9)
+      completedSteps.value = 1
+      activeStep.value = 2 // Move to the next step if AOI is already defined
+      setTimeout(() => {
+        mapStore.updateBasemap('2022-08')
+      }, 1000)
+
+
+    })
 
     const openProjectDialog = () => {
       $q.dialog({
