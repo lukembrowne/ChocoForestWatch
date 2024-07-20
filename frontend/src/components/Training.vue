@@ -279,13 +279,17 @@ export default {
       mapStore.setClassLabel(newLabel);
     });
 
+    // Watch for changes in the currentProject
+    watch(drawnPolygons, () => {
+      console.log("Drawn polygons changed")
+        drawnPolygons.value = mapStore.drawnPolygons
+    }, { immediate: true });
+
     onUnmounted(() => {
       socket.off('training_update');
       socket.disconnect();
     });
 
-
-    
 
     return {
       selectedClass,
