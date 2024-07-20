@@ -57,16 +57,14 @@ import { useMapStore } from 'src/stores/mapStore'
 import ProjectSelectionDialog from 'components/ProjectSelectionDialog.vue'
 import AOIDefinitionComponent from 'components/AOIDefinition.vue'
 import TrainingComponent from 'components/Training.vue'
-import PredictionComponent from 'components/Prediction.vue'
-// import AnalysisComponent from 'components/Analysis.vue'
+import AnalysisComponent from 'components/Analysis.vue'
 
 export default {
   name: 'WorkflowSidebar',
   components: {
     AOIDefinitionComponent,
     TrainingComponent,
-    PredictionComponent,
-    // AnalysisComponent
+    AnalysisComponent
   },
   setup() {
     const $q = useQuasar()
@@ -80,7 +78,6 @@ export default {
     const workflowSteps = [
       { label: 'Define AOI', icon: 'map', component: 'AOIDefinitionComponent', caption: 'Set the area of interest' },
       { label: 'Training', icon: 'school', component: 'TrainingComponent', caption: 'Create training data' },
-      { label: 'Prediction', icon: 'insights', component: 'PredictionComponent', caption: 'Run land cover prediction' },
       { label: 'Analysis', icon: 'analytics', component: 'AnalysisComponent', caption: 'Analyze changes' }
     ]
 
