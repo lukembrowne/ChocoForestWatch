@@ -45,11 +45,13 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
-import { useTrainingStore } from 'src/stores/trainingStore'
 import { useQuasar } from 'quasar'
 import { getArea } from 'ol/sphere'
 import { GeoJSON } from 'ol/format'
 import apiService from 'src/services/api'
+import { storeToRefs } from 'pinia';
+import { store } from 'quasar/wrappers'
+
 
 export default {
   name: 'TrainingComponent',
@@ -57,12 +59,13 @@ export default {
   setup(props, { emit }) {
     const projectStore = useProjectStore()
     const mapStore = useMapStore()
-    const trainingStore = useTrainingStore()
     const $q = useQuasar()
 
     const selectedClass = computed(() => mapStore.selectedClass)
-    const drawnPolygons = computed(() => trainingStore.drawnPolygons)
-    const selectedBasemapDate = ref({label: 'August 2022', value: "2022-08"})
+    const drawnPolygons = computed(() => mapStore.drawnPolygons)
+    // const drawnPolygons = storeToRefs(mapStore.drawnPolygons)
+
+    const selectedBasemapDate = ref({label: 'August 2022', value: "2022-08"}) // Setting default
     const isDrawing = computed(() => mapStore.isDrawing)
 
     // Destructure to use directly in the template
@@ -168,8 +171,8 @@ export default {
       } else if (event.key === '2') {
         console.log("Selected class: non-forest")
         mapStore.setClassLabel('non-forest');
-      } else if ((event.key === 'Delete' || event.key === 'Backspace') && trainingStore.selectedPolygon !== null) {
-        mapStore.deletePolygon(trainingStore.selectedPolygon)
+      } else if ((event.key === 'Delete' || event.key === 'Backspace') && mapStore.selectedPolygon !== null) {
+        mapStore.deletePolygon(mapStore.selectedPolygon)
       } else if (event.key === ' ' && !event.repeat) {
         event.preventDefault();
         mapStore.toggleDrawing();
@@ -181,6 +184,8 @@ export default {
     watch(selectedClass, (newLabel) => {
       mapStore.setClassLabel(newLabel);
     });
+
+
     
 
     return {

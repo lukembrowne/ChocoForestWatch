@@ -15,7 +15,6 @@ import { useProjectStore } from './projectStore';
 import { ref, watch, computed } from 'vue';
 import { Draw, Modify, Select } from 'ol/interaction';
 import { click } from 'ol/events/condition';
-import { useTrainingStore } from '../stores/trainingStore';
 import { storeToRefs } from 'pinia';
 
 
@@ -27,21 +26,18 @@ export const useMapStore = defineStore('map', () => {
   const isLoading = ref(false);
   const isDrawing = ref(false);
   const aoiLayer = ref(null);
+  const drawnPolygons = ref([])
+  const selectedPolygon = ref(null);
 
 
   // Internal state
   const projectStore = useProjectStore();
-  const trainingStore = useTrainingStore();
-  const drawing = ref(false);
+  const drawiwng = ref(false);
   const vectorLayer = ref(null);
   const drawInteraction = ref(null);
   const modifyInteraction = ref(null);
   const selectInteraction = ref(null);
   const selectedClass = ref('forest');
-  const drawnPolygons = computed(() => trainingStore.drawnPolygons);
-  const { selectedPolygon } = storeToRefs(trainingStore);
-
-
 
   // Actions
   const initMap = (target) => {
@@ -188,9 +184,10 @@ export const useMapStore = defineStore('map', () => {
 
     selectInteraction.value.on('select', (event) => {
       if (event.selected.length > 0) {
-        trainingStore.setSelectedPolygon(event.selected[0]);
+        selectedPolygon.value = event.selected[0];
+
       } else {
-        trainingStore.setSelectedPolygon(null);
+        selectedPolygon.value = null;
       }
       updateVectorLayerStyle();
     });
@@ -208,7 +205,7 @@ export const useMapStore = defineStore('map', () => {
             dataProjection: 'EPSG:3857',
             featureProjection: 'EPSG:3857'
           });
-          trainingStore.updatePolygon(index, updatedPolygon);
+          drawnPolygons.value[index] = updatedPolygon;
         }
       });
     });
@@ -245,7 +242,7 @@ export const useMapStore = defineStore('map', () => {
         dataProjection: 'EPSG:3857',
         featureProjection: 'EPSG:3857'
       });
-      trainingStore.addPolygon(newPolygon);
+      drawnPolygons.value.push(newPolygon);
       updateVectorLayerStyle();
     });
 
@@ -264,7 +261,7 @@ export const useMapStore = defineStore('map', () => {
     if (index >= 0 && index < drawnPolygons.value.length) {
       const feature = vectorLayer.value.getSource().getFeatures()[index];
       vectorLayer.value.getSource().removeFeature(feature);
-      trainingStore.removePolygon(index);
+      drawnPolygons.value = drawnPolygons.value.filter(p => p.id !== index);
     }
   };
 
@@ -272,7 +269,7 @@ export const useMapStore = defineStore('map', () => {
     if (vectorLayer.value) {
       vectorLayer.value.getSource().clear();
     }
-    trainingStore.clearPolygons();
+    drawnPolygons.value = [];
   };
 
   const updateVectorLayerStyle = () => {
@@ -338,7 +335,7 @@ export const useMapStore = defineStore('map', () => {
       const olFeature = geoJSONFormat.readFeature(feature);
       vectorLayer.value.getSource().addFeature(olFeature);
     });
-    trainingStore.setDrawnPolygons(polygonsData.features);
+    drawnPolygons.value = polygonsData.features;
   };
 
 
@@ -355,6 +352,8 @@ export const useMapStore = defineStore('map', () => {
     isDrawing,
     aoiLayer,
     selectedClass,
+    selectedPolygon,
+    drawnPolygons,
     // Actions
     initMap,
     setAOI,
