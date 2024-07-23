@@ -1,6 +1,6 @@
 <template>
   <div class="training-component">
-    <p> Select basemap date:</p>
+    <h6> Select basemap date:</h6>
     <div class="basemap-selection q-mb-md">
       <q-select v-model="selectedBasemapDate" :options="basemapDateOptions" label="Select Basemap Date"
         @update:model-value="onBasemapDateChange" />
@@ -56,7 +56,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted, h } from 'vue'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
 import { useQuasar } from 'quasar'

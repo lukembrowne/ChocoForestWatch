@@ -18,7 +18,7 @@
         <div class="sidebar-column" :style="{ width: sidebarWidth + 'px' }">
           <!-- Icon sidebar -->
           <div class="icon-sidebar bg-white text-primary full-height" style="width: 60px;">
-            <q-list>
+            <q-list> 
               <q-item clickable @click="openProjectDialog"><q-item-section avatar>
                   <q-icon name="folder" />
                 </q-item-section></q-item>
@@ -41,7 +41,7 @@
 
         <!-- Map column -->
         <div class="col map-column">
-          <div id="map" class="absolute-full" style="min-height: 100vh; min-width: 100vw;">
+          <div id="map" class="absolute-full map-container" style="min-height: 100vh;">
           </div>
         </div>
       </div>
@@ -98,20 +98,26 @@ export default {
 
     onMounted(() => {
 
+      // Standard loading sequence
       // Initialize map
-      mapStore.initMap('map')
-
-      // Open project dialogue to have user select or create new project
-      openProjectDialog()
-
-      //  // Load default project and map date to make things easier
-      //  console.log('Loading default project...')
       // mapStore.initMap('map')
-      // // Sleep 2 seconds
-      // projectStore.loadProject(9)
-      // setTimeout(() => {
-      //   mapStore.updateBasemap('2022-08')
-      // }, 1000)
+
+      // // Open project dialogue to have user select or create new project
+      // openProjectDialog()
+
+
+       // Load default project and map date to make things easier
+       console.log('Loading default project...')
+      mapStore.initMap('map')
+      currentSection.value = 'training'
+      // Sleep 2 seconds
+      setTimeout(() => {
+        projectStore.loadProject(9)
+      }, 1000)
+     
+      setTimeout(() => {
+        mapStore.updateBasemap('2022-08')
+      }, 1000)
 
     })
 
@@ -191,5 +197,31 @@ export default {
 
 #map {
   width: 100%;
+}
+
+
+.map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Styles for the layer switcher */
+
+.ol-layerswitcher button {
+  background-color: white;
+}
+
+.ol-layerswitcher li.layer {
+  border: 1px solid #ccc;
+  background: rgba(255,255,255,0.8);
+  margin: 2px;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+/* Add this to ensure the layer switcher is above other map controls */
+.ol-control.ol-layerswitcher {
+  z-index: 1000;
 }
 </style>

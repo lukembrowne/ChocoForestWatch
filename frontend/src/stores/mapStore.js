@@ -19,6 +19,9 @@ import { storeToRefs } from 'pinia';
 import { fromUrl } from 'geotiff';
 import ImageLayer from 'ol/layer/Image';
 import ImageStatic from 'ol/source/ImageStatic';
+import LayerSwitcher from 'ol-layerswitcher';
+import 'ol-layerswitcher/dist/ol-layerswitcher.css';
+
 
 
 
@@ -33,7 +36,7 @@ export const useMapStore = defineStore('map', () => {
   const drawnPolygons = ref([])
   const selectedPolygon = ref(null);
   const predictionLayer = ref(null);
-
+  
   // Internal state
   const projectStore = useProjectStore();
   const drawiwng = ref(false);
@@ -42,7 +45,8 @@ export const useMapStore = defineStore('map', () => {
   const modifyInteraction = ref(null);
   const selectInteraction = ref(null);
   const selectedClass = ref('forest');
-
+  const trainingPolygonsLayer = ref(null);
+  
   // Actions
   const initMap = (target) => {
     map.value = new Map({
@@ -50,7 +54,8 @@ export const useMapStore = defineStore('map', () => {
       layers: [
         new TileLayer({
           source: new OSM(),
-          name: 'baseMap'
+          name: 'baseMap',
+          visible: true
         })
       ],
       view: new View({
@@ -58,6 +63,15 @@ export const useMapStore = defineStore('map', () => {
         zoom: 12
       })
     });
+
+    // Add LayerSwitcher
+    const layerSwitcher = new LayerSwitcher({
+      reverse: true,
+      tipLabel: 'Legend',
+      groupSelectStyle: 'group',
+      startActive: true,
+    });
+    map.value.addControl(layerSwitcher);
 
     initVectorLayer();
     initInteractions();
@@ -100,6 +114,8 @@ export const useMapStore = defineStore('map', () => {
     });
     aoiLayer.value = new VectorLayer({
       source: vectorSource,
+      title: "Area of Interest",
+      visible: true,
       style: new Style({
         fill: new Fill({
           color: 'rgba(255, 255, 255, 0.2)'
@@ -138,18 +154,20 @@ export const useMapStore = defineStore('map', () => {
       url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
     });
 
-    newSource.on('tileloaderror', () => {
-      console.error('basemap-error', `Failed to load basemap for date: ${date}`);
-      clearLoading();
+    const newLayer = new TileLayer({
+      source: newSource,
+      title: `Planet Basemap ${date}`,
+      type: 'base',
+      visible: true
     });
 
-    // Find the base layer and set the new source
-    map.value.getLayers().forEach(layer => {
-      if (layer.get('name') === 'baseMap') {
-        console.log("Setting source for updated basemap...");
-        layer.setSource(newSource);
-      }
-    });
+    // Remove old base layers
+    map.value.getLayers().getArray()
+      .filter(layer => layer.get('type') === 'base')
+      .forEach(layer => map.value.removeLayer(layer));
+
+    // Add the new layer
+    map.value.addLayer(newLayer);
 
     isLoading.value = false;
   };
@@ -198,9 +216,12 @@ export const useMapStore = defineStore('map', () => {
           url: imageUrl,
           imageExtent: extent,
         }),
+        title: 'Prediction Layer',
+        visible: true,
         zIndex: 1,
         opacity: 0.7
       });
+  
 
       map.value.addLayer(predictionLayer.value);
     } catch (error) {
@@ -392,13 +413,32 @@ export const useMapStore = defineStore('map', () => {
 
   const loadPolygons = (polygonsData) => {
     clearDrawnPolygons();
-    console.log(polygonsData);
     const geoJSONFormat = new GeoJSON();
-    polygonsData.features.forEach(feature => {
+    const features = polygonsData.features.map(feature => {
       const olFeature = geoJSONFormat.readFeature(feature);
-      vectorLayer.value.getSource().addFeature(olFeature);
+      olFeature.setStyle(featureStyleFunction);
+      return olFeature;
     });
+
+    if (trainingPolygonsLayer.value) {
+      map.value.removeLayer(trainingPolygonsLayer.value);
+    }
+
+    const vectorSource = new VectorSource({
+      features: features
+    });
+
+    trainingPolygonsLayer.value = new VectorLayer({
+      source: vectorSource,
+      title: 'Training Polygons',
+      visible: true
+    });
+
+    map.value.addLayer(trainingPolygonsLayer.value);
+
     drawnPolygons.value = polygonsData.features;
+    
+
   };
 
 
