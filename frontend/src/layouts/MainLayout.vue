@@ -11,48 +11,44 @@
         </q-tabs>
       </q-toolbar>
     </q-header>
+    
     <q-page-container class="full-height">
-      <div class="full-height full-width relative-position">
-         <!-- Map container -->
-         <div id="map" class="absolute-full" style="min-height: 100vh; min-width: 100vw;">
-          <div class="absolute-center">Map should render here</div>
-        </div>
-
-        <!-- Floating sidebar -->
-        <div class="floating-sidebar absolute-left full-height bg-white" :style="{ width: sidebarWidth + 'px' }">
+      <div class="row no-wrap full-height">
+        <!-- Sidebar column -->
+        <div class="sidebar-column" :style="{ width: sidebarWidth + 'px' }">
           <!-- Icon sidebar -->
-          <div class="icon-sidebar bg-primary text-white full-height" style="width: 60px; z-index: 1000;">
+          <div class="icon-sidebar bg-white text-primary full-height" style="width: 60px;">
             <q-list>
-              <q-item v-for="section in sections" :key="section.name" clickable @click="toggleSection(section.name)"
-                :active="currentSection === section.name">
+              <q-item v-for="section in sections" :key="section.name" 
+                      clickable @click="toggleSection(section.name)"
+                      :active="currentSection === section.name">
                 <q-item-section avatar>
                   <q-icon :name="section.icon" />
                 </q-item-section>
               </q-item>
             </q-list>
           </div>
-
+          
           <!-- Expanded section content -->
           <q-slide-transition>
-            <div v-if="isExpanded" class="expanded-content bg-white full-height"
-              style="width: 240px; margin-left: 60px; z-index: 999;">
+            <div v-if="isExpanded" class="expanded-content bg-white full-height">
               <component :is="currentSectionComponent" @close="isExpanded = false" />
             </div>
           </q-slide-transition>
         </div>
-      </div>
 
-      <div class="debug-info absolute-bottom-right q-pa-md bg-white">
-        Sidebar width: {{ sidebarWidth }}px<br>
-        Is Expanded: {{ isExpanded }}<br>
-        Current Section: {{ currentSection }}
+        <!-- Map column -->
+        <div class="col map-column">
+          <div id="map" class="absolute-full" style="min-height: 100vh; min-width: 100vw;">
+        </div>
       </div>
+    </div>
     </q-page-container>
   </q-layout>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import TrainingSection from 'components/Training.vue'
 import AnalysisSection from 'components/Analysis.vue'
 import { useMapStore } from 'src/stores/mapStore'
@@ -65,7 +61,7 @@ export default {
   },
   setup() {
     const mapStore = useMapStore()
-    const isExpanded = ref(true)
+    const isExpanded = ref(false)
     const currentSection = ref(null)
 
     const sections = [
@@ -76,6 +72,7 @@ export default {
     const toggleSection = (sectionName) => {
       if (currentSection.value === sectionName && isExpanded.value) {
         isExpanded.value = false
+        currentSection.value = null
       } else {
         isExpanded.value = true
         currentSection.value = sectionName
@@ -83,12 +80,14 @@ export default {
     }
 
     const sidebarWidth = computed(() => isExpanded.value ? 300 : 60)
-    const currentSectionComponent = computed(() =>
+    const currentSectionComponent = computed(() => 
       sections.find(s => s.name === currentSection.value)?.component
     )
 
     onMounted(() => {
-      mapStore.initMap('map')
+      nextTick(() => {
+        mapStore.initMap('map')
+      })
     })
 
     return {
@@ -107,28 +106,30 @@ export default {
 .full-height {
   height: 100vh;
 }
-
-.floating-sidebar {
+.sidebar-column {
   display: flex;
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1000;
-  background-color: white;
+  position: relative;
+  transition: width 0.3s ease;
 }
-
 .icon-sidebar {
   position: absolute;
   top: 0;
   left: 0;
-  background-color: white;
+  z-index: 2;
+  border-right: 1px solid #e0e0e0;
 }
-
 .expanded-content {
   position: absolute;
   top: 0;
   left: 60px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-  background-color: white;
+  width: 240px;
+  z-index: 1;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+.map-column {
+  position: relative;
+}
+#map {
+  width: 100%;
 }
 </style>
