@@ -42,6 +42,7 @@
         <!-- Map column -->
         <div class="col map-column">
           <div id="map" class="absolute-full map-container" style="min-height: 100vh;">
+            <custom-layer-switcher />
           </div>
         </div>
       </div>
@@ -58,13 +59,16 @@ import ProjectSelectionDialog from 'components/ProjectSelectionDialog.vue'
 import AOIDefinitionComponent from 'components/AOIDefinition.vue'
 import TrainingComponent from 'components/Training.vue'
 import AnalysisComponent from 'components/Analysis.vue'
+import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
+
 
 export default {
   name: 'MainLayout',
   components: {
     AOIDefinitionComponent,
     TrainingComponent,
-    AnalysisComponent
+    AnalysisComponent,
+    CustomLayerSwitcher
   },
   setup() {
     const $q = useQuasar()

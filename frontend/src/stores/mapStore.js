@@ -19,10 +19,6 @@ import { storeToRefs } from 'pinia';
 import { fromUrl } from 'geotiff';
 import ImageLayer from 'ol/layer/Image';
 import ImageStatic from 'ol/source/ImageStatic';
-import LayerSwitcher from 'ol-layerswitcher';
-import 'ol-layerswitcher/dist/ol-layerswitcher.css';
-
-
 
 
 export const useMapStore = defineStore('map', () => {
@@ -36,6 +32,8 @@ export const useMapStore = defineStore('map', () => {
   const drawnPolygons = ref([])
   const selectedPolygon = ref(null);
   const predictionLayer = ref(null);
+  const trainingPolygonsLayer = ref(null);
+  const layers = ref([]);
   
   // Internal state
   const projectStore = useProjectStore();
@@ -45,7 +43,6 @@ export const useMapStore = defineStore('map', () => {
   const modifyInteraction = ref(null);
   const selectInteraction = ref(null);
   const selectedClass = ref('forest');
-  const trainingPolygonsLayer = ref(null);
   
   // Actions
   const initMap = (target) => {
@@ -55,7 +52,9 @@ export const useMapStore = defineStore('map', () => {
         new TileLayer({
           source: new OSM(),
           name: 'baseMap',
-          visible: true
+          title: 'OpenStreetMap',
+          visible: true,
+          id: 'osm'
         })
       ],
       view: new View({
@@ -63,18 +62,15 @@ export const useMapStore = defineStore('map', () => {
         zoom: 12
       })
     });
-
-    // Add LayerSwitcher
-    const layerSwitcher = new LayerSwitcher({
-      reverse: true,
-      tipLabel: 'Legend',
-      groupSelectStyle: 'group',
-      startActive: true,
-    });
-    map.value.addControl(layerSwitcher);
-
+   
     initVectorLayer();
     initInteractions();
+
+    // Initialize layers
+    updateLayers();
+
+    // Watch for changes in the map's layers
+    map.value.getLayers().on(['add', 'remove'], updateLayers);
 
     console.log('Map initialized in MapStore...');
     mapInitialized.value = true;
@@ -82,6 +78,45 @@ export const useMapStore = defineStore('map', () => {
 
   const setAOI = (geometry) => {
     aoi.value = geometry;
+  };
+
+  const getLayers = () => {
+    return map.value ? map.value.getLayers().getArray() : [];
+  };
+
+  const addLayer = (layer) => {
+    if (map.value) {
+      map.value.addLayer(layer);
+    }
+  };
+
+  const updateLayers = () => {
+    if (map.value) {
+      layers.value = map.value.getLayers().getArray().map(layer => ({
+        id: layer.get('id'),
+        title: layer.get('title'),
+        visible: layer.getVisible(),
+        layer: layer
+      }));
+    }
+  };
+
+  const removeLayer = (layerId) => {
+    if (map.value) {
+      const layerToRemove = map.value.getLayers().getArray().find(layer => layer.get('id') === layerId);
+      if (layerToRemove) {
+        map.value.removeLayer(layerToRemove);
+        // updateLayers will be called automatically due to the event listener
+      }
+    }
+  };
+
+  const toggleLayerVisibility = (layerId) => {
+    const layer = layers.value.find(l => l.id === layerId);
+    if (layer) {
+      layer.layer.setVisible(!layer.layer.getVisible());
+      updateLayers();
+    }
   };
 
   const setProjectAOI = async (aoiGeojson) => {
@@ -99,6 +134,9 @@ export const useMapStore = defineStore('map', () => {
   };
 
   const displayAOI = (aoiGeojson) => {
+
+    console.log("Displaying AOI from within MapStore...");
+
     if (!map.value) return;
 
     // Remove existing AOI layer if it exists
@@ -116,6 +154,8 @@ export const useMapStore = defineStore('map', () => {
       source: vectorSource,
       title: "Area of Interest",
       visible: true,
+      id: 'area-of-interest',
+      zIndex: 100,
       style: new Style({
         fill: new Fill({
           color: 'rgba(255, 255, 255, 0.2)'
@@ -158,13 +198,14 @@ export const useMapStore = defineStore('map', () => {
       source: newSource,
       title: `Planet Basemap ${date}`,
       type: 'base',
-      visible: true
+      visible: true,
+      id: `planet-basemap-${date}`,
     });
 
     // Remove old base layers
-    map.value.getLayers().getArray()
-      .filter(layer => layer.get('type') === 'base')
-      .forEach(layer => map.value.removeLayer(layer));
+    // map.value.getLayers().getArray()
+    //   .filter(layer => layer.get('id').startsWith('planet-basemap-'))
+    //   .forEach(layer => map.value.removeLayer(layer));
 
     // Add the new layer
     map.value.addLayer(newLayer);
@@ -231,20 +272,15 @@ export const useMapStore = defineStore('map', () => {
   };
 
   
-
-
-
-  const clearLoading = () => {
-    isLoading.value = false;
-  };
-
   const initVectorLayer = () => {
     if (!map.value) return;
     
     vectorLayer.value = new VectorLayer({
       source: new VectorSource(),
       style: featureStyleFunction,
-      zIndex: 100
+      zIndex: 100,
+      title: 'Drawn Polygons',
+      id: 'drawn-polygons'
     });
     map.value.addLayer(vectorLayer.value);
 
@@ -431,7 +467,8 @@ export const useMapStore = defineStore('map', () => {
     trainingPolygonsLayer.value = new VectorLayer({
       source: vectorSource,
       title: 'Training Polygons',
-      visible: true
+      visible: true,
+      id: 'training-polygons',
     });
 
     map.value.addLayer(trainingPolygonsLayer.value);
@@ -440,7 +477,6 @@ export const useMapStore = defineStore('map', () => {
     
 
   };
-
 
 
   // Getters
@@ -458,6 +494,7 @@ export const useMapStore = defineStore('map', () => {
     selectedPolygon,
     drawnPolygons,
     predictionLayer,
+    layers,
     // Actions
     initMap,
     setAOI,
@@ -474,6 +511,10 @@ export const useMapStore = defineStore('map', () => {
     getDrawnPolygonsGeoJSON,
     loadPolygons,
     displayPrediction,
+    getLayers,
+    addLayer,
+    removeLayer,
+    toggleLayerVisibility,
     // Getters
     getMap
   };
