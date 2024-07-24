@@ -155,4 +155,8 @@ export default {
     });
   },
 
+  fetchModelMetrics(modelId) {
+    return axios.get(`${API_URL}/model_metrics/${modelId}`);
+  },
+
 };

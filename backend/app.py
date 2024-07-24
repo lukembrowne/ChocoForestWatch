@@ -39,6 +39,7 @@ from rasterio.merge import merge
 import rasterio
 from rasterio.warp import transform_bounds
 from shapely import geometry
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
 
 
 # Load environment variables from the .env file
@@ -151,18 +152,22 @@ class TrainedModel(db.Model):
     name = db.Column(db.String(100), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     training_polygon_set_id = db.Column(db.Integer, db.ForeignKey('training_polygon_set.id'), nullable=False)
-    basemap_date = db.Column(db.String(7), nullable=False)  # Store as 'YYYY-MM'
+    basemap_date = db.Column(db.String(7), nullable=False)
     accuracy = db.Column(db.Float)
+    class_metrics = db.Column(db.JSON)  # This will store precision, recall, and F1 for each class
+    confusion_matrix = db.Column(db.JSON)
     file_path = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    parameters = db.Column(db.JSON)  # Store model parameters as JSON
-    predictions = db.relationship('Prediction', back_populates='model')
+    parameters = db.Column(db.JSON)
+    class_names = db.Column(db.JSON)  # Add this line
 
+
+    predictions = db.relationship('Prediction', back_populates='model')
     project = db.relationship("Project", back_populates="trained_models")
     training_polygon_set = db.relationship("TrainingPolygonSet", back_populates="trained_models")
 
     @classmethod
-    def save_model(cls, model, name, project_id, training_polygon_set_id, basemap_date, accuracy, parameters):
+    def save_model(cls, model, name, project_id, training_polygon_set_id, basemap_date, metrics, parameters):
         model_dir = './trained_models'
         os.makedirs(model_dir, exist_ok=True)
         file_name = f"{name}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.joblib"
@@ -175,7 +180,10 @@ class TrainedModel(db.Model):
             project_id=project_id,
             training_polygon_set_id=training_polygon_set_id,
             basemap_date=basemap_date,
-            accuracy=accuracy,
+            accuracy=metrics['accuracy'],
+            class_metrics=metrics['class_metrics'],
+            class_names=metrics['class_names'],  # Add this line
+            confusion_matrix=metrics['confusion_matrix'],
             file_path=file_path,
             parameters=parameters
         )
@@ -198,10 +206,12 @@ class TrainedModel(db.Model):
             'training_polygon_set_id': self.training_polygon_set_id,
             'basemap_date': self.basemap_date,
             'accuracy': self.accuracy,
+            'class_metrics': self.class_metrics,
+            'class_names': self.class_names,  # Add this line
+            'confusion_matrix': self.confusion_matrix,
             'created_at': self.created_at.isoformat(),
             'parameters': self.parameters
         }
-
 
 class Prediction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -509,16 +519,12 @@ def get_rasters():
 @app.route('/api/list_models', methods=['GET'])
 def get_models():
     models = TrainedModel.query.all()
-    model_list = []
-    for model in models:
-        model_list.append({
-            'id': model.id,
-            'name': model.name,
-            'filepath': model.file_path,
-            'accuracy': model.accuracy,
-            'created_at': model.created_at
-        })
-    return jsonify(model_list)
+    return jsonify([model.to_dict() for model in models])
+
+@app.route('/api/model_metrics/<int:model_id>', methods=['GET'])
+def get_model_metrics(model_id):
+    model = TrainedModel.query.get_or_404(model_id)
+    return jsonify(model.to_dict())
 
 
 @app.route('/api/rasters/<int:raster_id>', methods=['GET'])
@@ -787,6 +793,27 @@ def train_xgboost_model(X, y,project_id, training_polygon_set_id, basemap_date, 
     accuracy = accuracy_score(y_test, y_pred)
     report = classification_report(y_test, y_pred, target_names=le.classes_)
 
+     # Calculate precision, recall, and F1 for each class
+    precision, recall, f1, _ = precision_recall_fscore_support(y_test, y_pred, average=None)
+    
+
+    class_metrics = {}
+    for i, class_name in enumerate(le.classes_):
+        class_metrics[class_name] = {
+            'precision': precision[i],
+            'recall': recall[i],
+            'f1': f1[i]
+        }
+
+    conf_matrix = confusion_matrix(y_test, y_pred).tolist()
+
+    metrics = {
+        "accuracy": accuracy,
+        "class_metrics": class_metrics,
+        "confusion_matrix": conf_matrix,
+        "class_names": le.classes_.tolist()
+    }
+
     # Save the trained model
     saved_model = TrainedModel.save_model(
         model, 
@@ -794,15 +821,9 @@ def train_xgboost_model(X, y,project_id, training_polygon_set_id, basemap_date, 
         project_id, 
         training_polygon_set_id, 
         basemap_date, 
-        accuracy, 
+        metrics, 
         model_params
     )
-
-    metrics = {
-        "accuracy": float(accuracy),
-        "cv_scores": cv_scores.tolist(),
-        "classification_report": report
-    }
 
     return saved_model, metrics
 

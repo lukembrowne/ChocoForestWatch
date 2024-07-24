@@ -19,9 +19,6 @@
           <!-- Icon sidebar -->
           <div class="icon-sidebar bg-white text-primary full-height" style="width: 60px;">
             <q-list> 
-              <q-item clickable @click="openProjectDialog"><q-item-section avatar>
-                  <q-icon name="folder" />
-                </q-item-section></q-item>
               <q-item v-for="section in sections" :key="section.name" clickable @click="toggleSection(section.name)"
                 :active="currentSection === section.name">
                 <q-item-section avatar>
@@ -55,11 +52,13 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
+import { useModelEvaluationStore } from 'src/stores/modelEvaluationStore'
 import ProjectSelectionDialog from 'components/ProjectSelectionDialog.vue'
 import AOIDefinitionComponent from 'components/AOIDefinition.vue'
 import TrainingComponent from 'components/Training.vue'
 import AnalysisComponent from 'components/Analysis.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
+import ModelEvaluationDialog from 'components/ModelEvaluationDialog.vue'
 
 
 export default {
@@ -68,25 +67,34 @@ export default {
     AOIDefinitionComponent,
     TrainingComponent,
     AnalysisComponent,
-    CustomLayerSwitcher
+    CustomLayerSwitcher,
+    ModelEvaluationDialog
   },
   setup() {
     const $q = useQuasar()
     const projectStore = useProjectStore()
     const mapStore = useMapStore()
+    const modelEvaluationStore = useModelEvaluationStore()
     const isExpanded = ref(true)
     const currentSection = ref('aoi')
     const currentProject = computed(() => projectStore.currentProject)
 
 
     const sections = [
+      { name: 'projects', icon: 'folder', component: null},
       { name: 'aoi', icon: 'map', component: AOIDefinitionComponent },
       { name: 'training', icon: 'school', component: TrainingComponent },
-      { name: 'analysis', icon: 'analytics', component: AnalysisComponent }
+      { name: 'evaluation', icon: 'assessment', component: null },
+      { name: 'analysis', icon: 'analytics', component: AnalysisComponent}
     ]
 
     const toggleSection = (sectionName) => {
-      if (currentSection.value === sectionName && isExpanded.value) {
+
+      if (sectionName === 'evaluation') {
+        openModelEvaluationDialog()
+      } else  if (sectionName === 'projects') {
+        openProjectDialog()
+      } else if (currentSection.value === sectionName && isExpanded.value) {
         isExpanded.value = false
         currentSection.value = null
       } else {
@@ -102,21 +110,21 @@ export default {
 
     onMounted(() => {
 
-      // Standard loading sequence
-      // Initialize map
+      // // Standard loading sequence
+      // // Initialize map
       // mapStore.initMap('map')
 
-      // // Open project dialogue to have user select or create new project
+      // // // Open project dialogue to have user select or create new project
       // openProjectDialog()
 
 
        // Load default project and map date to make things easier
-       console.log('Loading default project...')
+      console.log('Loading default project...')
       mapStore.initMap('map')
       currentSection.value = 'training'
       // Sleep 2 seconds
       setTimeout(() => {
-        projectStore.loadProject(9)
+        projectStore.loadProject(10)
       }, 1000)
      
       setTimeout(() => {
@@ -130,6 +138,13 @@ export default {
         component: ProjectSelectionDialog
       }).onOk((project) => {
         selectProject(project)
+      })
+    }
+
+    const openModelEvaluationDialog = async () => {
+      await modelEvaluationStore.fetchModels()
+      $q.dialog({
+        component: ModelEvaluationDialog
       })
     }
 
