@@ -158,7 +158,7 @@ export const useMapStore = defineStore('map', () => {
       zIndex: 100,
       style: new Style({
         fill: new Fill({
-          color: 'rgba(255, 255, 255, 0.2)'
+          color: 'rgba(255, 255, 255, 0)'
         }),
         stroke: new Stroke({
           color: '#000000',
