@@ -59,13 +59,14 @@ import TrainingComponent from 'components/Training.vue'
 import AnalysisComponent from 'components/Analysis.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import ModelEvaluationDialog from 'components/ModelEvaluationDialog.vue'
-
+import ModelTrainingDialog from 'components/ModelTrainingDialog.vue'
 
 export default {
   name: 'MainLayout',
   components: {
     AOIDefinitionComponent,
     TrainingComponent,
+    ModelTrainingDialog,
     AnalysisComponent,
     CustomLayerSwitcher,
     ModelEvaluationDialog
@@ -84,6 +85,7 @@ export default {
       { name: 'projects', icon: 'folder', component: null},
       { name: 'aoi', icon: 'map', component: AOIDefinitionComponent },
       { name: 'training', icon: 'school', component: TrainingComponent },
+      { name: 'model_training', icon: 'model_training', component: null },  // Add new section
       { name: 'evaluation', icon: 'assessment', component: null },
       { name: 'analysis', icon: 'analytics', component: AnalysisComponent}
     ]
@@ -94,6 +96,8 @@ export default {
         openModelEvaluationDialog()
       } else  if (sectionName === 'projects') {
         openProjectDialog()
+      } else if (sectionName === 'model_training'){
+        openModelTrainingDialog()
       } else if (currentSection.value === sectionName && isExpanded.value) {
         isExpanded.value = false
         currentSection.value = null
@@ -148,6 +152,20 @@ export default {
       })
     }
 
+    const openModelTrainingDialog = () => {
+      $q.dialog({
+        component: ModelTrainingDialog
+      }).onOk((response) => {
+        // Handle the response from model training
+        console.log('Model training completed:', response)
+        $q.notify({
+          color: 'positive',
+          message: 'Model training initiated successfully',
+          icon: 'check'
+        })
+      })
+    }
+
     const selectProject = async (project) => {
       await projectStore.loadProject(project.id)
       if (project.isNew !== undefined || projectStore.currentProject.aoi === null) {
@@ -178,6 +196,7 @@ export default {
       currentSectionComponent,
       currentProject,
       openProjectDialog,
+      openModelTrainingDialog
     }
   }
 }

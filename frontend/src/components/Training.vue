@@ -1,6 +1,13 @@
 <template>
   <div class="training-component">
 
+    <q-separator spaced />
+    <p> Load a training dataset: </p>
+
+    <!-- Load button -->
+    <q-btn label="Load Training Set" color="secondary" @click="openLoadDialog" class="q-ml-sm" />
+
+    <q-separator spaced />
 
     <!-- Basemap date selection -->
     <div class="basemap-selection q-mb-md">
@@ -10,7 +17,8 @@
 
     <q-separator spaced />
 
-    <p> Drawing controls</p>
+
+    <p> Drawing controls:</p>
     <div class="class-selection q-mb-md">
       <q-item-section>
         <q-select v-model="selectedClass" :options="landCoverClasses" label="Class" dense />
@@ -23,33 +31,15 @@
       <q-btn label="Clear All" color="warning" @click="clearDrawnPolygons" class="q-ml-sm" />
     </div>
 
-     <!-- Save/Update buttons -->
-     <div class="q-gutter-sm">
-      <q-btn
-        v-if="!existingTrainingSet"
-        label="Save New Training Set"
-        color="positive"
-        @click="openSaveDialog('new')"
-        :disable="drawnPolygons.length === 0 || !selectedBasemapDate"
-      />
-      <q-btn
-        v-if="existingTrainingSet"
-        label="Update Training Set"
-        color="primary"
-        @click="openSaveDialog('update')"
-        :disable="drawnPolygons.length === 0 || !selectedBasemapDate"
-      />
-      <q-btn
-        v-if="existingTrainingSet"
-        label="Save As New"
-        color="secondary"
-        @click="openSaveDialog('new')"
-        :disable="drawnPolygons.length === 0 || !selectedBasemapDate"
-      />
+    <!-- Save/Update buttons -->
+    <div class="q-gutter-sm">
+      <q-btn v-if="!existingTrainingSet" label="Save New Training Set" color="positive" @click="openSaveDialog('new')"
+        :disable="drawnPolygons.length === 0 || !selectedBasemapDate" />
+      <q-btn v-if="existingTrainingSet" label="Update Training Set" color="primary" @click="openSaveDialog('update')"
+        :disable="drawnPolygons.length === 0 || !selectedBasemapDate" />
+      <q-btn v-if="existingTrainingSet" label="Save As New" color="secondary" @click="openSaveDialog('new')"
+        :disable="drawnPolygons.length === 0 || !selectedBasemapDate" />
     </div>
-
-    <!-- Load button -->
-    <q-btn label="Load Training Set" color="secondary" @click="openLoadDialog" class="q-ml-sm" />
 
     <!-- Save/Update Dialog -->
     <q-dialog v-model="showSaveDialog">
@@ -64,7 +54,8 @@
 
         <q-card-actions align="right">
           <q-btn flat label="Cancel" color="primary" v-close-popup />
-          <q-btn flat :label="saveMode === 'update' ? 'Update' : 'Save'" color="primary" @click="saveOrUpdateTrainingSet" />
+          <q-btn flat :label="saveMode === 'update' ? 'Update' : 'Save'" color="primary"
+            @click="saveOrUpdateTrainingSet" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -335,7 +326,7 @@ export default {
       }
     }
 
-    
+
     const openTrainingOptions = () => {
       showTrainingOptions.value = true
     }
