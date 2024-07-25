@@ -87,7 +87,7 @@ import { GeoJSON } from 'ol/format'
 import apiService from 'src/services/api'
 import LoadTrainingSetDialog from 'components/LoadTrainingSetDialog.vue';
 import api from 'src/services/api';
-
+import { getBasemapDateOptions } from 'src/utils/dateUtils'
 
 export default {
   name: 'TrainingComponent',
@@ -99,6 +99,7 @@ export default {
     const selectedClass = computed(() => mapStore.selectedClass)
     const drawnPolygons = computed(() => mapStore.drawnPolygons)
 
+    const basemapDateOptions = computed(() => getBasemapDateOptions())
     const selectedBasemapDate = ref(null) // Setting default
     const isDrawing = computed(() => mapStore.isDrawing)
 
@@ -120,20 +121,6 @@ export default {
       { label: 'Non-Forest', value: 'non_forest' }
     ]
 
-    const basemapDateOptions = computed(() => {
-      const options = []
-      for (let year = 2022; year <= 2024; year++) {
-        for (let month = 1; month <= 12; month++) {
-          if (year === 2024 && month > 6) break
-          const date = new Date(year, month - 1)
-          options.push({
-            label: date.toLocaleString('default', { month: 'long', year: 'numeric' }),
-            value: `${year}-${month.toString().padStart(2, '0')}`
-          })
-        }
-      }
-      return options
-    })
 
     onMounted(async () => {
       window.addEventListener('keydown', handleKeyDown);

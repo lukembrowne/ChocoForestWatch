@@ -53,9 +53,12 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useDialogPluginComponent } from 'quasar'
-import { useModelEvaluationStore } from 'src/stores/modelEvaluationStore'
+import api from 'src/services/api'
+import { useProjectStore } from 'src/stores/projectStore'
+
+
 
 export default {
   name: 'ModelEvaluationDialog',
@@ -63,15 +66,38 @@ export default {
 
   setup() {
     const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
-    const modelEvaluationStore = useModelEvaluationStore()
-
+    const projectStore = useProjectStore()
     const selectedModel = ref(null)
-    const metrics = computed(() => modelEvaluationStore.metrics)
+    const modelOptions = ref([])
+    const metrics = ref(null)
 
-    const modelOptions = computed(() => modelEvaluationStore.models)
+
+    onMounted(() => {
+      console.log("Fetching models")
+      fetchModels()
+    })
+
+
+    const fetchModels = async () => {
+      try {
+        const response = await api.getTrainedModels(projectStore.currentProject.id)
+        modelOptions.value = response
+      } catch (error) {
+        console.error('Error fetching models:', error)
+        throw error
+      }
+    }
+
 
     const loadModelMetrics = async (modelId) => {
-      await modelEvaluationStore.fetchModelMetrics(modelId)
+      try {
+        const response = await api.fetchModelMetrics(modelId)
+        metrics.value = response.data
+        console.log("Fetched model metrics:", metrics.value)
+      } catch (error) {
+        console.error('Error fetching model metrics:', error)
+        throw error
+      }
     }
 
     const confusionMatrixColumns = computed(() => {

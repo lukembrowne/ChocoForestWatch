@@ -56,7 +56,6 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
-import { useModelEvaluationStore } from 'src/stores/modelEvaluationStore'
 import ProjectSelectionDialog from 'components/ProjectSelectionDialog.vue'
 import AOIDefinitionComponent from 'components/AOIDefinition.vue'
 import TrainingComponent from 'components/Training.vue'
@@ -64,6 +63,7 @@ import AnalysisComponent from 'components/Analysis.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import ModelEvaluationDialog from 'components/ModelEvaluationDialog.vue'
 import ModelTrainingDialog from 'components/ModelTrainingDialog.vue'
+import PredictionDialog from 'components/PredictionDialog.vue'
 
 export default {
   name: 'MainLayout',
@@ -73,13 +73,13 @@ export default {
     ModelTrainingDialog,
     AnalysisComponent,
     CustomLayerSwitcher,
-    ModelEvaluationDialog
+    ModelEvaluationDialog,
+    PredictionDialog
   },
   setup() {
     const $q = useQuasar()
     const projectStore = useProjectStore()
     const mapStore = useMapStore()
-    const modelEvaluationStore = useModelEvaluationStore()
     const isExpanded = ref(true)
     const currentSection = ref('aoi')
     const currentProject = computed(() => projectStore.currentProject)
@@ -91,6 +91,7 @@ export default {
       { name: 'training', icon: 'school', component: TrainingComponent, tooltip: 'Create training data' },
       { name: 'model_training', icon: 'model_training', component: null, tooltip: 'Train a new model' },
       { name: 'evaluation', icon: 'assessment', component: null, tooltip: 'Evaluate trained models' },
+      { name: 'prediction', icon: 'preview', component: null, tooltip: 'Make a prediction' },  // New section
       { name: 'analysis', icon: 'analytics', component: AnalysisComponent, tooltip: 'Analyze results' }
     ]
 
@@ -102,6 +103,8 @@ export default {
         openProjectDialog()
       } else if (sectionName === 'model_training'){
         openModelTrainingDialog()
+      } else if (sectionName === 'prediction') {
+        openPredictionDialog()  // New handler
       } else if (currentSection.value === sectionName && isExpanded.value) {
         isExpanded.value = false
         currentSection.value = null
@@ -149,12 +152,7 @@ export default {
       })
     }
 
-    const openModelEvaluationDialog = async () => {
-      await modelEvaluationStore.fetchModels()
-      $q.dialog({
-        component: ModelEvaluationDialog
-      })
-    }
+
 
     const openModelTrainingDialog = () => {
       $q.dialog({
@@ -167,6 +165,21 @@ export default {
           message: 'Model training initiated successfully',
           icon: 'check'
         })
+      })
+    }
+
+    const openModelEvaluationDialog = async () => {
+      $q.dialog({
+        component: ModelEvaluationDialog
+      })
+    }
+
+    const openPredictionDialog = () => {
+      $q.dialog({
+        component: PredictionDialog
+      }).onOk((result) => {
+        console.log('Prediction completed:', result)
+        // You might want to trigger the display of the prediction on the map here
       })
     }
 

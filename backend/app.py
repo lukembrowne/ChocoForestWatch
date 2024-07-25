@@ -152,13 +152,14 @@ class TrainedModel(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     parameters = db.Column(db.JSON)
     class_names = db.Column(db.JSON)  # Add this line
+    date_encoder = db.Column(db.PickleType)  # Add this field to store the encoder
 
 
     predictions = db.relationship('Prediction', back_populates='model')
     project = db.relationship("Project", back_populates="trained_models")
 
     @classmethod
-    def save_model(cls, model, name, project_id, training_set_ids, metrics, parameters):
+    def save_model(cls, model, name, project_id, training_set_ids, metrics, parameters, date_encoder):
         model_dir = './trained_models'
         os.makedirs(model_dir, exist_ok=True)
         file_name = f"{name}_{datetime.now().strftime('%Y%m%d%H%M%S')}.joblib"
@@ -175,7 +176,9 @@ class TrainedModel(db.Model):
             class_names=metrics['class_names'],
             confusion_matrix=metrics['confusion_matrix'],
             file_path=file_path,
-            parameters=parameters
+            parameters=parameters,
+            date_encoder=date_encoder
+
         )
         db.session.add(new_model)
         db.session.commit()
@@ -185,7 +188,9 @@ class TrainedModel(db.Model):
     def load_model(cls, model_id):
         model_record = cls.query.get(model_id)
         if model_record:
-            return joblib.load(model_record.file_path)
+            model = joblib.load(model_record.file_path)
+            model.date_encoder = model_record.date_encoder  # Attach the date encoder to the model
+            return model
         return None
 
     def to_dict(self):
@@ -193,8 +198,7 @@ class TrainedModel(db.Model):
             'id': self.id,
             'name': self.name,
             'project_id': self.project_id,
-            'training_polygon_set_id': self.training_polygon_set_id,
-            'basemap_date': self.basemap_date,
+            'training_set_ids': self.training_set_ids,
             'accuracy': self.accuracy,
             'class_metrics': self.class_metrics,
             'class_names': self.class_names,  # Add this line
@@ -207,6 +211,7 @@ class Prediction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     model_id = db.Column(db.Integer, db.ForeignKey('trained_model.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
     file_path = db.Column(db.String(255), nullable=False)
     basemap_date = db.Column(db.String(7), nullable=False)  # Store as 'YYYY-MM'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -404,35 +409,6 @@ def get_specific_training_polygons(project_id, set_id):
     else:
         return jsonify({'message': 'No training polygons found for this date'}), 404
 
-def get_training_polygon_set_id(project_id, basemap_date):
-    try:
-        # Try to find an existing TrainingPolygonSet
-        training_set = TrainingPolygonSet.query.filter_by(
-            project_id=project_id,
-            basemap_date=basemap_date
-        ).first()
-
-        if training_set:
-            return training_set.id
-
-        # If not found, create a new TrainingPolygonSet
-        new_training_set = TrainingPolygonSet(
-            project_id=project_id,
-            basemap_date=basemap_date
-        )
-        db.session.add(new_training_set)
-        db.session.commit()
-
-        return new_training_set.id
-
-    except SQLAlchemyError as e:
-        current_app.logger.error(f"Database error in get_training_polygon_set_id: {str(e)}")
-        db.session.rollback()
-        raise
-    except Exception as e:
-        current_app.logger.error(f"Unexpected error in get_training_polygon_set_id: {str(e)}")
-        raise
-
 @app.route('/api/training_polygons/<int:project_id>/<int:set_id>', methods=['PUT'])
 def update_training_polygons(project_id, set_id):
     data = request.json
@@ -494,10 +470,14 @@ def get_prediction(prediction_id):
 
 
     
-@app.route('/api/list_models', methods=['GET'])
-def get_models():
-    models = TrainedModel.query.all()
-    return jsonify([model.to_dict() for model in models])
+@app.route('/api/trained_models/<int:project_id>', methods=['GET'])
+def get_trained_models(project_id):
+    models = TrainedModel.query.filter_by(project_id=project_id).all()
+    return jsonify([{
+        'id': model.id,
+        'name': model.name,
+        'created_at': model.created_at.isoformat()
+    } for model in models])
 
 @app.route('/api/model_metrics/<int:model_id>', methods=['GET'])
 def get_model_metrics(model_id):
@@ -506,80 +486,6 @@ def get_model_metrics(model_id):
 
 
 
-
-# Model training
-
-# @app.route('/api/train_model', methods=['POST'])
-# def train_model():
-#     data = request.json
-#     project_id = data['projectId']
-#     aoi_extent = data['aoiExtent']
-#     training_set_ids = data['trainingSetIds']
-
-#     model_params = {
-#             'n_estimators': data.get('n_estimators', 100),
-#             'max_depth': data.get('max_depth', 3),
-#             'learning_rate': data.get('learning_rate', 0.1),
-#             'min_child_weight': data.get('min_child_weight', 1),
-#             'gamma': data.get('gamma', 0)
-#         }
-    
-
-#     # Step 1: Get Planet quads
-#     update_progress(project_id, 0.1, "Fetching Planet quads")
-#     quads = get_planet_quads(aoi_extent, basemap_date)
-
-#     # Start a background task for the training process
-#     ## thread = threading.Thread(target=run_training_process, args=(app, project_id, aoi_extent, basemap_date, training_polygons, model_params))
-#     ## thread.start()
-
-#     return jsonify({"message": "Training process started"}), 202
-
-# def run_training_process(app, project_id, aoi, basemap_date, training_polygons, model_params):
-#     with app.app_context():
-#         try:
-            
-            
-#             # import time
-#             # time.sleep(5)
-
-#             # Step 2: Extract pixels from quads using training polygons
-#             update_progress(project_id, 0.3, "Extracting pixels from quads")
-
-#             X, y = extract_pixels_from_quads(quads, training_polygons)
-
-#             # Step 3: Train XGBoost model
-#             update_progress(project_id, 0.6, "Training XGBoost model")
-
-#             training_polygon_set_id = get_training_polygon_set_id(project_id, basemap_date) 
-#             saved_model, metrics = train_xgboost_model(X, y, project_id, training_polygon_set_id, basemap_date, model_params)
-
-#             # Step 4: Predict land cover across AOI
-#             update_progress(project_id, 0.6, "Predicting land cover across AOI")
-#             prediction_file = predict_landcover_aoi(saved_model.id, quads, aoi, project_id, basemap_date)
-
-#             # Save prediction to database
-#             prediction = Prediction(
-#                 project_id=project_id,
-#                 model_id=saved_model.id,
-#                 file_path=prediction_file,
-#                 basemap_date=basemap_date
-#             )
-#             db.session.add(prediction)
-#             db.session.commit()
-
-#            # Step 5: Return results
-#             update_progress(project_id, 1.0, "Training and prediction complete", {
-#                 **metrics, 
-#                 "prediction_id": prediction.id,
-#                 "model_id": saved_model.id,
-#                 "prediction_filepath": prediction_file
-#             })
-
-#         except Exception as e:
-#             logger.exception(f"Error in training process: {str(e)}")
-#             update_progress(project_id, 1.0, f"Error: {str(e)}")
-
 @app.route('/api/train_model', methods=['POST'])
 def train_model():
     data = request.json
@@ -587,6 +493,7 @@ def train_model():
     model_name = data['modelName']
     training_set_ids = data['trainingSetIds']
     aoi_extent = data['aoiExtent']
+
     model_params = {
         'n_estimators': data.get('n_estimators', 100),
         'max_depth': data.get('max_depth', 3),
@@ -639,7 +546,7 @@ def train_model():
         # Step 3: Train XGBoost model
         update_progress(project_id, 0.6, "Training XGBoost model")
         # Train the model
-        model, metrics = train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_params)
+        model, metrics = train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_params, date_encoder)
 
         
         import time
@@ -850,7 +757,7 @@ def extract_pixels_from_quads(quads, polygons):
 
 
 
-def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_params):
+def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_params, date_encoder):
     # Encode class labels
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
@@ -890,10 +797,53 @@ def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_pa
         project_id, 
         training_set_ids, 
         metrics, 
-        model_params
+        model_params,
+        date_encoder
     )
 
     return saved_model, metrics
+
+
+### Prediction
+@app.route('/api/predict_landcover', methods=['POST'])
+def predict_landcover():
+    data = request.json
+    project_id = data['projectId']
+    model_id = data['modelId']
+    basemap_date = data['basemapDate']
+    prediction_name = data['predictionName']
+    aoi_extent = data['aoiExtent']
+    aoi_extent_lat_lon = data['aoiExtentLatLon']
+
+
+    # Fetch the model
+    model = TrainedModel.query.get(model_id)
+    if not model:
+        return jsonify({"error": "Model not found"}), 404
+
+    # Fetch the quads for the AOI and basemap date
+    quads = get_planet_quads(aoi_extent_lat_lon, basemap_date)
+
+    # Perform the prediction
+    prediction_file = predict_landcover_aoi(model.id, quads, aoi_extent, project_id, basemap_date)
+
+    # Save prediction to database
+    prediction = Prediction(
+        project_id=project_id,
+        model_id=model.id,
+        file_path=prediction_file,
+        basemap_date=basemap_date,
+        name=prediction_name
+    )
+    db.session.add(prediction)
+    db.session.commit()
+
+    return jsonify({
+        "message": "Prediction completed",
+        "prediction_id": prediction.id,
+        "file_path": prediction.file_path
+    })
+
 
 def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
     model = TrainedModel.load_model(model_id)
@@ -907,6 +857,16 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
     temp_files = []  # To keep track of temporary files for cleanup
     quad_bounds = []
 
+    # Load the date encoder used during training
+    date_encoder = model.date_encoder  # Assume we've saved this with the model
+    
+# If the current basemap_date wasn't in the training data, we need to handle it
+    if basemap_date not in date_encoder.classes_:
+        logger.warning(f"Basemap date {basemap_date} not in training data. Using nearest date.")
+        nearest_date = min(date_encoder.classes_, key=lambda x: abs(int(x.replace('-', '')) - int(basemap_date.replace('-', ''))))
+        encoded_date = date_encoder.transform([nearest_date])[0]
+    else:
+        encoded_date = date_encoder.transform([basemap_date])[0]
 
     for i, quad in enumerate(quads):
         with rasterio.open(quad['filename']) as src:
@@ -922,7 +882,13 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
 
             # Reshape the data for prediction
             reshaped_data = data.reshape(4, -1).T
-            predictions = model.predict(reshaped_data)
+            
+            # Add the encoded date as a feature
+            date_column = np.full((reshaped_data.shape[0], 1), encoded_date)
+            prediction_data = np.hstack((reshaped_data, date_column))
+            
+            predictions = model.predict(prediction_data)
+
             prediction_map = predictions.reshape(data.shape[1], data.shape[2])
 
             # Create a temporary file for this quad's prediction with a unique name
@@ -946,11 +912,12 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
 
 
     # Ensure AOI is in the same CRS as the raster
-    aoi_geom = box(*aoi)
-    aoi_bounds = transform_bounds("EPSG:4326", src.crs, *aoi)
-    aoi_geom = box(*aoi_bounds)
-    logger.debug(f"Transformed AOI bounds: {aoi_bounds}")
-    mosaic, out_transform = merge(predicted_rasters, bounds = aoi_bounds)
+    # aoi_geom = box(*aoi)
+    # pdb.set_trace()
+    # aoi_bounds = transform_bounds("EPSG:4326", src.crs, *aoi)
+    # aoi_geom = box(*aoi_bounds)
+    # logger.debug(f"Transformed AOI bounds: {aoi_bounds}")
+    mosaic, out_transform = merge(predicted_rasters, bounds = aoi)
 
     
     logger.debug(f"Merged raster shape: {mosaic.shape}")

@@ -29,40 +29,6 @@ export default {
   setProjectAOI(projectId, aoiGeojson) {
     return axios.post(`${API_URL}/projects/${projectId}/aoi`, { aoi: aoiGeojson })
   },
-  uploadRaster(formData) {
-    return axios.post(`${API_URL}/upload_raster`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-  },
-  uploadVector(formData) {
-  return axios.post(`${API_URL}/upload_vector`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-  },
-  async fetchRasterById(id) {
-    try {
-      const response = await axios.get(`${API_URL}/rasters/${id}`);
-      return response.data;  // This line is crucial
-    } catch (error) {
-      console.error('Error fetching raster:', error);
-      throw error;
-    }
-  },
-
-  async fetchVectorById(id) {
-    try {
-      const response = await axios.get(`${API_URL}/vectors/${id}`);
-      return response.data;  // This line is crucial
-    } catch (error) {
-      console.error('Error fetching vector:', error);
-      throw error;
-    }
-  },
-
 
   getTrainingPolygons(projectId) {
     return axios.get(`${API_URL}/training_polygons/${projectId}`);
@@ -90,12 +56,24 @@ export default {
   fetchModels() {
     return axios.get(`${API_URL}/list_models`);
   },
-  predictLandcover(JSON) {
-    return axios.post(`${API_URL}/predict_landcover`, JSON, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+
+  async getTrainedModels(projectId) {
+    try {
+      const response = await axios.get(`${API_URL}/trained_models/${projectId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching trained models:', error);
+      throw error;
+    }
+  },
+  async predictLandcover(data) {
+    try {
+      const response = await axios.post(`${API_URL}/predict_landcover`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error predicting landcover:', error);
+      throw error;
+    }
   },
 
   async trainModel(data) {
