@@ -258,6 +258,7 @@ export const useMapStore = defineStore('map', () => {
           imageExtent: extent,
         }),
         title: 'Prediction Layer',
+        id: 'prediction-layer',
         visible: true,
         zIndex: 1,
         opacity: 0.7
@@ -378,8 +379,8 @@ export const useMapStore = defineStore('map', () => {
   };
 
   const deletePolygon = (index) => {
-    console.log("Deleting polygon with index: ", index);
-    console.log("Drawn polygons before deletion: ", drawnPolygons.value);
+    // console.log("Deleting polygon with index: ", index);
+    // console.log("Drawn polygons before deletion: ", drawnPolygons.value);
 
     if (index >= 0 && index < drawnPolygons.value.length) {
       const feature = trainingPolygonsLayer.value.getSource().getFeatures()[index];
@@ -388,7 +389,7 @@ export const useMapStore = defineStore('map', () => {
       // Use splice to ensure reactivity
       drawnPolygons.value.splice(index, 1);
     }
-    console.log("Drawn polygons after deletion: ", drawnPolygons.value);
+    // console.log("Drawn polygons after deletion: ", drawnPolygons.value);
   };
 
   const clearDrawnPolygons = () => {

@@ -46,7 +46,7 @@
       ];
   
       onMounted(async () => {
-        const response = await api.getTrainingPolygonSets( projectStore.currentProject.id);
+        const response = await api.getTrainingPolygons( projectStore.currentProject.id);
         trainingSets.value = response.data;
       });
   

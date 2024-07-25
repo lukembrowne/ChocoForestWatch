@@ -68,26 +68,19 @@ export default {
     return axios.get(`${API_URL}/training_polygons/${projectId}`);
   },
 
-  getSpecificTrainingPolygons(projectId, basemapDate) {
-    return axios.get(`${API_URL}/training_polygons/${projectId}/${basemapDate}`);
-  },
-
-
-  getTrainingPolygonSets(projectId) {
-    return axios.get(`${API_URL}/training_polygon_sets/${projectId}`);
+  getSpecificTrainingPolygons(projectId, setID) {
+    return axios.get(`${API_URL}/training_polygons/${projectId}/${setID}`);
   },
   
   saveTrainingPolygons(data) {
     return axios.post(`${API_URL}/training_polygons`, data);
   },
 
-  saveDrawnPolygons(polygonData) {
-    return axios.post(`${API_URL}/save_drawn_polygons`, polygonData, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+  updateTrainingPolygons(data) {
+    return axios.put(`${API_URL}/training_polygons/${data.project_id}/${data.id}`, data);
   },
+
+
   fetchRasters() {
     return axios.get(`${API_URL}/list_rasters`);
   },

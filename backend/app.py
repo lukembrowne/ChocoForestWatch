@@ -389,18 +389,6 @@ def save_training_polygons():
 
 @app.route('/api/training_polygons/<int:project_id>', methods=['GET'])
 def get_training_polygons(project_id):
-    training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id).all()
-    result = [{
-        'id': ts.id,
-        'basemap_date': ts.basemap_date,
-        'has_polygons': bool(ts.polygons),
-        'updated_at': ts.updated_at.isoformat()
-    } for ts in training_sets]
-    return jsonify(result), 200
-
-
-@app.route('/api/training_polygon_sets/<int:project_id>', methods=['GET'])
-def get_training_polygon_sets(project_id):
     sets = TrainingPolygonSet.query.filter_by(project_id=project_id).all()
     return jsonify([{
         'id': s.id,
@@ -410,6 +398,7 @@ def get_training_polygon_sets(project_id):
         'created_at': s.created_at.isoformat(),
         'updated_at': s.updated_at.isoformat()
     } for s in sets])
+
 
 @app.route('/api/training_polygons/<int:project_id>/<int:set_id>', methods=['GET'])
 def get_specific_training_polygons(project_id, set_id):
@@ -447,6 +436,39 @@ def get_training_polygon_set_id(project_id, basemap_date):
     except Exception as e:
         current_app.logger.error(f"Unexpected error in get_training_polygon_set_id: {str(e)}")
         raise
+
+@app.route('/api/training_polygons/<int:project_id>/<int:set_id>', methods=['PUT'])
+def update_training_polygons(project_id, set_id):
+    data = request.json
+    basemap_date = data.get('basemap_date')
+    polygons = data.get('polygons')
+    name = data.get('name')
+
+    if not all([basemap_date, polygons, name]):
+        return jsonify({'error': 'Missing required data'}), 400
+
+    try:
+        training_set = TrainingPolygonSet.query.filter_by(id=set_id, project_id=project_id).first()
+        if not training_set:
+            return jsonify({'error': 'Training set not found'}), 404
+
+        training_set.basemap_date = basemap_date
+        training_set.polygons = polygons
+        training_set.name = name
+        training_set.feature_count = len(polygons['features'])
+        training_set.updated_at = datetime.utcnow()
+
+        db.session.commit()
+        return jsonify({'message': 'Training polygons updated successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+
+
+
+ ## Prediction routes   
 
 @app.route('/api/predictions/<int:project_id>', methods=['GET'])
 def get_predictions(project_id):
