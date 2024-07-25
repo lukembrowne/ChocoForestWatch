@@ -22,6 +22,7 @@ import ImageStatic from 'ol/source/ImageStatic';
 
 
 export const useMapStore = defineStore('map', () => {
+  
   // State
   const aoi = ref(null);
   const map = ref(null);
@@ -37,8 +38,7 @@ export const useMapStore = defineStore('map', () => {
   
   // Internal state
   const projectStore = useProjectStore();
-  const drawiwng = ref(false);
-  const vectorLayer = ref(null);
+  const drawing = ref(false);
   const drawInteraction = ref(null);
   const modifyInteraction = ref(null);
   const selectInteraction = ref(null);
@@ -63,7 +63,7 @@ export const useMapStore = defineStore('map', () => {
       })
     });
    
-    initVectorLayer();
+    initTrainingLayer();
     initInteractions();
 
     // Initialize layers
@@ -272,24 +272,24 @@ export const useMapStore = defineStore('map', () => {
   };
 
   
-  const initVectorLayer = () => {
+  const initTrainingLayer = () => {
     if (!map.value) return;
     
-    vectorLayer.value = new VectorLayer({
+    trainingPolygonsLayer.value = new VectorLayer({
       source: new VectorSource(),
       style: featureStyleFunction,
       zIndex: 100,
-      title: 'Drawn Polygons',
-      id: 'drawn-polygons'
+      title: 'Training Polygons',
+      id: 'training-polygons'
     });
-    map.value.addLayer(vectorLayer.value);
+    map.value.addLayer(trainingPolygonsLayer.value);
 
     // Load existing polygons from store
     drawnPolygons.value.forEach(polygon => {
       const feature = new GeoJSON().readFeature(polygon, {
         featureProjection: 'EPSG:3857'
       });
-      vectorLayer.value.getSource().addFeature(feature);
+      trainingPolygonsLayer.value.getSource().addFeature(feature);
     });
   };
 
@@ -309,7 +309,7 @@ export const useMapStore = defineStore('map', () => {
       } else {
         selectedPolygon.value = null;
       }
-      updateVectorLayerStyle();
+      updateTrainingLayerStyle();
     });
 
     modifyInteraction.value = new Modify({
@@ -345,11 +345,11 @@ export const useMapStore = defineStore('map', () => {
   const startDrawing = () => {
 
     console.log("Start drawing from within MapStore...");
-    if (!map.value || !vectorLayer.value) return;
+    if (!map.value || !trainingPolygonsLayer.value) return;
 
     isDrawing.value = true;
     drawInteraction.value = new Draw({
-      source: vectorLayer.value.getSource(),
+      source: trainingPolygonsLayer.value.getSource(),
       type: 'Polygon',
       freehand: true
     });
@@ -363,7 +363,7 @@ export const useMapStore = defineStore('map', () => {
         featureProjection: 'EPSG:3857'
       });
       drawnPolygons.value.push(newPolygon);
-      updateVectorLayerStyle();
+      updateTrainingLayerStyle();
     });
 
     map.value.addInteraction(drawInteraction.value);
@@ -378,24 +378,30 @@ export const useMapStore = defineStore('map', () => {
   };
 
   const deletePolygon = (index) => {
+    console.log("Deleting polygon with index: ", index);
+    console.log("Drawn polygons before deletion: ", drawnPolygons.value);
+
     if (index >= 0 && index < drawnPolygons.value.length) {
-      const feature = vectorLayer.value.getSource().getFeatures()[index];
-      vectorLayer.value.getSource().removeFeature(feature);
-      drawnPolygons.value = drawnPolygons.value.filter(p => p.id !== index);
+      const feature = trainingPolygonsLayer.value.getSource().getFeatures()[index];
+      trainingPolygonsLayer.value.getSource().removeFeature(feature);
+
+      // Use splice to ensure reactivity
+      drawnPolygons.value.splice(index, 1);
     }
+    console.log("Drawn polygons after deletion: ", drawnPolygons.value);
   };
 
   const clearDrawnPolygons = () => {
-    if (vectorLayer.value) {
-      vectorLayer.value.getSource().clear();
+    if (trainingPolygonsLayer.value) {
+      trainingPolygonsLayer.value.getSource().clear();
     }
     drawnPolygons.value = [];
   };
 
-  const updateVectorLayerStyle = () => {
-    if (vectorLayer.value) {
-      vectorLayer.value.setStyle(featureStyleFunction);
-      vectorLayer.value.changed();
+  const updateTrainingLayerStyle = () => {
+    if (trainingPolygonsLayer.value) {
+      trainingPolygonsLayer.value.setStyle(featureStyleFunction);
+      trainingPolygonsLayer.value.changed();
     }
   };
 
@@ -426,9 +432,9 @@ export const useMapStore = defineStore('map', () => {
   };
 
   const getDrawnPolygonsGeoJSON = () => {
-    if (!vectorLayer.value) return null;
+    if (!trainingPolygonsLayer.value) return null;
 
-    const features = vectorLayer.value.getSource().getFeatures();
+    const features = trainingPolygonsLayer.value.getSource().getFeatures();
     const geoJSONFormat = new GeoJSON();
     const featureCollection = {
       type: 'FeatureCollection',
@@ -468,14 +474,14 @@ export const useMapStore = defineStore('map', () => {
       source: vectorSource,
       title: 'Training Polygons',
       visible: true,
+      zIndex: 1000,
       id: 'training-polygons',
     });
 
     map.value.addLayer(trainingPolygonsLayer.value);
 
     drawnPolygons.value = polygonsData.features;
-    
-
+  
   };
 
 

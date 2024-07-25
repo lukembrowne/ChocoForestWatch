@@ -72,6 +72,11 @@ export default {
     return axios.get(`${API_URL}/training_polygons/${projectId}/${basemapDate}`);
   },
 
+
+  getTrainingPolygonSets(projectId) {
+    return axios.get(`${API_URL}/training_polygon_sets/${projectId}`);
+  },
+  
   saveTrainingPolygons(data) {
     return axios.post(`${API_URL}/training_polygons`, data);
   },

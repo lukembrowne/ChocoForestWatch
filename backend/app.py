@@ -129,23 +129,17 @@ class Project(db.Model):
 
 class TrainingPolygonSet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
-    basemap_date = db.Column(db.String(7), nullable=False)  # Store as 'YYYY-MM'
+    basemap_date = db.Column(db.String(7), nullable=False)
     polygons = db.Column(JSONB)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
-
-    __table_args__ = (db.UniqueConstraint('project_id', 'basemap_date', name='uq_project_basemap_date'),)
+    feature_count = db.Column(db.Integer)
 
     project = db.relationship("Project", back_populates="training_polygon_sets")
     trained_models = db.relationship("TrainedModel", back_populates="training_polygon_set")
 
-
-class Raster(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    filename = db.Column(db.String(100), nullable=False)
-    filepath = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.String(200))
 
 class TrainedModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -250,11 +244,6 @@ app.cli.add_command(clear_db_command)
 @app.route('/data/<path:filename>')
 def data_files(filename):
     return send_from_directory('data', filename)
-
-# Serve static files from the 'data' directory
-@app.route('/rasters/<path:filename>')
-def upload_files(filename):
-    return send_from_directory('rasters', filename)
 
 # Serve static files from the 'predictions' directory
 @app.route('/predictions/<path:filename>')
@@ -367,8 +356,9 @@ def save_training_polygons():
     project_id = data.get('project_id')
     basemap_date = data.get('basemap_date')
     polygons = data.get('polygons')
+    name = data.get('name')  # New field for the name
 
-    if not project_id or not basemap_date or not polygons:
+    if not project_id or not basemap_date or not polygons or not name:
         return jsonify({'error': 'Missing required data'}), 400
 
     # If basemap_date is an object, extract the value
@@ -381,17 +371,18 @@ def save_training_polygons():
     except ValueError:
         return jsonify({'error': 'Invalid basemap_date format. Use YYYY-MM.'}), 400
 
-    training_set = TrainingPolygonSet.query.filter_by(project_id=project_id, basemap_date=basemap_date).first()
-    if training_set:
-        training_set.polygons = polygons
-        training_set.updated_at = datetime.utcnow()
-    else:
-        training_set = TrainingPolygonSet(project_id=project_id, basemap_date=basemap_date, polygons=polygons)
-        db.session.add(training_set)
+    training_set = TrainingPolygonSet(
+        project_id=project_id,
+        basemap_date=basemap_date,
+        polygons=polygons,
+        name=name,
+        feature_count=len(polygons['features'])
+    )
+    db.session.add(training_set)
 
     try:
         db.session.commit()
-        return jsonify({'message': 'Training polygons saved successfully'}), 200
+        return jsonify({'message': 'Training polygons saved successfully', 'id': training_set.id}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -407,9 +398,22 @@ def get_training_polygons(project_id):
     } for ts in training_sets]
     return jsonify(result), 200
 
-@app.route('/api/training_polygons/<int:project_id>/<string:basemap_date>', methods=['GET'])
-def get_specific_training_polygons(project_id, basemap_date):
-    training_set = TrainingPolygonSet.query.filter_by(project_id=project_id, basemap_date=basemap_date).first()
+
+@app.route('/api/training_polygon_sets/<int:project_id>', methods=['GET'])
+def get_training_polygon_sets(project_id):
+    sets = TrainingPolygonSet.query.filter_by(project_id=project_id).all()
+    return jsonify([{
+        'id': s.id,
+        'name': s.name,
+        'basemap_date': s.basemap_date,
+        'feature_count': s.feature_count,
+        'created_at': s.created_at.isoformat(),
+        'updated_at': s.updated_at.isoformat()
+    } for s in sets])
+
+@app.route('/api/training_polygons/<int:project_id>/<int:set_id>', methods=['GET'])
+def get_specific_training_polygons(project_id, set_id):
+    training_set = TrainingPolygonSet.query.filter_by(project_id=project_id, id=set_id).first()
     if training_set:
         return jsonify(training_set.polygons), 200
     else:

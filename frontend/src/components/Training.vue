@@ -19,7 +19,7 @@
       <q-btn label="Draw Polygon" color="primary" @click="startDrawing" :disable="isDrawing" />
       <q-btn label="Stop Drawing" color="negative" @click="stopDrawing" :disable="!isDrawing" class="q-ml-sm" />
       <q-btn label="Clear All" color="warning" @click="clearDrawnPolygons" class="q-ml-sm" />
-      <q-btn label="Load" color="warning" @click="loadExistingTrainingData" class="q-ml-sm" />
+      <q-btn label="Load Training Set" color="secondary" @click="openLoadDialog" />
     </div>
 
     <div class="polygon-list q-mb-md">
@@ -36,8 +36,25 @@
       </q-list>
     </div>
 
-    <q-btn label="Save Training Data" color="positive" @click="saveDrawnPolygons"
-      :disable="drawnPolygons.length === 0" />
+    <q-btn label="Save Training Data" color="positive" @click="openSaveDialog"
+  :disable="drawnPolygons.length === 0" />
+
+  <q-dialog v-model="showSaveDialog">
+    <q-card>
+      <q-card-section>
+        <div class="text-h6">Save Training Set</div>
+      </q-card-section>
+
+      <q-card-section>
+        <q-input v-model="trainingSetName" label="Training Set Name" />
+      </q-card-section>
+
+      <q-card-actions align="right">
+        <q-btn flat label="Cancel" color="primary" v-close-popup />
+        <q-btn flat label="Save" color="primary" @click="saveDrawnPolygons" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 
     <q-btn label="Train Model" color="primary" @click="openTrainingOptions" class="q-ml-md"
       :disable="drawnPolygons.length === 0" />
@@ -69,6 +86,8 @@ import { transformExtent } from 'ol/proj'
 import TrainingOptionsCard from 'components/TrainingOptionsCard.vue'
 import TrainingProgress from 'components/TrainingProgress.vue'
 import { io } from 'socket.io-client';
+import LoadTrainingSetDialog from 'components/LoadTrainingSetDialog.vue';
+import api from 'src/services/api';
 
 
 export default {
@@ -87,7 +106,7 @@ export default {
     const drawnPolygons = computed(() => mapStore.drawnPolygons)
     // const drawnPolygons = storeToRefs(mapStore.drawnPolygons)
 
-    const selectedBasemapDate = ref({label: 'August 2022', value: "2022-08"}) // Setting default
+    const selectedBasemapDate = ref(null) // Setting default
     const isDrawing = computed(() => mapStore.isDrawing)
 
     const showTrainingOptions = ref(false)
@@ -97,6 +116,8 @@ export default {
     const trainingError = ref('')
     const trainingResults = ref(null)
     const socket = io('http://127.0.0.1:5000');
+    const showSaveDialog = ref(false)
+    const trainingSetName = ref('')
 
 
     // Destructure to use directly in the template
@@ -152,33 +173,28 @@ export default {
     })
 
 
-    const loadExistingTrainingData = async () => {
+    const openLoadDialog = () => {
+      $q.dialog({
+        component: LoadTrainingSetDialog,
+      }).onOk((selectedSet) => {
+        // Load the selected training set
+        loadTrainingSet(selectedSet.id);
+      });
+    };
 
-      console.log('selctedBasemapDate', selectedBasemapDate.value['value'])
+    const loadTrainingSet = async (setId) => {
       try {
-        const response = await apiService.getSpecificTrainingPolygons(
-          projectStore.currentProject.id,
-          selectedBasemapDate.value['value']
-        )
-        const existingPolygons = response.data
-        console.log('existingPolygons', existingPolygons)
-        console.log('existingPolygons length', existingPolygons.features.length)
-        if (existingPolygons && existingPolygons.features.length > 0) {
-          console.log('Loading existing training data:', existingPolygons)
-          mapStore.loadPolygons(existingPolygons)
-          drawnPolygons.value = existingPolygons
-        } else {
-          clearDrawnPolygons()
-        }
+        const response = await api.getSpecificTrainingPolygons(projectStore.currentProject.id, setId);
+        mapStore.loadPolygons(response.data);
       } catch (error) {
-        console.error('Error loading existing training data:', error)
+        console.error('Error loading training set:', error);
         $q.notify({
           color: 'negative',
-          message: 'Failed to load existing training data',
+          message: 'Failed to load training set',
           icon: 'error'
-        })
+        });
       }
-    }
+    };
 
     const onClassSelect = (classValue) => {
       selectedClass.value = classValue
@@ -189,7 +205,6 @@ export default {
       console.log("Basemap date changed to: ", date)
       console.log("Updating basemap")
       mapStore.updateBasemap(date['value'])
-      await loadExistingTrainingData()
     }
 
 
@@ -198,13 +213,30 @@ export default {
       return getArea(feature.getGeometry())
     }
 
+
+    const openSaveDialog = () => {
+      trainingSetName.value = ''  // Reset the name
+      showSaveDialog.value = true
+    }
+
     const saveDrawnPolygons = async () => {
+      if (!trainingSetName.value) {
+        $q.notify({
+          color: 'negative',
+          message: 'Please enter a name for the training set',
+          icon: 'error'
+        })
+        return
+      }
+
       try {
         await apiService.saveTrainingPolygons({
           project_id: projectStore.currentProject.id,
           basemap_date: selectedBasemapDate.value,
-          polygons: mapStore.getDrawnPolygonsGeoJSON()
+          polygons: mapStore.getDrawnPolygonsGeoJSON(),
+          name: trainingSetName.value
         })
+        showSaveDialog.value = false
         $q.notify({
           color: 'positive',
           message: 'Training data saved successfully',
@@ -306,7 +338,6 @@ export default {
       basemapDateOptions,
       selectedBasemapDate,
       onBasemapDateChange,
-      loadExistingTrainingData,
       showTrainingOptions,
       openTrainingOptions,
       trainModel,
@@ -314,6 +345,10 @@ export default {
       trainingProgress,
       trainingProgressMessage,
       trainingError,
+      openLoadDialog,
+      trainingSetName,
+      openSaveDialog,
+      showSaveDialog
     }
   }
 }
