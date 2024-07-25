@@ -74,17 +74,6 @@
       </q-list>
     </div>
 
-
-
-    <q-btn label="Train Model" color="primary" @click="openTrainingOptions" class="q-ml-md"
-      :disable="drawnPolygons.length === 0" />
-
-    <q-dialog v-model="showTrainingOptions">
-      <training-options-card @train="trainModel" @close="showTrainingOptions = false" />
-    </q-dialog>
-
-    <training-progress :show="isTraining" :progress="trainingProgress" :progressMessage="trainingProgressMessage"
-      :error="trainingError" />
   </div>
 </template>
 
@@ -96,21 +85,12 @@ import { useQuasar } from 'quasar'
 import { getArea } from 'ol/sphere'
 import { GeoJSON } from 'ol/format'
 import apiService from 'src/services/api'
-import { transformExtent } from 'ol/proj'
-import TrainingOptionsCard from 'components/TrainingOptionsCard.vue'
-import TrainingProgress from 'components/TrainingProgress.vue'
-import { io } from 'socket.io-client';
 import LoadTrainingSetDialog from 'components/LoadTrainingSetDialog.vue';
 import api from 'src/services/api';
 
 
 export default {
   name: 'TrainingComponent',
-  emits: ['step-completed'],
-  components: {
-    TrainingOptionsCard,
-    TrainingProgress
-  },
   setup(props, { emit }) {
     const projectStore = useProjectStore()
     const mapStore = useMapStore()
@@ -123,12 +103,6 @@ export default {
     const isDrawing = computed(() => mapStore.isDrawing)
 
     const showTrainingOptions = ref(false)
-    const isTraining = ref(false)
-    const trainingProgress = ref(0)
-    const trainingProgressMessage = ref('')
-    const trainingError = ref('')
-    const trainingResults = ref(null)
-    const socket = io('http://127.0.0.1:5000');
     const showSaveDialog = ref(false)
     const trainingSetName = ref('')
     const existingTrainingSet = ref(null)
@@ -163,30 +137,6 @@ export default {
 
     onMounted(async () => {
       window.addEventListener('keydown', handleKeyDown);
-
-      socket.on('training_update', (data) => {
-        console.log('Received training update:', data);
-        if (data.projectId === projectStore.currentProject.id) {
-          trainingProgress.value = data.progress;
-          trainingProgressMessage.value = data.message;
-          if (data.error) {
-            trainingError.value = data.error;
-            isTraining.value = false;
-            $q.notify({
-              type: 'negative',
-              message: 'Error occurred during training.'
-            });
-          }
-          if (data.message === "Training and prediction complete") {
-            mapStore.displayPrediction(data.data.prediction_filepath)
-            isTraining.value = false;
-            $q.notify({
-              type: 'positive',
-              message: 'Training and prediction completed successfully!'
-            });
-          }
-        }
-      });
     })
 
 
@@ -327,45 +277,6 @@ export default {
     }
 
 
-    const openTrainingOptions = () => {
-      showTrainingOptions.value = true
-    }
-
-    const trainModel = async (options) => {
-      showTrainingOptions.value = false
-      isTraining.value = true
-      trainingProgress.value = 0
-      trainingProgressMessage.value = 'Initializing training...'
-      trainingError.value = ''
-
-      const geojsonString = projectStore.currentProject.aoi
-      const geojsonFormat = new GeoJSON()
-      const geometry = geojsonFormat.readGeometry(geojsonString)
-      const extent = geometry.getExtent()
-      const extentLatLon = transformExtent(extent, 'EPSG:3857', 'EPSG:4326')
-
-      try {
-        const response = await apiService.trainModel({
-          projectId: projectStore.currentProject.id,
-          aoiExtent: extentLatLon,
-          basemapDate: selectedBasemapDate.value.value,
-          trainingPolygons: mapStore.drawnPolygons,
-          ...options
-        })
-
-      } catch (error) {
-        console.error('Error training model:', error)
-        trainingError.value = 'An error occurred during training. Please try again.'
-        $q.notify({
-          color: 'negative',
-          message: 'Failed to train model',
-          icon: 'error'
-        })
-        isTraining.value = false
-      }
-    }
-
-
     const handleKeyDown = (event) => {
       if (event.key === '1') {
         console.log("Selected class: forest")
@@ -398,11 +309,6 @@ export default {
       mapStore.updateBasemap(newDate['value'])
     });
 
-    onUnmounted(() => {
-      socket.off('training_update');
-      socket.disconnect();
-    });
-
 
     return {
       selectedClass,
@@ -419,15 +325,7 @@ export default {
       basemapDateOptions,
       selectedBasemapDate,
       onBasemapDateChange,
-      showTrainingOptions,
-      openTrainingOptions,
-      trainModel,
-      isTraining,
-      trainingProgress,
-      trainingProgressMessage,
-      trainingError,
       openLoadDialog,
-      trainingSetName,
       openSaveDialog,
       showSaveDialog,
       saveOrUpdateTrainingSet,

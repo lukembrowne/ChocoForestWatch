@@ -138,15 +138,13 @@ class TrainingPolygonSet(db.Model):
     feature_count = db.Column(db.Integer)
 
     project = db.relationship("Project", back_populates="training_polygon_sets")
-    trained_models = db.relationship("TrainedModel", back_populates="training_polygon_set")
 
 
 class TrainedModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
-    training_polygon_set_id = db.Column(db.Integer, db.ForeignKey('training_polygon_set.id'), nullable=False)
-    basemap_date = db.Column(db.String(7), nullable=False)
+    training_set_ids = db.Column(db.JSON, nullable=False)  # Store as JSON array
     accuracy = db.Column(db.Float)
     class_metrics = db.Column(db.JSON)  # This will store precision, recall, and F1 for each class
     confusion_matrix = db.Column(db.JSON)
@@ -158,13 +156,12 @@ class TrainedModel(db.Model):
 
     predictions = db.relationship('Prediction', back_populates='model')
     project = db.relationship("Project", back_populates="trained_models")
-    training_polygon_set = db.relationship("TrainingPolygonSet", back_populates="trained_models")
 
     @classmethod
-    def save_model(cls, model, name, project_id, training_polygon_set_id, basemap_date, metrics, parameters):
+    def save_model(cls, model, name, project_id, training_set_ids, metrics, parameters):
         model_dir = './trained_models'
         os.makedirs(model_dir, exist_ok=True)
-        file_name = f"{name}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.joblib"
+        file_name = f"{name}_{datetime.now().strftime('%Y%m%d%H%M%S')}.joblib"
         file_path = os.path.join(model_dir, file_name)
         
         joblib.dump(model, file_path)
@@ -172,11 +169,10 @@ class TrainedModel(db.Model):
         new_model = cls(
             name=name,
             project_id=project_id,
-            training_polygon_set_id=training_polygon_set_id,
-            basemap_date=basemap_date,
+            training_set_ids=training_set_ids,
             accuracy=metrics['accuracy'],
             class_metrics=metrics['class_metrics'],
-            class_names=metrics['class_names'],  # Add this line
+            class_names=metrics['class_names'],
             confusion_matrix=metrics['confusion_matrix'],
             file_path=file_path,
             parameters=parameters
@@ -497,51 +493,7 @@ def get_prediction(prediction_id):
     })
 
 
-def fetch_raster_file_path(raster_id):
-    try:
-        raster = Raster.query.filter_by(id=raster_id).one()
-        return raster.filepath
-    except NoResultFound:
-        abort(404, description=f"Raster with id {raster_id} not found")
-
-
-# Upload raster and save description
-@app.route('/api/upload_raster', methods=['POST'])
-def upload_raster():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-    file = request.files['file']
-    description = request.form.get('description', '')
     
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-    
-    if file:
-        filename = file.filename
-        filepath = os.path.join('rasters', filename)  # Assuming a 'rasters' directory in your project
-        os.makedirs('rasters', exist_ok=True)  # Create the 'rasters' directory if it doesn't exist
-        file.save(filepath)
-        
-        new_raster = Raster(filename=filename, filepath=filepath, description=description)
-        db.session.add(new_raster)
-        db.session.commit()
-        
-        return jsonify({"message": "File uploaded successfully", "id": new_raster.id}), 200
-    
-    
-@app.route('/api/list_rasters', methods=['GET'])
-def get_rasters():
-    rasters = Raster.query.all()
-    raster_list = []
-    for raster in rasters:
-        raster_list.append({
-            'id': raster.id,
-            'filename': raster.filename,
-            'filepath': raster.filepath,
-            'description': raster.description
-        })
-    return jsonify(raster_list)
-
 @app.route('/api/list_models', methods=['GET'])
 def get_models():
     models = TrainedModel.query.all()
@@ -553,93 +505,197 @@ def get_model_metrics(model_id):
     return jsonify(model.to_dict())
 
 
-@app.route('/api/rasters/<int:raster_id>', methods=['GET'])
-def get_raster_by_id(raster_id):
-    try:
-        raster = Raster.query.get(raster_id)
-        if raster is None:
-            return jsonify({"error": "Raster not found"}), 404
-        return jsonify({
-            "id": raster.id,
-            "filename": raster.filename,
-            "filepath": raster.filepath,
-            "description": raster.description
-        })
-    except SQLAlchemyError as e:
-        return jsonify({"error": str(e)}), 500
 
 
 # Model training
+
+# @app.route('/api/train_model', methods=['POST'])
+# def train_model():
+#     data = request.json
+#     project_id = data['projectId']
+#     aoi_extent = data['aoiExtent']
+#     training_set_ids = data['trainingSetIds']
+
+#     model_params = {
+#             'n_estimators': data.get('n_estimators', 100),
+#             'max_depth': data.get('max_depth', 3),
+#             'learning_rate': data.get('learning_rate', 0.1),
+#             'min_child_weight': data.get('min_child_weight', 1),
+#             'gamma': data.get('gamma', 0)
+#         }
+    
+
+#     # Step 1: Get Planet quads
+#     update_progress(project_id, 0.1, "Fetching Planet quads")
+#     quads = get_planet_quads(aoi_extent, basemap_date)
+
+#     # Start a background task for the training process
+#     ## thread = threading.Thread(target=run_training_process, args=(app, project_id, aoi_extent, basemap_date, training_polygons, model_params))
+#     ## thread.start()
+
+#     return jsonify({"message": "Training process started"}), 202
+
+# def run_training_process(app, project_id, aoi, basemap_date, training_polygons, model_params):
+#     with app.app_context():
+#         try:
+            
+            
+#             # import time
+#             # time.sleep(5)
+
+#             # Step 2: Extract pixels from quads using training polygons
+#             update_progress(project_id, 0.3, "Extracting pixels from quads")
+
+#             X, y = extract_pixels_from_quads(quads, training_polygons)
+
+#             # Step 3: Train XGBoost model
+#             update_progress(project_id, 0.6, "Training XGBoost model")
+
+#             training_polygon_set_id = get_training_polygon_set_id(project_id, basemap_date) 
+#             saved_model, metrics = train_xgboost_model(X, y, project_id, training_polygon_set_id, basemap_date, model_params)
+
+#             # Step 4: Predict land cover across AOI
+#             update_progress(project_id, 0.6, "Predicting land cover across AOI")
+#             prediction_file = predict_landcover_aoi(saved_model.id, quads, aoi, project_id, basemap_date)
+
+#             # Save prediction to database
+#             prediction = Prediction(
+#                 project_id=project_id,
+#                 model_id=saved_model.id,
+#                 file_path=prediction_file,
+#                 basemap_date=basemap_date
+#             )
+#             db.session.add(prediction)
+#             db.session.commit()
+
+#            # Step 5: Return results
+#             update_progress(project_id, 1.0, "Training and prediction complete", {
+#                 **metrics, 
+#                 "prediction_id": prediction.id,
+#                 "model_id": saved_model.id,
+#                 "prediction_filepath": prediction_file
+#             })
+
+#         except Exception as e:
+#             logger.exception(f"Error in training process: {str(e)}")
+#             update_progress(project_id, 1.0, f"Error: {str(e)}")
 
 @app.route('/api/train_model', methods=['POST'])
 def train_model():
     data = request.json
     project_id = data['projectId']
+    model_name = data['modelName']
+    training_set_ids = data['trainingSetIds']
     aoi_extent = data['aoiExtent']
-    basemap_date = data['basemapDate']
-    training_polygons = data['trainingPolygons']
     model_params = {
-            'n_estimators': data.get('n_estimators', 100),
-            'max_depth': data.get('max_depth', 3),
-            'learning_rate': data.get('learning_rate', 0.1),
-            'min_child_weight': data.get('min_child_weight', 1),
-            'gamma': data.get('gamma', 0)
+        'n_estimators': data.get('n_estimators', 100),
+        'max_depth': data.get('max_depth', 3),
+        'learning_rate': data.get('learning_rate', 0.1),
+        'min_child_weight': data.get('min_child_weight', 1),
+        'gamma': data.get('gamma', 0)
+    }
+
+    try:
+        # Fetch all training sets
+        training_sets = TrainingPolygonSet.query.filter(TrainingPolygonSet.id.in_(training_set_ids)).all()
+        if len(training_sets) != len(training_set_ids):
+            return jsonify({"error": "One or more training sets not found"}), 404
+
+        # Get unique basemap dates
+        unique_dates = set(ts.basemap_date for ts in training_sets)
+
+        # Step 1: Get Planet quads
+        update_progress(project_id, 0.1, "Fetching Planet quads")
+        
+        quads_by_date = {}
+        for date in unique_dates:
+            quads_by_date[date] = get_planet_quads(aoi_extent, date)
+
+        # Step 2: Extract pixels from quads using training polygons
+        update_progress(project_id, 0.3, "Extracting pixels from quads")
+        all_X = []
+        all_y = []
+        all_basemap_dates = []
+
+        for training_set in training_sets:
+            # X, y = extract_pixels_from_training_set(training_set, quads_by_date[training_set.basemap_date])
+            X, y = extract_pixels_from_quads(quads_by_date[training_set.basemap_date], training_set.polygons['features'])
+            all_X.append(X)
+            all_y.extend(y)
+            all_basemap_dates.extend([training_set.basemap_date] * len(y))
+
+        # Combine all data
+        X = np.vstack(all_X)
+        y = np.array(all_y)
+        basemap_dates = np.array(all_basemap_dates)
+
+        # Convert basemap dates to numerical values
+        date_encoder = LabelEncoder()
+        encoded_dates = date_encoder.fit_transform(basemap_dates)
+
+        # Add encoded dates as a new feature
+        X = np.hstack((X, encoded_dates.reshape(-1, 1)))
+
+        # Step 3: Train XGBoost model
+        update_progress(project_id, 0.6, "Training XGBoost model")
+        # Train the model
+        model, metrics = train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_params)
+
+        
+        import time
+        time.sleep(5)
+        # # Step 4: Predict land cover across AOI
+        # update_progress(project_id, 0.6, "Predicting land cover across AOI")
+        # prediction_file = predict_landcover_aoi(model.id, quads, aoi, project_id, basemap_date)
+
+        # # Save prediction to database
+        # prediction = Prediction(
+        #     project_id=project_id,
+        #     model_id=model.id,
+        #     file_path=prediction_file,
+        #     basemap_date=basemap_date
+        # )
+        # db.session.add(prediction)
+        # db.session.commit()
+
+        # Step 5: Return results
+        update_progress(project_id, 1.0, "Training complete")
+        return {
+            **metrics, 
+            "model_id": model.id,
         }
-    # Start a background task for the training process
-    thread = threading.Thread(target=run_training_process, args=(app, project_id, aoi_extent, basemap_date, training_polygons, model_params))
-    thread.start()
 
-    return jsonify({"message": "Training process started"}), 202
-
-def run_training_process(app, project_id, aoi, basemap_date, training_polygons, model_params):
-    with app.app_context():
-        try:
-            # Step 1: Get Planet quads
-            update_progress(project_id, 0.1, "Fetching Planet quads")
-            quads = get_planet_quads(aoi, basemap_date)
-            
-            # import time
-            # time.sleep(5)
-
-            # Step 2: Extract pixels from quads using training polygons
-            update_progress(project_id, 0.3, "Extracting pixels from quads")
-
-            X, y = extract_pixels_from_quads(quads, training_polygons)
-
-            # Step 3: Train XGBoost model
-            update_progress(project_id, 0.6, "Training XGBoost model")
-
-            training_polygon_set_id = get_training_polygon_set_id(project_id, basemap_date) 
-            saved_model, metrics = train_xgboost_model(X, y, project_id, training_polygon_set_id, basemap_date, model_params)
-
-            # Step 4: Predict land cover across AOI
-            update_progress(project_id, 0.6, "Predicting land cover across AOI")
-            prediction_file = predict_landcover_aoi(saved_model.id, quads, aoi, project_id, basemap_date)
-
-            # Save prediction to database
-            prediction = Prediction(
-                project_id=project_id,
-                model_id=saved_model.id,
-                file_path=prediction_file,
-                basemap_date=basemap_date
-            )
-            db.session.add(prediction)
-            db.session.commit()
-
-           # Step 5: Return results
-            update_progress(project_id, 1.0, "Training and prediction complete", {
-                **metrics, 
-                "prediction_id": prediction.id,
-                "model_id": saved_model.id,
-                "prediction_filepath": prediction_file
-            })
-
-        except Exception as e:
-            logger.exception(f"Error in training process: {str(e)}")
-            update_progress(project_id, 1.0, f"Error: {str(e)}")
+    except Exception as e:
+        logger.exception(f"Error in training process: {str(e)}")
+        update_progress(project_id, 1.0, f"Error: {str(e)}")
 
 
 
+def extract_pixels_from_training_set(training_set, quads):
+    X = []
+    y = []
+
+    for feature in training_set.polygons['features']:
+        geom = shape(feature['geometry'])
+        class_label = feature['properties']['classLabel']
+
+        # Find the quad(s) that intersect with this feature
+        intersecting_quads = [quad for quad in quads if intersects(geom.bounds, quad['extent'])]
+
+        for quad in intersecting_quads:
+            with rasterio.open(quad['filename']) as src:
+                out_image, out_transform = mask(src, [geom], crop=True, all_touched=True, indexes=[1, 2, 3, 4])
+                
+                pixels = out_image.reshape(4, -1).T
+                
+                X.extend(pixels)
+                y.extend([class_label] * pixels.shape[0])
+
+    return np.array(X), np.array(y)
+
+def intersects(bounds1, bounds2):
+    return not (bounds1[2] < bounds2[0] or bounds1[0] > bounds2[2] or 
+                bounds1[3] < bounds2[1] or bounds1[1] > bounds2[3])
 
 def update_progress(project_id, progress, message, data=None):
     socketio.emit('training_update', {
@@ -794,8 +850,7 @@ def extract_pixels_from_quads(quads, polygons):
 
 
 
-def train_xgboost_model(X, y,project_id, training_polygon_set_id, basemap_date, model_params):
-
+def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_params):
     # Encode class labels
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
@@ -803,25 +858,15 @@ def train_xgboost_model(X, y,project_id, training_polygon_set_id, basemap_date, 
     # Split data
     X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
-   # Create and train model
-
-    logger.info(f"Training XGBoost model with parameters: {model_params}")
-
-
+    # Create and train model
     model = XGBClassifier(**model_params)
     model.fit(X_train, y_train)
-
-    # Cross-validation
-    cv_scores = cross_val_score(model, X_train, y_train, cv=model_params.get('n_folds', 5))
 
     # Predictions and metrics
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, target_names=le.classes_)
-
-     # Calculate precision, recall, and F1 for each class
     precision, recall, f1, _ = precision_recall_fscore_support(y_test, y_pred, average=None)
-    
+    conf_matrix = confusion_matrix(y_test, y_pred).tolist()
 
     class_metrics = {}
     for i, class_name in enumerate(le.classes_):
@@ -830,8 +875,6 @@ def train_xgboost_model(X, y,project_id, training_polygon_set_id, basemap_date, 
             'recall': recall[i],
             'f1': f1[i]
         }
-
-    conf_matrix = confusion_matrix(y_test, y_pred).tolist()
 
     metrics = {
         "accuracy": accuracy,
@@ -843,16 +886,14 @@ def train_xgboost_model(X, y,project_id, training_polygon_set_id, basemap_date, 
     # Save the trained model
     saved_model = TrainedModel.save_model(
         model, 
-        f"XGBoost_Model_{datetime.now().strftime('%Y%m%d_%H%M%S')}", 
+        model_name,
         project_id, 
-        training_polygon_set_id, 
-        basemap_date, 
+        training_set_ids, 
         metrics, 
         model_params
     )
 
     return saved_model, metrics
-
 
 def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
     model = TrainedModel.load_model(model_id)
