@@ -18,11 +18,15 @@
         <div class="sidebar-column" :style="{ width: sidebarWidth + 'px' }">
           <!-- Icon sidebar -->
           <div class="icon-sidebar bg-white text-primary full-height" style="width: 60px;">
-            <q-list> 
+            <q-list>
               <q-item v-for="section in sections" :key="section.name" clickable @click="toggleSection(section.name)"
                 :active="currentSection === section.name">
                 <q-item-section avatar>
-                  <q-icon :name="section.icon" />
+                  <q-icon :name="section.icon">
+                    <q-tooltip>
+                      {{ section.tooltip }}
+                    </q-tooltip>
+                  </q-icon>
                 </q-item-section>
               </q-item>
             </q-list>
@@ -82,12 +86,12 @@ export default {
 
 
     const sections = [
-      { name: 'projects', icon: 'folder', component: null},
-      { name: 'aoi', icon: 'map', component: AOIDefinitionComponent },
-      { name: 'training', icon: 'school', component: TrainingComponent },
-      { name: 'model_training', icon: 'model_training', component: null },  // Add new section
-      { name: 'evaluation', icon: 'assessment', component: null },
-      { name: 'analysis', icon: 'analytics', component: AnalysisComponent}
+      { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
+      { name: 'aoi', icon: 'map', component: AOIDefinitionComponent, tooltip: 'Define Area of Interest' },
+      { name: 'training', icon: 'school', component: TrainingComponent, tooltip: 'Create training data' },
+      { name: 'model_training', icon: 'model_training', component: null, tooltip: 'Train a new model' },
+      { name: 'evaluation', icon: 'assessment', component: null, tooltip: 'Evaluate trained models' },
+      { name: 'analysis', icon: 'analytics', component: AnalysisComponent, tooltip: 'Analyze results' }
     ]
 
     const toggleSection = (sectionName) => {
@@ -244,22 +248,8 @@ export default {
   height: 100%;
 }
 
-/* Styles for the layer switcher */
-
-.ol-layerswitcher button {
-  background-color: white;
-}
-
-.ol-layerswitcher li.layer {
-  border: 1px solid #ccc;
-  background: rgba(255,255,255,0.8);
-  margin: 2px;
-  padding: 2px;
-  border-radius: 4px;
-}
-
-/* Add this to ensure the layer switcher is above other map controls */
-.ol-control.ol-layerswitcher {
-  z-index: 1000;
+.q-tooltip {
+  font-size: 14px;
+  padding: 5px 10px;
 }
 </style>
