@@ -143,23 +143,26 @@ class TrainingPolygonSet(db.Model):
 class TrainedModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     training_set_ids = db.Column(db.JSON, nullable=False)  # Store as JSON array
+    training_periods = db.Column(db.JSON)  # Store as a list of date ranges
+    num_training_samples = db.Column(db.Integer)
     accuracy = db.Column(db.Float)
     class_metrics = db.Column(db.JSON)  # This will store precision, recall, and F1 for each class
     confusion_matrix = db.Column(db.JSON)
     file_path = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    parameters = db.Column(db.JSON)
+    model_parameters = db.Column(db.JSON)
     class_names = db.Column(db.JSON)  # Add this line
     date_encoder = db.Column(db.PickleType)  # Add this field to store the encoder
 
 
-    predictions = db.relationship('Prediction', back_populates='model')
+    predictions = db.relationship("Prediction", back_populates="model", cascade="all, delete-orphan")
     project = db.relationship("Project", back_populates="trained_models")
 
     @classmethod
-    def save_model(cls, model, name, project_id, training_set_ids, metrics, parameters, date_encoder):
+    def save_model(cls, model, name, description, project_id, training_set_ids, metrics, model_parameters, date_encoder, num_samples, training_periods):
         model_dir = './trained_models'
         os.makedirs(model_dir, exist_ok=True)
         file_name = f"{name}_{datetime.now().strftime('%Y%m%d%H%M%S')}.joblib"
@@ -169,20 +172,51 @@ class TrainedModel(db.Model):
         
         new_model = cls(
             name=name,
+            description=description,
             project_id=project_id,
             training_set_ids=training_set_ids,
+            training_periods=training_periods,
+            num_training_samples=num_samples,
             accuracy=metrics['accuracy'],
             class_metrics=metrics['class_metrics'],
             class_names=metrics['class_names'],
             confusion_matrix=metrics['confusion_matrix'],
             file_path=file_path,
-            parameters=parameters,
+            model_parameters=model_parameters,
             date_encoder=date_encoder
 
         )
         db.session.add(new_model)
         db.session.commit()
         return new_model
+    
+    # Add methods for renaming and deleting models
+    def rename(self, new_name):
+        self.name = new_name
+        db.session.commit()
+
+    def delete(self):
+        file_path = str(self.file_path)
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except OSError as e:
+                current_app.logger.error(f"Error deleting file {file_path}: {e}")
+        
+        try:
+            db.session.delete(self)
+            db.session.commit()
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            current_app.logger.error(f"Database error when deleting model: {e}")
+            raise
+
+    @classmethod
+    def get_by_id(cls, model_id):
+        try:
+            return cls.query.filter_by(id=model_id).one()
+        except NoResultFound:
+            return None
 
     @classmethod
     def load_model(cls, model_id):
@@ -204,7 +238,7 @@ class TrainedModel(db.Model):
             'class_names': self.class_names,  # Add this line
             'confusion_matrix': self.confusion_matrix,
             'created_at': self.created_at.isoformat(),
-            'parameters': self.parameters
+            'model_parameters': self.model_parameters
         }
 
 class Prediction(db.Model):
@@ -470,21 +504,75 @@ def get_prediction(prediction_id):
 
 
     
+# @app.route('/api/trained_models/<int:project_id>', methods=['GET'])
+# def get_trained_models(project_id):
+#     models = TrainedModel.query.filter_by(project_id=project_id).all()
+#     return jsonify([{
+#         'id': model.id,
+#         'name': model.name,
+#         'created_at': model.created_at.isoformat()
+#     } for model in models])
+
 @app.route('/api/trained_models/<int:project_id>', methods=['GET'])
 def get_trained_models(project_id):
-    models = TrainedModel.query.filter_by(project_id=project_id).all()
+   
+    models =  TrainedModel.query.filter_by(project_id=project_id).all()
+    
     return jsonify([{
-        'id': model.id,
-        'name': model.name,
-        'created_at': model.created_at.isoformat()
-    } for model in models])
+            'id': model.id,
+            'name': model.name,
+            'description': model.description,
+            'created_at': model.created_at.isoformat(),
+            'accuracy': model.accuracy,
+            'training_periods': model.training_periods,
+            'num_training_samples': model.num_training_samples,
+            'model_parameters': model.model_parameters
+        } for model in models])
 
-@app.route('/api/model_metrics/<int:model_id>', methods=['GET'])
+
+# @app.route('/api/model_metrics/<int:model_id>', methods=['GET'])
+# def get_model_metrics(model_id):
+#     model = TrainedModel.query.get_or_404(model_id)
+#     return jsonify(model.to_dict())
+
+@app.route('/api/trained_models/<int:model_id>/metrics', methods=['GET'])
 def get_model_metrics(model_id):
-    model = TrainedModel.query.get_or_404(model_id)
-    return jsonify(model.to_dict())
+    try:
+        model = TrainedModel.query.get_or_404(model_id)
+        return jsonify(model.to_dict(), 200)
+    except SQLAlchemyError as e:
+        return jsonify({'error': 'Database error occurred', 'details': str(e)}), 500
 
 
+@app.route('/api/trained_models/<int:model_id>/rename', methods=['PUT'])
+def rename_model(model_id):
+    data = request.json
+    new_name = data.get('new_name')
+    
+    if not new_name:
+        return jsonify({'error': 'New name is required'}), 400
+
+    try:
+        model = TrainedModel.query.get_or_404(model_id)
+        model.rename(new_name)
+        return jsonify({'message': 'Model renamed successfully', 'new_name': new_name}), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({'error': 'Database error occurred', 'details': str(e)}), 500
+
+@app.route('/api/trained_models/<int:model_id>', methods=['DELETE'])
+def delete_model(model_id):
+    model = TrainedModel.get_by_id(model_id)
+    if model is None:
+        return jsonify({"error": "Model not found"}), 404
+
+    try:
+        model.delete()
+        return jsonify({"message": "Model deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting model: {str(e)}")
+        return jsonify({"error": "Database error occurred", "details": str(e)}), 500
 
 @app.route('/api/train_model', methods=['POST'])
 def train_model():
@@ -493,6 +581,7 @@ def train_model():
     model_name = data['modelName']
     training_set_ids = data['trainingSetIds']
     aoi_extent = data['aoiExtent']
+    model_description = data.get('modelDescription', '')
 
     model_params = {
         'n_estimators': data.get('n_estimators', 100),
@@ -546,7 +635,7 @@ def train_model():
         # Step 3: Train XGBoost model
         update_progress(project_id, 0.6, "Training XGBoost model")
         # Train the model
-        model, metrics = train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_params, date_encoder)
+        model, metrics = train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_description, model_params, date_encoder)
 
         
         import time
@@ -757,7 +846,7 @@ def extract_pixels_from_quads(quads, polygons):
 
 
 
-def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_params, date_encoder):
+def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_description, model_params, date_encoder):
     # Encode class labels
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
@@ -790,15 +879,27 @@ def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_pa
         "class_names": le.classes_.tolist()
     }
 
-    # Save the trained model
+     # Calculate number of training samples
+    num_training_samples = X_train.shape[0]
+
+    # Determine training periods
+    # Assuming the last column of X contains the encoded dates
+    unique_encoded_dates = np.unique(X[:, -1])
+    training_periods = date_encoder.inverse_transform(unique_encoded_dates).tolist()
+
+
+   # Save the trained model
     saved_model = TrainedModel.save_model(
         model, 
         model_name,
+        model_description,
         project_id, 
         training_set_ids, 
         metrics, 
         model_params,
-        date_encoder
+        date_encoder,
+        num_training_samples,
+        training_periods
     )
 
     return saved_model, metrics

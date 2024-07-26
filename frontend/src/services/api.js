@@ -101,6 +101,36 @@ export default {
     }
   },
 
+  async renameModel(modelId, newName) {
+    try {
+      const response = await axios.put(`${API_URL}/trained_models/${modelId}/rename`, { new_name: newName });
+      return response.data;
+    } catch (error) {
+      console.error('Error renaming model:', error);
+      throw error;
+    }
+  },
+
+  async deleteModel(modelId) {
+    try {
+      const response = await axios.delete(`${API_URL}/trained_models/${modelId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting model:', error);
+      throw error;
+    }
+  },
+
+  async fetchModelMetrics(modelId) {
+    try {
+      const response = await axios.get(`${API_URL}/trained_models/${modelId}/metrics`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching model metrics:', error);
+      throw error;
+    }
+  },
+
 
   createProject(projectData) {
     return axios.post(`${API_URL}/projects`, projectData);
@@ -129,10 +159,6 @@ export default {
       prediction1_id: prediction1Id,
       prediction2_id: prediction2Id
     });
-  },
-
-  fetchModelMetrics(modelId) {
-    return axios.get(`${API_URL}/model_metrics/${modelId}`);
   },
 
 };

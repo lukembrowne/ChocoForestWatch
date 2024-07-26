@@ -6,11 +6,38 @@
       </q-card-section>
 
       <q-card-section>
-        <q-select v-model="selectedModel" :options="modelOptions" label="Select a model" option-label="name"
-          option-value="id" emit-value map-options @update:model-value="loadModelMetrics" />
+        <q-table
+          :rows="modelRows"
+          :columns="columns"
+          row-key="id"
+          :loading="loading"
+        >
+          <template v-slot:body-cell-actions="props">
+            <q-td :props="props">
+              <q-btn flat round icon="edit" @click="openRenameDialog(props.row)" />
+              <q-btn flat round icon="delete" @click="confirmDelete(props.row)" />
+              <q-btn flat round icon="assessment" @click="evaluateModel(props.row)" />
+            </q-td>
+          </template>
+        </q-table>
       </q-card-section>
 
-      <q-card-section v-if="metrics">
+      <q-dialog v-model="renameDialog">
+        <q-card>
+          <q-card-section>
+            <div class="text-h6">Rename Model</div>
+          </q-card-section>
+          <q-card-section>
+            <q-input v-model="newModelName" label="New Name" />
+          </q-card-section>
+          <q-card-actions align="right">
+            <q-btn flat label="Cancel" v-close-popup />
+            <q-btn flat label="Rename" @click="renameModel" v-close-popup />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
+
+      <q-card-section v-if="selectedModel">
         <div class="text-h6">Model Metrics</div>
         <div>Overall Accuracy: {{ (metrics.accuracy * 100).toFixed(2) }}%</div>
 
@@ -57,7 +84,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useDialogPluginComponent } from 'quasar'
 import api from 'src/services/api'
 import { useProjectStore } from 'src/stores/projectStore'
-
+import { useQuasar } from 'quasar'
 
 
 export default {
@@ -70,12 +97,81 @@ export default {
     const selectedModel = ref(null)
     const modelOptions = ref([])
     const metrics = ref(null)
+    const loading = ref(false)
+    const renameDialog = ref(false)
+    const newModelName = ref('')
+    const modelToRename = ref(null)
+    const $q = useQuasar()
+
+
+    const columns = [
+      { name: 'name', required: true, label: 'Name', align: 'left', field: row => row.name, sortable: true },
+      { name: 'actions', align: 'center', label: 'Actions' },
+      { name: 'description', align: 'left', label: 'Description', field: 'description', sortable: true },
+      { name: 'created_at', align: 'left', label: 'Created At', field: 'created_at', sortable: true },
+      { name: 'accuracy', align: 'left', label: 'Accuracy', field: 'accuracy', sortable: true },
+      { name: 'training_periods', align: 'left', label: 'Training Periods', field: 'training_periods' },
+      { name: 'num_training_samples', align: 'left', label: 'Training Samples', field: 'num_training_samples', sortable: true }
+    ]
 
 
     onMounted(() => {
       console.log("Fetching models")
       fetchModels()
     })
+
+
+    const openRenameDialog = (model) => {
+      modelToRename.value = model
+      newModelName.value = model.name
+      renameDialog.value = true
+    }
+
+    const renameModel = async () => {
+      try {
+        await api.renameModel(modelToRename.value.id, newModelName.value)
+        $q.notify({
+          color: 'positive',
+          message: 'Model renamed successfully',
+          icon: 'check'
+        })
+        fetchModels()
+      } catch (error) {
+        console.error('Error renaming model:', error)
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to rename model',
+          icon: 'error'
+        })
+      }
+    }
+
+    const confirmDelete = (model) => {
+      $q.dialog({
+        title: 'Confirm Delete',
+        message: `Are you sure you want to delete the model "${model.name}"?`,
+        cancel: true,
+        persistent: true
+      }).onOk(async () => {
+        try {
+          console.log("Deleting model:", model.id)
+          await api.deleteModel(model.id)
+          $q.notify({
+            color: 'positive',
+            message: 'Model deleted successfully',
+            icon: 'check'
+          })
+          fetchModels()
+        } catch (error) {
+          console.error('Error deleting model:', error)
+          $q.notify({
+            color: 'negative',
+            message: 'Failed to delete model',
+            icon: 'error'
+          })
+        }
+      })
+    }
 
 
     const fetchModels = async () => {
@@ -85,6 +181,29 @@ export default {
       } catch (error) {
         console.error('Error fetching models:', error)
         throw error
+      }
+    } 
+
+    const modelRows = computed(() => {
+      return modelOptions.value.map(model => ({
+        ...model,
+        actions: '' // Add an empty actions field to avoid Vue warnings
+      }))
+    })
+
+
+    const evaluateModel = async (model) => {
+      try {
+        const response = await api.fetchModelMetrics(model.id)
+        selectedModel.value = { ...model, ...response.data }
+        console.log("SelectedModel:", selectedModel.value)
+      } catch (error) {
+        console.error('Error fetching model metrics:', error)
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to fetch model metrics',
+          icon: 'error'
+        })
       }
     }
 
@@ -153,7 +272,16 @@ export default {
       metrics,
       loadModelMetrics,
       confusionMatrixColumns,
-      confusionMatrixRows
+      confusionMatrixRows,
+      renameDialog,
+      newModelName,
+      openRenameDialog,
+      renameModel,
+      confirmDelete,
+      evaluateModel,
+      loading,
+      columns,
+      modelRows
     }
   }
 }
