@@ -539,7 +539,7 @@ def get_trained_models(project_id):
 def get_model_metrics(model_id):
     try:
         model = TrainedModel.query.get_or_404(model_id)
-        return jsonify(model.to_dict(), 200)
+        return jsonify(model.to_dict())
     except SQLAlchemyError as e:
         return jsonify({'error': 'Database error occurred', 'details': str(e)}), 500
 

@@ -7,16 +7,17 @@
 
       <q-card-section>
         <q-table
-          :rows="modelRows"
+          :rows="modelOptions"
           :columns="columns"
           row-key="id"
           :loading="loading"
+          v-model:selected="selectedRows"
+          @row-click="onRowClick"
         >
           <template v-slot:body-cell-actions="props">
             <q-td :props="props">
-              <q-btn flat round icon="edit" @click="openRenameDialog(props.row)" />
-              <q-btn flat round icon="delete" @click="confirmDelete(props.row)" />
-              <q-btn flat round icon="assessment" @click="evaluateModel(props.row)" />
+              <q-btn flat round icon="edit" @click.stop="openRenameDialog(props.row)" />
+              <q-btn flat round icon="delete" @click.stop="confirmDelete(props.row)" />
             </q-td>
           </template>
         </q-table>
@@ -102,6 +103,8 @@ export default {
     const newModelName = ref('')
     const modelToRename = ref(null)
     const $q = useQuasar()
+    const selectedRows = ref([])
+
 
 
     const columns = [
@@ -162,6 +165,9 @@ export default {
             icon: 'check'
           })
           fetchModels()
+          if (selectedModel.value && selectedModel.value.id === model.id) {
+            selectedModel.value = null
+          }
         } catch (error) {
           console.error('Error deleting model:', error)
           $q.notify({
@@ -184,19 +190,13 @@ export default {
       }
     } 
 
-    const modelRows = computed(() => {
-      return modelOptions.value.map(model => ({
-        ...model,
-        actions: '' // Add an empty actions field to avoid Vue warnings
-      }))
-    })
-
-
-    const evaluateModel = async (model) => {
+    const onRowClick = async (evt, row) => {
+      loading.value = true
       try {
-        const response = await api.fetchModelMetrics(model.id)
-        selectedModel.value = { ...model, ...response.data }
-        console.log("SelectedModel:", selectedModel.value)
+        const response = await api.fetchModelMetrics(row.id)
+        selectedModel.value = { ...row, ...response.data }
+        metrics.value = response
+        console.log("Fetched model metrics:", metrics.value)
       } catch (error) {
         console.error('Error fetching model metrics:', error)
         $q.notify({
@@ -205,18 +205,7 @@ export default {
           icon: 'error'
         })
       }
-    }
-
-
-    const loadModelMetrics = async (modelId) => {
-      try {
-        const response = await api.fetchModelMetrics(modelId)
-        metrics.value = response.data
-        console.log("Fetched model metrics:", metrics.value)
-      } catch (error) {
-        console.error('Error fetching model metrics:', error)
-        throw error
-      }
+      loading.value = false
     }
 
     const confusionMatrixColumns = computed(() => {
@@ -270,7 +259,6 @@ export default {
       selectedModel,
       modelOptions,
       metrics,
-      loadModelMetrics,
       confusionMatrixColumns,
       confusionMatrixRows,
       renameDialog,
@@ -278,10 +266,10 @@ export default {
       openRenameDialog,
       renameModel,
       confirmDelete,
-      evaluateModel,
       loading,
       columns,
-      modelRows
+      onRowClick,
+      selectedRows
     }
   }
 }

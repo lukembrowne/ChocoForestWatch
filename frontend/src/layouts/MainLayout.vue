@@ -165,6 +165,8 @@ export default {
           message: 'Model training initiated successfully',
           icon: 'check'
         })
+
+        openModelEvaluationDialog()   
       })
     }
 
