@@ -173,7 +173,7 @@ export default {
       } else {
 
         // If project has aoi
-        currentSection.value = 'training'
+        currentSection.value = 'Training data'
 
         $q.notify({
           message: 'Project loaded successfully',

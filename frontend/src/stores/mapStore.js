@@ -22,7 +22,7 @@ import ImageStatic from 'ol/source/ImageStatic';
 
 
 export const useMapStore = defineStore('map', () => {
-  
+
   // State
   const aoi = ref(null);
   const map = ref(null);
@@ -35,7 +35,7 @@ export const useMapStore = defineStore('map', () => {
   const predictionLayer = ref(null);
   const trainingPolygonsLayer = ref(null);
   const layers = ref([]);
-  
+
   // Internal state
   const projectStore = useProjectStore();
   const drawing = ref(false);
@@ -43,7 +43,7 @@ export const useMapStore = defineStore('map', () => {
   const modifyInteraction = ref(null);
   const selectInteraction = ref(null);
   const selectedClass = ref('forest');
-  
+
   // Actions
   const initMap = (target) => {
     map.value = new Map({
@@ -62,7 +62,7 @@ export const useMapStore = defineStore('map', () => {
         zoom: 12
       })
     });
-   
+
     initTrainingLayer();
     initInteractions();
 
@@ -235,13 +235,20 @@ export const useMapStore = defineStore('map', () => {
       const imageData = context.createImageData(width, height);
       const data = imageData.data;
 
+      const project = projectStore.currentProject;
+      const classColors = project.classes.reduce((acc, cls) => {
+        acc[cls.name] = cls.color;
+        return acc;
+      }, {});
+
       for (let i = 0; i < width * height; i++) {
         const value = rasterData[0][i];
-        const color = value === 0 ? [255, 255, 0, 255] : [0, 128, 0, 255]; // Yellow for non-forest, green for forest
-        data[i * 4] = color[0];
-        data[i * 4 + 1] = color[1];
-        data[i * 4 + 2] = color[2];
-        data[i * 4 + 3] = color[3];
+        const color = classColors[project.classes[value].name];
+        const rgb = hexToRgb(color);
+        data[i * 4] = rgb.r;
+        data[i * 4 + 1] = rgb.g;
+        data[i * 4 + 2] = rgb.b;
+        data[i * 4 + 3] = 255;
       }
       context.putImageData(imageData, 0, 0);
 
@@ -263,7 +270,7 @@ export const useMapStore = defineStore('map', () => {
         zIndex: 1,
         opacity: 0.7
       });
-  
+
 
       map.value.addLayer(predictionLayer.value);
     } catch (error) {
@@ -272,10 +279,20 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
-  
+  // Helper function to convert hex color to RGB
+  const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  };
+
+
   const initTrainingLayer = () => {
     if (!map.value) return;
-    
+
     trainingPolygonsLayer.value = new VectorLayer({
       source: new VectorSource(),
       style: featureStyleFunction,
@@ -407,18 +424,22 @@ export const useMapStore = defineStore('map', () => {
   };
 
   const featureStyleFunction = (feature) => {
+    const projectStore = useProjectStore();
     const classLabel = feature.get('classLabel');
     const isSelected = feature === selectedPolygon.value;
+
+    // Find the class in the project classes
+    const classObj = projectStore.currentProject?.classes.find(cls => cls.name === classLabel);
 
     let color, strokeColor, strokeWidth;
 
     if (isSelected) {
-      color = classLabel === 'forest' ? 'rgba(0, 255, 0, 0.5)' : 'rgba(255, 255, 0, 0.5)';
+      color = classObj ? `${classObj.color}80` : 'rgba(255, 255, 255, 0.5)';  // 80 is for 50% opacity
       strokeColor = '#FF4136';
       strokeWidth = 3;
     } else {
-      color = classLabel === 'forest' ? 'rgba(0, 128, 0, 0.5)' : 'rgba(255, 255, 0, 0.3)';
-      strokeColor = classLabel === 'forest' ? '#008000' : '#FFFF00';
+      color = classObj ? `${classObj.color}4D` : 'rgba(128, 128, 128, 0.3)';  // 4D is for 30% opacity
+      strokeColor = classObj ? classObj.color : '#808080';
       strokeWidth = 2;
     }
 
@@ -482,7 +503,7 @@ export const useMapStore = defineStore('map', () => {
     map.value.addLayer(trainingPolygonsLayer.value);
 
     drawnPolygons.value = polygonsData.features;
-  
+
   };
 
 
@@ -522,6 +543,7 @@ export const useMapStore = defineStore('map', () => {
     addLayer,
     removeLayer,
     toggleLayerVisibility,
+    updateTrainingLayerStyle,
     // Getters
     getMap
   };

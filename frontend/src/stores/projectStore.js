@@ -15,6 +15,9 @@ export const useProjectStore = defineStore('project', {
     isLoading: false
 
   }),
+  getters: {
+    projectClasses: (state) => state.currentProject?.classes || []
+  },
   actions: {
     async fetchProjects() {
       try {
@@ -49,6 +52,7 @@ export const useProjectStore = defineStore('project', {
         this.currentProject = response.data
 
         const mapStore = useMapStore();  // Access the mapStore
+        mapStore.updateTrainingLayerStyle();
         if (this.currentProject['aoi'] && mapStore.mapInitialized) {
           console.log("Displaying AOI from within projectSTore")
           mapStore.displayAOI(this.currentProject.aoi)
@@ -63,6 +67,12 @@ export const useProjectStore = defineStore('project', {
       this.currentProject = null;
       this.selectedProjectId = null;
     },
-
-  },
-  });
+    updateProjectClasses(classes) {
+      if (this.currentProject) {
+        this.currentProject.classes = classes;
+        // Here you might want to add an API call to update the classes on the backend
+        // api.updateProjectClasses(this.currentProject.id, classes)
+      }
+    }
+  }
+});

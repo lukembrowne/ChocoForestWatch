@@ -21,6 +21,15 @@
         <q-form @submit.prevent="createProject">
           <q-input v-model="newProject.name" label="Project Name" :rules="[val => !!val || 'Name is required']" />
           <q-input v-model="newProject.description" label="Description" type="textarea" />
+          
+          <div class="text-subtitle2 q-mt-md q-mb-sm">Define Land Cover Classes</div>
+          <div v-for="(classItem, index) in newProject.classes" :key="index" class="row q-mb-sm">
+            <q-input v-model="classItem.name" label="Class Name" class="col-6" :rules="[val => !!val || 'Name is required']" />
+            <q-color v-model="classItem.color" class="col-4 q-ml-md" />
+            <q-btn flat round color="negative" icon="remove" @click="removeClass(index)" class="col-1 q-ml-sm" />
+          </div>
+          <q-btn label="Add Class" color="positive" @click="addClass" class="q-mb-md" />
+
           <q-btn label="Create Project" type="submit" color="primary" class="q-mt-md" />
         </q-form>
       </q-card-section>
@@ -36,7 +45,6 @@
 import { ref, onMounted } from 'vue'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
-import { useMapStore } from 'src/stores/mapStore'
 
 export default {
   name: 'ProjectSelectionDialog',
@@ -46,9 +54,18 @@ export default {
     const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
     const $q = useQuasar()
     const projectStore = useProjectStore()
-    const mapStore = useMapStore()
     const projects = ref([])
-    const newProject = ref({ name: '', description: '' })
+    const newProject = ref({
+      name: '',
+      description: '',
+      classes: [
+        { name: 'Forest', color: '#00FF00' },
+        { name: 'Non-Forest', color: '#FFFF00' },
+        { name: 'Cloud', color: '#FFFFFF' },
+        { name: 'Shadow', color: '#808080' },
+        { name: 'Water', color: '#0000FF' }
+      ]
+    })
 
     onMounted(async () => {
       await fetchProjects()
@@ -68,6 +85,24 @@ export default {
     }
 
     const createProject = async () => {
+      if (newProject.value.classes.length < 2) {
+        $q.notify({
+          color: 'negative',
+          message: 'At least 2 classes are required',
+          icon: 'error'
+        })
+        return
+      }
+
+      if (new Set(newProject.value.classes.map(c => c.name)).size !== newProject.value.classes.length) {
+        $q.notify({
+          color: 'negative',
+          message: 'Class names must be unique',
+          icon: 'error'
+        })
+        return
+      }
+
       try {
         console.log("Creating project...")
         const createdProject = await projectStore.createProject(newProject.value)
@@ -82,6 +117,14 @@ export default {
       }
     }
 
+    const addClass = () => {
+      newProject.value.classes.push({ name: '', color: '#000000' })
+    }
+
+    const removeClass = (index) => {
+      newProject.value.classes.splice(index, 1)
+    }
+
     return {
       dialogRef,
       onDialogHide,
@@ -90,6 +133,8 @@ export default {
       projects,
       newProject,
       createProject,
+      addClass,
+      removeClass
     }
   }
 }

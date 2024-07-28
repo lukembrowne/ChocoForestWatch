@@ -22,6 +22,10 @@ export default {
   updateProject(id, projectData) {
     return axios.put(`${API_URL}/projects/${id}`, projectData);
   },
+  
+  updateProjectClasses(projectId, classes) {
+    return axios.put(`${API_URL}/projects/${projectId}/classes`, { classes });
+  },
 
   deleteProject(id) {
     return axios.delete(`${API_URL}/projects/${id}`);

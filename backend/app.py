@@ -112,6 +112,7 @@ class Project(db.Model):
     aoi = db.Column(Geometry('GEOMETRY', srid=4326))  # This can store any geometry type
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    classes = db.Column(db.JSON)
     training_polygon_sets = db.relationship("TrainingPolygonSet", back_populates="project")
     trained_models = db.relationship("TrainedModel", back_populates="project")
     predictions = db.relationship('Prediction', back_populates='project')
@@ -121,7 +122,7 @@ class Project(db.Model):
             'id': self.id,
             'name': self.name,
             'description': self.description,
-            # 'aoi': db.session.scalar(self.aoi.ST_AsGeoJSON()),
+            'classes': self.classes,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
@@ -290,20 +291,11 @@ def prediction_files(filename):
 @app.route('/api/projects', methods=['POST'])
 def create_project():
     data = request.json
-    # aoi_geojson = data.get('aoi')
-    
-    # if not aoi_geojson:
-    #     return jsonify({"error": "AOI is required"}), 400
-    
-    # try:
-    #     aoi_shape = shape(aoi_geojson)
-    # except Exception as e:
-    #     return jsonify({"error": f"Invalid AOI geometry: {str(e)}"}), 400
-    
+
     project = Project(
         name=data.get('name', 'Untitled Project'),
         description=data.get('description', ''),
-        # aoi=from_shape(aoi_shape, srid=4326)
+        classes=data.get('classes', [])
     )
     
     db.session.add(project)
@@ -313,6 +305,7 @@ def create_project():
         "id": project.id,
         "name": project.name,
         "description": project.description,
+        "classes": project.classes
         # "aoi": json.loads(db.session.scalar(project.aoi.ST_AsGeoJSON()))
     }), 201
 
@@ -324,7 +317,8 @@ def get_project(project_id):
         'id': project.id,
         'name': project.name,
         'description': project.description,
-        'aoi': None
+        'aoi': None,
+        'classes': project.classes
     }
     
     if project.aoi:
@@ -862,14 +856,17 @@ def extract_pixels_from_quads(quads, polygons):
 
 def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_description, model_params, date_encoder):
     # Encode class labels
+    project = Project.query.get(project_id)
+    class_names = [cls['name'] for cls in project.classes]
     le = LabelEncoder()
-    y_encoded = le.fit_transform(y)
+    le.fit(class_names)
+    y_encoded = le.transform(y)
 
     # Split data
     X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
-    # Create and train model
-    model = XGBClassifier(**model_params)
+   # Create and train model
+    model = XGBClassifier(**model_params, num_class=len(class_names))
     model.fit(X_train, y_train)
 
     # Predictions and metrics
@@ -879,7 +876,7 @@ def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_de
     conf_matrix = confusion_matrix(y_test, y_pred).tolist()
 
     class_metrics = {}
-    for i, class_name in enumerate(le.classes_):
+    for i, class_name in enumerate(class_names):
         class_metrics[class_name] = {
             'precision': precision[i],
             'recall': recall[i],
@@ -890,7 +887,7 @@ def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_de
         "accuracy": accuracy,
         "class_metrics": class_metrics,
         "confusion_matrix": conf_matrix,
-        "class_names": le.classes_.tolist()
+        "class_names": class_names
     }
 
      # Calculate number of training samples

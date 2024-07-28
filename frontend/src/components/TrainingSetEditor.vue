@@ -19,10 +19,21 @@
 
 
     <p> Drawing controls:</p>
+    <div v-if="isProjectLoaded" class="class-selection q-mb-md"></div>
     <div class="class-selection q-mb-md">
-      <q-item-section>
-        <q-select v-model="selectedClass" :options="landCoverClasses" label="Class" dense />
-      </q-item-section>
+      <q-select v-model="selectedClass" :options="projectClasses" option-value="name" option-label="name" emit-value
+        map-options label="Class" dense>
+        <template v-slot:option="scope">
+          <q-item v-bind="scope.itemProps">
+            <q-item-section avatar>
+              <q-icon :style="{ color: scope.opt.color }" name="lens" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ scope.opt.name }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </template>
+      </q-select>
     </div>
 
     <div class="drawing-controls q-mb-md">
@@ -74,6 +85,7 @@
       </q-list>
     </div>
 
+
   </div>
 </template>
 
@@ -88,6 +100,8 @@ import apiService from 'src/services/api'
 import LoadTrainingSetDialog from 'components/LoadTrainingSetDialog.vue';
 import api from 'src/services/api';
 import { getBasemapDateOptions } from 'src/utils/dateUtils'
+import { storeToRefs } from 'pinia'
+
 
 export default {
   name: 'TrainingComponent',
@@ -96,7 +110,20 @@ export default {
     const mapStore = useMapStore()
     const $q = useQuasar()
 
-    const selectedClass = computed(() => mapStore.selectedClass)
+    const { currentProject } = storeToRefs(projectStore)
+    const isProjectLoaded = computed(() => !!currentProject.value)
+    const projectClasses = computed(() => {
+      if (!currentProject.value || !currentProject.value.classes) return []
+      return currentProject.value.classes.map(cls => ({
+        label: cls.name,
+        value: cls.name,
+        color: cls.color,
+        name: cls.name
+      }))
+    })
+    const selectedClass = ref(null)
+
+
     const drawnPolygons = computed(() => mapStore.drawnPolygons)
 
     const basemapDateOptions = computed(() => getBasemapDateOptions())
@@ -109,21 +136,17 @@ export default {
     const existingTrainingSet = ref(null)
     const saveMode = ref('new')
 
-
-
-
     // Destructure to use directly in the template
     const { startDrawing, stopDrawing, clearDrawnPolygons, deletePolygon } = mapStore;
 
 
-    const landCoverClasses = [
-      { label: 'Forest', value: 'forest' },
-      { label: 'Non-Forest', value: 'non_forest' }
-    ]
-
-
     onMounted(async () => {
       window.addEventListener('keydown', handleKeyDown);
+
+      if (projectClasses.value.length > 0 && !selectedClass.value) {
+        selectedClass.value = projectClasses.value[0].name
+      }
+      console.log("Project classes: ", projectClasses.value)
     })
 
 
@@ -252,7 +275,7 @@ export default {
           message: 'Training data saved successfully',
           icon: 'check'
         })
-        emit('step-completed')
+        mapStore.updateTrainingLayerStyle();
       } catch (error) {
         console.error('Error saving training data:', error)
         $q.notify({
@@ -265,19 +288,24 @@ export default {
 
 
     const handleKeyDown = (event) => {
-      if (event.key === '1') {
-        console.log("Selected class: forest")
-        mapStore.setClassLabel('forest');
-      } else if (event.key === '2') {
-        console.log("Selected class: non-forest")
-        mapStore.setClassLabel('non-forest');
+
+      const numKey = parseInt(event.key);
+
+      if (numKey && numKey > 0 && numKey <= projectStore.projectClasses.length) {
+        selectedClass.value = projectStore.projectClasses[numKey - 1]['name'];
+        mapStore.setClassLabel( selectedClass.value);
       } else if ((event.key === 'Delete' || event.key === 'Backspace') && mapStore.selectedPolygon !== null) {
-        mapStore.deletePolygon(mapStore.selectedPolygon)
+        mapStore.deletePolygon(mapStore.selectedPolygon);
       } else if (event.key === ' ' && !event.repeat) {
         event.preventDefault();
         mapStore.toggleDrawing();
       }
     };
+
+    const getClassColor = (className) => {
+      const classObj = currentProject.value?.classes.find(cls => cls.name === className)
+      return classObj ? classObj.color : '#000000'
+    }
 
     watch(selectedClass, (newLabel) => {
       mapStore.setClassLabel(newLabel);
@@ -296,12 +324,17 @@ export default {
       mapStore.updateBasemap(newDate['value'])
     });
 
+    watch(() => projectClasses.value, (newClasses) => {
+      if (newClasses.length > 0 && !selectedClass.value) {
+        selectedClass.value = newClasses[0].value
+      }
+    }, { immediate: true })
+
 
     return {
       selectedClass,
       isDrawing,
       drawnPolygons,
-      landCoverClasses,
       startDrawing,
       stopDrawing,
       clearDrawnPolygons,
@@ -318,7 +351,10 @@ export default {
       saveOrUpdateTrainingSet,
       existingTrainingSet,
       saveMode,
-      trainingSetName
+      trainingSetName,
+      projectClasses,
+      getClassColor,
+      isProjectLoaded
     }
   }
 }
