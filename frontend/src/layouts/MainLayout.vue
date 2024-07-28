@@ -1,58 +1,34 @@
 <template>
-  <q-layout view="hHh Lpr lFf" class="full-height">
-
-    <q-header elevated bordered class="bg-primary text-white">
+  <q-layout view="hHh LpR fFf">
+    <q-header elevated class="bg-primary text-white">
       <q-toolbar>
         <q-toolbar-title>Choco Forest Watch</q-toolbar-title>
-        <q-tabs>
-          <q-route-tab to="/" label="Home" icon="home" />
-          <q-route-tab to="/debug" label="Debug" icon="insert_chart" />
-
-        </q-tabs>
+        <div class="row items-center no-wrap">
+          <q-btn v-for="section in sections" :key="section.name" flat square :icon="section.icon" :label="section.name"
+            @click="toggleSection(section.name)">
+            <q-tooltip>{{ section.tooltip }}</q-tooltip>
+          </q-btn>
+        </div>
       </q-toolbar>
     </q-header>
 
-    <q-page-container class="full-height">
-      <div class="row no-wrap full-height">
-        <!-- Sidebar column -->
-        <div class="sidebar-column" :style="{ width: sidebarWidth + 'px' }">
-          <!-- Icon sidebar -->
-          <div class="icon-sidebar bg-white text-primary full-height" style="width: 60px;">
-            <q-list>
-              <q-item v-for="section in sections" :key="section.name" clickable @click="toggleSection(section.name)"
-                :active="currentSection === section.name">
-                <q-item-section avatar>
-                  <q-icon :name="section.icon">
-                    <q-tooltip>
-                      {{ section.tooltip }}
-                    </q-tooltip>
-                  </q-icon>
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </div>
-
-          <!-- Expanded section content -->
-          <q-slide-transition>
-            <div v-if="isExpanded" class="expanded-content bg-white full-height">
-              <component :is="currentSectionComponent" @close="isExpanded = false" />
-            </div>
-          </q-slide-transition>
-        </div>
-
-        <!-- Map column -->
-        <div class="col map-column">
-          <div id="map" class="absolute-full map-container" style="min-height: 100vh;">
-            <custom-layer-switcher />
-          </div>
-        </div>
+    <q-drawer v-model="leftDrawerOpen" show-if-above bordered class="bg-grey-1">
+      <div class="q-pa-md">
+        <component :is="currentSectionComponent" @close="leftDrawerOpen = false" />
       </div>
+    </q-drawer>
+
+    <q-page-container>
+      <q-page>
+        <div id="map" class="map-container"></div>
+        <custom-layer-switcher />
+      </q-page>
     </q-page-container>
   </q-layout>
 </template>
 
 <script>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
@@ -81,6 +57,7 @@ export default {
     const projectStore = useProjectStore()
     const mapStore = useMapStore()
     const isExpanded = ref(true)
+    const leftDrawerOpen = ref(true)
     const currentSection = ref('aoi')
     const currentProject = computed(() => projectStore.currentProject)
 
@@ -88,20 +65,20 @@ export default {
     const sections = [
       { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
       { name: 'aoi', icon: 'map', component: AOIDefinitionComponent, tooltip: 'Define Area of Interest' },
-      { name: 'training', icon: 'school', component: TrainingComponent, tooltip: 'Create training data' },
-      { name: 'model_training', icon: 'model_training', component: null, tooltip: 'Train a new model' },
-      { name: 'evaluation', icon: 'assessment', component: null, tooltip: 'Evaluate trained models' },
+      { name: 'Training data', icon: 'school', component: TrainingComponent, tooltip: 'Create training data' },
+      { name: 'Fit model', icon: 'model_training', component: null, tooltip: 'Train a new model' },
+      { name: 'Model evaluation', icon: 'assessment', component: null, tooltip: 'Evaluate trained models' },
       { name: 'prediction', icon: 'preview', component: null, tooltip: 'Make a prediction' },  // New section
       { name: 'analysis', icon: 'analytics', component: AnalysisComponent, tooltip: 'Analyze results' }
     ]
 
     const toggleSection = (sectionName) => {
 
-      if (sectionName === 'evaluation') {
+      if (sectionName === 'Model evaluation') {
         openModelEvaluationDialog()
-      } else  if (sectionName === 'projects') {
+      } else if (sectionName === 'projects') {
         openProjectDialog()
-      } else if (sectionName === 'model_training'){
+      } else if (sectionName === 'Fit model') {
         openModelTrainingDialog()
       } else if (sectionName === 'prediction') {
         openPredictionDialog()  // New handler
@@ -137,7 +114,7 @@ export default {
       // setTimeout(() => {
       //   projectStore.loadProject(10)
       // }, 1000)
-     
+
       // setTimeout(() => {
       //   mapStore.updateBasemap('2022-08')
       // }, 1000)
@@ -166,7 +143,7 @@ export default {
           icon: 'check'
         })
 
-        openModelEvaluationDialog()   
+        openModelEvaluationDialog()
       })
     }
 
@@ -215,56 +192,28 @@ export default {
       currentSectionComponent,
       currentProject,
       openProjectDialog,
-      openModelTrainingDialog
+      openModelTrainingDialog,
+      leftDrawerOpen
     }
   }
 }
 </script>
 
 <style scoped>
-.full-height {
-  height: 100vh;
-}
-
-.sidebar-column {
-  display: flex;
-  position: relative;
-  transition: width 0.3s ease;
-}
-
-.icon-sidebar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 2;
-}
-
-.expanded-content {
-  position: absolute;
-  top: 0;
-  left: 60px;
-  width: 240px;
-  z-index: 1;
-  box-shadow: 2px 0 50px rgba(0, 0, 0, 0.1);
-}
-
-.map-column {
-  position: relative;
-}
-
-#map {
-  width: 100%;
-}
-
-
 .map-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  top: 0; /* Adjust based on your header height */
+  left: 0px; /* Width of the drawer */
+  right: 0;
+  bottom: 0;
 }
 
-.q-tooltip {
-  font-size: 14px;
-  padding: 5px 10px;
+/* Adjust when drawer is closed */
+.q-layout--prevent-focus .map-container {
+  left: 0;
+}
+
+.q-toolbar .q-btn {
+  margin-left: 8px;
 }
 </style>
