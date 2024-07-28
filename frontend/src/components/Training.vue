@@ -317,7 +317,8 @@ export default {
       showSaveDialog,
       saveOrUpdateTrainingSet,
       existingTrainingSet,
-      saveMode
+      saveMode,
+      trainingSetName
     }
   }
 }

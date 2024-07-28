@@ -45,7 +45,10 @@ export default {
   updateTrainingPolygons(data) {
     return axios.put(`${API_URL}/training_polygons/${data.project_id}/${data.id}`, data);
   },
-
+  
+  deleteTrainingSet(projectId, setId) {
+    return axios.delete(`${API_URL}/training_polygons/${projectId}/${setId}`);
+  },
 
   fetchRasters() {
     return axios.get(`${API_URL}/list_rasters`);
