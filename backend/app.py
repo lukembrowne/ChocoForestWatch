@@ -157,13 +157,14 @@ class TrainedModel(db.Model):
     model_parameters = db.Column(db.JSON)
     class_names = db.Column(db.JSON)  # Add this line
     date_encoder = db.Column(db.PickleType)  # Add this field to store the encoder
-
+    label_encoder = db.Column(db.PickleType)
+    all_class_names = db.Column(db.JSON)
 
     predictions = db.relationship("Prediction", back_populates="model", cascade="all, delete-orphan")
     project = db.relationship("Project", back_populates="trained_models")
 
     @classmethod
-    def save_model(cls, model, name, description, project_id, training_set_ids, metrics, model_parameters, date_encoder, num_samples, training_periods):
+    def save_model(cls, model, name, description, project_id, training_set_ids, metrics, model_parameters, date_encoder, num_samples, training_periods,label_encoder, all_class_names):
         model_dir = './trained_models'
         os.makedirs(model_dir, exist_ok=True)
         file_name = f"{name}_{datetime.now().strftime('%Y%m%d%H%M%S')}.joblib"
@@ -184,7 +185,9 @@ class TrainedModel(db.Model):
             confusion_matrix=metrics['confusion_matrix'],
             file_path=file_path,
             model_parameters=model_parameters,
-            date_encoder=date_encoder
+            date_encoder=date_encoder,
+            label_encoder=label_encoder,
+            all_class_names=all_class_names
 
         )
         db.session.add(new_model)
@@ -855,39 +858,77 @@ def extract_pixels_from_quads(quads, polygons):
 
 
 def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_description, model_params, date_encoder):
-    # Encode class labels
+    
+     # Fetch all project classes
     project = Project.query.get(project_id)
-    class_names = [cls['name'] for cls in project.classes]
+    all_class_names = [cls['name'] for cls in project.classes]
+    
+    # Create a LabelEncoder for classes in the training data
     le = LabelEncoder()
-    le.fit(class_names)
-    y_encoded = le.transform(y)
+    y_encoded = le.fit_transform(y)
 
+    np.unique(y, return_counts = True)
+    np.unique(y_encoded, return_counts = True)
+    
+    # Get the classes actually present in the training data
+    classes_in_training = le.classes_.tolist()
+    
     # Split data
     X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+    
+    # Adjust num_class parameter to account for classes present in the data
+    model_params['num_class'] = len(classes_in_training)
+    
 
-   # Create and train model
-    model = XGBClassifier(**model_params, num_class=len(class_names))
+    # Create and train model
+    model = XGBClassifier({'objective': 'multi:softmax'}, **model_params)
     model.fit(X_train, y_train)
 
     # Predictions and metrics
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
+
+    # Predictions and metrics
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    
+    # Calculate metrics
     precision, recall, f1, _ = precision_recall_fscore_support(y_test, y_pred, average=None)
-    conf_matrix = confusion_matrix(y_test, y_pred).tolist()
+    
+    # Create confusion matrix
+    conf_matrix_training = confusion_matrix(y_test, y_pred)
 
+    # Create full-size confusion matrix
+    full_conf_matrix = np.zeros((len(all_class_names), len(all_class_names)), dtype=int)
+    for i, class_name in enumerate(classes_in_training):
+        for j, other_class in enumerate(classes_in_training):
+            full_index_i = all_class_names.index(class_name)
+            full_index_j = all_class_names.index(other_class)
+            full_conf_matrix[full_index_i, full_index_j] = conf_matrix_training[i, j]
+    
+    # Prepare class metrics
     class_metrics = {}
-    for i, class_name in enumerate(class_names):
-        class_metrics[class_name] = {
-            'precision': precision[i],
-            'recall': recall[i],
-            'f1': f1[i]
-        }
-
+    for i, class_name in enumerate(all_class_names):
+        if class_name in classes_in_training:
+            index = classes_in_training.index(class_name)
+            class_metrics[class_name] = {
+                'precision': precision[index],
+                'recall': recall[index],
+                'f1': f1[index]
+            }
+        else:
+            class_metrics[class_name] = {
+                'precision': None,
+                'recall': None,
+                'f1': None
+            }
+    
     metrics = {
         "accuracy": accuracy,
         "class_metrics": class_metrics,
-        "confusion_matrix": conf_matrix,
-        "class_names": class_names
+        "confusion_matrix": full_conf_matrix.tolist(),
+        "class_names": all_class_names,
+        "classes_in_training": classes_in_training
     }
 
      # Calculate number of training samples
@@ -910,7 +951,9 @@ def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_de
         model_params,
         date_encoder,
         num_training_samples,
-        training_periods
+        training_periods,
+        le,
+        all_class_names
     )
 
     return saved_model, metrics
@@ -958,8 +1001,8 @@ def predict_landcover():
 
 
 def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
-    model = TrainedModel.load_model(model_id)
-    if model is None:
+    model_record = TrainedModel.query.get(model_id)
+    if model_record is None:
         raise ValueError("Model not found")
 
     logger.debug(f"AOI: {aoi}")
@@ -969,8 +1012,18 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
     temp_files = []  # To keep track of temporary files for cleanup
     quad_bounds = []
 
+    model = joblib.load(model_record.file_path)
+
+
     # Load the date encoder used during training
-    date_encoder = model.date_encoder  # Assume we've saved this with the model
+    date_encoder = model_record.date_encoder  # Assume we've saved this with the model
+    label_encoder = model_record.label_encoder  # Load the LabelEncoder 
+    all_class_names = model_record.all_class_names
+
+    # Create a mapping from model output to full class set indices
+    model_classes = label_encoder.classes_
+    class_index_map = {i: all_class_names.index(class_name) for i, class_name in enumerate(model_classes)}
+    
     
 # If the current basemap_date wasn't in the training data, we need to handle it
     if basemap_date not in date_encoder.classes_:
@@ -1001,8 +1054,12 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
             
             predictions = model.predict(prediction_data)
 
-            prediction_map = predictions.reshape(data.shape[1], data.shape[2])
-
+           # Map predictions to full class set indices
+            prediction_map = np.vectorize(class_index_map.get)(predictions)
+    
+            # Reshape the prediction map
+            prediction_map = prediction_map.reshape(data.shape[1], data.shape[2])
+    
             # Create a temporary file for this quad's prediction with a unique name
             temp_filename = f'temp_prediction_{i}.tif'
             with rasterio.open(temp_filename, 'w', **meta) as tmp:

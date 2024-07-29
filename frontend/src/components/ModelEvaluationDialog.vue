@@ -6,14 +6,8 @@
       </q-card-section>
 
       <q-card-section>
-        <q-table
-          :rows="modelOptions"
-          :columns="columns"
-          row-key="id"
-          :loading="loading"
-          v-model:selected="selectedRows"
-          @row-click="onRowClick"
-        >
+        <q-table :rows="modelOptions" :columns="columns" row-key="id" :loading="loading" v-model:selected="selectedRows"
+          @row-click="onRowClick">
           <template v-slot:body-cell-actions="props">
             <q-td :props="props">
               <q-btn flat round icon="edit" @click.stop="openRenameDialog(props.row)" />
@@ -50,9 +44,23 @@
         </div>
 
         <div class="q-mt-md text-h6">Confusion Matrix</div>
-        <q-table v-if="confusionMatrixColumns.length > 0" :rows="confusionMatrixRows" :columns="confusionMatrixColumns"
-          hide-bottom />
-        <p v-else>Confusion matrix data is not available for this model.</p>
+        <q-table :rows="confusionMatrixRows" :columns="confusionMatrixColumns" hide-bottom
+          :hide-header="confusionMatrixColumns.length === 0">
+          <template v-slot:body="props">
+            <q-tr :props="props">
+              <q-td key="predicted" :props="props">
+                {{ props.row.predicted }}
+              </q-td>
+              <q-td v-for="column in confusionMatrixColumns.slice(1)" :key="column.name" :props="props">
+                {{ props.row[column.name] }}
+                <q-badge v-if="isClassInTraining(column.label) && isClassInTraining(props.row.predicted)"
+                  color="primary" floating>
+                  {{ ((props.row[column.name] / getClassTotal(props.row.predicted)) * 100).toFixed(1) }}%
+                </q-badge>
+              </q-td>
+            </q-tr>
+          </template>
+        </q-table>
 
         <div class="q-mt-md text-h6">Interpretation</div>
         <p>The model's overall accuracy is {{ (metrics.accuracy * 100).toFixed(1) }}%. This means it correctly
@@ -188,7 +196,7 @@ export default {
         console.error('Error fetching models:', error)
         throw error
       }
-    } 
+    }
 
     const onRowClick = async (evt, row) => {
       loading.value = true
@@ -209,27 +217,13 @@ export default {
     }
 
     const confusionMatrixColumns = computed(() => {
-      if (!metrics.value || !metrics.value.class_names) {
-        // If class_names are not available, try to derive them from class_metrics
-        const classNames = Object.keys(metrics.value?.class_metrics || {});
-        if (classNames.length === 0) return [];
-
-        return [
-          { name: 'predicted', label: 'Predicted', field: 'predicted', align: 'center' },
-          ...classNames.map(className => ({
-            name: `actual_${className}`,
-            label: `Actual ${className}`,
-            field: `actual_${className}`,
-            align: 'center'
-          }))
-        ];
-      }
+      if (!metrics.value || !metrics.value.class_names) return [];
 
       return [
         { name: 'predicted', label: 'Predicted', field: 'predicted', align: 'center' },
         ...metrics.value.class_names.map(className => ({
           name: `actual_${className}`,
-          label: `Actual ${className}`,
+          label: className,
           field: `actual_${className}`,
           align: 'center'
         }))
@@ -239,8 +233,8 @@ export default {
     const confusionMatrixRows = computed(() => {
       if (!metrics.value || !metrics.value.confusion_matrix) return [];
 
-      const classNames = metrics.value.class_names || Object.keys(metrics.value.class_metrics || {});
-      if (classNames.length === 0) return [];
+      const classNames = metrics.value.class_names;
+      if (!classNames || classNames.length === 0) return [];
 
       return classNames.map((className, i) => {
         const row = { predicted: className };
@@ -250,6 +244,17 @@ export default {
         return row;
       });
     });
+
+    const isClassInTraining = (className) => {
+      return metrics.value?.classes_in_training?.includes(className) || false;
+    };
+
+    const getClassTotal = (className) => {
+      const index = metrics.value.class_names.indexOf(className);
+      return metrics.value.confusion_matrix[index].reduce((a, b) => a + b, 0);
+    };
+
+
 
     return {
       dialogRef,
@@ -269,7 +274,9 @@ export default {
       loading,
       columns,
       onRowClick,
-      selectedRows
+      selectedRows,
+      isClassInTraining,
+      getClassTotal
     }
   }
 }
