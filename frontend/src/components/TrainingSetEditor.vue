@@ -36,11 +36,23 @@
       </q-select>
     </div>
 
-    <div class="drawing-controls q-mb-md">
-      <q-btn label="Draw Polygon" color="primary" @click="startDrawing" :disable="isDrawing" />
-      <q-btn label="Stop Drawing" color="negative" @click="stopDrawing" :disable="!isDrawing" class="q-ml-sm" />
-      <q-btn label="Clear All" color="warning" @click="clearDrawnPolygons" class="q-ml-sm" />
+    <div class="mode-indicator q-mb-md">
+      <q-chip :icon="mapStore.modeIndicator.icon" :color="mapStore.modeIndicator.color" text-color="white">
+        {{ mapStore.modeIndicator.label }} Mode
+      </q-chip>
     </div>
+
+    <div class="drawing-controls q-mb-md">
+      <q-btn label="Draw Polygon" color="primary" @click="setMode('draw')"
+        :disable="mapStore.interactionMode === 'draw'" />
+      <q-btn label="Pan" color="secondary" @click="setMode('pan')" :disable="mapStore.interactionMode === 'pan'"
+        class="q-ml-sm" />
+      <q-btn label="Zoom" color="accent" @click="setMode('zoom')" :disable="mapStore.interactionMode === 'zoom'"
+        class="q-ml-sm" />
+      <q-btn label="Undo" color="negative" @click="mapStore.undoLastDraw" :disable="mapStore.interactionMode !== 'draw'"
+        class="q-ml-sm" />
+    </div>
+
 
     <!-- Save/Update buttons -->
     <div class="q-gutter-sm">
@@ -289,17 +301,35 @@ export default {
 
     const handleKeyDown = (event) => {
 
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        return; // Ignore keyboard events when typing in input fields
+      }
+
       const numKey = parseInt(event.key);
 
       if (numKey && numKey > 0 && numKey <= projectStore.projectClasses.length) {
         selectedClass.value = projectStore.projectClasses[numKey - 1]['name'];
-        mapStore.setClassLabel( selectedClass.value);
+        mapStore.setClassLabel(selectedClass.value);
       } else if ((event.key === 'Delete' || event.key === 'Backspace') && mapStore.selectedPolygon !== null) {
         mapStore.deletePolygon(mapStore.selectedPolygon);
-      } else if (event.key === ' ' && !event.repeat) {
-        event.preventDefault();
-        mapStore.toggleDrawing();
+      } else if (event.key === 'm') {
+        setMode(mapStore.interactionMode === 'pan' ? 'draw' : 'pan');
+      } else if (event.key === 'z') {
+        setMode('zoom_in');
+      } else if (event.key === 'x') {
+        setMode('zoom_out');
+      } else if (event.key === 'd') {
+        setMode('draw');
+      } else if (event.key === 'u') {
+        mapStore.undoLastDraw();
+      } else if (event.key == 'Escape') {
+        setMode('pan');
+        mapStore.stopDrawing();
       }
+    };
+
+    const setMode = (mode) => {
+      mapStore.setInteractionMode(mode);
     };
 
     const getClassColor = (className) => {
@@ -354,7 +384,9 @@ export default {
       trainingSetName,
       projectClasses,
       getClassColor,
-      isProjectLoaded
+      isProjectLoaded,
+      mapStore,
+      setMode
     }
   }
 }

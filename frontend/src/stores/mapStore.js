@@ -14,6 +14,8 @@ import { useProjectStore } from './projectStore';
 
 import { ref, watch, computed } from 'vue';
 import { Draw, Modify, Select } from 'ol/interaction';
+import { DragPan, DragZoom } from 'ol/interaction';
+import { platformModifierKeyOnly } from 'ol/events/condition';
 import { click } from 'ol/events/condition';
 import { storeToRefs } from 'pinia';
 import { fromUrl } from 'geotiff';
@@ -36,13 +38,34 @@ export const useMapStore = defineStore('map', () => {
   const trainingPolygonsLayer = ref(null);
   const layers = ref([]);
 
+
   // Internal state
   const projectStore = useProjectStore();
   const drawing = ref(false);
-  const drawInteraction = ref(null);
   const modifyInteraction = ref(null);
   const selectInteraction = ref(null);
   const selectedClass = ref('forest');
+  const interactionMode = ref('draw'); // 'draw', 'pan', or 'zoom'
+  const dragPanInteraction = ref(null);
+  const dragZoomInInteraction = ref(null);
+  const dragZoomOutInteraction = ref(null);
+  const drawInteraction = ref(null);
+
+  // New computed property for visual indicator
+  const modeIndicator = computed(() => {
+    switch (interactionMode.value) {
+      case 'draw':
+        return { icon: 'edit', color: 'primary', label: 'Draw' };
+      case 'pan':
+        return { icon: 'pan_tool', color: 'secondary', label: 'Pan' };
+      case 'zoom_in':
+        return { icon: 'crop_free', color: 'accent', label: 'Zoom Box' }
+      case 'zoom_out':
+        return { icon: 'crop_free', color: 'accent', label: 'Zoom Box' }
+      default:
+        return { icon: 'help', color: 'grey', label: 'Unknown' };
+    }
+  });
 
   // Actions
   const initMap = (target) => {
@@ -388,7 +411,6 @@ export const useMapStore = defineStore('map', () => {
   };
 
   const stopDrawing = () => {
-    console.log("Stopping drawing from within mapStore")
     if (!map.value || !drawInteraction.value) return;
 
     map.value.removeInteraction(drawInteraction.value);
@@ -506,6 +528,70 @@ export const useMapStore = defineStore('map', () => {
 
   };
 
+  // Method to set interaction mode
+  const setInteractionMode = (mode) => {
+    if (mode === interactionMode.value) return;
+
+    // Remove all interactions
+    stopDrawing();
+    if (dragPanInteraction.value) map.value.removeInteraction(dragPanInteraction.value);
+    if (dragZoomInInteraction.value) map.value.removeInteraction(dragZoomInInteraction.value);
+    if (dragZoomOutInteraction.value) map.value.removeInteraction(dragZoomOutInteraction.value);
+    if (drawInteraction.value) map.value.removeInteraction(drawInteraction.value);
+
+    // Add interaction based on mode
+    switch (mode) {
+      case 'pan':
+        console.log("Setting pan mode");
+        dragPanInteraction.value = new DragPan();
+        map.value.addInteraction(dragPanInteraction.value);
+        break;
+      case 'zoom_in':
+        console.log("Setting zoom in mode");
+        dragZoomInInteraction.value = new DragZoom({
+          out: false,
+          condition: () => true,
+        });
+        map.value.addInteraction(dragZoomInInteraction.value);
+        break;
+      case 'zoom_out':
+        console.log("Setting zoom out mode");
+        dragZoomOutInteraction.value = new DragZoom({
+          out: true,
+          condition: () => true,
+        });
+        map.value.addInteraction(dragZoomOutInteraction.value);
+        break;
+      case 'draw':
+        console.log("Setting draw mode");
+        startDrawing();
+        break;
+    }
+
+    interactionMode.value = mode;
+  };
+
+  // Undo last drawn point or polygon
+  const undoLastDraw = () => {
+
+    // Remove the last drawn polygon
+    if (drawnPolygons.value.length > 0) {
+      const lastPolygon = drawnPolygons.value.pop();
+
+      // Remove the corresponding feature from the layer
+      const features = trainingPolygonsLayer.value.getSource().getFeatures();
+      const lastFeature = features.find(feature => feature.getId() === lastPolygon.id);
+      if (lastFeature) {
+        trainingPolygonsLayer.value.getSource().removeFeature(lastFeature);
+      }
+
+      console.log("Removed last drawn polygon");
+    } else {
+      console.log("No polygons to remove");
+    }
+
+  };
+
 
   // Getters
   const getMap = computed(() => map.value);
@@ -523,6 +609,8 @@ export const useMapStore = defineStore('map', () => {
     drawnPolygons,
     predictionLayer,
     layers,
+    interactionMode,
+    modeIndicator,
     // Actions
     initMap,
     setAOI,
@@ -544,6 +632,8 @@ export const useMapStore = defineStore('map', () => {
     removeLayer,
     toggleLayerVisibility,
     updateTrainingLayerStyle,
+    setInteractionMode,
+    undoLastDraw,
     // Getters
     getMap
   };
