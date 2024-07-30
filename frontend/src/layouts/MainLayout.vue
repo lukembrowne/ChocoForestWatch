@@ -82,9 +82,6 @@ export default {
         openModelTrainingDialog()
       } else if (sectionName === 'prediction') {
         openPredictionDialog()  // New handler
-      } else if (currentSection.value === sectionName && isExpanded.value) {
-        isExpanded.value = false
-        currentSection.value = null
       } else {
         isExpanded.value = true
         currentSection.value = sectionName
