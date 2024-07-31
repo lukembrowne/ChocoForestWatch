@@ -15,12 +15,17 @@
           :columns="columns"
           row-key="id"
           :pagination="{ rowsPerPage: 5 }"
-          @row-click="onRowClick"
         >
           <template v-slot:body-cell-actions="props">
             <q-td :props="props">
               <q-btn flat round color="primary" icon="launch" @click.stop="onOk(props.row)">
                 <q-tooltip>Load Project</q-tooltip>
+              </q-btn>
+              <q-btn flat round color="secondary" icon="edit" @click.stop="openRenameDialog(props.row)">
+                <q-tooltip>Rename Project</q-tooltip>
+              </q-btn>
+              <q-btn flat round color="negative" icon="delete" @click.stop="confirmDelete(props.row)">
+                <q-tooltip>Delete Project</q-tooltip>
               </q-btn>
             </q-td>
           </template>
@@ -53,6 +58,24 @@
       </q-card-section>
 
 
+      <q-dialog v-model="showRenameDialog">
+        <q-card style="min-width: 350px">
+          <q-card-section>
+            <div class="text-h6">Rename Project</div>
+          </q-card-section>
+
+          <q-card-section class="q-pt-none">
+            <q-input v-model="newProjectName" label="New Project Name" autofocus @keyup.enter="renameProject" />
+          </q-card-section>
+
+          <q-card-actions align="right" class="text-primary">
+            <q-btn flat label="Cancel" v-close-popup />
+            <q-btn flat label="Rename" @click="renameProject" v-close-popup />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
+
+
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
@@ -77,6 +100,9 @@ export default {
     const $q = useQuasar()
     const projectStore = useProjectStore()
     const projects = ref([])
+    const newProjectName = ref('')
+    const projectToRename = ref(null)
+    const showRenameDialog = ref(false)
     const newProject = ref({
       name: '',
       description: '',
@@ -173,6 +199,66 @@ export default {
       onDialogOK(row)
     }
 
+    const openRenameDialog = (project) => {
+      projectToRename.value = project
+      newProjectName.value = project.name
+      showRenameDialog.value = true
+    }
+
+    const renameProject = async () => {
+      if (!newProjectName.value.trim()) {
+        $q.notify({
+          color: 'negative',
+          message: 'Project name cannot be empty',
+          icon: 'error'
+        })
+        return
+      }
+
+      try {
+        await projectStore.updateProject(projectToRename.value.id, { ...projectToRename.value, name: newProjectName.value })
+        await fetchProjects()
+        $q.notify({
+          color: 'positive',
+          message: 'Project renamed successfully',
+          icon: 'check'
+        })
+      } catch (error) {
+        console.error('Error renaming project:', error)
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to rename project',
+          icon: 'error'
+        })
+      }
+    }
+
+    const confirmDelete = (project) => {
+      $q.dialog({
+        title: 'Confirm Delete',
+        message: `Are you sure you want to delete the project "${project.name}"?`,
+        cancel: true,
+        persistent: true
+      }).onOk(async () => {
+        try {
+          await projectStore.deleteProject(project.id)
+          await fetchProjects()
+          $q.notify({
+            color: 'positive',
+            message: 'Project deleted successfully',
+            icon: 'check'
+          })
+        } catch (error) {
+          console.error('Error deleting project:', error)
+          $q.notify({
+            color: 'negative',
+            message: 'Failed to delete project',
+            icon: 'error'
+          })
+        }
+      })
+    }
+
     return {
       dialogRef,
       onDialogHide,
@@ -185,7 +271,13 @@ export default {
       removeClass,
       columns,
       onRowClick,
-      validateAndCreateProject
+      validateAndCreateProject,
+      newProjectName,
+      projectToRename,
+      showRenameDialog,
+      renameProject,
+      confirmDelete,
+      openRenameDialog
     }
   }
 }

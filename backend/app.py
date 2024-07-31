@@ -341,12 +341,28 @@ def update_project(project_id):
         project.name = data['name']
     if 'description' in data:
         project.description = data['description']
-    # if 'aoi' in data:
-    #     aoi_shape = shape(data['aoi'])
-    #     project.aoi = from_shape(aoi_shape, srid=4326)
+    if 'classes' in data:
+        project.classes = data['classes']
     
-    db.session.commit()
-    return jsonify(project.to_dict())
+    try:
+        db.session.commit()
+        return jsonify(project.to_dict()), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/projects/<int:project_id>', methods=['DELETE'])
+def delete_project(project_id):
+    project = Project.query.get_or_404(project_id)
+    
+    try:
+        db.session.delete(project)
+        db.session.commit()
+        return jsonify({'message': 'Project deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/projects', methods=['GET'])
 def list_projects():

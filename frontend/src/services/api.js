@@ -22,13 +22,14 @@ export default {
   updateProject(id, projectData) {
     return axios.put(`${API_URL}/projects/${id}`, projectData);
   },
-  
-  updateProjectClasses(projectId, classes) {
-    return axios.put(`${API_URL}/projects/${projectId}/classes`, { classes });
-  },
 
   deleteProject(id) {
     return axios.delete(`${API_URL}/projects/${id}`);
+  },
+
+  
+  updateProjectClasses(projectId, classes) {
+    return axios.put(`${API_URL}/projects/${projectId}/classes`, { classes });
   },
   setProjectAOI(projectId, aoiGeojson) {
     return axios.post(`${API_URL}/projects/${projectId}/aoi`, { aoi: aoiGeojson })
@@ -139,17 +140,6 @@ export default {
   },
 
 
-  createProject(projectData) {
-    return axios.post(`${API_URL}/projects`, projectData);
-  },
-
-  getProject(id) {
-    return axios.get(`${API_URL}/projects/${id}`);
-  },
-
-  updateProject(id, projectData) {
-    return axios.put(`${API_URL}/projects/${id}`, projectData);
-  },
 
   async getPredictions(projectId) {
     const response = await axios.get(`${API_URL}/predictions/${projectId}`);
