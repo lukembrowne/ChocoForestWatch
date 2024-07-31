@@ -16,19 +16,21 @@
       <div class="q-pa-md">
         <component :is="currentSectionComponent" @close="leftDrawerOpen = false" />
       </div>
+
     </q-drawer>
 
     <q-page-container>
-      <q-page>
+      <q-page class="relative-position">
         <div id="map" class="map-container"></div>
         <custom-layer-switcher />
+        <AOIFloatingCard v-if="showAOICard" />
       </q-page>
     </q-page-container>
   </q-layout>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
@@ -40,6 +42,8 @@ import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import ModelEvaluationDialog from 'components/ModelEvaluationDialog.vue'
 import ModelTrainingDialog from 'components/ModelTrainingDialog.vue'
 import PredictionDialog from 'components/PredictionDialog.vue'
+import AOIFloatingCard from 'components/AOIFloatingCard.vue'
+
 
 export default {
   name: 'MainLayout',
@@ -50,7 +54,8 @@ export default {
     AnalysisComponent,
     CustomLayerSwitcher,
     ModelEvaluationDialog,
-    PredictionDialog
+    PredictionDialog,
+    AOIFloatingCard
   },
   setup() {
     const $q = useQuasar()
@@ -60,11 +65,12 @@ export default {
     const leftDrawerOpen = ref(true)
     const currentSection = ref('aoi')
     const currentProject = computed(() => projectStore.currentProject)
+    const showAOICard = ref(false)
+
 
 
     const sections = [
       { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
-      { name: 'aoi', icon: 'map', component: AOIDefinitionComponent, tooltip: 'Define Area of Interest' },
       { name: 'Training data', icon: 'school', component: TrainingComponent, tooltip: 'Create training data' },
       { name: 'Fit model', icon: 'model_training', component: null, tooltip: 'Train a new model' },
       { name: 'Model evaluation', icon: 'assessment', component: null, tooltip: 'Evaluate trained models' },
@@ -161,17 +167,12 @@ export default {
 
     const selectProject = async (project) => {
       await projectStore.loadProject(project.id)
-      if (project.isNew !== undefined || projectStore.currentProject.aoi === null) {
-        $q.notify({
-          message: 'Please define the Area of Interest (AOI) for this project',
-          color: 'info',
-          icon: 'info'
-        })
+      if (project.isNew !== undefined || !projectStore.currentProject.aoi) {
+        showAOICard.value = true
+        currentSection.value = null
       } else {
-
-        // If project has aoi
+        showAOICard.value = false
         currentSection.value = 'Training data'
-
         $q.notify({
           message: 'Project loaded successfully',
           color: 'positive',
@@ -179,6 +180,13 @@ export default {
         })
       }
     }
+
+    watch(() => projectStore.currentProject?.aoi, (newAOI) => {
+      if (newAOI) {
+        showAOICard.value = false
+        currentSection.value = 'Training data'
+      }
+    })
 
     return {
       isExpanded,
@@ -190,7 +198,8 @@ export default {
       currentProject,
       openProjectDialog,
       openModelTrainingDialog,
-      leftDrawerOpen
+      leftDrawerOpen,
+      showAOICard
     }
   }
 }
@@ -212,5 +221,10 @@ export default {
 
 .q-toolbar .q-btn {
   margin-left: 8px;
+}
+
+/* Ensure the page container allows for absolute positioning */
+.q-page-container {
+  position: relative;
 }
 </style>
