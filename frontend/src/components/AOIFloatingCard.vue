@@ -71,6 +71,11 @@ export default {
 
         const startDrawingAOI = () => {
             isDrawing.value = true
+
+            // Clear existing features before starting a new draw
+            vectorSource.clear()
+            aoiDrawn.value = false
+
             drawInteraction = new Draw({
                 source: vectorLayer.getSource(),
                 type: 'Circle',
@@ -80,7 +85,9 @@ export default {
             drawInteraction.on('drawend', (event) => {
                 isDrawing.value = false
                 aoiDrawn.value = true
+                vectorSource.clear()
                 mapStore.map.removeInteraction(drawInteraction)
+
             })
 
             mapStore.map.addInteraction(drawInteraction)
@@ -137,19 +144,24 @@ export default {
                         featureProjection: mapStore.map.getView().getProjection()
                     })
 
+                    // Clear existing features and add only the first feature from the file
                     clearAOI()
-                    vectorSource.addFeatures(features)
-                    aoiDrawn.value = true
+                    if (features.length > 0) {
+                        vectorSource.addFeature(features[0])
+                        aoiDrawn.value = true
 
-                    // Zoom to the extent of the uploaded features
-                    const extent = vectorSource.getExtent()
-                    mapStore.map.getView().fit(extent, { padding: [50, 50, 50, 50] })
+                        // Zoom to the extent of the uploaded feature
+                        const extent = vectorSource.getExtent()
+                        mapStore.map.getView().fit(extent, { padding: [50, 50, 50, 50] })
 
-                    $q.notify({
-                        color: 'positive',
-                        message: 'GeoJSON file uploaded successfully',
-                        icon: 'check'
-                    })
+                        $q.notify({
+                            color: 'positive',
+                            message: 'GeoJSON file uploaded successfully',
+                            icon: 'check'
+                        })
+                    } else {
+                        throw new Error('No valid features found in the GeoJSON file')
+                    }
                 } catch (error) {
                     console.error('Error parsing GeoJSON:', error)
                     $q.notify({
@@ -161,6 +173,7 @@ export default {
             }
             reader.readAsText(file)
         }
+
 
         return {
             isDrawing,
