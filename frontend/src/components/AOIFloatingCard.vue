@@ -2,14 +2,18 @@
     <q-card class="aoi-floating-card">
         <q-card-section>
             <div class="text-h6">Define Area of Interest</div>
-            <p>Please draw the Area of Interest (AOI) for your project on the map.</p>
+            <p>Please draw the Area of Interest (AOI) for your project on the map or upload a GeoJSON file.</p>
         </q-card-section>
 
         <q-card-actions align="center" class="q-gutter-md">
             <q-btn label="Draw AOI" color="primary" icon="create" @click="startDrawingAOI" :disable="isDrawing" />
+            <q-btn label="Upload GeoJSON" color="secondary" icon="upload_file" @click="triggerFileUpload" />
             <q-btn label="Clear AOI" color="negative" icon="clear" @click="clearAOI" :disable="!aoiDrawn" />
             <q-btn label="Save AOI" color="positive" icon="save" @click="saveAOI" :disable="!aoiDrawn" />
         </q-card-actions>
+
+        <input type="file" ref="fileInput" style="display: none" accept=".geojson,application/geo+json"
+            @change="handleFileUpload" />
     </q-card>
 </template>
 
@@ -19,8 +23,8 @@ import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
 import { useQuasar } from 'quasar'
 import Draw, {
-  createBox,
-} from 'ol/interaction/Draw.js';import { Vector as VectorLayer } from 'ol/layer'
+    createBox,
+} from 'ol/interaction/Draw.js'; import { Vector as VectorLayer } from 'ol/layer'
 import { Vector as VectorSource } from 'ol/source'
 import GeoJSON from 'ol/format/GeoJSON'
 
@@ -33,9 +37,11 @@ export default {
 
         const isDrawing = ref(false)
         const aoiDrawn = ref(false)
+        const fileInput = ref(null)
 
         let drawInteraction
         let vectorLayer
+        let vectorSource
 
         onMounted(() => {
             initializeVectorLayer()
@@ -51,8 +57,9 @@ export default {
         })
 
         const initializeVectorLayer = () => {
+            vectorSource = new VectorSource()
             vectorLayer = new VectorLayer({
-                source: new VectorSource(),
+                source: vectorSource,
                 style: {
                     'fill-color': 'rgba(255, 255, 255, 0.2)',
                     'stroke-color': '#ffcc33',
@@ -80,7 +87,7 @@ export default {
         }
 
         const clearAOI = () => {
-            vectorLayer.getSource().clear()
+            vectorSource.clear()
             aoiDrawn.value = false
         }
 
@@ -92,13 +99,18 @@ export default {
 
             try {
                 await mapStore.setProjectAOI(geojson)
-                projectStore.currentProject.aoi = geojson
+
+                // Zoom to the extent of the uploaded features
+                const extent = vectorSource.getExtent()
+                mapStore.map.getView().fit(extent, { padding: [50, 50, 50, 50] })
+
 
                 $q.notify({
                     color: 'positive',
                     message: 'AOI saved successfully',
                     icon: 'check'
                 })
+
             } catch (error) {
                 console.error('Error saving AOI:', error)
                 $q.notify({
@@ -109,12 +121,56 @@ export default {
             }
         }
 
+        const triggerFileUpload = () => {
+            fileInput.value.click()
+        }
+
+        const handleFileUpload = (event) => {
+            const file = event.target.files[0]
+            if (!file) return
+
+            const reader = new FileReader()
+            reader.onload = (e) => {
+                try {
+                    const geojson = JSON.parse(e.target.result)
+                    const features = new GeoJSON().readFeatures(geojson, {
+                        featureProjection: mapStore.map.getView().getProjection()
+                    })
+
+                    clearAOI()
+                    vectorSource.addFeatures(features)
+                    aoiDrawn.value = true
+
+                    // Zoom to the extent of the uploaded features
+                    const extent = vectorSource.getExtent()
+                    mapStore.map.getView().fit(extent, { padding: [50, 50, 50, 50] })
+
+                    $q.notify({
+                        color: 'positive',
+                        message: 'GeoJSON file uploaded successfully',
+                        icon: 'check'
+                    })
+                } catch (error) {
+                    console.error('Error parsing GeoJSON:', error)
+                    $q.notify({
+                        color: 'negative',
+                        message: 'Failed to parse GeoJSON file',
+                        icon: 'error'
+                    })
+                }
+            }
+            reader.readAsText(file)
+        }
+
         return {
             isDrawing,
             aoiDrawn,
             startDrawingAOI,
             clearAOI,
-            saveAOI
+            saveAOI,
+            triggerFileUpload,
+            handleFileUpload,
+            fileInput
         }
     }
 }

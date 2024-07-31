@@ -35,7 +35,6 @@ import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
 import ProjectSelectionDialog from 'components/ProjectSelectionDialog.vue'
-import AOIDefinitionComponent from 'components/AOIDefinition.vue'
 import TrainingComponent from 'components/TrainingSetEditor.vue'
 import AnalysisComponent from 'components/Analysis.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
@@ -48,7 +47,6 @@ import AOIFloatingCard from 'components/AOIFloatingCard.vue'
 export default {
   name: 'MainLayout',
   components: {
-    AOIDefinitionComponent,
     TrainingComponent,
     ModelTrainingDialog,
     AnalysisComponent,
