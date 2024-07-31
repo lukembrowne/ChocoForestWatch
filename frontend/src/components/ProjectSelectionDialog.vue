@@ -15,6 +15,7 @@
           :columns="columns"
           row-key="id"
           :pagination="{ rowsPerPage: 5 }"
+          @row-click="onRowClick"
         >
           <template v-slot:body-cell-actions="props">
             <q-td :props="props">
