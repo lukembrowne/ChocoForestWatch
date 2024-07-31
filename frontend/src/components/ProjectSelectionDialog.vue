@@ -1,38 +1,58 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide">
-    <q-card class="q-dialog-plugin" style="min-width: 350px">
-      <q-card-section>
-        <div class="text-h6">Select or Create Project</div>
+    <q-card class="q-dialog-plugin" style="width: 50vw; max-width: 90vw;">
+      <q-card-section class="text-center q-pb-none">
+        <div class="text-h5 q-mb-md">Welcome to Choco Forest Watch</div>
+        <p class="text-body1">
+          Monitor and analyze forest cover changes using satellite imagery and machine learning.
+        </p>
       </q-card-section>
 
-      <q-card-section class="q-pt-none">
-        <q-list bordered separator>
-          <q-item v-for="project in projects" :key="project.id" clickable v-ripple @click="onOk(project)">
-            <q-item-section>
-              <q-item-label>{{ project.name }}</q-item-label>
-              <q-item-label caption>{{ project.description }}</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
+      <q-card-section>
+        <div class="text-h6">Load Existing Project</div>
+        <q-table
+          :rows="projects"
+          :columns="columns"
+          row-key="id"
+          :pagination="{ rowsPerPage: 5 }"
+          @row-click="onRowClick"
+        >
+          <template v-slot:body-cell-actions="props">
+            <q-td :props="props">
+              <q-btn flat round color="primary" icon="launch" @click.stop="onOk(props.row)">
+                <q-tooltip>Load Project</q-tooltip>
+              </q-btn>
+            </q-td>
+          </template>
+        </q-table>
+      </q-card-section>
 
-        <q-separator spaced />
+      <q-separator />
 
-        <div class="text-subtitle2 q-mb-sm">Create New Project</div>
-        <q-form @submit.prevent="createProject">
-          <q-input v-model="newProject.name" label="Project Name" :rules="[val => !!val || 'Name is required']" />
-          <q-input v-model="newProject.description" label="Description" type="textarea" />
-          
-          <div class="text-subtitle2 q-mt-md q-mb-sm">Define Land Cover Classes</div>
+      <q-card-section>
+        <div class="text-h6">Create New Project</div>
+        <q-form @submit.prevent="validateAndCreateProject">
+          <q-input dense rounded outlined v-model="newProject.name" label="Project Name" class="q-mb-md" />
+          <q-input dense rounded outlined v-model="newProject.description" label="Description" type="textarea"
+            class="q-mb-md" />
+
+          <div class="text-subtitle2 q-mb-sm">Define Land Cover Classes</div>
           <div v-for="(classItem, index) in newProject.classes" :key="index" class="row q-mb-sm">
-            <q-input v-model="classItem.name" label="Class Name" class="col-6" :rules="[val => !!val || 'Name is required']" />
-            <q-color v-model="classItem.color" class="col-4 q-ml-md" />
+            <q-input dense rounded outlined v-model="classItem.name" label="Class Name" class="col-6"
+              :rules="[val => !!val || 'Name is required']" />
+            <q-color v-model="classItem.color" class="col-4 q-ml-md" default-view="palette" :palette="[
+              '#019A9D', '#D9B801', '#E8045A', '#B2028A',
+              '#2A0449', '#019A9D']" />
             <q-btn flat round color="negative" icon="remove" @click="removeClass(index)" class="col-1 q-ml-sm" />
           </div>
-          <q-btn label="Add Class" color="positive" @click="addClass" class="q-mb-md" />
+          <q-btn densed rounded outlined label="Add Class" icon="add" color="positive" @click="addClass"
+            class="q-mb-md" />
 
-          <q-btn label="Create Project" type="submit" color="primary" class="q-mt-md" />
+          <q-btn label="Create Project" type="submit" color="primary" class="q-mt-md full-width" rounded />
         </q-form>
       </q-card-section>
+
+
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
@@ -45,12 +65,14 @@
 import { ref, onMounted } from 'vue'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
+import { date } from 'quasar'
+
 
 export default {
   name: 'ProjectSelectionDialog',
   emits: [...useDialogPluginComponent.emits],
 
-  setup () {
+  setup() {
     const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
     const $q = useQuasar()
     const projectStore = useProjectStore()
@@ -67,6 +89,14 @@ export default {
       ]
     })
 
+    const columns = [
+      { name: 'name', required: true, label: 'Name', align: 'left', field: 'name', sortable: true },
+      { name: 'description', align: 'left', label: 'Description', field: 'description', sortable: true },
+      { name: 'updated_at', align: 'left', label: 'Last Updated', field: 'updated_at', sortable: true,
+        format: (val) => date.formatDate(val, 'YYYY-MM-DD HH:mm') },
+      { name: 'actions', align: 'center', label: 'Actions' }
+    ]
+
     onMounted(async () => {
       await fetchProjects()
     })
@@ -82,6 +112,20 @@ export default {
           icon: 'error'
         })
       }
+    }
+
+    const validateAndCreateProject = () => {
+      console.log("Validating and creating project...")
+      if (!newProject.value.name.trim()) {
+        $q.dialog({
+          title: 'Error',
+          message: 'Project name is required. Please enter a name for your project.',
+          color: 'negative',
+          ok: 'Ok'
+        })
+        return
+      }
+      createProject()
     }
 
     const createProject = async () => {
@@ -125,6 +169,10 @@ export default {
       newProject.value.classes.splice(index, 1)
     }
 
+    const onRowClick = (evt, row) => {
+      onDialogOK(row)
+    }
+
     return {
       dialogRef,
       onDialogHide,
@@ -134,7 +182,10 @@ export default {
       newProject,
       createProject,
       addClass,
-      removeClass
+      removeClass,
+      columns,
+      onRowClick,
+      validateAndCreateProject
     }
   }
 }
