@@ -107,10 +107,8 @@ export default {
             try {
                 await mapStore.setProjectAOI(geojson)
 
-                // Zoom to the extent of the uploaded features
-                const extent = vectorSource.getExtent()
-                mapStore.map.getView().fit(extent, { padding: [50, 50, 50, 50] })
-
+                // Load project to make layer list
+                await projectStore.loadProject(projectStore.currentProject.id)
 
                 $q.notify({
                     color: 'positive',

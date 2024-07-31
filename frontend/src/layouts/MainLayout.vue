@@ -164,6 +164,9 @@ export default {
     }
 
     const selectProject = async (project) => {
+      // Clear existing AOIs
+      mapStore.clearAOI()
+
       await projectStore.loadProject(project.id)
       if (project.isNew !== undefined || !projectStore.currentProject.aoi) {
         showAOICard.value = true
