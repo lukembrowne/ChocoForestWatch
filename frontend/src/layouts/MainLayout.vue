@@ -24,6 +24,8 @@
         <div id="map" class="map-container"></div>
         <custom-layer-switcher />
         <AOIFloatingCard v-if="showAOICard" />
+        <DrawingControlsCard v-if="showDrawingControls" />
+        <PolygonListCard v-if="showPolygonList" />
       </q-page>
     </q-page-container>
   </q-layout>
@@ -42,6 +44,8 @@ import ModelEvaluationDialog from 'components/ModelEvaluationDialog.vue'
 import ModelTrainingDialog from 'components/ModelTrainingDialog.vue'
 import PredictionDialog from 'components/PredictionDialog.vue'
 import AOIFloatingCard from 'components/AOIFloatingCard.vue'
+import DrawingControlsCard from 'components/DrawingControlsCard.vue'
+import PolygonListCard from 'components/PolygonListCard.vue'
 
 
 export default {
@@ -53,7 +57,9 @@ export default {
     CustomLayerSwitcher,
     ModelEvaluationDialog,
     PredictionDialog,
-    AOIFloatingCard
+    AOIFloatingCard,
+    DrawingControlsCard,
+    PolygonListCard
   },
   setup() {
     const $q = useQuasar()
@@ -64,6 +70,8 @@ export default {
     const currentSection = ref('aoi')
     const currentProject = computed(() => projectStore.currentProject)
     const showAOICard = ref(false)
+    const showDrawingControls = ref(false)
+    const showPolygonList = ref(false)
 
 
 
@@ -89,6 +97,14 @@ export default {
       } else {
         isExpanded.value = true
         currentSection.value = sectionName
+      }
+
+      if (sectionName === 'Training data') {
+        showDrawingControls.value = true
+        showPolygonList.value = true
+      } else {
+        showDrawingControls.value = false
+        showPolygonList.value = false
       }
     }
 
@@ -168,12 +184,14 @@ export default {
       mapStore.clearAOI()
 
       await projectStore.loadProject(project.id)
+
+      
       if (project.isNew !== undefined || !projectStore.currentProject.aoi) {
         showAOICard.value = true
         currentSection.value = null
       } else {
         showAOICard.value = false
-        currentSection.value = 'Training data'
+        toggleSection('Training data')
         $q.notify({
           message: 'Project loaded successfully',
           color: 'positive',
@@ -200,7 +218,9 @@ export default {
       openProjectDialog,
       openModelTrainingDialog,
       leftDrawerOpen,
-      showAOICard
+      showAOICard,
+      showDrawingControls,
+      showPolygonList
     }
   }
 }

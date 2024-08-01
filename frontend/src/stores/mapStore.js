@@ -15,9 +15,7 @@ import { useProjectStore } from './projectStore';
 import { ref, watch, computed } from 'vue';
 import { Draw, Modify, Select } from 'ol/interaction';
 import { DragPan, DragZoom } from 'ol/interaction';
-import { platformModifierKeyOnly } from 'ol/events/condition';
 import { click } from 'ol/events/condition';
-import { storeToRefs } from 'pinia';
 import { fromUrl } from 'geotiff';
 import ImageLayer from 'ol/layer/Image';
 import ImageStatic from 'ol/source/ImageStatic';
@@ -37,6 +35,7 @@ export const useMapStore = defineStore('map', () => {
   const predictionLayer = ref(null);
   const trainingPolygonsLayer = ref(null);
   const layers = ref([]);
+  const basemapDate = ref(null);
 
 
   // Internal state
@@ -44,8 +43,8 @@ export const useMapStore = defineStore('map', () => {
   const drawing = ref(false);
   const modifyInteraction = ref(null);
   const selectInteraction = ref(null);
-  const selectedClass = ref('forest');
-  const interactionMode = ref('draw'); // 'draw', 'pan', or 'zoom'
+  const selectedClass = ref('Forest');
+  const interactionMode = ref(null); // 'draw', 'pan', or 'zoom'
   const dragPanInteraction = ref(null);
   const dragZoomInInteraction = ref(null);
   const dragZoomOutInteraction = ref(null);
@@ -233,6 +232,8 @@ export const useMapStore = defineStore('map', () => {
     // Add the new layer
     map.value.addLayer(newLayer);
 
+    basemapDate.value = date;
+
     isLoading.value = false;
   };
 
@@ -405,8 +406,8 @@ export const useMapStore = defineStore('map', () => {
       });
       drawnPolygons.value.push(newPolygon);
       updateTrainingLayerStyle();
+      console.log("Drawn polygons: ", drawnPolygons.value)
     });
-
     map.value.addInteraction(drawInteraction.value);
   };
 
@@ -611,6 +612,7 @@ export const useMapStore = defineStore('map', () => {
     layers,
     interactionMode,
     modeIndicator,
+    basemapDate,
     // Actions
     initMap,
     setAOI,

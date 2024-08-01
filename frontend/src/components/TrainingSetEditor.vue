@@ -17,150 +17,68 @@
 
     <q-separator spaced />
 
+     <!-- Save/Update buttons -->
+     <div class="q-gutter-sm">
+            <q-btn v-if="!existingTrainingSet" label="Save New Training Set" color="positive"
+                @click="openSaveDialog('new')" :disable="drawnPolygons.length === 0 || !selectedBasemapDate" />
+            <q-btn v-if="existingTrainingSet" label="Update Training Set" color="primary"
+                @click="openSaveDialog('update')" :disable="drawnPolygons.length === 0 || !selectedBasemapDate" />
+            <q-btn v-if="existingTrainingSet" label="Save As New" color="secondary" @click="openSaveDialog('new')"
+                :disable="drawnPolygons.length === 0 || !selectedBasemapDate" />
+        </div>
 
-    <p> Drawing controls:</p>
-    <div v-if="isProjectLoaded" class="class-selection q-mb-md"></div>
-    <div class="class-selection q-mb-md">
-      <q-select v-model="selectedClass" :options="projectClasses" option-value="name" option-label="name" emit-value
-        map-options label="Class" dense>
-        <template v-slot:option="scope">
-          <q-item v-bind="scope.itemProps">
-            <q-item-section avatar>
-              <q-icon :style="{ color: scope.opt.color }" name="lens" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>{{ scope.opt.name }}</q-item-label>
-            </q-item-section>
-          </q-item>
-        </template>
-      </q-select>
-    </div>
+        <!-- Save/Update Dialog -->
+        <q-dialog v-model="showSaveDialog">
+            <q-card style="min-width: 350px">
+                <q-card-section>
+                    <div class="text-h6">{{ saveMode === 'update' ? 'Update' : 'Save' }} Training Set</div>
+                </q-card-section>
 
-    <div class="mode-indicator q-mb-md">
-      <q-chip :icon="mapStore.modeIndicator.icon" :color="mapStore.modeIndicator.color" text-color="white">
-        {{ mapStore.modeIndicator.label }} Mode
-      </q-chip>
-    </div>
+                <q-card-section>
+                    <q-input v-model="trainingSetName" label="Training Set Name"
+                        :rules="[val => !!val || 'Name is required']" />
+                </q-card-section>
 
-    <div class="drawing-controls q-mb-md">
-      <q-btn label="Draw Polygon" color="primary" @click="setMode('draw')"
-        :disable="mapStore.interactionMode === 'draw'" />
-      <q-btn label="Pan" color="secondary" @click="setMode('pan')" :disable="mapStore.interactionMode === 'pan'"
-        class="q-ml-sm" />
-      <q-btn label="Zoom" color="accent" @click="setMode('zoom')" :disable="mapStore.interactionMode === 'zoom'"
-        class="q-ml-sm" />
-      <q-btn label="Undo" color="negative" @click="mapStore.undoLastDraw" :disable="mapStore.interactionMode !== 'draw'"
-        class="q-ml-sm" />
-    </div>
-
-
-    <!-- Save/Update buttons -->
-    <div class="q-gutter-sm">
-      <q-btn v-if="!existingTrainingSet" label="Save New Training Set" color="positive" @click="openSaveDialog('new')"
-        :disable="drawnPolygons.length === 0 || !selectedBasemapDate" />
-      <q-btn v-if="existingTrainingSet" label="Update Training Set" color="primary" @click="openSaveDialog('update')"
-        :disable="drawnPolygons.length === 0 || !selectedBasemapDate" />
-      <q-btn v-if="existingTrainingSet" label="Save As New" color="secondary" @click="openSaveDialog('new')"
-        :disable="drawnPolygons.length === 0 || !selectedBasemapDate" />
-    </div>
-
-    <!-- Save/Update Dialog -->
-    <q-dialog v-model="showSaveDialog">
-      <q-card style="min-width: 350px">
-        <q-card-section>
-          <div class="text-h6">{{ saveMode === 'update' ? 'Update' : 'Save' }} Training Set</div>
-        </q-card-section>
-
-        <q-card-section>
-          <q-input v-model="trainingSetName" label="Training Set Name" :rules="[val => !!val || 'Name is required']" />
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" v-close-popup />
-          <q-btn flat :label="saveMode === 'update' ? 'Update' : 'Save'" color="primary"
-            @click="saveOrUpdateTrainingSet" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <div class="polygon-list q-mb-md">
-      <h6>Training Polygons</h6>
-      <q-list bordered separator>
-        <q-item v-for="(polygon, index) in drawnPolygons" :key="index">
-          <q-item-section>
-            {{ polygon.properties.classLabel }} - Area: {{ (calculateArea(polygon) / 10000).toFixed(2) }} ha
-          </q-item-section>
-          <q-item-section side>
-            <q-btn flat round color="negative" icon="delete" @click="deletePolygon(index)" />
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </div>
-
+                <q-card-actions align="right">
+                    <q-btn flat label="Cancel" color="primary" v-close-popup />
+                    <q-btn flat :label="saveMode === 'update' ? 'Update' : 'Save'" color="primary"
+                        @click="saveOrUpdateTrainingSet" />
+                </q-card-actions>
+            </q-card>
+        </q-dialog>
 
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted, watch, onUnmounted, h } from 'vue'
+import { ref, computed} from 'vue'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
 import { useQuasar } from 'quasar'
-import { getArea } from 'ol/sphere'
-import { GeoJSON } from 'ol/format'
-import apiService from 'src/services/api'
 import LoadTrainingSetDialog from 'components/LoadTrainingSetDialog.vue';
 import api from 'src/services/api';
 import { getBasemapDateOptions } from 'src/utils/dateUtils'
 import { storeToRefs } from 'pinia'
+import apiService from 'src/services/api'
 
 
 export default {
   name: 'TrainingComponent',
-  setup(props, { emit }) {
+  setup() {
     const projectStore = useProjectStore()
     const mapStore = useMapStore()
     const $q = useQuasar()
 
     const { currentProject } = storeToRefs(projectStore)
     const isProjectLoaded = computed(() => !!currentProject.value)
-    const projectClasses = computed(() => {
-      if (!currentProject.value || !currentProject.value.classes) return []
-      return currentProject.value.classes.map(cls => ({
-        label: cls.name,
-        value: cls.name,
-        color: cls.color,
-        name: cls.name
-      }))
-    })
-    const selectedClass = ref(null)
-
-
     const drawnPolygons = computed(() => mapStore.drawnPolygons)
 
     const basemapDateOptions = computed(() => getBasemapDateOptions())
-    const selectedBasemapDate = ref(null) // Setting default
-    const isDrawing = computed(() => mapStore.isDrawing)
-
-    const showTrainingOptions = ref(false)
+    const selectedBasemapDate = computed(() => mapStore.basemapDate)
     const showSaveDialog = ref(false)
     const trainingSetName = ref('')
     const existingTrainingSet = ref(null)
     const saveMode = ref('new')
-
-    // Destructure to use directly in the template
-    const { startDrawing, stopDrawing, clearDrawnPolygons, deletePolygon } = mapStore;
-
-
-    onMounted(async () => {
-      window.addEventListener('keydown', handleKeyDown);
-
-      if (projectClasses.value.length > 0 && !selectedClass.value) {
-        selectedClass.value = projectClasses.value[0].name
-      }
-      console.log("Project classes: ", projectClasses.value)
-    })
-
 
     const openLoadDialog = () => {
       $q.dialog({
@@ -177,7 +95,7 @@ export default {
         mapStore.loadPolygons(response.data);
         existingTrainingSet.value = selectedSet
         trainingSetName.value = selectedSet.name
-        selectedBasemapDate.value = basemapDateOptions.value.find(option => option.value === selectedSet.basemap_date)
+        mapStore.updateBasemap(basemapDateOptions.value.find(option => option.value === selectedSet.basemap_date)['value'])
       } catch (error) {
         console.error('Error loading training set:', error);
         $q.notify({
@@ -188,24 +106,13 @@ export default {
       }
     };
 
-    const onClassSelect = (classValue) => {
-      selectedClass.value = classValue
-      setClassLabel(classValue)
-    }
 
     const onBasemapDateChange = async (date) => {
       console.log("Basemap date changed to: ", date)
       console.log("Updating basemap")
       mapStore.updateBasemap(date['value'])
     }
-
-
-    const calculateArea = (polygon) => {
-      const feature = new GeoJSON().readFeature(polygon)
-      return getArea(feature.getGeometry())
-    }
-
-
+    
     const openSaveDialog = (mode) => {
       if (!selectedBasemapDate.value) {
         $q.notify({
@@ -235,7 +142,7 @@ export default {
       try {
         const data = {
           project_id: projectStore.currentProject.id,
-          basemap_date: selectedBasemapDate.value.value,
+          basemap_date: selectedBasemapDate.value,
           polygons: mapStore.getDrawnPolygonsGeoJSON(),
           name: trainingSetName.value
         }
@@ -264,114 +171,7 @@ export default {
       }
     }
 
-    const saveDrawnPolygons = async () => {
-      if (!trainingSetName.value) {
-        $q.notify({
-          color: 'negative',
-          message: 'Please enter a name for the training set',
-          icon: 'error'
-        })
-        return
-      }
-
-      try {
-        await apiService.saveTrainingPolygons({
-          project_id: projectStore.currentProject.id,
-          basemap_date: selectedBasemapDate.value,
-          polygons: mapStore.getDrawnPolygonsGeoJSON(),
-          name: trainingSetName.value
-        })
-        showSaveDialog.value = false
-        $q.notify({
-          color: 'positive',
-          message: 'Training data saved successfully',
-          icon: 'check'
-        })
-        mapStore.updateTrainingLayerStyle();
-      } catch (error) {
-        console.error('Error saving training data:', error)
-        $q.notify({
-          color: 'negative',
-          message: 'Failed to save training data',
-          icon: 'error'
-        })
-      }
-    }
-
-
-    const handleKeyDown = (event) => {
-
-      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-        return; // Ignore keyboard events when typing in input fields
-      }
-
-      const numKey = parseInt(event.key);
-
-      if (numKey && numKey > 0 && numKey <= projectStore.projectClasses.length) {
-        selectedClass.value = projectStore.projectClasses[numKey - 1]['name'];
-        mapStore.setClassLabel(selectedClass.value);
-      } else if ((event.key === 'Delete' || event.key === 'Backspace') && mapStore.selectedPolygon !== null) {
-        mapStore.deletePolygon(mapStore.selectedPolygon);
-      } else if (event.key === 'm') {
-        setMode(mapStore.interactionMode === 'pan' ? 'draw' : 'pan');
-      } else if (event.key === 'z') {
-        setMode('zoom_in');
-      } else if (event.key === 'x') {
-        setMode('zoom_out');
-      } else if (event.key === 'd') {
-        setMode('draw');
-      } else if (event.key === 'u') {
-        mapStore.undoLastDraw();
-      } else if (event.key == 'Escape') {
-        setMode('pan');
-        mapStore.stopDrawing();
-      }
-    };
-
-    const setMode = (mode) => {
-      mapStore.setInteractionMode(mode);
-    };
-
-    const getClassColor = (className) => {
-      const classObj = currentProject.value?.classes.find(cls => cls.name === className)
-      return classObj ? classObj.color : '#000000'
-    }
-
-    watch(selectedClass, (newLabel) => {
-      mapStore.setClassLabel(newLabel);
-    });
-
-    // Watch for changes in the drawnPolygons
-    watch(drawnPolygons, () => {
-      // console.log("Drawn polygons changed")
-      drawnPolygons.value = mapStore.drawnPolygons
-    }, { immediate: true });
-
-    // Add watcher for when basemap date changes
-    watch(selectedBasemapDate, (newDate) => {
-      console.log("Basemap date changed to: ", newDate)
-      console.log("Updating basemap")
-      mapStore.updateBasemap(newDate['value'])
-    });
-
-    watch(() => projectClasses.value, (newClasses) => {
-      if (newClasses.length > 0 && !selectedClass.value) {
-        selectedClass.value = newClasses[0].value
-      }
-    }, { immediate: true })
-
-
     return {
-      selectedClass,
-      isDrawing,
-      drawnPolygons,
-      startDrawing,
-      stopDrawing,
-      clearDrawnPolygons,
-      deletePolygon,
-      calculateArea,
-      saveDrawnPolygons,
-      onClassSelect,
       basemapDateOptions,
       selectedBasemapDate,
       onBasemapDateChange,
@@ -382,11 +182,9 @@ export default {
       existingTrainingSet,
       saveMode,
       trainingSetName,
-      projectClasses,
-      getClassColor,
       isProjectLoaded,
       mapStore,
-      setMode
+      drawnPolygons
     }
   }
 }
