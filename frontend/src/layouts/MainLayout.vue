@@ -102,6 +102,7 @@ export default {
       if (sectionName === 'Training data') {
         showDrawingControls.value = true
         showPolygonList.value = true
+        
       } else {
         showDrawingControls.value = false
         showPolygonList.value = false

@@ -4,11 +4,12 @@
             <div class="text-h6">Drawing Controls</div>
             <div class="row q-gutter-sm">
                 <q-btn-toggle v-model="interactionMode" :options="[
-                    { label: 'Draw', value: 'draw', icon: 'create' },
-                    { label: 'Pan', value: 'pan', icon: 'pan_tool' },
-                    { label: 'Zoom', value: 'zoom', icon: 'zoom_in' }
+                    { label: 'Draw (d)', value: 'draw', icon: 'create' },
+                    { label: 'Pan (m)', value: 'pan', icon: 'pan_tool' },
+                    { label: 'Zoom in (z)', value: 'zoom_in', icon: 'zoom_in' },
+                    { label: 'Zoom out (x)', value: 'zoom_out', icon: 'zoom_out' }
                 ]" @update:model-value="setInteractionMode" />
-                <q-btn label="Undo" color="secondary" icon="undo" @click="undoLastDraw"
+                <q-btn label="Undo (u)" color="secondary" icon="undo" @click="undoLastDraw"
                     :disable="interactionMode !== 'draw'" />
             </div>
         </q-card-section>
@@ -133,7 +134,7 @@ export default {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    width: 600px;
+    width: 800px;
     max-width: 90%;
     z-index: 1000;
     border-radius: 8px;
