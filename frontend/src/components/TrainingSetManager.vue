@@ -2,7 +2,7 @@
     <div class="training-set-manager">
         <div v-if="!currentTrainingSet">
             <q-btn label="Load Training Set" @click="openLoadDialog" color="primary" class="q-mb-sm full-width" />
-            <q-btn label="Create New Training Set" @click="createNewTrainingSet" color="secondary" class="full-width" />
+            <q-btn label="Save New Training Set" @click="openSaveDialog('new')" color="secondary" class="full-width" />
         </div>
         <div v-else>
             <div class="text-h6 q-mb-sm">Current Training Set: {{ currentTrainingSet.name }}</div>
