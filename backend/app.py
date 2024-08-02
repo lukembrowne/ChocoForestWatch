@@ -508,10 +508,13 @@ def get_predictions(project_id):
     predictions = Prediction.query.filter_by(project_id=project_id).all()
     return jsonify([{
         'id': p.id,
+        'project_id': p.project_id,
+        'model_id': p.model_id,
+        'name': p.name,
         'basemap_date': p.basemap_date,
         'created_at': p.created_at.isoformat(),
         'file_path': p.file_path
-    } for p in predictions])
+        } for p in predictions])
 
 @app.route('/api/prediction/<int:prediction_id>', methods=['GET'])
 def get_prediction(prediction_id):
@@ -1007,6 +1010,49 @@ def train_xgboost_model(X, y, feature_ids, project_id, training_set_ids, model_n
 
 
 ### Prediction
+
+
+@app.route('/api/predictions/<int:prediction_id>/rename', methods=['PUT'])
+def rename_prediction(prediction_id):
+    try:
+        prediction = Prediction.query.get_or_404(prediction_id)
+        data = request.json
+        new_name = data.get('new_name')
+        
+        if not new_name:
+            return jsonify({'error': 'New name is required'}), 400
+        
+        prediction.name = new_name
+        db.session.commit()
+        
+        return jsonify({'message': 'Prediction renamed successfully', 'new_name': new_name})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/predictions/<int:prediction_id>', methods=['DELETE'])
+def delete_prediction(prediction_id):
+    try:
+        prediction = Prediction.query.get_or_404(prediction_id)
+        
+        # Delete the associated file
+        if os.path.exists(prediction.file_path):
+            os.remove(prediction.file_path)
+        
+        db.session.delete(prediction)
+        db.session.commit()
+        
+        return jsonify({'message': 'Prediction deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+
+
+
+
+
 @app.route('/api/predict_landcover', methods=['POST'])
 def predict_landcover():
     data = request.json
@@ -1171,64 +1217,188 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
 
 
 
-def analyze_change(prediction1_id, prediction2_id):
-    # Fetch the prediction rasters
-    prediction1 = Prediction.query.get_or_404(prediction1_id)
-    prediction2 = Prediction.query.get_or_404(prediction2_id)
 
-    # Read the rasters
-    with rasterio.open(prediction1.file_path) as src1, rasterio.open(prediction2.file_path) as src2:
-        # Ensure the rasters have the same extent and resolution
-        if src1.bounds != src2.bounds or src1.res != src2.res:
-            return jsonify({"error": "Predictions have different extents or resolutions"}), 400
+## Analysis endpoints
+@app.route('/api/analysis/summary/<int:prediction_id>', methods=['GET'])
+def get_summary_statistics(prediction_id):
+    try:
+        prediction = Prediction.query.get_or_404(prediction_id)
 
-        # Read the data
-        data1 = src1.read(1)
-        data2 = src2.read(1)
+        with rasterio.open(prediction.file_path) as src:
+            raster_data = src.read(1)  # Assuming single band raster
+            pixel_area_ha = abs(src.transform[0] * src.transform[4]) / 10000  # Convert to hectares
+            
+            # Get unique class values and their counts
+            unique, counts = np.unique(raster_data, return_counts=True)
+            
+            # Calculate total area
+            total_area = raster_data.size * pixel_area_ha
+            # Get class names from the project
+            project = Project.query.get(prediction.project_id)
+            class_names = {i: cls['name'] for i, cls in enumerate(project.classes)}
+            
+            # Calculate statistics
+            class_stats = {}
+            for value, count in zip(unique, counts):
+                if value in class_names:
+                    area = count * pixel_area_ha
+                    percentage = (count / raster_data.size) * 100
+                    class_stats[int(value)] = { 'area_km2': area, 'percentage': percentage}
 
-        # Calculate areas
-        pixel_area = src1.res[0] * src1.res[1] / 1_000_000  # Area in sq km
+                    logger.debug(f"Class {value} has area {area} and percentage {percentage}")
+                    logger.debug(print(class_stats))
+            
+            # Prepare the result
+            result = {
+                'prediction_name': prediction.name,
+                'prediction_date': prediction.basemap_date,
+                'total_area_km2': total_area,
+                'class_statistics': class_stats
+            }
+            
 
-        previous_forest = np.sum(data1 == 1) * pixel_area
-        previous_non_forest = np.sum(data1 == 0) * pixel_area
-        current_forest = np.sum(data2 == 1) * pixel_area
-        current_non_forest = np.sum(data2 == 0) * pixel_area
-
-        # Calculate change
-        deforested = np.sum((data1 == 1) & (data2 == 0)) * pixel_area
-        reforested = np.sum((data1 == 0) & (data2 == 1)) * pixel_area
-
-        total_area = previous_forest + previous_non_forest
-        deforestation_rate = (deforested - reforested) / previous_forest * 100
-        total_area_changed = deforested + reforested
-
-        results = {
-            "previousForestArea": float(previous_forest),
-            "previousNonForestArea": float(previous_non_forest),
-            "currentForestArea": float(current_forest),
-            "currentNonForestArea": float(current_non_forest),
-            "deforestedArea": float(deforested),
-            "reforestedArea": float(reforested),
-            "deforestationRate": float(deforestation_rate),
-            "totalAreaChanged": float(total_area_changed),
-            "totalArea": float(total_area)
-        }
-
-        logger.info(f"Change analysis results: {results}")
-
-        return jsonify(results)
-
-# Add this route to your Flask app
-@app.route('/api/analyze_change', methods=['POST'])
-def api_analyze_change():
-    data = request.json
-    prediction1_id = data.get('prediction1_id')
-    prediction2_id = data.get('prediction2_id')
+            return jsonify(result)
     
-    if not prediction1_id or not prediction2_id:
-        return jsonify({"error": "Both prediction IDs are required"}), 400
+    except Exception as e:
+        logger.error(f"Error in get_summary_statistics: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
-    return analyze_change(prediction1_id, prediction2_id)
+
+@app.route('/api/analysis/change/<int:prediction1_id>/<int:prediction2_id>', methods=['GET'])
+def analyze_change(prediction1_id, prediction2_id):
+    try:
+        prediction1 = Prediction.query.get_or_404(prediction1_id)
+        prediction2 = Prediction.query.get_or_404(prediction2_id)
+
+        model1 = TrainedModel.query.get(prediction1.model_id)
+        model2 = TrainedModel.query.get(prediction2.model_id)
+
+        if model1 is None or model2 is None:
+            return jsonify({'error': 'Associated model not found'}), 404
+
+        # Ensure both predictions use the same set of classes
+        if model1.all_class_names != model2.all_class_names:
+            return jsonify({'error': 'Predictions use different class sets'}), 400
+
+        all_class_names = model1.all_class_names
+        class_index_map1 = {i: all_class_names.index(class_name) for i, class_name in enumerate(model1.label_encoder.classes_)}
+        class_index_map2 = {i: all_class_names.index(class_name) for i, class_name in enumerate(model2.label_encoder.classes_)}
+
+        with rasterio.open(prediction1.file_path) as src1, rasterio.open(prediction2.file_path) as src2:
+            if src1.bounds != src2.bounds or src1.res != src2.res:
+                return jsonify({"error": "Predictions have different extents or resolutions"}), 400
+
+            data1 = src1.read(1)
+            data2 = src2.read(1)
+
+            pixel_area_ha = abs(src1.transform[0] * src1.transform[4]) / 10000  # Area in hectares
+
+            # Map the raster data to the full class set indices
+            mapped_data1 = np.vectorize(class_index_map1.get)(data1)
+            mapped_data2 = np.vectorize(class_index_map2.get)(data2)
+
+            # Calculate areas for each class in both predictions
+            areas1 = {all_class_names[i]: np.sum(mapped_data1 == i) * pixel_area_ha for i in range(len(all_class_names))}
+            areas2 = {all_class_names[i]: np.sum(mapped_data2 == i) * pixel_area_ha for i in range(len(all_class_names))}
+
+            # Calculate changes
+            changes = {name: areas2[name] - areas1[name] for name in all_class_names}
+
+            # Calculate percentages
+            total_area = data1.size * pixel_area_ha
+            percentages1 = {name: (area / total_area) * 100 for name, area in areas1.items()}
+            percentages2 = {name: (area / total_area) * 100 for name, area in areas2.items()}
+
+            # Calculate total changed area
+            total_change = sum(abs(change) for change in changes.values()) / 2  # Divide by 2 to avoid double counting
+
+            # Generate confusion matrix
+            cm = confusion_matrix(mapped_data1.flatten(), mapped_data2.flatten(), labels=range(len(all_class_names)))
+            cm_percent = cm / cm.sum() * 100
+
+            results = {
+                "prediction1_name": prediction1.name,
+                "prediction1_date": prediction1.basemap_date,
+                "prediction2_name": prediction2.name,
+                "prediction2_date": prediction2.basemap_date,
+                "total_area_ha": float(total_area),
+                "areas_time1_ha": {name: float(area) for name, area in areas1.items()},
+                "areas_time2_ha": {name: float(area) for name, area in areas2.items()},
+                "percentages_time1": {name: float(pct) for name, pct in percentages1.items()},
+                "percentages_time2": {name: float(pct) for name, pct in percentages2.items()},
+                "changes_ha": {name: float(change) for name, change in changes.items()},
+                "total_change_ha": float(total_change),
+                "change_rate": float((total_change / total_area) * 100),
+                "confusion_matrix": cm.tolist(),
+                "confusion_matrix_percent": cm_percent.tolist(),
+                "class_names": all_class_names
+            }
+
+            return jsonify(results)
+
+    except Exception as e:
+        logger.error(f"Error in analyze_change: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+# def analyze_change(prediction1_id, prediction2_id):
+#     # Fetch the prediction rasters
+#     prediction1 = Prediction.query.get_or_404(prediction1_id)
+#     prediction2 = Prediction.query.get_or_404(prediction2_id)
+
+#     # Read the rasters
+#     with rasterio.open(prediction1.file_path) as src1, rasterio.open(prediction2.file_path) as src2:
+#         # Ensure the rasters have the same extent and resolution
+#         if src1.bounds != src2.bounds or src1.res != src2.res:
+#             return jsonify({"error": "Predictions have different extents or resolutions"}), 400
+
+#         # Read the data
+#         data1 = src1.read(1)
+#         data2 = src2.read(1)
+
+#         # Calculate areas
+#         pixel_area = src1.res[0] * src1.res[1] / 1_000_000  # Area in sq km
+
+#         previous_forest = np.sum(data1 == 1) * pixel_area
+#         previous_non_forest = np.sum(data1 == 0) * pixel_area
+#         current_forest = np.sum(data2 == 1) * pixel_area
+#         current_non_forest = np.sum(data2 == 0) * pixel_area
+
+#         # Calculate change
+#         deforested = np.sum((data1 == 1) & (data2 == 0)) * pixel_area
+#         reforested = np.sum((data1 == 0) & (data2 == 1)) * pixel_area
+
+#         total_area = previous_forest + previous_non_forest
+#         deforestation_rate = (deforested - reforested) / previous_forest * 100
+#         total_area_changed = deforested + reforested
+
+#         results = {
+#             "previousForestArea": float(previous_forest),
+#             "previousNonForestArea": float(previous_non_forest),
+#             "currentForestArea": float(current_forest),
+#             "currentNonForestArea": float(current_non_forest),
+#             "deforestedArea": float(deforested),
+#             "reforestedArea": float(reforested),
+#             "deforestationRate": float(deforestation_rate),
+#             "totalAreaChanged": float(total_area_changed),
+#             "totalArea": float(total_area)
+#         }
+
+#         logger.info(f"Change analysis results: {results}")
+
+#         return jsonify(results)
+
+# # Add this route to your Flask app
+# @app.route('/api/analyze_change', methods=['POST'])
+# def api_analyze_change():
+#     data = request.json
+#     prediction1_id = data.get('prediction1_id')
+#     prediction2_id = data.get('prediction2_id')
+    
+#     if not prediction1_id or not prediction2_id:
+#         return jsonify({"error": "Both prediction IDs are required"}), 400
+
+#     return analyze_change(prediction1_id, prediction2_id)
 
 
 

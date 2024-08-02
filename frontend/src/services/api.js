@@ -151,11 +151,44 @@ export default {
     return response.data;
   },
 
-  analyzeChange(prediction1Id, prediction2Id) {
-    return axios.post(`${API_URL}/analyze_change`, {
-      prediction1_id: prediction1Id,
-      prediction2_id: prediction2Id
-    });
+  async getSummaryStatistics(predictionId) {
+    try {
+      const response = await axios.get(`${API_URL}/analysis/summary/${predictionId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting summary statistics:', error);
+      throw error;
+    }
+  },
+
+  async getChangeAnalysis(predictionId1, predictionId2) {
+    try {
+      const response = await axios.get(`${API_URL}/analysis/change/${predictionId1}/${predictionId2}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting change analysis:', error);
+      throw error;
+    }
+  },
+
+  async renamePrediction(predictionId, newName) {
+    try {
+      const response = await axios.put(`${API_URL}/predictions/${predictionId}/rename`, { new_name: newName });
+      return response.data;
+    } catch (error) {
+      console.error('Error renaming prediction:', error);
+      throw error;
+    }
+  },
+
+  async deletePrediction(predictionId) {
+    try {
+      const response = await axios.delete(`${API_URL}/predictions/${predictionId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting prediction:', error);
+      throw error;
+    }
   },
 
 };

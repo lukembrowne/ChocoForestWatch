@@ -116,26 +116,26 @@ export default {
 
     onMounted(() => {
 
-      // Standard loading sequence
-      // Initialize map
-      mapStore.initMap('map')
-
-      // // Open project dialogue to have user select or create new project
-      openProjectDialog()
-
-
-      //  // Load default project and map date to make things easier
-      // console.log('Loading default project...')
+      // // Standard loading sequence
+      // // Initialize map
       // mapStore.initMap('map')
-      // currentSection.value = 'training'
-      // // Sleep 2 seconds
-      // setTimeout(() => {
-      //   projectStore.loadProject(10)
-      // }, 1000)
 
-      // setTimeout(() => {
-      //   mapStore.updateBasemap('2022-08')
-      // }, 1000)
+      // // // Open project dialogue to have user select or create new project
+      // openProjectDialog()
+
+
+       // Load default project and map date to make things easier
+      console.log('Loading default project...')
+      mapStore.initMap('map')
+      currentSection.value = 'training'
+      // Sleep 2 seconds
+      setTimeout(() => {
+        projectStore.loadProject(29)
+      }, 1000)
+
+      setTimeout(() => {
+        mapStore.updateBasemap('2022-08')
+      }, 1000)
 
     })
 
