@@ -12,7 +12,8 @@ export const useProjectStore = defineStore('project', {
     selectedProjectId: null,
     map: null,
     mapInitialized: false,
-    isLoading: false
+    isLoading: false,
+    currentTrainingSet: null  
 
   }),
   getters: {
@@ -113,5 +114,13 @@ export const useProjectStore = defineStore('project', {
         throw error;
       }
     },
+
+    setCurrentTrainingSet(trainingSet) {
+      this.currentTrainingSet = trainingSet;
+    },
+
+    clearCurrentTrainingSet() {
+      this.currentTrainingSet = null;
+    }
   }
 });

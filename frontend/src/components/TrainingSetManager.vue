@@ -77,7 +77,7 @@ export default {
                     mapStore.loadPolygons(response.data)
                     existingTrainingSet.value = selectedSet
                     trainingSetName.value = selectedSet.name
-
+                    projectStore.setCurrentTrainingSet(selectedSet)  // Update project store
                     mapStore.setSelectedBasemapDate(selectedSet.basemap_date)
 
                     $q.notify({
