@@ -609,13 +609,18 @@ def train_model():
     training_set_ids = data['trainingSetIds']
     aoi_extent = data['aoiExtent']
     model_description = data.get('modelDescription', '')
+    split_method = data.get('splitMethod', 'feature')
+    train_test_split = data.get('trainTestSplit', 0.2)
 
     model_params = {
+        'objective': 'multi:softmax',
         'n_estimators': data.get('n_estimators', 100),
         'max_depth': data.get('max_depth', 3),
         'learning_rate': data.get('learning_rate', 0.1),
         'min_child_weight': data.get('min_child_weight', 1),
-        'gamma': data.get('gamma', 0)
+        'gamma': data.get('gamma', 0),
+        'colsample_bytree': data.get('colsample_bytree', 0.8),
+        'subsample': data.get('subsample', 0.8),
     }
 
     try:
@@ -638,18 +643,20 @@ def train_model():
         update_progress(project_id, 0.3, "Extracting pixels from quads")
         all_X = []
         all_y = []
+        all_feature_ids = []
         all_basemap_dates = []
 
         for training_set in training_sets:
-            # X, y = extract_pixels_from_training_set(training_set, quads_by_date[training_set.basemap_date])
-            X, y = extract_pixels_from_quads(quads_by_date[training_set.basemap_date], training_set.polygons['features'])
+            X, y, feature_ids = extract_pixels_from_quads(quads_by_date[training_set.basemap_date], training_set.polygons['features']) 
             all_X.append(X)
             all_y.extend(y)
+            all_feature_ids.extend(feature_ids)
             all_basemap_dates.extend([training_set.basemap_date] * len(y))
 
         # Combine all data
         X = np.vstack(all_X)
         y = np.array(all_y)
+        feature_ids = np.array(all_feature_ids)
         basemap_dates = np.array(all_basemap_dates)
 
         # Convert basemap dates to numerical values
@@ -657,29 +664,12 @@ def train_model():
         encoded_dates = date_encoder.fit_transform(basemap_dates)
 
         # Add encoded dates as a new feature
-        X = np.hstack((X, encoded_dates.reshape(-1, 1)))
+        X = np.column_stack((X, encoded_dates))
 
         # Step 3: Train XGBoost model
         update_progress(project_id, 0.6, "Training XGBoost model")
         # Train the model
-        model, metrics = train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_description, model_params, date_encoder)
-
-        
-        import time
-        time.sleep(5)
-        # # Step 4: Predict land cover across AOI
-        # update_progress(project_id, 0.6, "Predicting land cover across AOI")
-        # prediction_file = predict_landcover_aoi(model.id, quads, aoi, project_id, basemap_date)
-
-        # # Save prediction to database
-        # prediction = Prediction(
-        #     project_id=project_id,
-        #     model_id=model.id,
-        #     file_path=prediction_file,
-        #     basemap_date=basemap_date
-        # )
-        # db.session.add(prediction)
-        # db.session.commit()
+        model, metrics = train_xgboost_model(X, y, feature_ids, project_id, training_set_ids, model_name, model_description, model_params, date_encoder, split_method, train_test_split)
 
         # Step 5: Return results
         update_progress(project_id, 1.0, "Training complete")
@@ -829,6 +819,8 @@ def download_and_process_quads(quads, year, month):
 def extract_pixels_from_quads(quads, polygons):
     all_pixels = []
     all_labels = []
+    all_feature_ids = []  # New list to store feature IDs
+
 
     for quad in quads:
         logger.info(f"Extracting pixels from quad {quad['id']}")
@@ -839,7 +831,7 @@ def extract_pixels_from_quads(quads, polygons):
 
                 geom = shape(feature['geometry'])
                 class_label = feature['properties']['classLabel']
-
+                feature_id = feature['id']  # Assuming each feature has an 'id' property
                 try:
                     # Read only the first 4 bands
                     out_image, out_transform = mask(src, [geom], crop=True, all_touched=True, indexes=[1, 2, 3, 4])
@@ -861,6 +853,8 @@ def extract_pixels_from_quads(quads, polygons):
                     if valid_pixels.size > 0:
                         all_pixels.extend(valid_pixels.data if isinstance(valid_pixels, np.ma.MaskedArray) else valid_pixels)
                         all_labels.extend([class_label] * valid_pixels.shape[0])
+                        all_feature_ids.extend([feature_id] * valid_pixels.shape[0])  # Add feature IDs
+
 
                 except Exception as e:
                     logger.warning(f"Error processing polygon in quad {quad['id']}: {str(e)}")
@@ -868,12 +862,21 @@ def extract_pixels_from_quads(quads, polygons):
     if not all_pixels:
         raise ValueError("No valid pixels extracted from quads")
     
-    return np.array(all_pixels), np.array(all_labels)
+    X = np.array(all_pixels, dtype=float)
+    y = np.array(all_labels)
+    feature_ids = np.array(all_feature_ids)
+    
+    logger.debug(f"Extracted X shape: {X.shape}")
+    logger.debug(f"Extracted X first few rows: \n{X[:5]}")
+    logger.debug(f"Feature IDs shape: {feature_ids.shape}")
+    logger.debug(f"Feature IDs first few values: {feature_ids[:5]}")
+    
+    return X, y, feature_ids
 
 
 
 
-def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_description, model_params, date_encoder):
+def train_xgboost_model(X, y, feature_ids, project_id, training_set_ids, model_name, model_description, model_params, date_encoder, split_method='feature', test_size=0.2):
     
      # Fetch all project classes
     project = Project.query.get(project_id)
@@ -888,26 +891,53 @@ def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_de
     
     # Get the classes actually present in the training data
     classes_in_training = le.classes_.tolist()
-    
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
-    
+
+    # Extract encoded dates from X
+    encoded_dates = X[:, -1].astype(int)
+
+    logger.debug(f"X shape: {X.shape}")
+    logger.debug(f"X data type: {X.dtype}")
+    logger.debug(f"X first few rows: \n{X[:5]}")
+    logger.debug(f"Feature IDs shape: {feature_ids.shape}")
+    logger.debug(f"Feature IDs first few values: {feature_ids[:5]}")
+
+    if split_method == 'feature':
+
+            # Get unique feature IDs and their corresponding classes
+            unique_features, unique_indices = np.unique(feature_ids, return_index=True)
+            unique_classes = y[unique_indices]
+        
+            # Split features into train and test, stratified by class
+            train_features, test_features = train_test_split(
+                unique_features, 
+                test_size=test_size, 
+                random_state=42, 
+                stratify=unique_classes
+            )
+            
+            # Create masks for train and test sets
+            train_mask = np.isin(feature_ids, train_features)
+            test_mask = np.isin(feature_ids, test_features)
+            
+            # Split data using the masks
+            X_train, X_test = X[train_mask], X[test_mask]
+            y_train, y_test = y_encoded[train_mask], y_encoded[test_mask]
+    else:
+            # Pixel-based split
+            X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=test_size, random_state=42)
+
     # Adjust num_class parameter to account for classes present in the data
     model_params['num_class'] = len(classes_in_training)
-    
+
 
     # Create and train model
-    model = XGBClassifier({'objective': 'multi:softmax'}, **model_params)
+    model = XGBClassifier(**model_params)
     model.fit(X_train, y_train)
 
     # Predictions and metrics
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
 
-    # Predictions and metrics
-    y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    
     # Calculate metrics
     precision, recall, f1, _ = precision_recall_fscore_support(y_test, y_pred, average=None)
     
@@ -950,10 +980,11 @@ def train_xgboost_model(X, y, project_id, training_set_ids, model_name, model_de
      # Calculate number of training samples
     num_training_samples = X_train.shape[0]
 
+
     # Determine training periods
-    # Assuming the last column of X contains the encoded dates
-    unique_encoded_dates = np.unique(X[:, -1])
+    unique_encoded_dates = np.unique(encoded_dates)
     training_periods = date_encoder.inverse_transform(unique_encoded_dates).tolist()
+
 
 
    # Save the trained model

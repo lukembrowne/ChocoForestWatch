@@ -37,17 +37,32 @@
 
           <!-- Step 3: Model Parameters -->
           <q-step :name="3" title="Set Model Parameters" icon="settings" :done="step > 3">
-            <div class="row q-col-gutter-md">
-              <div class="col-12">
-                <p>Adjust the train/test split:</p>
-                <q-slider v-model="trainTestSplit" :min="0.1" :max="0.5" :step="0.05" label label-always
-                  color="primary" />
-                <p class="text-caption">
-                  This determines the proportion of data used for testing. A value of {{ trainTestSplit }} means
-                  {{ (trainTestSplit * 100).toFixed(0) }}% of the data will be used for testing, and
-                  {{ (100 - trainTestSplit * 100).toFixed(0) }}% for training.
-                </p>
-              </div>
+        <div class="row q-col-gutter-md">
+          <div class="col-12">
+            <p>Choose split method:</p>
+            <q-btn-toggle
+              v-model="splitMethod"
+              :options="[
+                {label: 'Pixel-based', value: 'pixel'},
+                {label: 'Feature-based', value: 'feature'}
+              ]"
+              color="primary"
+            />
+            <p class="text-caption q-mt-sm">
+              Feature-based split ensures independence between training and testing data by splitting entire polygons.
+              Pixel-based split may mix pixels from the same polygon in both training and testing sets.
+            </p>
+          </div>
+          <div class="col-12">
+            <p>Adjust the train/test split:</p>
+            <q-slider v-model="trainTestSplit" :min="0.1" :max="0.5" :step="0.05" label label-always
+              color="primary" />
+            <p class="text-caption">
+              This determines the proportion of data used for testing. A value of {{ trainTestSplit }} means
+              {{ (trainTestSplit * 100).toFixed(0) }}% of the {{ splitMethod === 'pixel' ? 'pixels' : 'features' }} will be used for testing, and
+              {{ (100 - trainTestSplit * 100).toFixed(0) }}% for training.
+            </p>
+          </div>
               <div class="col-12 col-md-6">
                 <p>Number of Estimators:</p>
                 <q-slider v-model="options.n_estimators" :min="10" :max="1000" :step="10" label label-always
@@ -152,6 +167,7 @@ export default {
     const trainingProgressMessage = ref('')
     const trainingError = ref('')
     const socket = io('http://127.0.0.1:5000');
+    const splitMethod = ref('feature')  // Default to feature-based split
     const trainTestSplit = ref(0.2)
 
     const options = ref({
@@ -243,6 +259,7 @@ export default {
           modelDescription: modelDescription.value,
           trainingSetIds: selectedTrainingSets.value.map(set => set.id),
           trainTestSplit: trainTestSplit.value,
+          splitMethod: splitMethod.value,  // Add this line
           ...options.value
         })
 
@@ -292,7 +309,8 @@ export default {
       trainingProgress,
       trainingProgressMessage,
       trainingError,
-      trainTestSplit
+      trainTestSplit,
+      splitMethod
     }
   }
 }
