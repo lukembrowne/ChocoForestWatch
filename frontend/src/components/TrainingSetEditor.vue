@@ -1,11 +1,7 @@
 <template>
   <div class="training-component">
 
-    <q-separator spaced />
-    <p> Load a training dataset: </p>
-
-    <!-- Load button -->
-    <q-btn label="Load Training Set" color="secondary" @click="openLoadDialog" class="q-ml-sm" />
+    <TrainingSetManager />
 
     <q-separator spaced />
 
@@ -59,13 +55,15 @@ import api from 'src/services/api';
 import { storeToRefs } from 'pinia'
 import apiService from 'src/services/api'
 import BasemapDateSelector from 'components/BasemapDateSelector.vue'
+import TrainingSetManager from 'components/TrainingSetManager.vue'
 
 
 
 export default {
   name: 'TrainingComponent',
   components: {
-    BasemapDateSelector
+    BasemapDateSelector,
+    TrainingSetManager
   },
   setup() {
     const projectStore = useProjectStore()

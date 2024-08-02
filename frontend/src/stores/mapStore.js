@@ -203,6 +203,12 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
+  const setSelectedBasemapDate = (date) => {
+    selectedBasemapDate.value = date;
+    updateBasemap(date);
+  };
+
+
   const updateBasemap = (date) => {
     isLoading.value = true;
     const apiKey = process.env.VUE_APP_PLANET_API_KEY;
@@ -636,6 +642,7 @@ export const useMapStore = defineStore('map', () => {
     updateTrainingLayerStyle,
     setInteractionMode,
     undoLastDraw,
+    setSelectedBasemapDate,
     // Getters
     getMap
   };

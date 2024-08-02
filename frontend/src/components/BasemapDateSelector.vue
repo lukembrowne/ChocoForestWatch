@@ -1,5 +1,6 @@
 <template>
     <div class="basemap-date-selector">
+        <p> Select Basemap date: </p>
       <div v-for="(yearGroup, year) in groupedDates" :key="year" class="year-group">
         <div class="year-label">{{ year }}</div>
         <div class="month-columns">
