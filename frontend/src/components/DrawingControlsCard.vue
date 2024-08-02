@@ -36,7 +36,7 @@ export default {
         const projectStore = useProjectStore()
 
         const drawnPolygons = computed(() => mapStore.drawnPolygons)
-        const selectedBasemapDate = computed(() => mapStore.basemapDate)
+        const selectedBasemapDate = computed(() => mapStore.selectedBasemapDate)
 
         onMounted(async () => {
             window.addEventListener('keydown', handleKeyDown);

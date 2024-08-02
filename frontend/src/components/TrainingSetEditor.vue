@@ -11,8 +11,7 @@
 
     <!-- Basemap date selection -->
     <div class="basemap-selection q-mb-md">
-      <q-select v-model="selectedBasemapDate" :options="basemapDateOptions" label="Select Basemap Date"
-        :rules="[val => !!val || 'Basemap date is required']" @update:model-value="onBasemapDateChange" />
+      <BasemapDateSelector />
     </div>
 
     <q-separator spaced />
@@ -57,13 +56,17 @@ import { useMapStore } from 'src/stores/mapStore'
 import { useQuasar } from 'quasar'
 import LoadTrainingSetDialog from 'components/LoadTrainingSetDialog.vue';
 import api from 'src/services/api';
-import { getBasemapDateOptions } from 'src/utils/dateUtils'
 import { storeToRefs } from 'pinia'
 import apiService from 'src/services/api'
+import BasemapDateSelector from 'components/BasemapDateSelector.vue'
+
 
 
 export default {
   name: 'TrainingComponent',
+  components: {
+    BasemapDateSelector
+  },
   setup() {
     const projectStore = useProjectStore()
     const mapStore = useMapStore()
@@ -72,9 +75,8 @@ export default {
     const { currentProject } = storeToRefs(projectStore)
     const isProjectLoaded = computed(() => !!currentProject.value)
     const drawnPolygons = computed(() => mapStore.drawnPolygons)
+    const selectedBasemapDate = computed(() => mapStore.selectedBasemapDate)
 
-    const basemapDateOptions = computed(() => getBasemapDateOptions())
-    const selectedBasemapDate = computed(() => mapStore.basemapDate)
     const showSaveDialog = ref(false)
     const trainingSetName = ref('')
     const existingTrainingSet = ref(null)
@@ -105,13 +107,6 @@ export default {
         });
       }
     };
-
-
-    const onBasemapDateChange = async (date) => {
-      console.log("Basemap date changed to: ", date)
-      console.log("Updating basemap")
-      mapStore.updateBasemap(date['value'])
-    }
     
     const openSaveDialog = (mode) => {
       if (!selectedBasemapDate.value) {
@@ -172,9 +167,6 @@ export default {
     }
 
     return {
-      basemapDateOptions,
-      selectedBasemapDate,
-      onBasemapDateChange,
       openLoadDialog,
       openSaveDialog,
       showSaveDialog,
@@ -184,7 +176,8 @@ export default {
       trainingSetName,
       isProjectLoaded,
       mapStore,
-      drawnPolygons
+      drawnPolygons,
+      selectedBasemapDate
     }
   }
 }

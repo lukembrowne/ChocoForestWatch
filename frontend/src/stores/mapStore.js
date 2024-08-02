@@ -35,7 +35,7 @@ export const useMapStore = defineStore('map', () => {
   const predictionLayer = ref(null);
   const trainingPolygonsLayer = ref(null);
   const layers = ref([]);
-  const basemapDate = ref(null);
+  const selectedBasemapDate = ref(null);
 
 
   // Internal state
@@ -225,14 +225,14 @@ export const useMapStore = defineStore('map', () => {
     });
 
     // Remove old base layers
-    // map.value.getLayers().getArray()
-    //   .filter(layer => layer.get('id').startsWith('planet-basemap-'))
-    //   .forEach(layer => map.value.removeLayer(layer));
+    map.value.getLayers().getArray()
+      .filter(layer => layer.get('id').startsWith('planet-basemap-'))
+      .forEach(layer => map.value.removeLayer(layer));
 
     // Add the new layer
     map.value.addLayer(newLayer);
 
-    basemapDate.value = date;
+    selectedBasemapDate.value = date;
 
     isLoading.value = false;
   };
@@ -612,7 +612,7 @@ export const useMapStore = defineStore('map', () => {
     layers,
     interactionMode,
     modeIndicator,
-    basemapDate,
+    selectedBasemapDate,
     // Actions
     initMap,
     setAOI,

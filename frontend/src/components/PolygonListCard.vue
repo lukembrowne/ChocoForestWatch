@@ -1,7 +1,7 @@
 <template>
-  <q-card class="polygon-list-card">
+  <q-card v-if="drawnPolygons.length > 0" class="polygon-list-card">
     <q-card-section class="q-pa-sm">
-      <div class="text-h6">Drawn Polygons</div>
+      <div class="text-h6">Training Polygons</div>
         <div class="summary q-gutter-xs">
           <div v-for="(summary, className) in classSummary" :key="className">
             {{ className }}: {{ summary.count }} features, {{ summary.area.toFixed(1) }} ha
