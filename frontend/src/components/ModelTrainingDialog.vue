@@ -40,14 +40,8 @@
         <div class="row q-col-gutter-md">
           <div class="col-12">
             <p>Choose split method:</p>
-            <q-btn-toggle
-              v-model="splitMethod"
-              :options="[
-                {label: 'Pixel-based', value: 'pixel'},
-                {label: 'Feature-based', value: 'feature'}
-              ]"
-              color="primary"
-            />
+            <q-radio v-model="splitMethod" val="feature" label="Feature-based" color="primary" />
+            <q-radio v-model="splitMethod" val="pixel" label="Pixel-based" color="primary" />
             <p class="text-caption q-mt-sm">
               Feature-based split ensures independence between training and testing data by splitting entire polygons.
               Pixel-based split may mix pixels from the same polygon in both training and testing sets.
