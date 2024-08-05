@@ -20,7 +20,7 @@
           <q-step :name="2" title="Select Training Data" icon="dataset" :done="step > 2">
             <p>Select one or more training polygon sets to use for model training:</p>
             <q-table :rows="trainingSets" :columns="columns" row-key="id" selection="multiple"
-              v-model:selected="selectedTrainingSets" :filter="filter">
+              v-model:selected="selectedTrainingSets" :filter="filter" :rows-per-page="10">
               <template v-slot:top-right>
                 <q-input borderless dense debounce="300" v-model="filter" placeholder="Search">
                   <template v-slot:append>

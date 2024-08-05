@@ -76,6 +76,7 @@ export default {
                     trainingSetName.value = selectedSet.name
                     projectStore.setCurrentTrainingSet(selectedSet)  // Update project store
                     mapStore.setSelectedBasemapDate(selectedSet.basemap_date)
+                    
 
                     $q.notify({
                         color: 'positive',

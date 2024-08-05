@@ -9,7 +9,7 @@
                     { label: 'Zoom in (z)', value: 'zoom_in', icon: 'zoom_in' },
                     { label: 'Zoom out (x)', value: 'zoom_out', icon: 'zoom_out' }
                 ]" @update:model-value="setInteractionMode" />
-                <q-btn label="Undo (u)" color="secondary" icon="undo" @click="undoLastDraw"
+                <q-btn label="Undo (Ctrl+Z)" color="secondary" icon="undo" @click="undoLastDraw"
                     :disable="interactionMode !== 'draw'" />
             </div>
         </q-card-section>
@@ -19,7 +19,7 @@
                 :key="className" @update:model-value="setClassLabel" />
         </q-card-section>
 
-       
+
     </q-card>
 </template>
 
@@ -84,18 +84,20 @@ export default {
             if (numKey && numKey > 0 && numKey <= projectStore.projectClasses.length) {
                 selectedClass.value = projectStore.projectClasses[numKey - 1]['name'];
                 mapStore.setClassLabel(selectedClass.value);
+                mapStore.setInteractionMode('draw');
             } else if ((event.key === 'Delete' || event.key === 'Backspace') && mapStore.selectedPolygon !== null) {
                 mapStore.deletePolygon(mapStore.selectedPolygon);
             } else if (event.key === 'm') {
-                mapStore.setInteractionMode(mapStore.interactionMode === 'pan' ? 'draw' : 'pan');
+                mapStore.setInteractionMode('pan');
+            } else if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
+                event.preventDefault(); // Prevent the default undo behavior if necessary
+                mapStore.undoLastDraw();
             } else if (event.key === 'z') {
                 mapStore.setInteractionMode('zoom_in');
             } else if (event.key === 'x') {
                 mapStore.setInteractionMode('zoom_out');
             } else if (event.key === 'd') {
                 mapStore.setInteractionMode('draw');
-            } else if (event.key === 'u') {
-                mapStore.undoLastDraw();
             } else if (event.key == 'Escape') {
                 mapStore.setInteractionMode('pan');
                 mapStore.stopDrawing();

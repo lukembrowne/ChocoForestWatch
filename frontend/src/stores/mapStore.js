@@ -467,8 +467,8 @@ export const useMapStore = defineStore('map', () => {
       strokeColor = '#FF4136';
       strokeWidth = 3;
     } else {
-      color = classObj ? `${classObj.color}4D` : 'rgba(128, 128, 128, 0.3)';  // 4D is for 30% opacity
-      strokeColor = classObj ? classObj.color : '#808080';
+      color = classObj ? `${classObj.color}4D` : 'rgba(128, 128, 128, 0.8)';  // 4D is for 30% opacity
+      strokeColor = 'rgba(0, 0, 0, 0.8)';
       strokeWidth = 2;
     }
 
