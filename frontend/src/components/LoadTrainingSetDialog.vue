@@ -1,5 +1,3 @@
-Updated LoadTrainingSetDialog.vue
-
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide">
     <q-card class="q-dialog-plugin" style="width: 900px; max-width: 90vw;">
@@ -20,6 +18,7 @@ Updated LoadTrainingSetDialog.vue
       </q-card-section>
 
       <q-card-actions align="right">
+        <q-btn flat label="Upload GeoJSON" color="primary" @click="triggerFileUpload" />
         <q-btn flat label="Cancel" color="primary" v-close-popup />
       </q-card-actions>
     </q-card>
@@ -40,6 +39,8 @@ Updated LoadTrainingSetDialog.vue
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <input type="file" ref="fileInput" style="display: none" accept=".geojson,application/geo+json" @change="handleFileUpload" />
 </template>
 
 <script>
@@ -47,7 +48,7 @@ import { ref, onMounted } from 'vue';
 import { useDialogPluginComponent, useQuasar } from 'quasar';
 import api from 'src/services/api';
 import { useProjectStore } from 'src/stores/projectStore'
-
+import { useMapStore } from 'src/stores/mapStore'
 
 export default {
   name: 'LoadTrainingSetDialog',
@@ -57,11 +58,13 @@ export default {
     const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent();
     const trainingSets = ref([]);
     const projectStore = useProjectStore()
+    const mapStore = useMapStore()
     const $q = useQuasar();
 
     const renameDialog = ref(false);
     const newName = ref('');
     const trainingSetToRename = ref(null);
+    const fileInput = ref(null);
 
     const columns = [
       { name: 'actions', align: 'center', label: 'Actions' },
@@ -85,6 +88,7 @@ export default {
       newName.value = row.name;
       renameDialog.value = true;
     };
+
     const renameTrainingSet = async () => {
       try {
         await api.updateTrainingPolygons({
@@ -141,6 +145,13 @@ export default {
       try {
         const response = await api.getSpecificTrainingPolygons(projectStore.currentProject.id, row.id);
         const geoJsonData = response.data;
+        
+        // Add metadata to the GeoJSON
+        geoJsonData.metadata = {
+          basemap_date: row.basemap_date,
+          name: row.name
+        };
+        
         const blob = new Blob([JSON.stringify(geoJsonData)], { type: 'application/json' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
@@ -162,6 +173,50 @@ export default {
       }
     };
 
+    const triggerFileUpload = () => {
+      fileInput.value.click();
+    };
+
+    const handleFileUpload = (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const geoJsonData = JSON.parse(e.target.result);
+          const metadata = geoJsonData.metadata || {};
+          
+          const data = {
+            project_id: projectStore.currentProject.id,
+            basemap_date: metadata.basemap_date || mapStore.selectedBasemapDate,
+            polygons: geoJsonData,
+            name: metadata.name || file.name.replace('.geojson', '')
+          };
+
+          await api.saveTrainingPolygons(data);
+          
+          $q.notify({
+            color: 'positive',
+            message: 'Training set uploaded and saved successfully',
+            icon: 'check'
+          });
+          
+          // Refresh the training sets list
+          const response = await api.getTrainingPolygons(projectStore.currentProject.id);
+          trainingSets.value = response.data;
+        } catch (error) {
+          console.error('Error uploading and saving training set:', error);
+          $q.notify({
+            color: 'negative',
+            message: 'Failed to upload and save training set',
+            icon: 'error'
+          });
+        }
+      };
+      reader.readAsText(file);
+    };
+
     return {
       dialogRef,
       onDialogHide,
@@ -175,7 +230,10 @@ export default {
       openRenameDialog,
       renameTrainingSet,
       confirmDelete,
-      saveToFile
+      saveToFile,
+      triggerFileUpload,
+      handleFileUpload,
+      fileInput
     };
   },
 };

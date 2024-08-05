@@ -52,10 +52,10 @@
     <div v-if="analysisResults" class="q-mt-md">
       <h3 class="text-h6">Analysis Results</h3>
       <div class="row">
-        <div class="col-md-8 col-sm-12">
+        <div class="col-md-12 col-sm-12">
           <Bar v-if="chartData.datasets.length > 0" :data="chartData" :options="chartOptions" style="height: 400px;" />
         </div>
-        <div class="col-md-4 col-sm-12">
+        <div class="col-md-12 col-sm-12">
           <q-list bordered separator>
             <q-item v-for="(value, key) in analysisResults.class_statistics" :key="key">
               <q-item-section>

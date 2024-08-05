@@ -67,9 +67,6 @@ export default {
         const openLoadDialog = () => {
             $q.dialog({
                 component: LoadTrainingSetDialog,
-                componentProps: {
-                    projectId: projectId.value
-                }
             }).onOk(async (selectedSet) => {
                 try {
                     const response = await api.getSpecificTrainingPolygons(projectId.value, selectedSet.id)
