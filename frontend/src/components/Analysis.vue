@@ -4,7 +4,7 @@
     <q-btn label="Perform Analysis" color="primary" @click="openAnalysisDialog" />
 
     <q-dialog v-model="showAnalysisDialog" persistent>
-      <q-card style="width: 700px; max-width: 80vw;">
+      <q-card style="width: 900px; max-width: 90vw;">
         <q-card-section>
           <div class="text-h6">Select Predictions for Analysis</div>
         </q-card-section>
@@ -112,9 +112,9 @@ export default {
     const predictionColumns = [
       { name: 'name', required: true, label: 'Name', align: 'left', field: row => row.name, sortable: true },
       { name: 'actions', align: 'center', label: 'Actions' },
-      { name: 'date', align: 'left', label: 'Date', field: 'basemap_date', sortable: true },
-      { name: 'model', align: 'left', label: 'Model', field: row => row.model, sortable: true },
-
+      { name: 'model_name', align: 'left', label: 'Model', field: 'model_name', sortable: true },
+      { name: 'basemap_date', align: 'left', label: 'Basemap Date', field: 'basemap_date', sortable: true },
+      { name: 'created_at', align: 'left', label: 'Created At', field: 'created_at', sortable: true },
     ]
 
     const isSelectionValid = computed(() => {

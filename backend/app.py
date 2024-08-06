@@ -510,6 +510,7 @@ def get_predictions(project_id):
         'id': p.id,
         'project_id': p.project_id,
         'model_id': p.model_id,
+        'model_name': TrainedModel.query.get(p.model_id).name, 
         'name': p.name,
         'basemap_date': p.basemap_date,
         'created_at': p.created_at.isoformat(),

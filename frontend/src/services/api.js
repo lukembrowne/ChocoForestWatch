@@ -142,8 +142,13 @@ export default {
 
 
   async getPredictions(projectId) {
-    const response = await axios.get(`${API_URL}/predictions/${projectId}`);
-    return response.data;
+    try {
+      const response = await axios.get(`${API_URL}/predictions/${projectId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching predictions:', error);
+      throw error;
+    }
   },
 
   async getPrediction(predictionId) {
