@@ -133,6 +133,7 @@ export const useMapStore = defineStore('map', () => {
         title: layer.get('title'),
         visible: layer.getVisible(),
         opacity: layer.getOpacity(),
+        showOpacity: false, 
         layer: layer
       }));
     }
@@ -184,8 +185,6 @@ export const useMapStore = defineStore('map', () => {
 
   const displayAOI = (aoiGeojson) => {
 
-    console.log("Displaying AOI from within MapStore...");
-
     if (!map.value) return;
 
     // Remove existing AOI layer if it exists
@@ -213,7 +212,8 @@ export const useMapStore = defineStore('map', () => {
           color: '#000000',
           width: 2
         })
-      })
+      }),
+      selectable: false
     });
 
     // Add new AOI layer to map
