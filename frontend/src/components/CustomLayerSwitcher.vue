@@ -1,6 +1,26 @@
 <template>
     <div class="custom-layer-switcher">
-        <p class="text-subtitle2 q-mb-sm">Layers</p>
+      <div class="basemap-selector q-mb-md">
+        <q-select
+          v-model="selectedBasemapDate"
+          :options="basemapOptions"
+          label="Select Planet Basemap Date"
+          dense
+          options-dense
+          @update:model-value="onBasemapDateChange"
+        >
+          <template v-slot:option="scope">
+            <q-item v-bind="scope.itemProps">
+              <q-item-section>
+                <q-item-label>{{ scope.opt.label }}</q-item-label>
+                <q-item-label caption>{{ scope.opt.value }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
+      </div>
+  
+      <p class="text-subtitle2 q-mb-sm">Layers</p>
         <div v-for="layer in mapStore.layers" :key="layer.id" class="layer-item q-mb-xs">
             <div class="row items-center no-wrap">
                 <q-checkbox v-model="layer.visible" :label="layer.title"
@@ -24,36 +44,85 @@
             </q-slide-transition>
         </div>
     </div>
-</template>
-
-<script>
-import { ref, onMounted, watch } from 'vue';
-import { useMapStore } from 'src/stores/mapStore';
-
-export default {
+  </template>
+  
+  <script>
+  import { ref, computed, onMounted, onUnmounted } from 'vue';
+  import { useMapStore } from 'src/stores/mapStore';
+  import { getBasemapDateOptions } from 'src/utils/dateUtils';
+  import { storeToRefs } from 'pinia'
+  
+  export default {
     name: 'CustomLayerSwitcher',
     setup() {
-        const mapStore = useMapStore();
+      const mapStore = useMapStore();
+      const { selectedBasemapDate } = storeToRefs(mapStore)
+      const basemapOptions = computed(() => {
+        return getBasemapDateOptions().map(option => ({
+          label: option.label,
+          value: option.value
+        }));
+      });
+  
+      const toggleLayerVisibility = (layerId) => {
+        mapStore.toggleLayerVisibility(layerId);
+      };
+  
+      const updateLayerOpacity = (layerId, opacity) => {
+        mapStore.updateLayerOpacity(layerId, opacity);
+      };
+  
+      const onBasemapDateChange = (date) => {
+        console.log("Basemap date changed to: ", date);
+        mapStore.updateBasemap(date['value']);
+      };
 
-        const toggleLayerVisibility = (layerId) => {
-            mapStore.toggleLayerVisibility(layerId);
-        };
+      const handleKeyDown = (event) => {
+        const currentIndex = basemapOptions.value.findIndex(option => option.value === selectedBasemapDate.value)
+        let newIndex
+  
+        if (event.key === 'ArrowUp') {
+          newIndex = (currentIndex - 1 + basemapOptions.value.length) % basemapOptions.value.length
+        } else if (event.key === 'ArrowDown') {
+          newIndex = (currentIndex + 1) % basemapOptions.value.length
+        } else {
+          return
+        }
+  
+        mapStore.updateBasemap(basemapOptions.value[newIndex].value)
+      }
+  
+      onMounted(() => {
+        if (basemapOptions.value.length > 0) {
+          selectedBasemapDate.value = basemapOptions.value[0].value;
 
-        const updateLayerOpacity = (layerId, opacity) => {
-            mapStore.updateLayerOpacity(layerId, opacity);
-        };
+          if(mapStore.mapInitialized) {
+            onBasemapDateChange(selectedBasemapDate.value);
+          }
+        }
+        
+        window.addEventListener('keydown', handleKeyDown)
 
-        return {
-            mapStore,
-            toggleLayerVisibility,
-            updateLayerOpacity
-        };
+      });
+
+      onUnmounted(() => {
+        window.removeEventListener('keydown', handleKeyDown)
+      })
+  
+      return {
+        mapStore,
+        selectedBasemapDate,
+        basemapOptions,
+        toggleLayerVisibility,
+        updateLayerOpacity,
+        onBasemapDateChange
+      };
     }
-};
-</script>
-
-<style lang="scss" scoped>
-.custom-layer-switcher {
+  };
+  </script>
+  
+  <style lang="scss" scoped>
+  .custom-layer-switcher {
     position: absolute;
     top: 10px;
     left: 10px;
@@ -62,10 +131,17 @@ export default {
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
     z-index: 1000;
-    max-width: 250px;
-}
+    max-width: 300px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  
+  .layer-list {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
 
-.layer-item {
+  .layer-item {
     border-bottom: 1px solid #e0e0e0;
     padding-bottom: 4px;
 
@@ -74,7 +150,7 @@ export default {
     }
 }
 
-.opacity-slider {
+  .opacity-slider {
     padding-left: 28px; // Align with checkbox label
 }
-</style>
+  </style>

@@ -7,7 +7,6 @@
 
     <!-- Basemap date selection -->
     <div class="basemap-selection q-mb-md">
-      <BasemapDateSelector />
     </div>
 
     <q-separator spaced />
@@ -16,7 +15,6 @@
 </template>
 
 <script>
-import BasemapDateSelector from 'components/BasemapDateSelector.vue'
 import TrainingSetManager from 'components/TrainingSetManager.vue'
 
 
@@ -24,7 +22,6 @@ import TrainingSetManager from 'components/TrainingSetManager.vue'
 export default {
   name: 'TrainingComponent',
   components: {
-    BasemapDateSelector,
     TrainingSetManager
   },
   setup() {
