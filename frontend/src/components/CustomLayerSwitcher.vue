@@ -4,6 +4,17 @@
         <div v-for="layer in mapStore.layers" :key="layer.id" class="layer-item">
             <q-checkbox v-model="layer.visible" :label="layer.title"
                 @update:model-value="toggleLayerVisibility(layer.id)" />
+            <q-slider
+                v-model="layer.opacity"
+                :min="0"
+                :max="1"
+                :step="0.1"
+                label
+                label-always
+                color="primary"
+                @update:model-value="updateLayerOpacity(layer.id, $event)"
+                class="q-mt-xs"
+            />
         </div>
     </div>
 </template>
@@ -21,9 +32,14 @@ export default {
             mapStore.toggleLayerVisibility(layerId);
         };
 
+        const updateLayerOpacity = (layerId, opacity) => {
+            mapStore.updateLayerOpacity(layerId, opacity);
+        };
+
         return {
             mapStore,
-            toggleLayerVisibility
+            toggleLayerVisibility,
+            updateLayerOpacity
         };
     }
 };

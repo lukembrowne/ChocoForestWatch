@@ -80,8 +80,8 @@ export default {
       { name: 'Training data', icon: 'school', component: TrainingComponent, tooltip: 'Create training data' },
       { name: 'Fit model', icon: 'model_training', component: null, tooltip: 'Train a new model' },
       { name: 'Model evaluation', icon: 'assessment', component: null, tooltip: 'Evaluate trained models' },
-      { name: 'prediction', icon: 'preview', component: null, tooltip: 'Make a prediction' },  // New section
-      { name: 'analysis', icon: 'analytics', component: AnalysisComponent, tooltip: 'Analyze results' }
+      { name: 'Predict land cover', icon: 'preview', component: null, tooltip: 'Make a prediction' },  // New section
+      { name: 'Analyze land cover', icon: 'analytics', component: AnalysisComponent, tooltip: 'Analyze results' }
     ]
 
     const toggleSection = (sectionName) => {
@@ -92,7 +92,7 @@ export default {
         openProjectDialog()
       } else if (sectionName === 'Fit model') {
         openModelTrainingDialog()
-      } else if (sectionName === 'prediction') {
+      } else if (sectionName === 'Predict land cover') {
         openPredictionDialog()  // New handler
       } else {
         isExpanded.value = true
@@ -102,7 +102,7 @@ export default {
       if (sectionName === 'Training data') {
         showDrawingControls.value = true
         showPolygonList.value = true
-        
+
       } else {
         showDrawingControls.value = false
         showPolygonList.value = false
@@ -124,7 +124,7 @@ export default {
       // openProjectDialog()
 
 
-       // Load default project and map date to make things easier
+      // Load default project and map date to make things easier
       console.log('Loading default project...')
       mapStore.initMap('map')
       currentSection.value = 'training'
@@ -186,7 +186,7 @@ export default {
 
       await projectStore.loadProject(project.id)
 
-      
+
       if (project.isNew !== undefined || !projectStore.currentProject.aoi) {
         showAOICard.value = true
         currentSection.value = null
@@ -230,8 +230,10 @@ export default {
 <style scoped>
 .map-container {
   position: absolute;
-  top: 0; /* Adjust based on your header height */
-  left: 0px; /* Width of the drawer */
+  top: 0;
+  /* Adjust based on your header height */
+  left: 0px;
+  /* Width of the drawer */
   right: 0;
   bottom: 0;
 }

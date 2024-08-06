@@ -112,12 +112,27 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
+  const updateLayerOpacity = (layerId, opacity) => {
+    if (map.value) {
+      const layer = map.value.getLayers().getArray().find(layer => layer.get('id') === layerId);
+      if (layer) {
+        layer.setOpacity(opacity);
+        // Update the layers array to reflect the new opacity
+        const layerIndex = layers.value.findIndex(l => l.id === layerId);
+        if (layerIndex !== -1) {
+          layers.value[layerIndex].opacity = opacity;
+        }
+      }
+    }
+  };
+
   const updateLayers = () => {
     if (map.value) {
       layers.value = map.value.getLayers().getArray().map(layer => ({
         id: layer.get('id'),
         title: layer.get('title'),
         visible: layer.getVisible(),
+        opacity: layer.getOpacity(),
         layer: layer
       }));
     }
@@ -128,10 +143,22 @@ export const useMapStore = defineStore('map', () => {
       const layerToRemove = map.value.getLayers().getArray().find(layer => layer.get('id') === layerId);
       if (layerToRemove) {
         map.value.removeLayer(layerToRemove);
-        // updateLayers will be called automatically due to the event listener
+        updateLayers();
       }
     }
   };
+
+  const clearPredictionLayers = () => {
+    if (map.value) {
+      const layersToRemove = map.value.getLayers().getArray().filter(layer => {
+        const layerId = layer.get('id');
+        return layerId && layerId.startsWith('prediction-');
+      });
+      layersToRemove.forEach(layer => map.value.removeLayer(layer));
+      updateLayers();
+    }
+  };
+
 
   const toggleLayerVisibility = (layerId) => {
     const layer = layers.value.find(l => l.id === layerId);
@@ -245,7 +272,7 @@ export const useMapStore = defineStore('map', () => {
 
 
 
-  const displayPrediction = async (predictionFilePath) => {
+  const displayPrediction = async (predictionFilePath, layerId, layerName) => {
     console.log('Displaying prediction:', predictionFilePath);
     try {
       const url = `http://127.0.0.1:5000/${predictionFilePath}`;
@@ -285,27 +312,23 @@ export const useMapStore = defineStore('map', () => {
       const imageUrl = canvas.toDataURL();
       const extent = bbox;
 
-      if (predictionLayer.value) {
-        map.value.removeLayer(predictionLayer.value);
-      }
-
-      predictionLayer.value = new ImageLayer({
+      const newLayer = new ImageLayer({
         source: new ImageStatic({
           url: imageUrl,
           imageExtent: extent,
         }),
-        title: 'Prediction Layer',
-        id: 'prediction-layer',
+        title: layerName,
+        id: layerId,
         visible: true,
         zIndex: 1,
         opacity: 0.7
       });
 
-
-      map.value.addLayer(predictionLayer.value);
+      map.value.addLayer(newLayer);
+      updateLayers();
     } catch (error) {
       console.error('Error displaying prediction:', error);
-      error.value = 'Failed to display prediction: ' + error.message;
+      throw new Error('Failed to display prediction: ' + error.message);
     }
   };
 
@@ -319,6 +342,7 @@ export const useMapStore = defineStore('map', () => {
     } : null;
   };
 
+  
 
   const initTrainingLayer = () => {
     if (!map.value) return;
@@ -643,6 +667,8 @@ export const useMapStore = defineStore('map', () => {
     setInteractionMode,
     undoLastDraw,
     setSelectedBasemapDate,
+    clearPredictionLayers,
+    updateLayerOpacity,
     // Getters
     getMap
   };

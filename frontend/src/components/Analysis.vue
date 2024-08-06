@@ -84,6 +84,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
+import { useMapStore } from 'src/stores/mapStore'
 import api from 'src/services/api'
 import { Bar } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
@@ -98,6 +99,7 @@ export default {
   setup() {
     const $q = useQuasar()
     const projectStore = useProjectStore()
+    const mapStore = useMapStore()
     const showAnalysisDialog = ref(false)
     const predictions = ref([])
     const selectedPredictions = ref([])
@@ -143,13 +145,39 @@ export default {
 
     const performAnalysis = async () => {
       try {
+        // Clear existing prediction layers
+        mapStore.clearPredictionLayers()
+
+        // Load selected predictions onto the map
+        for (const prediction of selectedPredictions.value) {
+          try {
+            const predictionData = await api.getPrediction(prediction.id)
+            await mapStore.displayPrediction(predictionData.file_path, `prediction-${prediction.id}`, prediction.name)
+          } catch (error) {
+            console.error(`Error loading prediction ${prediction.id}:`, error)
+            $q.notify({
+              color: 'negative',
+              message: `Failed to load prediction ${prediction.name}`,
+              icon: 'error'
+            })
+          }
+        }
+
+        // Perform the analysis
         if (selectedPredictions.value.length === 1) {
           analysisResults.value = await api.getSummaryStatistics(selectedPredictions.value[0].id)
         } else if (selectedPredictions.value.length === 2) {
           analysisResults.value = await api.getChangeAnalysis(selectedPredictions.value[0].id, selectedPredictions.value[1].id)
         } else if (selectedPredictions.value.length > 2) {
           console.error('Invalid number of predictions selected')
+          $q.notify({
+            color: 'negative',
+            message: 'Please select either one or two predictions for analysis',
+            icon: 'error'
+          })
+          return
         }
+
         showAnalysisDialog.value = false
       } catch (error) {
         console.error('Error performing analysis:', error)
