@@ -5,7 +5,7 @@
         <q-toolbar-title>Choco Forest Watch</q-toolbar-title>
         <div class="row items-center no-wrap">
           <q-btn v-for="section in sections" :key="section.name" flat square :icon="section.icon" :label="section.name"
-            @click="toggleSection(section.name)">
+            @click="handleSectionClick(section)">
             <q-tooltip>{{ section.tooltip }}</q-tooltip>
           </q-btn>
         </div>
@@ -16,7 +16,6 @@
       <div class="q-pa-md">
         <component :is="currentSectionComponent" @close="leftDrawerOpen = false" />
       </div>
-
     </q-drawer>
 
     <q-page-container>
@@ -31,6 +30,7 @@
   </q-layout>
 </template>
 
+
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
@@ -38,25 +38,22 @@ import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
 import ProjectSelectionDialog from 'components/ProjectSelectionDialog.vue'
 import TrainingComponent from 'components/TrainingSetEditor.vue'
-import AnalysisComponent from 'components/Analysis.vue'
+import PredictAnalyzeComponent from 'components/PredictAnalyzeComponent.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import ModelEvaluationDialog from 'components/ModelEvaluationDialog.vue'
 import ModelTrainingDialog from 'components/ModelTrainingDialog.vue'
-import PredictionDialog from 'components/PredictionDialog.vue'
 import AOIFloatingCard from 'components/AOIFloatingCard.vue'
 import DrawingControlsCard from 'components/DrawingControlsCard.vue'
 import PolygonListCard from 'components/PolygonListCard.vue'
-
 
 export default {
   name: 'MainLayout',
   components: {
     TrainingComponent,
     ModelTrainingDialog,
-    AnalysisComponent,
+    PredictAnalyzeComponent,
     CustomLayerSwitcher,
     ModelEvaluationDialog,
-    PredictionDialog,
     AOIFloatingCard,
     DrawingControlsCard,
     PolygonListCard
@@ -73,36 +70,31 @@ export default {
     const showDrawingControls = ref(false)
     const showPolygonList = ref(false)
 
-
-
     const sections = [
       { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
       { name: 'Training data', icon: 'school', component: TrainingComponent, tooltip: 'Create training data' },
       { name: 'Fit model', icon: 'model_training', component: null, tooltip: 'Train a new model' },
       { name: 'Model evaluation', icon: 'assessment', component: null, tooltip: 'Evaluate trained models' },
-      { name: 'Predict land cover', icon: 'preview', component: null, tooltip: 'Make a prediction' },  // New section
-      { name: 'Analyze land cover', icon: 'analytics', component: AnalysisComponent, tooltip: 'Analyze results' }
+      { name: 'Predict & Analyze', icon: 'analytics', component: null, tooltip: 'Predict and analyze land cover' }
     ]
 
-    const toggleSection = (sectionName) => {
-
-      if (sectionName === 'Model evaluation') {
+    const handleSectionClick = (section) => {
+      if (section.name === 'Model evaluation') {
         openModelEvaluationDialog()
-      } else if (sectionName === 'projects') {
+      } else if (section.name === 'projects') {
         openProjectDialog()
-      } else if (sectionName === 'Fit model') {
+      } else if (section.name === 'Fit model') {
         openModelTrainingDialog()
-      } else if (sectionName === 'Predict land cover') {
-        openPredictionDialog()  // New handler
+      } else if (section.name === 'Predict & Analyze') {
+        openPredictAnalyzeDialog()
       } else {
-        isExpanded.value = true
-        currentSection.value = sectionName
+        leftDrawerOpen.value = true
+        currentSection.value = section.name
       }
 
-      if (sectionName === 'Training data') {
+      if (section.name === 'Training data') {
         showDrawingControls.value = true
         showPolygonList.value = true
-
       } else {
         showDrawingControls.value = false
         showPolygonList.value = false
@@ -171,12 +163,16 @@ export default {
       })
     }
 
-    const openPredictionDialog = () => {
+    const openPredictAnalyzeDialog = () => {
       $q.dialog({
-        component: PredictionDialog
+        component: PredictAnalyzeComponent,
+        // You can pass props here if needed
+        // props: {
+        //   someProp: someValue
+        // }
       }).onOk((result) => {
-        console.log('Prediction completed:', result)
-        // You might want to trigger the display of the prediction on the map here
+        // Handle any result if needed
+        console.log('Predict and Analyze completed:', result)
       })
     }
 
@@ -212,7 +208,6 @@ export default {
       isExpanded,
       currentSection,
       sections,
-      toggleSection,
       sidebarWidth,
       currentSectionComponent,
       currentProject,
@@ -221,7 +216,10 @@ export default {
       leftDrawerOpen,
       showAOICard,
       showDrawingControls,
-      showPolygonList
+      showPolygonList,
+      openModelEvaluationDialog,
+      handleSectionClick,
+      openPredictAnalyzeDialog
     }
   }
 }

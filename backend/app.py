@@ -40,6 +40,7 @@ import rasterio
 from rasterio.warp import transform_bounds
 from shapely import geometry
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
+import uuid
 
 
 # Load environment variables from the .env file
@@ -1199,7 +1200,8 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
     merged_meta.update(count=1)
 
     # Create the final output file
-    output_file = f"./predictions/landcover_prediction_project{project_id}_{basemap_date}.tif"
+    unique_id = uuid.uuid4().hex
+    output_file = f"./predictions/landcover_prediction_project{project_id}_{basemap_date}_{unique_id}.tif"
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
     # Write the clipped raster
