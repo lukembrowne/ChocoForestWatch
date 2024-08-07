@@ -136,7 +136,7 @@ export const useMapStore = defineStore('map', () => {
         title: layer.get('title'),
         visible: layer.getVisible(),
         opacity: layer.getOpacity(),
-        showOpacity: false, 
+        showOpacity: false,
         layer: layer
       }));
     }
@@ -241,7 +241,6 @@ export const useMapStore = defineStore('map', () => {
       return;
     }
 
-    console.log("Updating basemap for date: ", date);
     const newSource = new XYZ({
       url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
     });
@@ -339,7 +338,7 @@ export const useMapStore = defineStore('map', () => {
     } : null;
   };
 
-  
+
 
   const initTrainingLayer = () => {
     if (!map.value) return;
@@ -427,6 +426,10 @@ export const useMapStore = defineStore('map', () => {
       const feature = event.feature;
       feature.set('classLabel', selectedClass.value);
       feature.setId(Date.now().toString()); // Generate a unique ID
+
+      // Explicitly add the feature to the layer's source
+      trainingPolygonsLayer.value.getSource().addFeature(feature);
+
       const newPolygon = new GeoJSON().writeFeatureObject(feature, {
         dataProjection: 'EPSG:3857',
         featureProjection: 'EPSG:3857'
@@ -434,6 +437,7 @@ export const useMapStore = defineStore('map', () => {
       drawnPolygons.value.push(newPolygon);
       updateTrainingLayerStyle();
       console.log("Drawn polygons: ", drawnPolygons.value)
+      console.log("Features from trainingPolygonsLayer: ", trainingPolygonsLayer.value.getSource().getFeatures())
     });
     map.value.addInteraction(drawInteraction.value);
   };
@@ -506,6 +510,8 @@ export const useMapStore = defineStore('map', () => {
     if (!trainingPolygonsLayer.value) return null;
 
     const features = trainingPolygonsLayer.value.getSource().getFeatures();
+    console.log("Features from trainingPolygonsLayer: ", features)
+
     const geoJSONFormat = new GeoJSON();
     const featureCollection = {
       type: 'FeatureCollection',
@@ -622,7 +628,6 @@ export const useMapStore = defineStore('map', () => {
 
   const initializeBasemapDates = async () => {
     availableDates.value = getBasemapDateOptions().map(option => option.value);
-    console.log("Available dates: ", availableDates.value)
     if (availableDates.value.length > 0) {
       await setSelectedBasemapDate(availableDates.value[0]);
     }
@@ -654,11 +659,8 @@ export const useMapStore = defineStore('map', () => {
       const response = await api.getTrainingPolygons(projectStore.currentProject.id);
       console.log(response.data)
       const trainingSet = response.data.find(set => set.basemap_date === date);
-      console.log("Training set for date: ", trainingSet)
       if (trainingSet) {
-        console.log("Training set found for date: ", trainingSet)
         const polygons = await api.getSpecificTrainingPolygons(projectStore.currentProject.id, trainingSet.id);
-        console.log("Polygons: ", polygons)
         loadPolygons(polygons.data);
       } else {
         clearDrawnPolygons();
@@ -670,17 +672,35 @@ export const useMapStore = defineStore('map', () => {
   };
 
   const saveCurrentTrainingPolygons = async () => {
+    const projectStore = useProjectStore();
     const polygons = getDrawnPolygonsGeoJSON();
     try {
-      await api.saveTrainingPolygons({
-        project_id: projectStore.currentProject.id,
-        basemap_date: selectedBasemapDate.value,
-        polygons: polygons,
-        name: `Training_Set_${selectedBasemapDate.value}` // Auto-generated name
-      });
+      // First, check if a training set for this date already exists
+      const response = await api.getTrainingPolygons(projectStore.currentProject.id);
+      const existingSet = response.data.find(set => set.basemap_date === selectedBasemapDate.value);
+
+      if (existingSet) {
+        // Update existing training set
+        await api.updateTrainingPolygons({
+          project_id: projectStore.currentProject.id,
+          id: existingSet.id,
+          basemap_date: selectedBasemapDate.value,
+          polygons: polygons,
+          name: `Training_Set_${selectedBasemapDate.value}`
+        });
+      } else {
+        // Create new training set
+        await api.saveTrainingPolygons({
+          project_id: projectStore.currentProject.id,
+          basemap_date: selectedBasemapDate.value,
+          polygons: polygons,
+          name: `Training_Set_${selectedBasemapDate.value}`
+        });
+      }
     } catch (error) {
       console.error('Error saving training polygons:', error);
       // Handle error (e.g., show notification to user)
+      throw error; // Rethrow the error so it can be caught in the component
     }
   };
 
