@@ -96,6 +96,7 @@ export default {
       // // Standard loading sequence
       // // Initialize map
       // mapStore.initMap('map')
+      //mapStore.initializeBasemapDates()
 
       // // // Open project dialogue to have user select or create new project
       // openProjectDialog()
@@ -109,6 +110,8 @@ export default {
       setTimeout(() => {
         projectStore.loadProject(29)
       }, 1000)
+
+      mapStore.initializeBasemapDates()
 
       setTimeout(() => {
         mapStore.updateBasemap('2022-08')

@@ -3,45 +3,16 @@
         <q-card class="manager-card">
             <q-card-section>
                 <div class="text-h6">Training Set Manager</div>
-                <div v-if="!currentTrainingSet">
-                    <q-btn label="Load Training Set" @click="openLoadDialog" color="primary"
-                        class="q-mb-sm full-width" />
-                    <q-btn label="Save New Training Set" @click="openSaveDialog('new')" color="secondary"
-                        class="full-width" />
-                </div>
-                <div v-else>
-                    <div class="text-h6 q-mb-sm">Current Training Set: {{ currentTrainingSet.name }}</div>
+                <div class="text-subtitle1">Current Date: {{ selectedBasemapDate }}</div>
 
-                    <q-btn label="Save Changes" color="positive" @click="openSaveDialog('update')"
-                        class="q-mb-sm full-width" :disable="!selectedBasemapDate" />
-                    <q-btn label="Save As New" color="secondary" @click="openSaveDialog('new')"
-                        :disable="!selectedBasemapDate" class="q-mb-sm full-width" />
-                    <q-btn label="Load Different Set" @click="openLoadDialog" color="primary"
-                        class="q-mb-sm full-width" />
+                <q-btn-group spread>
+                    <q-btn label="Previous Date" icon="chevron_left" @click="moveToPreviousDate"
+                        :disable="isFirstDate" />
+                    <q-btn label="Next Date" icon="chevron_right" @click="moveToNextDate" :disable="isLastDate" />
+                </q-btn-group>
 
-                </div>
-
-
-                <!-- Save/Update Dialog -->
-                <q-dialog v-model="showSaveDialog">
-                    <q-card style="min-width: 350px">
-                        <q-card-section>
-                            <div class="text-h6">{{ saveMode === 'update' ? 'Update' : 'Save' }} Training Set</div>
-                        </q-card-section>
-
-                        <q-card-section>
-                            <q-input v-model="trainingSetName" label="Training Set Name"
-                                :rules="[val => !!val || 'Name is required']" />
-                        </q-card-section>
-
-                        <q-card-actions align="right">
-                            <q-btn flat label="Cancel" color="primary" v-close-popup />
-                            <q-btn flat :label="saveMode === 'update' ? 'Update' : 'Save'" color="primary"
-                                @click="saveOrUpdateTrainingSet" />
-                        </q-card-actions>
-                    </q-card>
-                </q-dialog>
-
+                <q-btn label="Save and Move to Next Period" @click="saveAndMoveNext" color="primary"
+                    class="q-mt-md full-width" />
             </q-card-section>
 
             <q-separator />
@@ -91,9 +62,6 @@ import { useProjectStore } from 'src/stores/projectStore'
 import { getArea } from 'ol/sphere'
 import { GeoJSON } from 'ol/format'
 import { useQuasar } from 'quasar'
-import api from 'src/services/api'
-import LoadTrainingSetDialog from './LoadTrainingSetDialog.vue'
-import apiService from 'src/services/api'
 
 export default {
     name: 'TrainingAndPolygonManager',
@@ -101,106 +69,40 @@ export default {
         const mapStore = useMapStore()
         const projectStore = useProjectStore()
         const $q = useQuasar()
-        const currentTrainingSet = ref(null)
         const selectedBasemapDate = computed(() => mapStore.selectedBasemapDate)
-        
-        const projectId = computed(() => projectStore.currentProject?.id)
-        const showSaveDialog = ref(false)
-        const trainingSetName = ref('')
-        const existingTrainingSet = ref(null)
-        const saveMode = ref('new')
         const drawnPolygons = computed(() => mapStore.drawnPolygons)
-        
+        const isFirstDate = computed(() => {
+            return mapStore.availableDates.indexOf(selectedBasemapDate.value) === 0
+        })
+        const isLastDate = computed(() => {
+            return mapStore.availableDates.indexOf(selectedBasemapDate.value) === mapStore.availableDates.length - 1
+        })
 
-        // Loading and saving training set functions
-        const openLoadDialog = () => {
-            $q.dialog({
-                component: LoadTrainingSetDialog,
-            }).onOk(async (selectedSet) => {
-                try {
-                    const response = await api.getSpecificTrainingPolygons(projectId.value, selectedSet.id)
-                    currentTrainingSet.value = selectedSet
-                    mapStore.loadPolygons(response.data)
-                    existingTrainingSet.value = selectedSet
-                    trainingSetName.value = selectedSet.name
-                    projectStore.setCurrentTrainingSet(selectedSet)  // Update project store
-                    mapStore.setSelectedBasemapDate(selectedSet.basemap_date)
-                    
-
-                    $q.notify({
-                        color: 'positive',
-                        message: 'Training set loaded successfully',
-                        icon: 'check'
-                    })
-                } catch (error) {
-                    console.error('Error loading training set:', error)
-                    $q.notify({
-                        color: 'negative',
-                        message: 'Failed to load training set',
-                        icon: 'error'
-                    })
-                }
-            })
+        const moveToPreviousDate = async () => {
+            await mapStore.moveToPreviousDate()
         }
 
-        const openSaveDialog = (mode) => {
-            if (!selectedBasemapDate.value) {
-                $q.notify({
-                    color: 'negative',
-                    message: 'Please select a basemap date first',
-                    icon: 'error'
-                })
-                return
-            }
-            saveMode.value = mode
-            if (mode === 'new') {
-                trainingSetName.value = existingTrainingSet.value ? `Copy of ${existingTrainingSet.value.name}` : ''
-            }
-            showSaveDialog.value = true
+        const moveToNextDate = async () => {
+            await mapStore.moveToNextDate()
         }
 
-        const saveOrUpdateTrainingSet = async () => {
-            if (!trainingSetName.value) {
-                $q.notify({
-                    color: 'negative',
-                    message: 'Please enter a name for the training set',
-                    icon: 'error'
-                })
-                return
-            }
-
+        const saveAndMoveNext = async () => {
             try {
-                const data = {
-                    project_id: projectStore.currentProject.id,
-                    basemap_date: selectedBasemapDate.value,
-                    polygons: mapStore.getDrawnPolygonsGeoJSON(),
-                    name: trainingSetName.value
-                }
-
-                if (saveMode.value === 'update' && existingTrainingSet.value) {
-                    data.id = existingTrainingSet.value.id
-                    await apiService.updateTrainingPolygons(data)
-                } else {
-                    await apiService.saveTrainingPolygons(data)
-                }
-
-                showSaveDialog.value = false
+                await mapStore.saveCurrentTrainingPolygons()
+                await mapStore.moveToNextDate()
                 $q.notify({
                     color: 'positive',
-                    message: `Training data ${saveMode.value === 'update' ? 'updated' : 'saved'} successfully`,
+                    message: 'Training polygons saved and moved to next date',
                     icon: 'check'
                 })
-                // loadExistingTrainingData()
             } catch (error) {
-                console.error('Error saving/updating training data:', error)
                 $q.notify({
                     color: 'negative',
-                    message: `Failed to ${saveMode.value === 'update' ? 'update' : 'save'} training data`,
+                    message: 'Failed to save training polygons',
                     icon: 'error'
                 })
             }
         }
-
 
 
         // Polygon list functions
@@ -236,20 +138,17 @@ export default {
 
 
         return {
+            selectedBasemapDate,
+            isFirstDate,
+            isLastDate,
+            moveToPreviousDate,
+            moveToNextDate,
+            saveAndMoveNext,
             drawnPolygons,
             calculateArea,
             classSummary,
             deletePolygon,
             getClassColor,
-            currentTrainingSet,
-            openLoadDialog,
-            showSaveDialog,
-            trainingSetName,
-            existingTrainingSet,
-            saveMode,
-            openSaveDialog,
-            selectedBasemapDate,
-            saveOrUpdateTrainingSet
         }
     }
 }

@@ -19,6 +19,8 @@ import { click } from 'ol/events/condition';
 import { fromUrl } from 'geotiff';
 import ImageLayer from 'ol/layer/Image';
 import ImageStatic from 'ol/source/ImageStatic';
+import { getBasemapDateOptions } from 'src/utils/dateUtils';
+
 
 
 export const useMapStore = defineStore('map', () => {
@@ -49,6 +51,7 @@ export const useMapStore = defineStore('map', () => {
   const dragZoomInInteraction = ref(null);
   const dragZoomOutInteraction = ref(null);
   const drawInteraction = ref(null);
+  const availableDates = ref([]);
 
   // New computed property for visual indicator
   const modeIndicator = computed(() => {
@@ -229,12 +232,6 @@ export const useMapStore = defineStore('map', () => {
       aoiLayer.value = null;
     }
   };
-
-  const setSelectedBasemapDate = (date) => {
-    selectedBasemapDate.value = date;
-    updateBasemap(date);
-  };
-
 
   const updateBasemap = (date) => {
     isLoading.value = true;
@@ -477,7 +474,6 @@ export const useMapStore = defineStore('map', () => {
   };
 
   const featureStyleFunction = (feature) => {
-    const projectStore = useProjectStore();
     const classLabel = feature.get('classLabel');
     const isSelected = feature === selectedPolygon.value;
 
@@ -624,6 +620,71 @@ export const useMapStore = defineStore('map', () => {
   };
 
 
+  const initializeBasemapDates = async () => {
+    availableDates.value = getBasemapDateOptions().map(option => option.value);
+    console.log("Available dates: ", availableDates.value)
+    if (availableDates.value.length > 0) {
+      await setSelectedBasemapDate(availableDates.value[0]);
+    }
+  };
+
+  const setSelectedBasemapDate = async (date) => {
+    selectedBasemapDate.value = date;
+    await updateBasemap(date);
+    await loadTrainingPolygonsForDate(date);
+  };
+
+  const moveToNextDate = async () => {
+    const currentIndex = availableDates.value.indexOf(selectedBasemapDate.value);
+    if (currentIndex < availableDates.value.length - 1) {
+      await setSelectedBasemapDate(availableDates.value[currentIndex + 1]);
+    }
+  };
+
+  const moveToPreviousDate = async () => {
+    const currentIndex = availableDates.value.indexOf(selectedBasemapDate.value);
+    if (currentIndex > 0) {
+      await setSelectedBasemapDate(availableDates.value[currentIndex - 1]);
+    }
+  };
+
+  const loadTrainingPolygonsForDate = async (date) => {
+    console.log("Loading training polygons for date")
+    try {
+      const response = await api.getTrainingPolygons(projectStore.currentProject.id);
+      console.log(response.data)
+      const trainingSet = response.data.find(set => set.basemap_date === date);
+      console.log("Training set for date: ", trainingSet)
+      if (trainingSet) {
+        console.log("Training set found for date: ", trainingSet)
+        const polygons = await api.getSpecificTrainingPolygons(projectStore.currentProject.id, trainingSet.id);
+        console.log("Polygons: ", polygons)
+        loadPolygons(polygons.data);
+      } else {
+        clearDrawnPolygons();
+      }
+    } catch (error) {
+      console.error('Error loading training polygons:', error);
+      // Handle error (e.g., show notification to user)
+    }
+  };
+
+  const saveCurrentTrainingPolygons = async () => {
+    const polygons = getDrawnPolygonsGeoJSON();
+    try {
+      await api.saveTrainingPolygons({
+        project_id: projectStore.currentProject.id,
+        basemap_date: selectedBasemapDate.value,
+        polygons: polygons,
+        name: `Training_Set_${selectedBasemapDate.value}` // Auto-generated name
+      });
+    } catch (error) {
+      console.error('Error saving training polygons:', error);
+      // Handle error (e.g., show notification to user)
+    }
+  };
+
+
   // Getters
   const getMap = computed(() => map.value);
 
@@ -643,6 +704,7 @@ export const useMapStore = defineStore('map', () => {
     interactionMode,
     modeIndicator,
     selectedBasemapDate,
+    availableDates,
     // Actions
     initMap,
     setAOI,
@@ -669,6 +731,11 @@ export const useMapStore = defineStore('map', () => {
     setSelectedBasemapDate,
     clearPredictionLayers,
     updateLayerOpacity,
+    initializeBasemapDates,
+    moveToNextDate,
+    moveToPreviousDate,
+    loadTrainingPolygonsForDate,
+    saveCurrentTrainingPolygons,
     // Getters
     getMap
   };
