@@ -122,19 +122,19 @@
   </script>
   
   <style lang="scss" scoped>
-  .custom-layer-switcher {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background-color: rgba(255, 255, 255, 0.9);
-    padding: 10px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
-    z-index: 1000;
-    max-width: 300px;
-    max-height: 80vh;
-    overflow-y: auto;
-  }
+.custom-layer-switcher {
+  position: absolute;
+  top: 10px;
+  right: 10px; // Changed from left to right
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+  z-index: 1000;
+  max-width: 300px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
   
   .layer-list {
     max-height: 60vh;

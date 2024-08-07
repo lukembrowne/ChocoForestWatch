@@ -127,7 +127,7 @@ import { useMapStore } from 'src/stores/mapStore'
 import apiService from 'src/services/api'
 import { GeoJSON } from 'ol/format'
 import { transformExtent } from 'ol/proj'
-import TrainingProgress from 'components/TrainingProgress.vue'
+import TrainingProgress from 'components/models/TrainingProgress.vue'
 import { io } from 'socket.io-client';
 
 export default {

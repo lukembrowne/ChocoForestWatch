@@ -12,67 +12,53 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered class="bg-grey-1">
-      <div class="q-pa-md">
-        <component :is="currentSectionComponent" @close="leftDrawerOpen = false" />
-      </div>
-    </q-drawer>
-
     <q-page-container>
       <q-page class="relative-position">
         <div id="map" class="map-container"></div>
         <custom-layer-switcher />
         <AOIFloatingCard v-if="showAOICard" />
         <DrawingControlsCard v-if="showDrawingControls" />
-        <PolygonListCard v-if="showPolygonList" />
+        <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
       </q-page>
     </q-page-container>
   </q-layout>
 </template>
-
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
-import ProjectSelectionDialog from 'components/ProjectSelectionDialog.vue'
-import TrainingComponent from 'components/TrainingSetEditor.vue'
-import PredictAnalyzeComponent from 'components/PredictAnalyzeComponent.vue'
+import ProjectSelectionDialog from 'components/projects/ProjectSelectionDialog.vue'
+import TrainingAndPolygonManager from 'components/training/TrainingAndPolygonManager.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
-import ModelEvaluationDialog from 'components/ModelEvaluationDialog.vue'
-import ModelTrainingDialog from 'components/ModelTrainingDialog.vue'
-import AOIFloatingCard from 'components/AOIFloatingCard.vue'
-import DrawingControlsCard from 'components/DrawingControlsCard.vue'
-import PolygonListCard from 'components/PolygonListCard.vue'
+import ModelEvaluationDialog from 'components/models/ModelEvaluationDialog.vue'
+import ModelTrainingDialog from 'components/models/ModelTrainingDialog.vue'
+import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
+import DrawingControlsCard from 'components/training/DrawingControlsCard.vue'
+import PredictAnalyzeComponent from 'components/analysis/PredictAnalyzeComponent.vue'
 
 export default {
   name: 'MainLayout',
   components: {
-    TrainingComponent,
-    ModelTrainingDialog,
-    PredictAnalyzeComponent,
+    TrainingAndPolygonManager,
     CustomLayerSwitcher,
-    ModelEvaluationDialog,
     AOIFloatingCard,
-    DrawingControlsCard,
-    PolygonListCard
+    DrawingControlsCard
   },
   setup() {
     const $q = useQuasar()
     const projectStore = useProjectStore()
     const mapStore = useMapStore()
-    const isExpanded = ref(true)
-    const leftDrawerOpen = ref(true)
     const currentSection = ref('aoi')
     const currentProject = computed(() => projectStore.currentProject)
     const showAOICard = ref(false)
     const showDrawingControls = ref(false)
-    const showPolygonList = ref(false)
+    const showTrainingAndPolygonManager = ref(false)
 
     const sections = [
       { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
-      { name: 'Training data', icon: 'school', component: TrainingComponent, tooltip: 'Create training data' },
+      { name: 'Training data', icon: 'school', component: TrainingAndPolygonManager, tooltip: 'Create training data' },
       { name: 'Fit model', icon: 'model_training', component: null, tooltip: 'Train a new model' },
       { name: 'Model evaluation', icon: 'assessment', component: null, tooltip: 'Evaluate trained models' },
       { name: 'Predict & Analyze', icon: 'analytics', component: null, tooltip: 'Predict and analyze land cover' }
@@ -88,16 +74,15 @@ export default {
       } else if (section.name === 'Predict & Analyze') {
         openPredictAnalyzeDialog()
       } else {
-        leftDrawerOpen.value = true
         currentSection.value = section.name
       }
 
       if (section.name === 'Training data') {
         showDrawingControls.value = true
-        showPolygonList.value = true
+        showTrainingAndPolygonManager.value = true
       } else {
         showDrawingControls.value = false
-        showPolygonList.value = false
+        showTrainingAndPolygonManager.value = false
       }
     }
 
@@ -205,7 +190,6 @@ export default {
     })
 
     return {
-      isExpanded,
       currentSection,
       sections,
       sidebarWidth,
@@ -213,13 +197,11 @@ export default {
       currentProject,
       openProjectDialog,
       openModelTrainingDialog,
-      leftDrawerOpen,
       showAOICard,
       showDrawingControls,
-      showPolygonList,
+      showTrainingAndPolygonManager,
       openModelEvaluationDialog,
-      handleSectionClick,
-      openPredictAnalyzeDialog
+      handleSectionClick
     }
   }
 }
