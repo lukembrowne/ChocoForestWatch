@@ -173,7 +173,7 @@ export default {
         currentSection.value = null
       } else {
         showAOICard.value = false
-        toggleSection('Training data')
+        handleSectionClick('Training data')
         $q.notify({
           message: 'Project loaded successfully',
           color: 'positive',

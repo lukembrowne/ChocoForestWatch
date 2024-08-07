@@ -9,7 +9,7 @@
                     { label: 'Zoom in (z)', value: 'zoom_in', icon: 'zoom_in' },
                     { label: 'Zoom out (x)', value: 'zoom_out', icon: 'zoom_out' }
                 ]" @update:model-value="setInteractionMode" />
-                <q-btn label="Undo (Ctrl+Z)" color="secondary" icon="undo" @click="undoLastDraw"
+                <q-btn label="Undo (Ctrl/Cmd+Z)" color="secondary" icon="undo" @click="undoLastDraw"
                     :disable="interactionMode !== 'draw'" />
             </div>
         </q-card-section>

@@ -8,7 +8,7 @@
             </q-card-section>
 
             <q-card-section>
-                <q-btn label="New Prediction" color="primary" @click="openPredictionDialog" class="q-mb-md" />
+                <q-btn label="New Prediction" color="primary" @click="openNewPredictionDialog" class="q-mb-md" />
 
                 <q-table :rows="predictions" :columns="predictionColumns" row-key="id" selection="multiple"
                     v-model:selected="selectedPredictions" :pagination="{ rowsPerPage: 10 }">
@@ -65,7 +65,7 @@ import { useQuasar, useDialogPluginComponent } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
 import api from 'src/services/api'
-import PredictionDialog from './PredictionDialog.vue'
+import NewPredictionDialog from './NewPredictionDialog.vue'
 import AnalysisResultsDialog from './AnalysisResultsDialog.vue'
 
 export default {
@@ -110,10 +110,12 @@ export default {
             }
         }
 
-        const openPredictionDialog = () => {
+        const openNewPredictionDialog = () => {
             try {
                 $q.dialog({
-                    component: PredictionDialog,
+                    component: NewPredictionDialog,
+                }).onOk(async () => {
+                    await fetchPredictions()
                 })
             } catch (error) {
                 console.error('Error fetching analysis results:', error)
@@ -123,13 +125,6 @@ export default {
                     icon: 'error'
                 })
             }
-        }
-
-        const onPredictionCreated = async (newPrediction) => {
-            await fetchPredictions()
-            showPredictionDialog.value = false
-            loadPredictionOnMap(newPrediction)
-            showAnalysisResults(newPrediction)
         }
 
         const loadPredictionOnMap = async (prediction) => {
@@ -259,8 +254,7 @@ export default {
             showPredictionDialog,
             showRenameDialog,
             newPredictionName,
-            openPredictionDialog,
-            onPredictionCreated,
+            openNewPredictionDialog,
             loadPredictionOnMap,
             showAnalysisResults,
             comparePredictions,
