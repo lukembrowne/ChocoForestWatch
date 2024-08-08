@@ -72,10 +72,7 @@
         mapStore.updateLayerOpacity(layerId, opacity);
       };
   
-      const onBasemapDateChange = (date) => {
-        console.log("Basemap date changed to: ", date);
-        mapStore.updateBasemap(date['value']);
-      };
+
 
       const handleKeyDown = (event) => {
         const currentIndex = basemapOptions.value.findIndex(option => option.value === selectedBasemapDate.value)
@@ -89,8 +86,13 @@
           return
         }
   
-        mapStore.updateBasemap(basemapOptions.value[newIndex].value)
+        mapStore.setSelectedBasemapDate(basemapOptions.value[newIndex].value)
       }
+
+      const onBasemapDateChange = (date) => {
+        console.log("Basemap date changed to: ", date);
+        mapStore.setSelectedBasemapDate(date['value']);
+      };
   
       onMounted(() => {
         if (basemapOptions.value.length > 0) {

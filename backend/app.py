@@ -41,6 +41,9 @@ from rasterio.warp import transform_bounds
 from shapely import geometry
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
 import uuid
+from shapely.ops import transform
+import pyproj
+
 
 
 # Load environment variables from the .env file
@@ -158,6 +161,7 @@ class TrainedModel(db.Model):
     model_parameters = db.Column(db.JSON)
     class_names = db.Column(db.JSON)  # Add this line
     date_encoder = db.Column(db.PickleType)  # Add this field to store the encoder
+    month_encoder = db.Column(db.PickleType)  # Add this field to store the encoder
     label_encoder = db.Column(db.PickleType)
     all_class_names = db.Column(db.JSON)
 
@@ -165,7 +169,7 @@ class TrainedModel(db.Model):
     project = db.relationship("Project", back_populates="trained_models")
 
     @classmethod
-    def save_model(cls, model, name, description, project_id, training_set_ids, metrics, model_parameters, date_encoder, num_samples, training_periods,label_encoder, all_class_names):
+    def save_model(cls, model, name, description, project_id, training_set_ids, metrics, model_parameters, date_encoder, month_encoder, num_samples, training_periods,label_encoder, all_class_names):
         model_dir = './trained_models'
         os.makedirs(model_dir, exist_ok=True)
         file_name = f"{name}_{datetime.now().strftime('%Y%m%d%H%M%S')}.joblib"
@@ -187,6 +191,7 @@ class TrainedModel(db.Model):
             file_path=file_path,
             model_parameters=model_parameters,
             date_encoder=date_encoder,
+            month_encoder=month_encoder,
             label_encoder=label_encoder,
             all_class_names=all_class_names
 
@@ -500,6 +505,57 @@ def delete_training_set(project_id, set_id):
         return jsonify({'error': str(e)}), 500
 
 
+def nan_to_null(obj):
+    if isinstance(obj, float) and math.isnan(obj):
+        return None
+    return obj
+
+@app.route('/api/training_data_summary/<int:project_id>', methods=['GET'])
+def get_training_data_summary(project_id):
+    try:
+        training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id).all()
+        
+        summary = {
+            'totalSets': len(training_sets),
+            'dateRange': {
+                'start': min(set.basemap_date for set in training_sets),
+                'end': max(set.basemap_date for set in training_sets)
+            },
+            'classStats': {}
+        }
+
+        project = Project.query.get(project_id)
+        class_names = [cls['name'] for cls in project.classes]
+
+        for class_name in class_names:
+            summary['classStats'][class_name] = {
+                'featureCount': 0,
+                'totalArea': 0
+            }
+
+        for training_set in training_sets:
+            for feature in training_set.polygons['features']:
+                class_name = feature['properties']['classLabel']
+                summary['classStats'][class_name]['featureCount'] += 1
+                
+                # # Calculate area in square kilometers
+                # geom = shape(feature['geometry'])
+                # geom_3857 = transform(
+                #     pyproj.Transformer.from_crs('EPSG:4326', 'EPSG:3857', always_xy=True).transform,
+                #     geom
+                # )
+                # area_km2 = geom_3857.area / 1_000_000  # Convert from square meters to square kilometers
+                # summary['classStats'][class_name]['totalArea'] += area_km2
+
+        # Convert NaN to null
+        summary_json = json.dumps(summary, default=nan_to_null)
+        summary = json.loads(summary_json)
+
+        return jsonify(summary), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 
 
  ## Prediction routes   
@@ -611,7 +667,6 @@ def train_model():
     data = request.json
     project_id = data['projectId']
     model_name = data['modelName']
-    training_set_ids = data['trainingSetIds']
     aoi_extent = data['aoiExtent']
     model_description = data.get('modelDescription', '')
     split_method = data.get('splitMethod', 'feature')
@@ -630,9 +685,9 @@ def train_model():
 
     try:
         # Fetch all training sets
-        training_sets = TrainingPolygonSet.query.filter(TrainingPolygonSet.id.in_(training_set_ids)).all()
-        if len(training_sets) != len(training_set_ids):
-            return jsonify({"error": "One or more training sets not found"}), 404
+        training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id).all()
+        if not training_sets:
+            return jsonify({"error": "No training sets found for this project"}), 404
 
         # Get unique basemap dates
         unique_dates = set(ts.basemap_date for ts in training_sets)
@@ -642,6 +697,7 @@ def train_model():
         
         quads_by_date = {}
         for date in unique_dates:
+            update_progress(project_id, 0.2, f"Fetching Planet quads for {date}")
             quads_by_date[date] = get_planet_quads(aoi_extent, date)
 
         # Step 2: Extract pixels from quads using training polygons
@@ -652,6 +708,7 @@ def train_model():
         all_basemap_dates = []
 
         for training_set in training_sets:
+            update_progress(project_id, 0.3, f"Extracting pixels from quads for {training_set.basemap_date}")
             X, y, feature_ids = extract_pixels_from_quads(quads_by_date[training_set.basemap_date], training_set.polygons['features']) 
             all_X.append(X)
             all_y.extend(y)
@@ -668,13 +725,18 @@ def train_model():
         date_encoder = LabelEncoder()
         encoded_dates = date_encoder.fit_transform(basemap_dates)
 
+        # Create month column
+        months = np.array([datetime.strptime(date, '%Y-%m').month for date in basemap_dates])
+        month_encoder = LabelEncoder()
+        encoded_months = month_encoder.fit_transform(months)
+
         # Add encoded dates as a new feature
-        X = np.column_stack((X, encoded_dates))
+        X = np.column_stack((X, encoded_dates, encoded_months))
 
         # Step 3: Train XGBoost model
         update_progress(project_id, 0.6, "Training XGBoost model")
         # Train the model
-        model, metrics = train_xgboost_model(X, y, feature_ids, project_id, training_set_ids, model_name, model_description, model_params, date_encoder, split_method, train_test_split)
+        model, metrics = train_xgboost_model(X, y, feature_ids, project_id, [ts.id for ts in training_sets], model_name, model_description, model_params, date_encoder, month_encoder, split_method, train_test_split)
 
         # Step 5: Return results
         update_progress(project_id, 1.0, "Training complete")
@@ -881,7 +943,7 @@ def extract_pixels_from_quads(quads, polygons):
 
 
 
-def train_xgboost_model(X, y, feature_ids, project_id, training_set_ids, model_name, model_description, model_params, date_encoder, split_method='feature', test_size=0.2):
+def train_xgboost_model(X, y, feature_ids, project_id, training_set_ids, model_name, model_description, model_params, date_encoder, month_encoder, split_method='feature', test_size=0.2):
     
      # Fetch all project classes
     project = Project.query.get(project_id)
@@ -897,8 +959,10 @@ def train_xgboost_model(X, y, feature_ids, project_id, training_set_ids, model_n
     # Get the classes actually present in the training data
     classes_in_training = le.classes_.tolist()
 
-    # Extract encoded dates from X
-    encoded_dates = X[:, -1].astype(int)
+    # Extract encoded dates and months from X
+    encoded_dates = X[:, -2].astype(int)
+    encoded_months = X[:, -1].astype(int)
+    # X = X[:, :-2]  # Remove the date and month columns from X
 
     logger.debug(f"X shape: {X.shape}")
     logger.debug(f"X data type: {X.dtype}")
@@ -934,10 +998,14 @@ def train_xgboost_model(X, y, feature_ids, project_id, training_set_ids, model_n
     # Adjust num_class parameter to account for classes present in the data
     model_params['num_class'] = len(classes_in_training)
 
-
     # Create and train model
     model = XGBClassifier(**model_params)
-    model.fit(X_train, y_train)
+    model.fit(
+            X_train, 
+            y_train, 
+            eval_set=[(X_test, y_test)], 
+            verbose=False
+        )
 
     # Predictions and metrics
     y_pred = model.predict(X_test)
@@ -1002,6 +1070,7 @@ def train_xgboost_model(X, y, feature_ids, project_id, training_set_ids, model_n
         metrics, 
         model_params,
         date_encoder,
+        month_encoder,
         num_training_samples,
         training_periods,
         le,
@@ -1111,7 +1180,8 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
 
 
     # Load the date encoder used during training
-    date_encoder = model_record.date_encoder  # Assume we've saved this with the model
+    date_encoder = model_record.date_encoder  
+    month_encoder = model_record.month_encoder 
     label_encoder = model_record.label_encoder  # Load the LabelEncoder 
     all_class_names = model_record.all_class_names
 
@@ -1128,6 +1198,11 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
     else:
         encoded_date = date_encoder.transform([basemap_date])[0]
 
+    # Extract and encode the month
+    month = int(basemap_date.split('-')[1])
+    encoded_month = month_encoder.transform([month])[0]
+
+
     for i, quad in enumerate(quads):
         with rasterio.open(quad['filename']) as src:
             logger.debug(f"Processing quad: {quad['filename']}")
@@ -1143,10 +1218,10 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
             # Reshape the data for prediction
             reshaped_data = data.reshape(4, -1).T
             
-            # Add the encoded date as a feature
+            # Add the encoded date and month as features
             date_column = np.full((reshaped_data.shape[0], 1), encoded_date)
-            prediction_data = np.hstack((reshaped_data, date_column))
-            
+            month_column = np.full((reshaped_data.shape[0], 1), encoded_month)
+            prediction_data = np.hstack((reshaped_data, date_column, month_column))
             predictions = model.predict(prediction_data)
 
            # Map predictions to full class set indices

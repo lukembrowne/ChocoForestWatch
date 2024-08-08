@@ -16,19 +16,31 @@
             </q-stepper-navigation>
           </q-step>
 
-          <!-- Step 2: Select Training Data -->
-          <q-step :name="2" title="Select Training Data" icon="dataset" :done="step > 2">
-            <p>Select one or more training polygon sets to use for model training:</p>
-            <q-table :rows="trainingSets" :columns="columns" row-key="id" selection="multiple"
-              v-model:selected="selectedTrainingSets" :filter="filter" :rows-per-page="10">
-              <template v-slot:top-right>
-                <q-input borderless dense debounce="300" v-model="filter" placeholder="Search">
-                  <template v-slot:append>
-                    <q-icon name="search" />
-                  </template>
-                </q-input>
-              </template>
-            </q-table>
+          <!-- Step 2: Training Data Summary -->
+          <q-step :name="2" title="Training Data Summary" icon="assessment" :done="step > 2">
+            <div v-if="trainingDataSummary">
+              <h6>Training Data Overview:</h6>
+              <p>Total Training Sets: {{ totalSets }}</p>
+              <p v-if="trainingDataSummary.dateRange">
+                Date Range: {{ trainingDataSummary.dateRange.start }} to {{ trainingDataSummary.dateRange.end }}
+              </p>
+
+              <h6>Class Distribution:</h6>
+              <q-list bordered separator>
+                <q-item v-for="(stats, className) in trainingDataSummary.classStats" :key="className">
+                  <q-item-section>
+                    <q-item-label>{{ className }}</q-item-label>
+                    <q-item-label caption>
+                      Features: {{ stats.featureCount }} |
+                      Total Area: {{ isNaN(stats.totalArea) ? 'N/A' : stats.totalArea.toFixed(2) + ' km²' }}
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </div>
+            <div v-else>
+              Loading training data summary...
+            </div>
             <q-stepper-navigation>
               <q-btn flat @click="step = 1" color="primary" label="Back" class="q-mr-sm" />
               <q-btn @click="step = 3" color="primary" label="Next" />
@@ -37,26 +49,28 @@
 
           <!-- Step 3: Model Parameters -->
           <q-step :name="3" title="Set Model Parameters" icon="settings" :done="step > 3">
-        <div class="row q-col-gutter-md">
-          <div class="col-12">
-            <p>Choose split method:</p>
-            <q-radio v-model="splitMethod" val="feature" label="Feature-based" color="primary" />
-            <q-radio v-model="splitMethod" val="pixel" label="Pixel-based" color="primary" />
-            <p class="text-caption q-mt-sm">
-              Feature-based split ensures independence between training and testing data by splitting entire polygons.
-              Pixel-based split may mix pixels from the same polygon in both training and testing sets.
-            </p>
-          </div>
-          <div class="col-12">
-            <p>Adjust the train/test split:</p>
-            <q-slider v-model="trainTestSplit" :min="0.1" :max="0.5" :step="0.05" label label-always
-              color="primary" />
-            <p class="text-caption">
-              This determines the proportion of data used for testing. A value of {{ trainTestSplit }} means
-              {{ (trainTestSplit * 100).toFixed(0) }}% of the {{ splitMethod === 'pixel' ? 'pixels' : 'features' }} will be used for testing, and
-              {{ (100 - trainTestSplit * 100).toFixed(0) }}% for training.
-            </p>
-          </div>
+            <div class="row q-col-gutter-md">
+              <div class="col-12">
+                <p>Choose split method:</p>
+                <q-radio v-model="splitMethod" val="feature" label="Feature-based" color="primary" />
+                <q-radio v-model="splitMethod" val="pixel" label="Pixel-based" color="primary" />
+                <p class="text-caption q-mt-sm">
+                  Feature-based split ensures independence between training and testing data by splitting entire
+                  polygons.
+                  Pixel-based split may mix pixels from the same polygon in both training and testing sets.
+                </p>
+              </div>
+              <div class="col-12">
+                <p>Adjust the train/test split:</p>
+                <q-slider v-model="trainTestSplit" :min="0.1" :max="0.5" :step="0.05" label label-always
+                  color="primary" />
+                <p class="text-caption">
+                  This determines the proportion of data used for testing. A value of {{ trainTestSplit }} means
+                  {{ (trainTestSplit * 100).toFixed(0) }}% of the {{ splitMethod === 'pixel' ? 'pixels' : 'features' }}
+                  will be used for testing, and
+                  {{ (100 - trainTestSplit * 100).toFixed(0) }}% for training.
+                </p>
+              </div>
               <div class="col-12 col-md-6">
                 <p>Number of Estimators:</p>
                 <q-slider v-model="options.n_estimators" :min="10" :max="1000" :step="10" label label-always
@@ -123,12 +137,13 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
-import { useMapStore } from 'src/stores/mapStore'
 import apiService from 'src/services/api'
 import { GeoJSON } from 'ol/format'
 import { transformExtent } from 'ol/proj'
 import TrainingProgress from 'components/models/TrainingProgress.vue'
 import { io } from 'socket.io-client';
+import { isReactive } from 'vue'
+
 
 export default {
   name: 'ModelTrainingDialog',
@@ -141,7 +156,13 @@ export default {
     const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
     const $q = useQuasar()
     const projectStore = useProjectStore()
-    const mapStore = useMapStore()
+    const trainingDataSummary = ref(null)
+
+    const totalSets = computed(() => {
+      console.log('Training data summary from totalsets computed:', trainingDataSummary.value.totalSets)
+      return trainingDataSummary.value ? trainingDataSummary.value.totalSets : 'N/A'
+    })
+
 
     const generateDefaultModelName = () => {
       const today = new Date();
@@ -153,9 +174,6 @@ export default {
     const step = ref(1)
     const modelName = ref(generateDefaultModelName())
     const modelDescription = ref('')
-    const trainingSets = ref([])
-    const selectedTrainingSets = ref([])
-    const filter = ref('')
     const isTraining = ref(false)
     const trainingProgress = ref(0)
     const trainingProgressMessage = ref('')
@@ -182,23 +200,9 @@ export default {
       { name: 'created_at', align: 'left', label: 'Created At', field: 'created_at', sortable: true },
     ]
 
-    onMounted(async () => {
-      try {
-        const response = await apiService.getTrainingPolygons(projectStore.currentProject.id)
-        trainingSets.value = response.data
-
-        // Pre-select the current training set if it exists
-        if (projectStore.currentTrainingSet) {
-          selectedTrainingSets.value = [projectStore.currentTrainingSet]
-        }
-      } catch (error) {
-        console.error('Error fetching training sets:', error)
-        $q.notify({
-          color: 'negative',
-          message: 'Failed to fetch training sets',
-          icon: 'error'
-        })
-      }
+    onMounted(() => {
+      fetchTrainingDataSummary()
+      console.log('Training data summary after mounting:', trainingDataSummary.value)
 
       socket.on('training_update', (data) => {
         console.log('Received training update:', data);
@@ -224,15 +228,23 @@ export default {
       });
     })
 
-    const trainModel = async () => {
-      if (selectedTrainingSets.value.length === 0) {
-        $q.notify({
-          color: 'negative',
-          message: 'Please select at least one training dataset',
-          icon: 'error'
-        })
-        return
+
+    const fetchTrainingDataSummary = async () => {
+      try {
+        const response = await apiService.getTrainingDataSummary(projectStore.currentProject.id)
+        // Parse the response if it's a string
+        if (typeof response.data === 'string') {
+          trainingDataSummary.value = JSON.parse(response.data)
+        } else {
+          trainingDataSummary.value = response.data
+        }
+         console.log('Fetched training data summary:', trainingDataSummary.value)
+      } catch (error) {
+        console.error('Error fetching training data summary:', error)
       }
+    }
+
+    const trainModel = async () => {
 
       try {
         isTraining.value = true
@@ -251,7 +263,6 @@ export default {
           aoiExtent: extentLatLon,
           modelName: modelName.value,
           modelDescription: modelDescription.value,
-          trainingSetIds: selectedTrainingSets.value.map(set => set.id),
           trainTestSplit: trainTestSplit.value,
           splitMethod: splitMethod.value,  // Add this line
           ...options.value
@@ -272,18 +283,19 @@ export default {
           icon: 'error'
         })
       }
-    }
 
-    // Watch for changes in the currentTrainingSet
-    watch(() => projectStore.currentTrainingSet, (newSet) => {
-      if (newSet) {
-        // Update the selection if the current training set changes
-        const isAlreadySelected = selectedTrainingSets.value.some(set => set.id === newSet.id)
-        if (!isAlreadySelected) {
-          selectedTrainingSets.value = [newSet, ...selectedTrainingSets.value]
+      // Fetch summary when step changes to 2
+      watch(() => step.value, (newStep) => {
+        if (newStep === 2) {
+          fetchTrainingDataSummary()
         }
-      }
-    })
+      })
+
+      watch(trainingDataSummary, (newValue) => {
+        console.log('trainingDataSummary changed:', newValue)
+      }, { deep: true })
+
+    }
 
     return {
       dialogRef,
@@ -295,16 +307,16 @@ export default {
       modelDescription,
       options,
       trainModel,
-      trainingSets,
-      selectedTrainingSets,
       columns,
-      filter,
       isTraining,
       trainingProgress,
       trainingProgressMessage,
       trainingError,
       trainTestSplit,
-      splitMethod
+      splitMethod,
+      trainingDataSummary,
+      totalSets,
+      isReactive
     }
   }
 }

@@ -55,15 +55,7 @@ export default {
     return axios.delete(`${API_URL}/training_polygons/${projectId}/${setId}`);
   },
 
-  fetchRasters() {
-    return axios.get(`${API_URL}/list_rasters`);
-  },
-  fetchVectors() {
-    return axios.get(`${API_URL}/list_vectors`);
-  },
-  fetchModels() {
-    return axios.get(`${API_URL}/list_models`);
-  },
+
 
   async getTrainedModels(projectId) {
     try {
@@ -74,6 +66,11 @@ export default {
       throw error;
     }
   },
+
+  getTrainingDataSummary(projectId) {
+    return axios.get(`${API_URL}/training_data_summary/${projectId}`);
+  },
+
   async predictLandcover(data) {
     try {
       const response = await axios.post(`${API_URL}/predict_landcover`, data);
