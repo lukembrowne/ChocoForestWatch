@@ -65,6 +65,7 @@ export default {
     ]
 
     const handleSectionClick = (section) => {
+      console.log("Clicked section: ", section)
       if (section.name === 'Model evaluation') {
         openModelEvaluationDialog()
       } else if (section.name === 'projects') {
@@ -175,7 +176,7 @@ export default {
         currentSection.value = null
       } else {
         showAOICard.value = false
-        handleSectionClick('Training data')
+        handleSectionClick({name: 'Training data'})
         $q.notify({
           message: 'Project loaded successfully',
           color: 'positive',

@@ -71,15 +71,7 @@ export default {
     return axios.get(`${API_URL}/training_data_summary/${projectId}`);
   },
 
-  async predictLandcover(data) {
-    try {
-      const response = await axios.post(`${API_URL}/predict_landcover`, data);
-      return response.data;
-    } catch (error) {
-      console.error('Error predicting landcover:', error);
-      throw error;
-    }
-  },
+
 
   async trainModel(data) {
     console.log('Starting model training with data:', data);
@@ -136,6 +128,25 @@ export default {
     }
   },
 
+  async predictLandcover(data) {
+    try {
+      const response = await axios.post(`${API_URL}/predict_landcover`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error predicting landcover:', error);
+      throw error;
+    }
+  },
+
+  async generatePredictions(data) {
+    try {
+      const response = await axios.post(`${API_URL}/generate_predictions`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error generating predictions:', error);
+      throw error;
+    }
+  },
 
 
   async getPredictions(projectId) {

@@ -24,7 +24,7 @@
                 <div class="text-h6">Training Polygons</div>
                 <div class="summary q-gutter-xs">
                     <div v-for="(summary, className) in classSummary" :key="className">
-                        {{ className }}: {{ summary.count }} features, {{ summary.area.toFixed(1) }} ha
+                        {{ className }}: {{ summary.count }} features, {{ summary.area.toFixed(2) }} ha
                     </div>
                 </div>
             </q-card-section>
@@ -39,7 +39,7 @@
                         </q-item-section>
                         <q-item-section>
                             <q-item-label>{{ polygon.properties.classLabel }}</q-item-label>
-                            <q-item-label caption>{{ (calculateArea(polygon) / 10000).toFixed(1) }} ha</q-item-label>
+                            <q-item-label caption>{{ (calculateArea(polygon) / 10000).toFixed(2) }} ha</q-item-label>
                         </q-item-section>
                         <q-item-section side>
                             <q-btn flat round dense color="negative" icon="delete" size="sm"

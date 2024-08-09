@@ -2,16 +2,25 @@
     <q-dialog ref="dialogRef" @hide="onDialogHide">
         <q-card class="predict-analyze-component" style="width: 900px; max-width: 90vw;">
             <q-card-section class="row items-center q-pb-none">
-                <div class="text-h6">Predict and Analyze Land Cover</div>
+                <div class="text-h6">Analyze Land Cover Predictions</div>
                 <q-space />
                 <q-btn icon="close" flat round dense v-close-popup />
             </q-card-section>
 
             <q-card-section>
-                <q-btn label="New Prediction" color="primary" @click="openNewPredictionDialog" class="q-mb-md" />
+                <div class="row q-col-gutter-md">
+                    <div class="col-12 col-md-6">
+                        <q-select v-model="selectedDate" :options="availableDates" label="Select Date"
+                            @update:model-value="loadPredictionForDate" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <q-btn label="View Analysis" color="primary" @click="showAnalysisResults"
+                            :disable="!selectedDate" />
+                    </div>
+                </div>
 
-                <q-table :rows="predictions" :columns="predictionColumns" row-key="id" selection="multiple"
-                    v-model:selected="selectedPredictions" :pagination="{ rowsPerPage: 10 }">
+                <q-table :rows="predictions" :columns="predictionColumns" row-key="id"
+                    :pagination="{ rowsPerPage: 10 }">
                     <template v-slot:body-cell-actions="props">
                         <q-td :props="props">
                             <q-btn flat round icon="visibility" @click="loadPredictionOnMap(props.row)">
@@ -19,12 +28,6 @@
                             </q-btn>
                             <q-btn flat round icon="assessment" @click="showAnalysisResults(props.row)">
                                 <q-tooltip>View analysis</q-tooltip>
-                            </q-btn>
-                            <q-btn flat round icon="edit" @click.stop="openRenameDialog(props.row)">
-                                <q-tooltip>Rename</q-tooltip>
-                            </q-btn>
-                            <q-btn flat round icon="delete" @click.stop="confirmDelete(props.row)">
-                                <q-tooltip>Delete</q-tooltip>
                             </q-btn>
                         </q-td>
                     </template>
@@ -38,25 +41,6 @@
             </q-card-actions>
         </q-card>
     </q-dialog>
-
-    <!-- Nested dialogs -->
-
-    <q-dialog v-model="showRenameDialog">
-        <q-card style="min-width: 350px">
-            <q-card-section>
-                <div class="text-h6">Rename Prediction</div>
-            </q-card-section>
-
-            <q-card-section class="q-pt-none">
-                <q-input v-model="newPredictionName" label="New Prediction Name" dense />
-            </q-card-section>
-
-            <q-card-actions align="right" class="text-primary">
-                <q-btn flat label="Cancel" v-close-popup />
-                <q-btn flat label="Rename" @click="renamePrediction" v-close-popup />
-            </q-card-actions>
-        </q-card>
-    </q-dialog>
 </template>
 
 <script>
@@ -65,7 +49,6 @@ import { useQuasar, useDialogPluginComponent } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
 import api from 'src/services/api'
-import NewPredictionDialog from './NewPredictionDialog.vue'
 import AnalysisResultsDialog from './AnalysisResultsDialog.vue'
 
 export default {
@@ -80,17 +63,13 @@ export default {
         const mapStore = useMapStore()
         const predictions = ref([])
         const selectedPredictions = ref([])
-        const showPredictionDialog = ref(false)
-        const showRenameDialog = ref(false)
-        const newPredictionName = ref('')
-        const predictionToRename = ref(null)
+        const availableDates = ref([])
+        const selectedDate = ref(null)
+
 
         const predictionColumns = [
-            { name: 'name', required: true, label: 'Name', align: 'left', field: row => row.name, sortable: true },
-            { name: 'actions', align: 'center', label: 'Actions' },
-            { name: 'model_name', align: 'left', label: 'Model', field: 'model_name', sortable: true },
-            { name: 'basemap_date', align: 'left', label: 'Basemap Date', field: 'basemap_date', sortable: true },
-            { name: 'created_at', align: 'left', label: 'Created At', field: 'created_at', sortable: true },
+            { name: 'basemap_date', align: 'left', label: 'Date', field: 'basemap_date', sortable: true },
+            { name: 'actions', align: 'center', label: 'Actions' }
         ]
 
         onMounted(async () => {
@@ -100,6 +79,8 @@ export default {
         const fetchPredictions = async () => {
             try {
                 predictions.value = await api.getPredictions(projectStore.currentProject.id)
+                availableDates.value = predictions.value.map(p => p.basemap_date).sort()
+
             } catch (error) {
                 console.error('Error fetching predictions:', error)
                 $q.notify({
@@ -110,20 +91,11 @@ export default {
             }
         }
 
-        const openNewPredictionDialog = () => {
-            try {
-                $q.dialog({
-                    component: NewPredictionDialog,
-                }).onOk(async () => {
-                    await fetchPredictions()
-                })
-            } catch (error) {
-                console.error('Error fetching analysis results:', error)
-                $q.notify({
-                    color: 'negative',
-                    message: 'Failed to fetch analysis results',
-                    icon: 'error'
-                })
+
+        const loadPredictionForDate = async (date) => {
+            const prediction = predictions.value.find(p => p.basemap_date === date)
+            if (prediction) {
+                await loadPredictionOnMap(prediction)
             }
         }
 
@@ -191,57 +163,7 @@ export default {
                 })
             }
         }
-
-        const openRenameDialog = (prediction) => {
-            predictionToRename.value = prediction
-            newPredictionName.value = prediction.name
-            showRenameDialog.value = true
-        }
-
-        const renamePrediction = async () => {
-            try {
-                await api.renamePrediction(predictionToRename.value.id, newPredictionName.value)
-                await fetchPredictions()
-                $q.notify({
-                    color: 'positive',
-                    message: 'Prediction renamed successfully',
-                    icon: 'check'
-                })
-            } catch (error) {
-                console.error('Error renaming prediction:', error)
-                $q.notify({
-                    color: 'negative',
-                    message: 'Failed to rename prediction',
-                    icon: 'error'
-                })
-            }
-        }
-
-        const confirmDelete = (prediction) => {
-            $q.dialog({
-                title: 'Confirm Delete',
-                message: `Are you sure you want to delete the prediction "${prediction.name}"?`,
-                cancel: true,
-                persistent: true
-            }).onOk(async () => {
-                try {
-                    await api.deletePrediction(prediction.id)
-                    await fetchPredictions()
-                    $q.notify({
-                        color: 'positive',
-                        message: 'Prediction deleted successfully',
-                        icon: 'check'
-                    })
-                } catch (error) {
-                    console.error('Error deleting prediction:', error)
-                    $q.notify({
-                        color: 'negative',
-                        message: 'Failed to delete prediction',
-                        icon: 'error'
-                    })
-                }
-            })
-        }
+      
 
         return {
             dialogRef,
@@ -251,16 +173,12 @@ export default {
             predictions,
             selectedPredictions,
             predictionColumns,
-            showPredictionDialog,
-            showRenameDialog,
-            newPredictionName,
-            openNewPredictionDialog,
             loadPredictionOnMap,
             showAnalysisResults,
             comparePredictions,
-            openRenameDialog,
-            renamePrediction,
-            confirmDelete
+            loadPredictionForDate,
+            availableDates,
+            selectedDate
         }
     }
 }

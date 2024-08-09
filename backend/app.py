@@ -67,8 +67,37 @@ API_URL = "https://api.planet.com/basemaps/v1/mosaics"
 session = requests.Session()
 session.auth = (PLANET_API_KEY, "")
 
+db = SQLAlchemy()
+celery = Celery(__name__)
+
+def create_app():
+    app = Flask(__name__)
+    
+    # App configurations
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://cfwuser:1234d@localhost/cfwdb'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
+    app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
+    
+    db.init_app(app)
+    # Update Celery config
+    celery.conf.update(
+        broker_url=app.config['CELERY_BROKER_URL'],
+        result_backend=app.config['CELERY_RESULT_BACKEND']
+    )
+
+    class ContextTask(celery.Task):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+
+    celery.Task = ContextTask
+    return app
+
+app = create_app()
+
 # Create the Flask application
-app = Flask(__name__)
+# app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:9000"}})
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -80,14 +109,11 @@ logger.remove()  # Remove default handler
 logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 logger.add(log_file, rotation="10 MB", retention="10 days", level="DEBUG")
 
-# Celery configuration
-app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
-app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
 
-# Initialize Celery
-celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
-celery.conf.update(app.config)
-
+# Define a directory to temporarily store uploaded files
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
 # Middleware to log all requests
@@ -108,20 +134,10 @@ def handle_exception(e):
     logger.exception(f"An unhandled exception occurred: {str(e)}")
     return jsonify(error=str(e)), 500
 
-# Define a directory to temporarily store uploaded files
-UPLOAD_FOLDER = 'uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
-# Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://cfwuser:1234d@localhost/cfwdb'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db = SQLAlchemy(app)
 
 # Define models
-
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -1231,7 +1247,8 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
     if model_record is None:
         raise ValueError("Model not found")
 
-    logger.debug(f"AOI: {aoi}")
+    if project_id is None:
+        raise ValueError("Project ID is required")
 
     # Create a list to store the predicted rasters
     predicted_rasters = []
@@ -1293,7 +1310,8 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
             prediction_map = prediction_map.reshape(data.shape[1], data.shape[2])
     
             # Create a temporary file for this quad's prediction with a unique name
-            temp_filename = f'temp_prediction_{i}.tif'
+            unique_id = uuid.uuid4().hex
+            temp_filename = f'temp_prediction_{unique_id}.tif'
             with rasterio.open(temp_filename, 'w', **meta) as tmp:
                 tmp.write(prediction_map.astype(rasterio.uint8), 1)
 
@@ -1357,6 +1375,107 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
 
 
 
+@celery.task
+def generate_prediction_for_date(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date):
+    try:
+        logger.info(f"Generating prediction for date {date}")
+        prediction = generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date)
+        logger.info(f"Successfully generated prediction for date {date}")
+    except Exception as e:
+        logger.error(f"Error generating prediction for date {date}: {str(e)}")
+
+
+@celery.task
+def generate_predictions_for_all_dates(model_id, project_id, aoi_extent, aoi_extent_lat_lon, basemap_dates):
+    logger.info(f"Starting prediction generation for model {model_id}")
+
+    # Trigger parallel tasks
+    for date in basemap_dates:
+        generate_prediction_for_date.delay(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date)
+
+    logger.info(f"Completed task dispatch for model {model_id}")
+
+
+
+
+def generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date):
+
+    # Get Planet quads for the date
+    quads = get_planet_quads(aoi_extent_lat_lon, date)
+
+    # Generate prediction
+    prediction_file = predict_landcover_aoi(model_id, quads, aoi_extent, project_id, date)
+
+    # Save prediction to database
+    prediction = Prediction(
+        project_id=project_id,
+        model_id=model_id,
+        file_path=prediction_file,
+        basemap_date=date,
+        name=f"Prediction_{date}"
+    )
+    db.session.add(prediction)
+    db.session.commit()
+
+    return prediction
+
+@app.route('/api/generate_predictions', methods=['POST'])
+def start_prediction_generation():
+    data = request.json
+    project_id = data.get('projectId')
+    basemap_dates = data.get('basemapDates', [])
+    aoi_extent = data['aoiExtent']
+    aoi_extent_lat_lon = data['aoiExtentLatLon']
+
+
+    if not project_id or not basemap_dates:
+        return jsonify({'error': 'Project ID and  basemap dates are required'}), 400
+
+    try:
+        project = Project.query.get(project_id)
+        # Get the latest trained model for the project
+        model = TrainedModel.query.filter_by(project_id=project_id).order_by(TrainedModel.created_at.desc()).first()
+        
+        if not model:
+            return jsonify({'error': 'No trained model found for this project'}), 404
+
+        if not project or not model:
+            return jsonify({'error': 'Invalid Project ID or Model ID'}), 404
+
+        model_id = model.id
+
+        # Start the Celery task
+        task = generate_predictions_for_all_dates.delay(model_id, project_id,  aoi_extent, aoi_extent_lat_lon, basemap_dates)
+
+        return jsonify({
+            'message': 'Prediction generation started',
+            'task_id': task.id
+        }), 202
+
+    except Exception as e:
+        logger.error(f"Error starting prediction generation: {str(e)}")
+        return jsonify({'error': 'Failed to start prediction generation'}), 500
+
+@app.route('/api/prediction_status/<task_id>', methods=['GET'])
+def get_prediction_status(task_id):
+    task = generate_predictions_for_all_dates.AsyncResult(task_id)
+    if task.state == 'PENDING':
+        response = {
+            'state': task.state,
+            'status': 'Prediction generation has not started yet'
+        }
+    elif task.state != 'FAILURE':
+        response = {
+            'state': task.state,
+            'status': 'Prediction generation is in progress'
+        }
+    else:
+        response = {
+            'state': task.state,
+            'status': 'Prediction generation failed',
+            'error': str(task.info)
+        }
+    return jsonify(response)
 
 ## Analysis endpoints
 @app.route('/api/analysis/summary/<int:prediction_id>', methods=['GET'])
