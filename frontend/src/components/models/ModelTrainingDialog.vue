@@ -1,8 +1,8 @@
 <template>
-  <q-dialog ref="dialogRef" @hide="onDialogHide">
+ <q-dialog ref="dialogRef" @hide="onDialogHide">
     <q-card class="q-dialog-plugin" style="width: 800px; max-width: 90vw;">
       <q-card-section>
-        <div class="text-h6">Train XGBoost Model</div>
+        <div class="text-h6">{{ existingModel ? 'Update' : 'Train' }} XGBoost Model</div>
       </q-card-section>
 
       <q-card-section v-if="trainingDataSummary">
@@ -116,7 +116,7 @@
 
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
-        <q-btn label="Train Model" color="primary" @click="trainModel" />
+        <q-btn :label="existingModel ? 'Update Model' : 'Train Model'" color="primary" @click="trainModel" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -147,6 +147,7 @@ export default {
     const $q = useQuasar()
     const projectStore = useProjectStore()
 
+    const existingModel = ref(null)
     const modelName = ref(generateDefaultModelName())
     const modelDescription = ref('')
     const trainingDataSummary = ref(null)
@@ -173,8 +174,23 @@ export default {
 
     onMounted(async () => {
       await fetchTrainingDataSummary()
+      await checkExistingModel()
       initializeSocket()
     })
+
+    async function checkExistingModel() {
+      try {
+        const response = await apiService.getTrainedModels(projectStore.currentProject.id)
+        if (response.length > 0) {
+          existingModel.value = response[0]
+          modelName.value = existingModel.value.name
+          modelDescription.value = existingModel.value.description
+          // You may want to populate other fields with existing model data
+        }
+      } catch (error) {
+        console.error('Error checking existing model:', error)
+      }
+    }
 
     function initializeSocket() {
       socket.on('training_update', (data) => {
@@ -244,14 +260,14 @@ export default {
         onDialogOK(response)
         $q.notify({
           color: 'positive',
-          message: 'Model training initiated successfully',
+          message: `Model ${existingModel.value ? 'updated' : 'training initiated'} successfully`,
           icon: 'check'
         })
       } catch (error) {
         console.error('Error training model:', error)
         $q.notify({
           color: 'negative',
-          message: 'Failed to initiate model training',
+          message: `Failed to ${existingModel.value ? 'update' : 'initiate training for'} model`,
           icon: 'error'
         })
       }
@@ -279,7 +295,8 @@ export default {
       trainingSetsPerDate,
       options,
       splitMethod,
-      trainTestSplit
+      trainTestSplit,
+      existingModel
     }
   }
 }

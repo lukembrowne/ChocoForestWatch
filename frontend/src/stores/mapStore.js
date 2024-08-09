@@ -384,38 +384,38 @@ export const useMapStore = defineStore('map', () => {
     // console.log("Select interaction: ", selectInteraction.value);
 
 
-    // // selectInteraction.value.on('select', (event) => {
-    // //   console.log("Selecting polygon from within MapStore...");
-    // //   if (event.selected.length > 0) {
-    // //     selectedPolygon.value = event.selected[0];
-    // //     selectedPolygon.value = event.selected[0];
+    // selectInteraction.value.on('select', (event) => {
+    //   console.log("Selecting polygon from within MapStore...");
+    //   if (event.selected.length > 0) {
+    //     selectedPolygon.value = event.selected[0];
+    //     selectedPolygon.value = event.selected[0];
 
-    // //   } else {
-    // //     selectedPolygon.value = null;
-    // //   }
-    // //   updateTrainingLayerStyle();
-    // // });
+    //   } else {
+    //     selectedPolygon.value = null;
+    //   }
+    //   updateTrainingLayerStyle();
+    // });
 
-    // // modifyInteraction.value = new Modify({
-    // //   features: selectInteraction.value.getFeatures()
-    // // });
+    // modifyInteraction.value = new Modify({
+    //   features: selectInteraction.value.getFeatures()
+    // });
 
-    // // modifyInteraction.value.on('modifyend', (event) => {
-    // //   const modifiedFeatures = event.features.getArray();
-    // //   modifiedFeatures.forEach(feature => {
-    // //     const index = drawnPolygons.value.findIndex(p => p.id === feature.getId());
-    // //     if (index !== -1) {
-    // //       const updatedPolygon = new GeoJSON().writeFeatureObject(feature, {
-    // //         dataProjection: 'EPSG:3857',
-    // //         featureProjection: 'EPSG:3857'
-    // //       });
-    // //       drawnPolygons.value[index] = updatedPolygon;
-    // //     }
-    // //   });
-    // // });
+    // modifyInteraction.value.on('modifyend', (event) => {
+    //   const modifiedFeatures = event.features.getArray();
+    //   modifiedFeatures.forEach(feature => {
+    //     const index = drawnPolygons.value.findIndex(p => p.id === feature.getId());
+    //     if (index !== -1) {
+    //       const updatedPolygon = new GeoJSON().writeFeatureObject(feature, {
+    //         dataProjection: 'EPSG:3857',
+    //         featureProjection: 'EPSG:3857'
+    //       });
+    //       drawnPolygons.value[index] = updatedPolygon;
+    //     }
+    //   });
+    // });
 
     // map.value.addInteraction(selectInteraction.value);
-    // // map.value.addInteraction(modifyInteraction.value);
+    // map.value.addInteraction(modifyInteraction.value);
   };
 
   const toggleDrawing = () => {

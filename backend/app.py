@@ -118,7 +118,7 @@ class Project(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     classes = db.Column(db.JSON)
     training_polygon_sets = db.relationship("TrainingPolygonSet", back_populates="project")
-    trained_models = db.relationship("TrainedModel", back_populates="project")
+    trained_model = db.relationship("TrainedModel", back_populates="project")
     predictions = db.relationship('Prediction', back_populates='project')
 
     def to_dict(self):
@@ -166,10 +166,56 @@ class TrainedModel(db.Model):
     all_class_names = db.Column(db.JSON)
 
     predictions = db.relationship("Prediction", back_populates="model", cascade="all, delete-orphan")
-    project = db.relationship("Project", back_populates="trained_models")
+    project = db.relationship("Project", back_populates="trained_model")
+
+
+    @classmethod
+    def save_or_update_model(cls, model, name, description, project_id, training_set_ids, metrics, model_parameters, date_encoder, month_encoder, num_samples, training_periods, label_encoder, all_class_names):
+        existing_model = cls.query.filter_by(project_id=project_id).first()
+        
+        if existing_model:
+            # Update existing model
+            logger.info(f"Updating existing model for project {project_id}")
+            existing_model.name = name
+            existing_model.description = description
+            existing_model.training_set_ids = training_set_ids
+            existing_model.training_periods = training_periods
+            existing_model.num_training_samples = num_samples
+            existing_model.accuracy = metrics['accuracy']
+            existing_model.class_metrics = metrics['class_metrics']
+            existing_model.class_names = metrics['class_names']
+            existing_model.confusion_matrix = metrics['confusion_matrix']
+            existing_model.model_parameters = model_parameters
+            existing_model.date_encoder = date_encoder
+            existing_model.month_encoder = month_encoder
+            existing_model.label_encoder = label_encoder
+            existing_model.all_class_names = all_class_names
+
+            # Update the file
+            model_dir = './trained_models'
+            file_name = f"{name}_{datetime.now().strftime('%Y%m%d%H%M%S')}.joblib"
+            file_path = os.path.join(model_dir, file_name)
+            joblib.dump(model, file_path)
+            
+            # Remove old file if it exists
+            if os.path.exists(existing_model.file_path):
+                os.remove(existing_model.file_path)
+            
+            existing_model.file_path = file_path
+            
+            db.session.commit()
+            return existing_model
+        else:
+            # Create new model (using existing save_model logic)
+            return cls.save_model(model, name, description, project_id, training_set_ids, metrics, model_parameters, date_encoder, month_encoder, num_samples, training_periods, label_encoder, all_class_names)
+
+
+
+
 
     @classmethod
     def save_model(cls, model, name, description, project_id, training_set_ids, metrics, model_parameters, date_encoder, month_encoder, num_samples, training_periods,label_encoder, all_class_names):
+        logger.info(f"Saving model for project {project_id}")
         model_dir = './trained_models'
         os.makedirs(model_dir, exist_ok=True)
         file_name = f"{name}_{datetime.now().strftime('%Y%m%d%H%M%S')}.joblib"
@@ -668,6 +714,7 @@ def train_model():
         'subsample': data.get('subsample', 0.8),
     }
 
+    
     try:
         # Fetch all training sets
         training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id).all()
@@ -1043,10 +1090,8 @@ def train_xgboost_model(X, y, feature_ids, project_id, training_set_ids, model_n
     unique_encoded_dates = np.unique(encoded_dates)
     training_periods = date_encoder.inverse_transform(unique_encoded_dates).tolist()
 
-
-
    # Save the trained model
-    saved_model = TrainedModel.save_model(
+    saved_model = TrainedModel.save_or_update_model(
         model, 
         model_name,
         model_description,
