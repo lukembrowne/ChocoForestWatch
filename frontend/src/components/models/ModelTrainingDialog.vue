@@ -1,115 +1,137 @@
 <template>
- <q-dialog ref="dialogRef" @hide="onDialogHide">
+  <q-dialog ref="dialogRef" @hide="onDialogHide">
     <q-card class="q-dialog-plugin" style="width: 800px; max-width: 90vw;">
       <q-card-section>
         <div class="text-h6">{{ existingModel ? 'Update' : 'Train' }} XGBoost Model</div>
       </q-card-section>
 
       <q-card-section v-if="trainingDataSummary">
-        <div class="text-subtitle1">Training Data Summary</div>
-        <q-list dense>
-          <q-item>
-            <q-item-section>
-              <q-item-label>Total Training Sets: {{ trainingDataSummary.totalSets }}</q-item-label>
-            </q-item-section>
-          </q-item>
-          <q-item v-for="(stats, className) in trainingDataSummary.classStats" :key="className">
-            <q-item-section>
-              <q-item-label>{{ className }}: {{ stats.featureCount }} features ({{ stats.totalAreaHa.toFixed(2) }} ha)</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
+        <div class="text-h6 q-mb-md">Training Data Summary</div>
+        <div class="row q-col-gutter-md q-mb-md">
+          <div class="col-12 col-md-6">
+            <q-card class="bg-primary text-white">
+              <q-card-section>
+                <div class="text-h6">{{ trainingDataSummary.totalSets }}</div>
+                <div class="text-subtitle2">Total Training Sets</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-md-6">
+            <q-card class="bg-secondary text-white">
+              <q-card-section>
+                <div class="text-h6">{{ totalArea.toFixed(2) }} ha</div>
+                <div class="text-subtitle2">Total Area</div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+        <q-markup-table flat bordered>
+          <thead>
+            <tr>
+              <th class="text-left">Class</th>
+              <th class="text-right">Features</th>
+              <th class="text-right">Area (ha)</th>
+              <th class="text-right">Percentage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(stats, className) in trainingDataSummary.classStats" :key="className">
+              <td class="text-left">
+                <q-chip :color="getClassColor(className)" text-color="black" square>
+                  {{ className }}
+                </q-chip>
+              </td>
+              <td class="text-right">{{ stats.featureCount }}</td>
+              <td class="text-right">{{ stats.totalAreaHa.toFixed(2) }}</td>
+              <td class="text-right">{{ ((stats.totalAreaHa / totalArea) * 100).toFixed(2) }}%</td>
+            </tr>
+          </tbody>
+        </q-markup-table>
       </q-card-section>
 
       <q-card-section v-if="trainingDataSummary">
         <div class="text-subtitle1">Basemap dates with training data:</div>
-          <q-chip
-            v-for="date in basemapOptions"
-            :key="date"
-            :color="trainingDataSummary.trainingSetDates.includes(date['value']) ? 'primary' : 'grey-4'"
-            :text-color="trainingDataSummary.trainingSetDates.includes(date['value']) ? 'white' : 'black'"
-          >
-            {{ date['label'] }}
-          </q-chip>
-          
+        <q-chip v-for="date in basemapOptions" :key="date"
+          :color="trainingDataSummary.trainingSetDates.includes(date['value']) ? 'primary' : 'grey-4'"
+          :text-color="trainingDataSummary.trainingSetDates.includes(date['value']) ? 'white' : 'black'">
+          {{ date['label'] }}
+        </q-chip>
+
       </q-card-section>
 
       <q-card-section>
-        <q-expansion-item
-          expand-separator
-          label="Tune Advanced Model Parameters"
-          caption="Click to customize model parameters"
-        >
-        <div class="row q-col-gutter-md">
-              <div class="col-12">
-                <p>Choose split method:</p>
-                <q-radio v-model="splitMethod" val="feature" label="Feature-based" color="primary" />
-                <q-radio v-model="splitMethod" val="pixel" label="Pixel-based" color="primary" />
-                <p class="text-caption q-mt-sm">
-                  Feature-based split ensures independence between training and testing data by splitting entire
-                  polygons.
-                  Pixel-based split may mix pixels from the same polygon in both training and testing sets.
-                </p>
-              </div>
-              <div class="col-12">
-                <p>Adjust the train/test split:</p>
-                <q-slider v-model="trainTestSplit" :min="0.1" :max="0.5" :step="0.05" label label-always
-                  color="primary" />
-                <p class="text-caption">
-                  This determines the proportion of data used for testing. A value of {{ trainTestSplit }} means
-                  {{ (trainTestSplit * 100).toFixed(0) }}% of the {{ splitMethod === 'pixel' ? 'pixels' : 'features' }}
-                  will be used for testing, and
-                  {{ (100 - trainTestSplit * 100).toFixed(0) }}% for training.
-                </p>
-              </div>
-              <div class="col-12 col-md-6">
-                <p>Number of Estimators:</p>
-                <q-slider v-model="options.n_estimators" :min="10" :max="1000" :step="10" label label-always
-                  color="primary" />
-                <p class="text-caption">The number of trees in the forest. Higher values generally improve performance
-                  but increase training time.</p>
-              </div>
-              <div class="col-12 col-md-6">
-                <p>Max Depth:</p>
-                <q-slider v-model="options.max_depth" :min="1" :max="10" :step="1" label label-always color="primary" />
-                <p class="text-caption">Maximum depth of the trees. Higher values make the model more complex and prone
-                  to overfitting.</p>
-              </div>
-              <div class="col-12 col-md-6">
-                <p>Learning Rate:</p>
-                <q-slider v-model="options.learning_rate" :min="0.01" :max="0.3" :step="0.01" label label-always
-                  color="primary" />
-                <p class="text-caption">Step size shrinkage used to prevent overfitting. Lower values are generally
-                  better but require more iterations.</p>
-              </div>
-              <div class="col-12 col-md-6">
-                <p>Min Child Weight:</p>
-                <q-slider v-model="options.min_child_weight" :min="1" :max="10" :step="1" label label-always
-                  color="primary" />
-                <p class="text-caption">Minimum sum of instance weight needed in a child. Higher values make the model
-                  more conservative.</p>
-              </div>
-              <div class="col-12 col-md-6">
-                <p>Gamma:</p>
-                <q-slider v-model="options.gamma" :min="0" :max="1" :step="0.1" label label-always color="primary" />
-                <p class="text-caption">Minimum loss reduction required to make a further partition. Higher values make
-                  the model more conservative.</p>
-              </div>
-              <div class="col-12 col-md-6">
-                <p>Subsample:</p>
-                <q-slider v-model="options.subsample" :min="0.5" :max="1" :step="0.1" label label-always
-                  color="primary" />
-                <p class="text-caption">Fraction of samples used for fitting the trees. Lower values can help prevent
-                  overfitting.</p>
-              </div>
-              <div class="col-12 col-md-6">
-                <p>Colsample Bytree:</p>
-                <q-slider v-model="options.colsample_bytree" :min="0.5" :max="1" :step="0.1" label label-always
-                  color="primary" />
-                <p class="text-caption">Fraction of features used for building each tree. Can help in reducing
-                  overfitting.</p>
-              </div>
+        <q-expansion-item expand-separator label="Tune Advanced Model Parameters"
+          caption="Click to customize model parameters">
+          <div class="row q-col-gutter-md">
+            <div class="col-12">
+              <p>Choose split method:</p>
+              <q-radio v-model="splitMethod" val="feature" label="Feature-based" color="primary" />
+              <q-radio v-model="splitMethod" val="pixel" label="Pixel-based" color="primary" />
+              <p class="text-caption q-mt-sm">
+                Feature-based split ensures independence between training and testing data by splitting entire
+                polygons.
+                Pixel-based split may mix pixels from the same polygon in both training and testing sets.
+              </p>
             </div>
+            <div class="col-12">
+              <p>Adjust the train/test split:</p>
+              <q-slider v-model="trainTestSplit" :min="0.1" :max="0.5" :step="0.05" label label-always
+                color="primary" />
+              <p class="text-caption">
+                This determines the proportion of data used for testing. A value of {{ trainTestSplit }} means
+                {{ (trainTestSplit * 100).toFixed(0) }}% of the {{ splitMethod === 'pixel' ? 'pixels' : 'features' }}
+                will be used for testing, and
+                {{ (100 - trainTestSplit * 100).toFixed(0) }}% for training.
+              </p>
+            </div>
+            <div class="col-12 col-md-6">
+              <p>Number of Estimators:</p>
+              <q-slider v-model="options.n_estimators" :min="10" :max="1000" :step="10" label label-always
+                color="primary" />
+              <p class="text-caption">The number of trees in the forest. Higher values generally improve performance
+                but increase training time.</p>
+            </div>
+            <div class="col-12 col-md-6">
+              <p>Max Depth:</p>
+              <q-slider v-model="options.max_depth" :min="1" :max="10" :step="1" label label-always color="primary" />
+              <p class="text-caption">Maximum depth of the trees. Higher values make the model more complex and prone
+                to overfitting.</p>
+            </div>
+            <div class="col-12 col-md-6">
+              <p>Learning Rate:</p>
+              <q-slider v-model="options.learning_rate" :min="0.01" :max="0.3" :step="0.01" label label-always
+                color="primary" />
+              <p class="text-caption">Step size shrinkage used to prevent overfitting. Lower values are generally
+                better but require more iterations.</p>
+            </div>
+            <div class="col-12 col-md-6">
+              <p>Min Child Weight:</p>
+              <q-slider v-model="options.min_child_weight" :min="1" :max="10" :step="1" label label-always
+                color="primary" />
+              <p class="text-caption">Minimum sum of instance weight needed in a child. Higher values make the model
+                more conservative.</p>
+            </div>
+            <div class="col-12 col-md-6">
+              <p>Gamma:</p>
+              <q-slider v-model="options.gamma" :min="0" :max="1" :step="0.1" label label-always color="primary" />
+              <p class="text-caption">Minimum loss reduction required to make a further partition. Higher values make
+                the model more conservative.</p>
+            </div>
+            <div class="col-12 col-md-6">
+              <p>Subsample:</p>
+              <q-slider v-model="options.subsample" :min="0.5" :max="1" :step="0.1" label label-always
+                color="primary" />
+              <p class="text-caption">Fraction of samples used for fitting the trees. Lower values can help prevent
+                overfitting.</p>
+            </div>
+            <div class="col-12 col-md-6">
+              <p>Colsample Bytree:</p>
+              <q-slider v-model="options.colsample_bytree" :min="0.5" :max="1" :step="0.1" label label-always
+                color="primary" />
+              <p class="text-caption">Fraction of features used for building each tree. Can help in reducing
+                overfitting.</p>
+            </div>
+          </div>
         </q-expansion-item>
       </q-card-section>
 
@@ -149,11 +171,11 @@ export default {
     const projectStore = useProjectStore()
 
     const basemapOptions = computed(() => {
-        return getBasemapDateOptions().map(option => ({
-          label: option.label,
-          value: option.value
-        }));
-      });
+      return getBasemapDateOptions().map(option => ({
+        label: option.label,
+        value: option.value
+      }));
+    });
 
     const existingModel = ref(null)
     const modelName = ref(generateDefaultModelName())
@@ -258,7 +280,7 @@ export default {
           modelName: modelName.value,
           modelDescription: modelDescription.value,
           trainTestSplit: trainTestSplit.value,
-          splitMethod: splitMethod.value, 
+          splitMethod: splitMethod.value,
           ...options.value
         })
 
@@ -286,6 +308,17 @@ export default {
       return `Model_${dateString}_${timeString}`
     }
 
+    const totalArea = computed(() => {
+      if (!trainingDataSummary.value) return 0
+      return Object.values(trainingDataSummary.value.classStats).reduce((sum, stats) => sum + stats.totalAreaHa, 0)
+    })
+
+    const getClassColor = (className) => {
+      const classObj = projectStore.currentProject?.classes.find(cls => cls.name === className)
+      const col = classObj ? classObj.color : '#000000'
+      return col
+    }
+
     return {
       dialogRef,
       onDialogHide,
@@ -303,7 +336,9 @@ export default {
       splitMethod,
       trainTestSplit,
       existingModel,
-      basemapOptions
+      basemapOptions,
+      totalArea,
+      getClassColor
     }
   }
 }
