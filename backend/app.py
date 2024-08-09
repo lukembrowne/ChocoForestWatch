@@ -393,16 +393,6 @@ def download_quads_for_aoi(aoi_extent, basemap_dates):
     
     logger.info(f"Completed quad download for AOI: {aoi_extent}")
 
-    # Simple Celery task
-@celery.task
-def add(x, y):
-    return x + y
-
-# Flask route to trigger the task
-@app.route('/add/<int:a>/<int:b>')
-def add_numbers(a, b):
-    result = add.delay(a, b)
-    return f'Task started: {result}'
 
 @app.route('/api/projects/<int:project_id>', methods=['GET'])
 def get_project(project_id):
