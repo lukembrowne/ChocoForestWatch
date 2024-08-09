@@ -22,6 +22,7 @@ import { getBasemapDateOptions } from 'src/utils/dateUtils';
 import { Feature } from 'ol';
 import { Polygon } from 'ol/geom';
 import { fromLonLat, toLonLat } from 'ol/proj';
+import { transformExtent } from 'ol/proj'
 
 
 
@@ -180,7 +181,16 @@ export const useMapStore = defineStore('map', () => {
       throw new Error('No project selected');
     }
     try {
-      const response = await api.setProjectAOI(projectStore.currentProject.id, aoiGeojson);
+      console.log("AOI Geojson: ", aoiGeojson)
+      // Read the geometry directly from the GeoJSON object
+      const geojsonFormat = new GeoJSON();
+      const geometry = geojsonFormat.readGeometry(aoiGeojson['geometry']);
+      const extent = geometry.getExtent()
+      const aoiExtentLatLon = transformExtent(extent, 'EPSG:3857', 'EPSG:4326')
+
+      console.log("AOI extent in lat lon: ", aoiExtentLatLon)
+
+      const response = await api.setProjectAOI(projectStore.currentProject.id, aoiGeojson, aoiExtentLatLon, availableDates.value);
       projectStore.currentProject.aoi = response.data.aoi;
       return response.data;
     } catch (error) {

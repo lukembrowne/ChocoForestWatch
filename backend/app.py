@@ -44,6 +44,7 @@ import uuid
 from shapely.ops import transform
 import pyproj
 from pyproj import Transformer
+from celery import Celery
 
 
 
@@ -78,6 +79,16 @@ log_file = "app.log"
 logger.remove()  # Remove default handler
 logger.add(sys.stderr, format="{time} {level} {message}", level="INFO")
 logger.add(log_file, rotation="10 MB", retention="10 days", level="DEBUG")
+
+# Celery configuration
+app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
+app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
+
+# Initialize Celery
+celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
+celery.conf.update(app.config)
+
+
 
 # Middleware to log all requests
 @app.before_request
@@ -366,6 +377,33 @@ def create_project():
         # "aoi": json.loads(db.session.scalar(project.aoi.ST_AsGeoJSON()))
     }), 201
 
+@celery.task
+def download_quads_for_aoi(aoi_extent, basemap_dates):
+    ## Assumes basemap_date is in the format 'YYYY-MM'
+    logger.info(f"Starting quad download for AOI: {aoi_extent}")
+    total_dates = len(basemap_dates)
+    
+    for index, date in enumerate(basemap_dates, start=1):
+        try:
+            logger.info(f"Downloading quads for date {date} ({index}/{total_dates})")
+            quads = get_planet_quads(aoi_extent, date) 
+            logger.info(f"Successfully downloaded {len(quads)} quads for date {date}")
+        except Exception as e:
+            logger.error(f"Error downloading quads for date {date}: {str(e)}")
+    
+    logger.info(f"Completed quad download for AOI: {aoi_extent}")
+
+    # Simple Celery task
+@celery.task
+def add(x, y):
+    return x + y
+
+# Flask route to trigger the task
+@app.route('/add/<int:a>/<int:b>')
+def add_numbers(a, b):
+    result = add.delay(a, b)
+    return f'Task started: {result}'
+
 @app.route('/api/projects/<int:project_id>', methods=['GET'])
 def get_project(project_id):
     project = Project.query.get_or_404(project_id)
@@ -436,6 +474,11 @@ def set_project_aoi(project_id):
         # Convert GeoJSON to shapely geometry
         geojson = data['aoi']
         shape = geometry.shape(geojson['geometry'])
+        aoi_extent = data['aoi_extent']
+        basemap_dates = data['basemap_dates']
+
+        # Trigger background download of imagery
+        download_quads_for_aoi.delay(aoi_extent, basemap_dates)
         
         # Convert shapely geometry to WKT
         wkt = shape.wkt
@@ -824,6 +867,7 @@ def update_progress(project_id, progress, message, data=None):
 
 
 def get_planet_quads(aoi_extent, basemap_date):
+    ## Assumes basemap_date is in the format 'YYYY-MM'
     if not PLANET_API_KEY:
         raise ValueError("PLANET_API_KEY environment variable is not set")
 
@@ -867,8 +911,6 @@ def get_mosaic_id(mosaic_name):
     mosaics = response.json().get('mosaics', [])
     if not mosaics:
         raise ValueError(f"No mosaic found with name: {mosaic_name}")
-    
-
 
     return mosaics[0]['id']
 

@@ -112,7 +112,7 @@ export default {
 
                 $q.notify({
                     color: 'positive',
-                    message: 'AOI saved successfully',
+                    message: 'AOI saved successfully and imagery download initiated',
                     icon: 'check'
                 })
 

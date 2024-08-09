@@ -31,8 +31,8 @@ export default {
   updateProjectClasses(projectId, classes) {
     return axios.put(`${API_URL}/projects/${projectId}/classes`, { classes });
   },
-  setProjectAOI(projectId, aoiGeojson) {
-    return axios.post(`${API_URL}/projects/${projectId}/aoi`, { aoi: aoiGeojson })
+  setProjectAOI(projectId, aoiGeojson, aoiExtent, basemapDates) {
+    return axios.post(`${API_URL}/projects/${projectId}/aoi`, { aoi: aoiGeojson, aoi_extent: aoiExtent, basemap_dates: basemapDates })
   },
 
   getTrainingPolygons(projectId) {

@@ -10,13 +10,8 @@
 
       <q-card-section>
         <div class="text-h6">Load Existing Project</div>
-        <q-table
-          :rows="projects"
-          :columns="columns"
-          row-key="id"
-          :pagination="{ rowsPerPage: 5 }"
-          @row-click="onRowClick"
-        >
+        <q-table :rows="projects" :columns="columns" row-key="id" :pagination="{ rowsPerPage: 5 }"
+          @row-click="onRowClick">
           <template v-slot:body-cell-actions="props">
             <q-td :props="props">
               <q-btn flat round color="primary" icon="launch" @click.stop="onOk(props.row)">
@@ -119,8 +114,10 @@ export default {
     const columns = [
       { name: 'name', required: true, label: 'Name', align: 'left', field: 'name', sortable: true },
       { name: 'description', align: 'left', label: 'Description', field: 'description', sortable: true },
-      { name: 'updated_at', align: 'left', label: 'Last Updated', field: 'updated_at', sortable: true,
-        format: (val) => date.formatDate(val, 'YYYY-MM-DD HH:mm') },
+      {
+        name: 'updated_at', align: 'left', label: 'Last Updated', field: 'updated_at', sortable: true,
+        format: (val) => date.formatDate(val, 'YYYY-MM-DD HH:mm')
+      },
       { name: 'actions', align: 'center', label: 'Actions' }
     ]
 
