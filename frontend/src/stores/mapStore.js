@@ -3,7 +3,6 @@ import api from 'src/services/api';
 import TileLayer from 'ol/layer/Tile'
 import OSM from 'ol/source/OSM'
 import { Map, View } from 'ol'
-import { fromLonLat } from 'ol/proj';
 import 'ol/ol.css';
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
@@ -20,6 +19,9 @@ import { fromUrl } from 'geotiff';
 import ImageLayer from 'ol/layer/Image';
 import ImageStatic from 'ol/source/ImageStatic';
 import { getBasemapDateOptions } from 'src/utils/dateUtils';
+import { Feature } from 'ol';
+import { Polygon } from 'ol/geom';
+import { fromLonLat, toLonLat } from 'ol/proj';
 
 
 
@@ -38,6 +40,7 @@ export const useMapStore = defineStore('map', () => {
   const trainingPolygonsLayer = ref(null);
   const layers = ref([]);
   const selectedBasemapDate = ref(null);
+  const polygonSize = ref(100); // Default size in meters
 
 
   // Internal state
@@ -216,7 +219,8 @@ export const useMapStore = defineStore('map', () => {
           width: 2
         })
       }),
-      selectable: false
+      selectable: false,
+      interactive: false
     });
 
     // Add new AOI layer to map
@@ -224,6 +228,10 @@ export const useMapStore = defineStore('map', () => {
 
     // Zoom to AOI
     map.value.getView().fit(vectorSource.getExtent(), { padding: [50, 50, 50, 50] });
+
+    // Reinitialize interactions so that the AOI layer is not selectable
+    initInteractions();
+
   };
 
   const clearAOI = () => {
@@ -363,43 +371,51 @@ export const useMapStore = defineStore('map', () => {
 
   const initInteractions = () => {
 
-    if (!map.value) return;
+    // if (!map.value) return;
 
-    selectInteraction.value = new Select({
-      condition: click,
-      style: featureStyleFunction
-    });
+    // selectInteraction.value = new Select({
+    //   condition: click,
+    //   style: featureStyleFunction,
+    //   layers: (layer) => {
+    //     return layer !== aoiLayer.value;
+    //   },
+    // });
 
-    selectInteraction.value.on('select', (event) => {
-      if (event.selected.length > 0) {
-        selectedPolygon.value = event.selected[0];
+    // console.log("Select interaction: ", selectInteraction.value);
 
-      } else {
-        selectedPolygon.value = null;
-      }
-      updateTrainingLayerStyle();
-    });
 
-    modifyInteraction.value = new Modify({
-      features: selectInteraction.value.getFeatures()
-    });
+    // // selectInteraction.value.on('select', (event) => {
+    // //   console.log("Selecting polygon from within MapStore...");
+    // //   if (event.selected.length > 0) {
+    // //     selectedPolygon.value = event.selected[0];
+    // //     selectedPolygon.value = event.selected[0];
 
-    modifyInteraction.value.on('modifyend', (event) => {
-      const modifiedFeatures = event.features.getArray();
-      modifiedFeatures.forEach(feature => {
-        const index = drawnPolygons.value.findIndex(p => p.id === feature.getId());
-        if (index !== -1) {
-          const updatedPolygon = new GeoJSON().writeFeatureObject(feature, {
-            dataProjection: 'EPSG:3857',
-            featureProjection: 'EPSG:3857'
-          });
-          drawnPolygons.value[index] = updatedPolygon;
-        }
-      });
-    });
+    // //   } else {
+    // //     selectedPolygon.value = null;
+    // //   }
+    // //   updateTrainingLayerStyle();
+    // // });
 
-    map.value.addInteraction(selectInteraction.value);
-    map.value.addInteraction(modifyInteraction.value);
+    // // modifyInteraction.value = new Modify({
+    // //   features: selectInteraction.value.getFeatures()
+    // // });
+
+    // // modifyInteraction.value.on('modifyend', (event) => {
+    // //   const modifiedFeatures = event.features.getArray();
+    // //   modifiedFeatures.forEach(feature => {
+    // //     const index = drawnPolygons.value.findIndex(p => p.id === feature.getId());
+    // //     if (index !== -1) {
+    // //       const updatedPolygon = new GeoJSON().writeFeatureObject(feature, {
+    // //         dataProjection: 'EPSG:3857',
+    // //         featureProjection: 'EPSG:3857'
+    // //       });
+    // //       drawnPolygons.value[index] = updatedPolygon;
+    // //     }
+    // //   });
+    // // });
+
+    // map.value.addInteraction(selectInteraction.value);
+    // // map.value.addInteraction(modifyInteraction.value);
   };
 
   const toggleDrawing = () => {
@@ -410,20 +426,82 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
-  const startDrawing = () => {
+  // const startDrawing = () => {
 
+  //   console.log("Start drawing from within MapStore...");
+  //   if (!map.value || !trainingPolygonsLayer.value) return;
+
+  //   isDrawing.value = true;
+  //   drawInteraction.value = new Draw({
+  //     source: trainingPolygonsLayer.value.getSource(),
+  //     type: 'Polygon',
+  //     freehand: true
+  //   });
+
+  //   drawInteraction.value.on('drawend', (event) => {
+  //     const feature = event.feature;
+  //     feature.set('classLabel', selectedClass.value);
+  //     feature.setId(Date.now().toString()); // Generate a unique ID
+
+  //     // Explicitly add the feature to the layer's source
+  //     trainingPolygonsLayer.value.getSource().addFeature(feature);
+
+  //     const newPolygon = new GeoJSON().writeFeatureObject(feature, {
+  //       dataProjection: 'EPSG:3857',
+  //       featureProjection: 'EPSG:3857'
+  //     });
+  //     drawnPolygons.value.push(newPolygon);
+  //     updateTrainingLayerStyle();
+  //     console.log("Drawn polygons: ", drawnPolygons.value)
+  //     console.log("Features from trainingPolygonsLayer: ", trainingPolygonsLayer.value.getSource().getFeatures())
+  //   });
+  //   map.value.addInteraction(drawInteraction.value);
+  // };
+
+  // const stopDrawing = () => {
+  //   if (!map.value || !drawInteraction.value) return;
+
+  //   map.value.removeInteraction(drawInteraction.value);
+  //   isDrawing.value = false;
+  // };
+
+  const setPolygonSize = (size) => {
+    polygonSize.value = size;
+  };
+
+
+
+  const startDrawing = () => {
     console.log("Start drawing from within MapStore...");
     if (!map.value || !trainingPolygonsLayer.value) return;
 
     isDrawing.value = true;
-    drawInteraction.value = new Draw({
-      source: trainingPolygonsLayer.value.getSource(),
-      type: 'Polygon',
-      freehand: true
-    });
 
-    drawInteraction.value.on('drawend', (event) => {
-      const feature = event.feature;
+    // Remove any existing click listener
+    if (map.value.clickListener) {
+      map.value.un('click', map.value.clickListener);
+    }
+
+    map.value.clickListener = (event) => {
+      const clickCoordinate = event.coordinate;
+      const [x, y] = clickCoordinate;
+
+      // Use polygonSize.value instead of a fixed value
+      const halfSize = polygonSize.value / 2;
+
+      const polygonCoordinates = [
+        [x - halfSize, y - halfSize],
+        [x + halfSize, y - halfSize],
+        [x + halfSize, y + halfSize],
+        [x - halfSize, y + halfSize],
+        [x - halfSize, y - halfSize] // Close the polygon
+      ];
+
+      const polygonGeometry = new Polygon([polygonCoordinates]);
+      const feature = new Feature({
+        geometry: polygonGeometry
+      });
+
       feature.set('classLabel', selectedClass.value);
       feature.setId(Date.now().toString()); // Generate a unique ID
 
@@ -431,23 +509,27 @@ export const useMapStore = defineStore('map', () => {
       trainingPolygonsLayer.value.getSource().addFeature(feature);
 
       const newPolygon = new GeoJSON().writeFeatureObject(feature, {
-        dataProjection: 'EPSG:3857',
         featureProjection: 'EPSG:3857'
       });
       drawnPolygons.value.push(newPolygon);
       updateTrainingLayerStyle();
-      console.log("Drawn polygons: ", drawnPolygons.value)
-      console.log("Features from trainingPolygonsLayer: ", trainingPolygonsLayer.value.getSource().getFeatures())
-    });
-    map.value.addInteraction(drawInteraction.value);
+      console.log("Drawn polygons: ", drawnPolygons.value);
+      console.log("Features from trainingPolygonsLayer: ", trainingPolygonsLayer.value.getSource().getFeatures());
+    };
+
+    map.value.on('click', map.value.clickListener);
   };
 
   const stopDrawing = () => {
-    if (!map.value || !drawInteraction.value) return;
+    if (!map.value) return;
 
-    map.value.removeInteraction(drawInteraction.value);
     isDrawing.value = false;
+    if (map.value.clickListener) {
+      map.value.un('click', map.value.clickListener);
+      map.value.clickListener = null;
+    }
   };
+
 
   const deletePolygon = (index) => {
     // console.log("Deleting polygon with index: ", index);
@@ -725,6 +807,7 @@ export const useMapStore = defineStore('map', () => {
     modeIndicator,
     selectedBasemapDate,
     availableDates,
+    polygonSize,
     // Actions
     initMap,
     setAOI,
@@ -756,6 +839,7 @@ export const useMapStore = defineStore('map', () => {
     moveToPreviousDate,
     loadTrainingPolygonsForDate,
     saveCurrentTrainingPolygons,
+    setPolygonSize,
     // Getters
     getMap
   };

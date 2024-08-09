@@ -2,54 +2,46 @@
   <q-dialog ref="dialogRef" @hide="onDialogHide">
     <q-card class="q-dialog-plugin" style="width: 800px; max-width: 90vw;">
       <q-card-section>
-        <div class="text-h6">XGBoost Model Training</div>
+        <div class="text-h6">Train XGBoost Model</div>
+      </q-card-section>
+
+      <q-card-section v-if="trainingDataSummary">
+        <div class="text-subtitle1">Training Data Summary</div>
+        <q-list dense>
+          <q-item>
+            <q-item-section>
+              <q-item-label>Total Training Sets: {{ trainingDataSummary.totalSets }}</q-item-label>
+            </q-item-section>
+          </q-item>
+          <q-item v-for="(stats, className) in trainingDataSummary.classStats" :key="className">
+            <q-item-section>
+              <q-item-label>{{ className }}: {{ stats.featureCount }} features ({{ stats.totalArea.toFixed(2) }} km²)</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-list>
       </q-card-section>
 
       <q-card-section>
-        <q-stepper v-model="step" vertical color="primary" animated>
-          <!-- Step 1: Model Name and Description -->
-          <q-step :name="1" title="Name Your Model" icon="create" :done="step > 1">
-            <q-input v-model="modelName" label="Model Name" :rules="[val => !!val || 'Model name is required']" />
-            <q-input v-model="modelDescription" label="Model Description (Optional)" type="textarea" />
-            <q-stepper-navigation>
-              <q-btn @click="step = 2" color="primary" label="Next" />
-            </q-stepper-navigation>
-          </q-step>
+        <div class="text-subtitle1">Available Basemap Dates</div>
+        <div class="row q-gutter-sm">
+          <q-checkbox
+            v-for="date in availableDates"
+            :key="date"
+            v-model="selectedDates"
+            :val="date"
+            :label="date"
+            :disable="!trainingSetsPerDate[date]"
+          />
+        </div>
+      </q-card-section>
 
-          <!-- Step 2: Training Data Summary -->
-          <q-step :name="2" title="Training Data Summary" icon="assessment" :done="step > 2">
-            <div v-if="trainingDataSummary">
-              <h6>Training Data Overview:</h6>
-              <p>Total Training Sets: {{ totalSets }}</p>
-              <p v-if="trainingDataSummary.dateRange">
-                Date Range: {{ trainingDataSummary.dateRange.start }} to {{ trainingDataSummary.dateRange.end }}
-              </p>
-
-              <h6>Class Distribution:</h6>
-              <q-list bordered separator>
-                <q-item v-for="(stats, className) in trainingDataSummary.classStats" :key="className">
-                  <q-item-section>
-                    <q-item-label>{{ className }}</q-item-label>
-                    <q-item-label caption>
-                      Features: {{ stats.featureCount }} |
-                      Total Area: {{ isNaN(stats.totalArea) ? 'N/A' : stats.totalArea.toFixed(2) + ' km²' }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </div>
-            <div v-else>
-              Loading training data summary...
-            </div>
-            <q-stepper-navigation>
-              <q-btn flat @click="step = 1" color="primary" label="Back" class="q-mr-sm" />
-              <q-btn @click="step = 3" color="primary" label="Next" />
-            </q-stepper-navigation>
-          </q-step>
-
-          <!-- Step 3: Model Parameters -->
-          <q-step :name="3" title="Set Model Parameters" icon="settings" :done="step > 3">
-            <div class="row q-col-gutter-md">
+      <q-card-section>
+        <q-expansion-item
+          expand-separator
+          label="Advanced Model Parameters"
+          caption="Click to customize model parameters"
+        >
+        <div class="row q-col-gutter-md">
               <div class="col-12">
                 <p>Choose split method:</p>
                 <q-radio v-model="splitMethod" val="feature" label="Feature-based" color="primary" />
@@ -119,13 +111,13 @@
                   overfitting.</p>
               </div>
             </div>
-            <q-stepper-navigation>
-              <q-btn flat @click="step = 2" color="primary" label="Back" class="q-mr-sm" />
-              <q-btn @click="trainModel" color="primary" label="Train Model" />
-            </q-stepper-navigation>
-          </q-step>
-        </q-stepper>
+        </q-expansion-item>
       </q-card-section>
+
+      <q-card-actions align="right">
+        <q-btn flat label="Cancel" color="primary" v-close-popup />
+        <q-btn label="Train Model" color="primary" @click="trainModel" />
+      </q-card-actions>
     </q-card>
   </q-dialog>
 
@@ -134,16 +126,14 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import apiService from 'src/services/api'
 import { GeoJSON } from 'ol/format'
 import { transformExtent } from 'ol/proj'
 import TrainingProgress from 'components/models/TrainingProgress.vue'
-import { io } from 'socket.io-client';
-import { isReactive } from 'vue'
-
+import { io } from 'socket.io-client'
 
 export default {
   name: 'ModelTrainingDialog',
@@ -156,29 +146,17 @@ export default {
     const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
     const $q = useQuasar()
     const projectStore = useProjectStore()
-    const trainingDataSummary = ref(null)
 
-    const totalSets = computed(() => {
-      console.log('Training data summary from totalsets computed:', trainingDataSummary.value.totalSets)
-      return trainingDataSummary.value ? trainingDataSummary.value.totalSets : 'N/A'
-    })
-
-
-    const generateDefaultModelName = () => {
-      const today = new Date();
-      const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
-      const timeString = today.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
-      return `Model_${dateString}_${timeString}`;
-    };
-
-    const step = ref(1)
     const modelName = ref(generateDefaultModelName())
     const modelDescription = ref('')
+    const trainingDataSummary = ref(null)
+    const availableDates = ref([])
+    const trainingSetsPerDate = ref({})
     const isTraining = ref(false)
     const trainingProgress = ref(0)
     const trainingProgressMessage = ref('')
     const trainingError = ref('')
-    const socket = io('http://127.0.0.1:5000');
+    const socket = io('http://127.0.0.1:5000')
     const splitMethod = ref('feature')  // Default to feature-based split
     const trainTestSplit = ref(0.2)
 
@@ -192,60 +170,54 @@ export default {
       colsample_bytree: 0.8
     })
 
-    const columns = [
-      { name: 'id', align: 'left', label: 'ID', field: 'id', sortable: true },
-      { name: 'name', align: 'left', label: 'Name', field: 'name', sortable: true },
-      { name: 'basemap_date', align: 'left', label: 'Basemap Date', field: 'basemap_date', sortable: true },
-      { name: 'feature_count', align: 'left', label: 'Feature Count', field: 'feature_count', sortable: true },
-      { name: 'created_at', align: 'left', label: 'Created At', field: 'created_at', sortable: true },
-    ]
 
-    onMounted(() => {
-      fetchTrainingDataSummary()
-      console.log('Training data summary after mounting:', trainingDataSummary.value)
+    onMounted(async () => {
+      await fetchTrainingDataSummary()
+      initializeSocket()
+    })
 
+    function initializeSocket() {
       socket.on('training_update', (data) => {
-        console.log('Received training update:', data);
         if (data.projectId === projectStore.currentProject.id) {
-          trainingProgress.value = data.progress;
-          trainingProgressMessage.value = data.message;
+          trainingProgress.value = data.progress
+          trainingProgressMessage.value = data.message
           if (data.error) {
-            trainingError.value = data.error;
-            isTraining.value = false;
+            trainingError.value = data.error
+            isTraining.value = false
             $q.notify({
               type: 'negative',
               message: 'Error occurred during training.'
-            });
+            })
           }
           if (data.message === "Training complete") {
-            isTraining.value = false;
+            isTraining.value = false
             $q.notify({
               type: 'positive',
               message: 'Training completed successfully!'
-            });
+            })
           }
         }
-      });
-    })
+      })
+    }
 
-
-    const fetchTrainingDataSummary = async () => {
+    async function fetchTrainingDataSummary() {
       try {
         const response = await apiService.getTrainingDataSummary(projectStore.currentProject.id)
-        // Parse the response if it's a string
-        if (typeof response.data === 'string') {
-          trainingDataSummary.value = JSON.parse(response.data)
-        } else {
-          trainingDataSummary.value = response.data
-        }
-         console.log('Fetched training data summary:', trainingDataSummary.value)
+        trainingDataSummary.value = response.data
+        availableDates.value = response.data.availableDates
+        trainingSetsPerDate.value = response.data.trainingSetsPerDate
+        selectedDates.value = availableDates.value.filter(date => trainingSetsPerDate.value[date])
       } catch (error) {
         console.error('Error fetching training data summary:', error)
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to fetch training data summary',
+          icon: 'error'
+        })
       }
     }
 
-    const trainModel = async () => {
-
+    async function trainModel() {
       try {
         isTraining.value = true
         trainingProgress.value = 0
@@ -264,7 +236,7 @@ export default {
           modelName: modelName.value,
           modelDescription: modelDescription.value,
           trainTestSplit: trainTestSplit.value,
-          splitMethod: splitMethod.value,  // Add this line
+          splitMethod: splitMethod.value, 
           ...options.value
         })
 
@@ -283,40 +255,31 @@ export default {
           icon: 'error'
         })
       }
+    }
 
-      // Fetch summary when step changes to 2
-      watch(() => step.value, (newStep) => {
-        if (newStep === 2) {
-          fetchTrainingDataSummary()
-        }
-      })
-
-      watch(trainingDataSummary, (newValue) => {
-        console.log('trainingDataSummary changed:', newValue)
-      }, { deep: true })
-
+    function generateDefaultModelName() {
+      const today = new Date()
+      const dateString = today.toISOString().split('T')[0]
+      const timeString = today.toTimeString().split(' ')[0].replace(/:/g, '-')
+      return `Model_${dateString}_${timeString}`
     }
 
     return {
       dialogRef,
       onDialogHide,
-      onOk: onDialogOK,
-      onCancel: onDialogCancel,
-      step,
       modelName,
       modelDescription,
-      options,
       trainModel,
-      columns,
       isTraining,
       trainingProgress,
       trainingProgressMessage,
       trainingError,
-      trainTestSplit,
-      splitMethod,
       trainingDataSummary,
-      totalSets,
-      isReactive
+      availableDates,
+      trainingSetsPerDate,
+      options,
+      splitMethod,
+      trainTestSplit
     }
   }
 }

@@ -13,6 +13,12 @@
                     :disable="interactionMode !== 'draw'" />
             </div>
         </q-card-section>
+
+        <q-card-section>
+            <div class="text-subtitle2">Polygon Size (meters)</div>
+            <q-slider v-model="polygonSize" :min="10" :max="500" :step="10" label label-always color="primary"
+                @update:model-value="updatePolygonSize" />
+        </q-card-section>
         <q-card-section>
             <div class="text-subtitle2">Select Class</div>
             <q-radio v-model="selectedClass" :val="className" :label="className" v-for="className in projectClasses"
@@ -45,6 +51,15 @@ export default {
                 selectedClass.value = projectClasses.value[0].name
             }
         })
+
+        const polygonSize = computed({
+            get: () => mapStore.polygonSize,
+            set: (value) => mapStore.setPolygonSize(value)
+        })
+
+        const updatePolygonSize = (value) => {
+            mapStore.setPolygonSize(value)
+        }
 
 
         const interactionMode = computed({
@@ -124,7 +139,9 @@ export default {
             undoLastDraw,
             drawnPolygons,
             handleKeyDown,
-            selectedBasemapDate
+            selectedBasemapDate,
+            polygonSize,
+            updatePolygonSize
         }
     }
 }

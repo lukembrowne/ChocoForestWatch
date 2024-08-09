@@ -591,16 +591,6 @@ def get_prediction(prediction_id):
     })
 
 
-    
-# @app.route('/api/trained_models/<int:project_id>', methods=['GET'])
-# def get_trained_models(project_id):
-#     models = TrainedModel.query.filter_by(project_id=project_id).all()
-#     return jsonify([{
-#         'id': model.id,
-#         'name': model.name,
-#         'created_at': model.created_at.isoformat()
-#     } for model in models])
-
 @app.route('/api/trained_models/<int:project_id>', methods=['GET'])
 def get_trained_models(project_id):
    
@@ -617,11 +607,6 @@ def get_trained_models(project_id):
             'model_parameters': model.model_parameters
         } for model in models])
 
-
-# @app.route('/api/model_metrics/<int:model_id>', methods=['GET'])
-# def get_model_metrics(model_id):
-#     model = TrainedModel.query.get_or_404(model_id)
-#     return jsonify(model.to_dict())
 
 @app.route('/api/trained_models/<int:model_id>/metrics', methods=['GET'])
 def get_model_metrics(model_id):
