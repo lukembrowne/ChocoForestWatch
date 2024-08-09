@@ -43,6 +43,8 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support, con
 import uuid
 from shapely.ops import transform
 import pyproj
+from pyproj import Transformer
+
 
 
 
@@ -563,11 +565,8 @@ def get_training_data_summary(project_id):
         
         summary = {
             'totalSets': len(training_sets),
-            'dateRange': {
-                'start': min(set.basemap_date for set in training_sets),
-                'end': max(set.basemap_date for set in training_sets)
-            },
-            'classStats': {}
+            'classStats': {},
+            'trainingSetDates': []
         }
 
         project = Project.query.get(project_id)
@@ -576,26 +575,27 @@ def get_training_data_summary(project_id):
         for class_name in class_names:
             summary['classStats'][class_name] = {
                 'featureCount': 0,
-                'totalArea': 0
+                'totalAreaHa': 0
             }
 
+        # Create a transformer for area calculations
+        transformer = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
+
         for training_set in training_sets:
+            summary['trainingSetDates'].append(training_set.basemap_date)
             for feature in training_set.polygons['features']:
                 class_name = feature['properties']['classLabel']
                 summary['classStats'][class_name]['featureCount'] += 1
-                
-                # # Calculate area in square kilometers
-                # geom = shape(feature['geometry'])
-                # geom_3857 = transform(
-                #     pyproj.Transformer.from_crs('EPSG:4326', 'EPSG:3857', always_xy=True).transform,
-                #     geom
-                # )
-                # area_km2 = geom_3857.area / 1_000_000  # Convert from square meters to square kilometers
-                # summary['classStats'][class_name]['totalArea'] += area_km2
 
-        # Convert NaN to null
-        summary_json = json.dumps(summary, default=nan_to_null)
-        summary = json.loads(summary_json)
+                
+                # Calculate area in hectares
+                geom = shape(feature['geometry'])
+                area_ha = geom.area / 10000  # Convert from square meters to hectares
+                summary['classStats'][class_name]['totalAreaHa'] += area_ha
+
+        # Round the area values to two decimal places
+        for class_stats in summary['classStats'].values():
+            class_stats['totalAreaHa'] = class_stats['totalAreaHa']
 
         return jsonify(summary), 200
     except Exception as e:

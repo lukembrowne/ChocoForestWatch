@@ -15,30 +15,29 @@
           </q-item>
           <q-item v-for="(stats, className) in trainingDataSummary.classStats" :key="className">
             <q-item-section>
-              <q-item-label>{{ className }}: {{ stats.featureCount }} features ({{ stats.totalArea.toFixed(2) }} km²)</q-item-label>
+              <q-item-label>{{ className }}: {{ stats.featureCount }} features ({{ stats.totalAreaHa.toFixed(2) }} ha)</q-item-label>
             </q-item-section>
           </q-item>
         </q-list>
       </q-card-section>
 
-      <q-card-section>
-        <div class="text-subtitle1">Available Basemap Dates</div>
-        <div class="row q-gutter-sm">
-          <q-checkbox
-            v-for="date in availableDates"
+      <q-card-section v-if="trainingDataSummary">
+        <div class="text-subtitle1">Basemap dates with training data:</div>
+          <q-chip
+            v-for="date in basemapOptions"
             :key="date"
-            v-model="selectedDates"
-            :val="date"
-            :label="date"
-            :disable="!trainingSetsPerDate[date]"
-          />
-        </div>
+            :color="trainingDataSummary.trainingSetDates.includes(date['value']) ? 'primary' : 'grey-4'"
+            :text-color="trainingDataSummary.trainingSetDates.includes(date['value']) ? 'white' : 'black'"
+          >
+            {{ date['label'] }}
+          </q-chip>
+          
       </q-card-section>
 
       <q-card-section>
         <q-expansion-item
           expand-separator
-          label="Advanced Model Parameters"
+          label="Tune Advanced Model Parameters"
           caption="Click to customize model parameters"
         >
         <div class="row q-col-gutter-md">
@@ -134,6 +133,8 @@ import { GeoJSON } from 'ol/format'
 import { transformExtent } from 'ol/proj'
 import TrainingProgress from 'components/models/TrainingProgress.vue'
 import { io } from 'socket.io-client'
+import { getBasemapDateOptions } from 'src/utils/dateUtils';
+
 
 export default {
   name: 'ModelTrainingDialog',
@@ -146,6 +147,13 @@ export default {
     const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
     const $q = useQuasar()
     const projectStore = useProjectStore()
+
+    const basemapOptions = computed(() => {
+        return getBasemapDateOptions().map(option => ({
+          label: option.label,
+          value: option.value
+        }));
+      });
 
     const existingModel = ref(null)
     const modelName = ref(generateDefaultModelName())
@@ -220,9 +228,7 @@ export default {
       try {
         const response = await apiService.getTrainingDataSummary(projectStore.currentProject.id)
         trainingDataSummary.value = response.data
-        availableDates.value = response.data.availableDates
-        trainingSetsPerDate.value = response.data.trainingSetsPerDate
-        selectedDates.value = availableDates.value.filter(date => trainingSetsPerDate.value[date])
+        console.log("Training data summary: ", trainingDataSummary.value)
       } catch (error) {
         console.error('Error fetching training data summary:', error)
         $q.notify({
@@ -296,7 +302,8 @@ export default {
       options,
       splitMethod,
       trainTestSplit,
-      existingModel
+      existingModel,
+      basemapOptions
     }
   }
 }
