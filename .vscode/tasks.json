@@ -1,0 +1,63 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Quasar Dev",
+            "type": "shell",
+            "command": "cd frontend && quasar dev",
+            "problemMatcher": [],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Run Flask",
+            "type": "shell",
+            "command": "cd backend && source venv/bin/activate && flask run --debug",
+            "problemMatcher": [],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Run Celery Worker",
+            "type": "shell",
+            "command": "cd backend && source venv/bin/activate && celery -A app.celery worker --loglevel=info --concurrency=6",
+            "problemMatcher": [],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Run Redis Server",
+            "type": "shell",
+            "command": "brew services start redis",
+            "problemMatcher": [],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Run All",
+            "dependsOn": [
+                "Run Quasar Dev",
+                "Run Flask",
+                "Run Celery Worker",
+                "Run Redis Server"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        }
+    ]
+}
