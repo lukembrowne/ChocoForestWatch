@@ -13,6 +13,7 @@ backend/uploads/
 backend/training_data/
 backend/predictions/
 backend/trained_models/
+backend/rasters/
 code_old/
 
 backend/__pycache__/
