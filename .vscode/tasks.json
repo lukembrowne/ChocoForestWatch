@@ -46,6 +46,17 @@
             }
         },
         {
+            "label": "Run Code2Prompt",
+            "type": "shell",
+            "command": "cd backend && source venv/bin/activate && cd .. && code2prompt --path ./ --filter 'backend/app.py,frontend/src/**' --output project_summary.md --tokens",
+            "problemMatcher": [],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
             "label": "Run All",
             "dependsOn": [
                 "Run Quasar Dev",
