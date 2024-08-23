@@ -14,6 +14,7 @@ backend/training_data/
 backend/predictions/
 backend/trained_models/
 backend/rasters/
+*.tif
 code_old/
 
 backend/__pycache__/
