@@ -57,6 +57,17 @@
             }
         },
         {
+            "label": "Update package requirements on backend",
+            "type": "shell",
+            "command": "cd backend && source venv/bin/activate && pip freeze > requirements.txt",
+            "problemMatcher": [],
+            "isBackground": true,
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
             "label": "Run All",
             "dependsOn": [
                 "Run Quasar Dev",
