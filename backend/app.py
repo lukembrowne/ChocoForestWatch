@@ -47,7 +47,7 @@ from pyproj import Transformer
 from celery import Celery, group
 from contextlib import contextmanager
 from sqlalchemy.orm import scoped_session, sessionmaker
-
+from sqlalchemy import create_engine
 
 
 
@@ -72,6 +72,10 @@ session.auth = (PLANET_API_KEY, "")
 db = SQLAlchemy()
 celery = Celery(__name__)
 
+# Initialize database engine and session factory
+engine = None
+SessionFactory = None
+
 def create_app():
     app = Flask(__name__)
     
@@ -80,8 +84,21 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
     app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
+
+    # Add these configurations for the database pool
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_size': 10,
+        'max_overflow': 20,
+        'pool_pre_ping': True,
+    }
     
     db.init_app(app)
+
+    # Initialize engine and SessionFactory
+    global engine, SessionFactory
+    engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], **app.config['SQLALCHEMY_ENGINE_OPTIONS'])
+    SessionFactory = sessionmaker(bind=engine)
+    
     # Update Celery config
     celery.conf.update(
         broker_url=app.config['CELERY_BROKER_URL'],
@@ -1253,9 +1270,9 @@ def predict_landcover():
     })
 
 
-def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
+def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date, session):
     
-    model_record = TrainedModel.query.get(model_id)
+    model_record = session.query(TrainedModel).get(model_id)
     if model_record is None:
         raise ValueError("Model not found")
 
@@ -1423,7 +1440,7 @@ def generate_predictions_for_all_dates(model_id, project_id, aoi_extent, aoi_ext
 @contextmanager
 def session_scope():
     """Provide a transactional scope around a series of operations."""
-    session = db.session
+    session = SessionFactory()
     try:
         yield session
         session.commit()
@@ -1438,10 +1455,12 @@ def generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, da
         # Get Planet quads for the date
         quads = get_planet_quads(aoi_extent_lat_lon, date)
 
-        # Generate prediction
-        new_prediction_file = predict_landcover_aoi(model_id, quads, aoi_extent, project_id, date)
-
+       
         with session_scope() as session:
+
+             # Generate prediction
+            new_prediction_file = predict_landcover_aoi(model_id, quads, aoi_extent, project_id, date, session)
+
             # Check for existing prediction
             existing_prediction = session.query(Prediction).filter_by(
                 project_id=project_id,

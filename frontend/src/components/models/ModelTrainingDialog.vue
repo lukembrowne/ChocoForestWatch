@@ -138,7 +138,6 @@
       <q-card-actions align="right">
         <q-btn flat label="Cancel" color="primary" v-close-popup />
         <q-btn :label="existingModel ? 'Update Model' : 'Train Model'" color="primary" @click="trainModel" />
-        <q-btn label="Generate Predictions" color="primary" @click="generatePredictions" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -304,28 +303,7 @@ export default {
       }
     }
 
-    async function generatePredictions() {
-
-      const geojsonString = projectStore.currentProject.aoi
-      const geojsonFormat = new GeoJSON()
-      const geometry = geojsonFormat.readGeometry(geojsonString)
-      const extent = geometry.getExtent()
-      const extentLatLon = transformExtent(extent, 'EPSG:3857', 'EPSG:4326')
-
-      try {
-        const response = await apiService.generatePredictions({
-          projectId: projectStore.currentProject.id,
-          aoiExtent: extent,
-          aoiExtentLatLon: extentLatLon,
-          basemapDates: basemapOptions.value.map(option => option.value)
-        })
-        console.log('Predictions generation initiated:', response)
-      } catch (error) {
-        console.error('Error generating predictions:', error)
-      }
-    }
-
-      function generateDefaultModelName() {
+    function generateDefaultModelName() {
         const today = new Date()
         const dateString = today.toISOString().split('T')[0]
         const timeString = today.toTimeString().split(' ')[0].replace(/:/g, '-')
@@ -363,7 +341,6 @@ export default {
         basemapOptions,
         totalArea,
         getClassColor,
-        generatePredictions
       }
     }
   }
