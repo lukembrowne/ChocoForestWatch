@@ -11,8 +11,8 @@
               <div class="row items-center justify-between">
                 <div class="date-label">{{ date }}</div>
                 <div class="button-group">
-                  <q-btn v-if="!hasPrediction(date)" icon="add" flat round size="sm" @click="generatePrediction(date)">
-                    <q-tooltip>Generate Prediction</q-tooltip>
+                  <q-btn v-if="!hasPrediction(date)" icon="block" flat round size="sm">
+                    <q-tooltip>No Prediction Available</q-tooltip>
                   </q-btn>
                   <q-btn v-if="hasPrediction(date)" icon="visibility" flat round size="sm" @click="displayOnMap(date)">
                     <q-tooltip>Display Prediction</q-tooltip>
@@ -128,11 +128,6 @@ export default {
       return predictions.value.some(p => p.basemap_date === date)
     };
 
-    const generatePrediction = (date) => {
-      // TODO: Implement logic to generate prediction for the given date
-      console.log('Generating prediction for', date);
-    };
-
     const showAnalysis = (date) => {
       // TODO: Fetch analysis results for the given date
       selectedAnalysis.value = {
@@ -187,7 +182,6 @@ export default {
       formatLabel,
       formatValue,
       hasPrediction,
-      generatePrediction,
       showAnalysis,
       displayOnMap,
       closeAnalysis

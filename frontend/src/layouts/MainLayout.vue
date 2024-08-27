@@ -116,7 +116,7 @@ export default {
       // Sleep 2 seconds
       setTimeout(() => {
         projectStore.loadProject(36)
-      }, 1000)
+      }, 2000)
 
       mapStore.initializeBasemapDates()
 

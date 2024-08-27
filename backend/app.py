@@ -1213,9 +1213,6 @@ def delete_prediction(prediction_id):
 
 
 
-
-
-
 @app.route('/api/predict_landcover', methods=['POST'])
 def predict_landcover():
     data = request.json
@@ -1296,6 +1293,7 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
 
     else:
         encoded_date = date_encoder.transform([basemap_date])[0]
+        month = int(basemap_date.split('-')[1])
         encoded_month = month_encoder.transform([month])[0]
     
 
@@ -1422,61 +1420,79 @@ def generate_predictions_for_all_dates(model_id, project_id, aoi_extent, aoi_ext
     return results
 
 
+@contextmanager
+def session_scope():
+    """Provide a transactional scope around a series of operations."""
+    session = db.session
+    try:
+        yield session
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
 def generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date):
-
-    try: 
-
+    try:
         # Get Planet quads for the date
         quads = get_planet_quads(aoi_extent_lat_lon, date)
 
         # Generate prediction
         new_prediction_file = predict_landcover_aoi(model_id, quads, aoi_extent, project_id, date)
 
-        # Check for existing prediction
-        existing_prediction = Prediction.query.filter_by(
-            project_id=project_id,
-            basemap_date=date
-        ).first()
-
-        if existing_prediction:
-            # Delete the old file
-            if os.path.exists(existing_prediction.file_path):
-                os.remove(existing_prediction.file_path)
-            
-            # Update existing prediction
-            existing_prediction.model_id = model_id
-            existing_prediction.file_path = new_prediction_file
-            existing_prediction.name = f"Prediction_{date}"
-            existing_prediction.created_at = datetime.utcnow()
-            prediction = existing_prediction
-        else:
-            # Create new prediction
-            prediction = Prediction(
+        with session_scope() as session:
+            # Check for existing prediction
+            existing_prediction = session.query(Prediction).filter_by(
                 project_id=project_id,
-                model_id=model_id,
-                file_path=new_prediction_file,
-                basemap_date=date,
-                name=f"Prediction_{date}"
-            )
-            db.session.add(prediction)
+                basemap_date=date
+            ).first()
 
-        db.session.commit()
-        return {
-            'id': prediction.id,
-            'file_path': prediction.file_path,
-            'basemap_date': prediction.basemap_date,
-            'name': prediction.name
-        }
+            if existing_prediction:
+
+                logger.debug(f"Existing prediction found for date {date}")
+                logger.debug(f"Deleting old prediction file {existing_prediction.file_path}")
+
+                # Delete the old file
+                if os.path.exists(existing_prediction.file_path):
+                    os.remove(existing_prediction.file_path)
+                
+                # Update existing prediction
+                logger.debug(f"Updating existing prediction for date {date}")
+                existing_prediction.model_id = model_id
+                existing_prediction.file_path = new_prediction_file
+                existing_prediction.name = f"Prediction_{date}"
+                existing_prediction.created_at = datetime.utcnow()
+                prediction = existing_prediction
+            else:
+                # Create new prediction
+                logger.debug(f"Creating new prediction for date {date}")
+                prediction = Prediction(
+                    project_id=project_id,
+                    model_id=model_id,
+                    file_path=new_prediction_file,
+                    basemap_date=date,
+                    name=f"Prediction_{date}"
+                )
+                session.add(prediction)
+
+            # Flush to ensure the prediction gets an ID if it's new
+            session.flush()
+
+            # Return a dictionary representation of the prediction
+            return {
+                'id': prediction.id,
+                'file_path': prediction.file_path,
+                'basemap_date': prediction.basemap_date,
+                'name': prediction.name
+            }
 
     except SQLAlchemyError as e:
-        db.session.rollback()
         current_app.logger.error(f"Database error in generate_prediction: {str(e)}")
         raise
     except Exception as e:
         current_app.logger.error(f"Error in generate_prediction: {str(e)}")
         raise
-    finally:
-        db.session.close()
 
 # @app.route('/api/generate_predictions', methods=['POST'])
 # def start_prediction_generation():
