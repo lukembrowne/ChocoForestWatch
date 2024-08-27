@@ -277,7 +277,9 @@ export default {
 
         const response = await apiService.trainModel({
           projectId: projectStore.currentProject.id,
-          aoiExtent: extentLatLon,
+          aoiExtent: extent,
+          aoiExtentLatLon: extentLatLon,
+          basemapDates: basemapOptions.value.map(option => option.value),
           modelName: modelName.value,
           modelDescription: modelDescription.value,
           trainTestSplit: trainTestSplit.value,

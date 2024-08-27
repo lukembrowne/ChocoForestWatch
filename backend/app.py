@@ -45,6 +45,8 @@ from shapely.ops import transform
 import pyproj
 from pyproj import Transformer
 from celery import Celery
+from contextlib import contextmanager
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 
 
@@ -748,9 +750,12 @@ def train_model():
     project_id = data['projectId']
     model_name = data['modelName']
     aoi_extent = data['aoiExtent']
+    aoi_extent_lat_lon = data['aoiExtentLatLon']
     model_description = data.get('modelDescription', '')
     split_method = data.get('splitMethod', 'feature')
     train_test_split = data.get('trainTestSplit', 0.2)
+    basemap_dates_for_prediction = data.get('basemapDates', [])
+
 
     model_params = {
         'objective': 'multi:softmax',
@@ -779,7 +784,7 @@ def train_model():
         quads_by_date = {}
         for date in unique_dates:
             update_progress(project_id, 0.2, f"Fetching Planet quads for {date}")
-            quads_by_date[date] = get_planet_quads(aoi_extent, date)
+            quads_by_date[date] = get_planet_quads(aoi_extent_lat_lon, date)
 
         # Step 2: Extract pixels from quads using training polygons
         update_progress(project_id, 0.3, "Extracting pixels from quads")
@@ -818,6 +823,18 @@ def train_model():
         update_progress(project_id, 0.6, "Training XGBoost model")
         # Train the model
         model, metrics = train_xgboost_model(X, y, feature_ids, project_id, [ts.id for ts in training_sets], model_name, model_description, model_params, date_encoder, month_encoder, split_method, train_test_split)
+
+        # Step 4: Generate predictions
+        update_progress(project_id, 0.7, "Generating predictions")
+
+        # Get the latest trained model for the project
+        model = TrainedModel.query.filter_by(project_id=project_id).order_by(TrainedModel.created_at.desc()).first()
+
+        ## FOR DEBUGGING
+        generate_prediction_for_date(model.id, project_id, aoi_extent, aoi_extent_lat_lon, '2023-03')
+        
+        # Start the Celery task
+        task = generate_predictions_for_all_dates.delay(model.id, project_id,  aoi_extent, aoi_extent_lat_lon, basemap_dates_for_prediction)
 
         # Step 5: Return results
         update_progress(project_id, 1.0, "Training complete")
@@ -1381,101 +1398,137 @@ def generate_prediction_for_date(model_id, project_id, aoi_extent, aoi_extent_la
         logger.info(f"Generating prediction for date {date}")
         prediction = generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date)
         logger.info(f"Successfully generated prediction for date {date}")
+        return prediction
     except Exception as e:
         logger.error(f"Error generating prediction for date {date}: {str(e)}")
-
+        return None
 
 @celery.task
 def generate_predictions_for_all_dates(model_id, project_id, aoi_extent, aoi_extent_lat_lon, basemap_dates):
     logger.info(f"Starting prediction generation for model {model_id}")
 
-    # Trigger parallel tasks
-    for date in basemap_dates:
-        generate_prediction_for_date.delay(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date)
+    # Create a group of tasks to run in parallel
+    tasks = [generate_prediction_for_date.s(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date) for date in basemap_dates]
+    job = group(tasks)
+    
+    # Execute the group of tasks
+    result = job.apply_async()
+    
+    # Wait for all tasks to complete
+    results = result.get(disable_sync_subtasks=False)
+    
+    logger.info(f"Completed prediction generation for model {model_id}")
+    return results
 
-    logger.info(f"Completed task dispatch for model {model_id}")
-
-
-
+@contextmanager
+def session_scope():
+    """Provide a transactional scope around a series of operations."""
+    session = scoped_session(sessionmaker(bind=current_app.extensions['sqlalchemy'].db.engine))
+    try:
+        yield session
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 def generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date):
 
-    # Get Planet quads for the date
-    quads = get_planet_quads(aoi_extent_lat_lon, date)
+    try: 
 
-    # Generate prediction
-    prediction_file = predict_landcover_aoi(model_id, quads, aoi_extent, project_id, date)
+        pdb.set_trace()
 
-    # Save prediction to database
-    prediction = Prediction(
-        project_id=project_id,
-        model_id=model_id,
-        file_path=prediction_file,
-        basemap_date=date,
-        name=f"Prediction_{date}"
-    )
-    db.session.add(prediction)
-    db.session.commit()
+        # Get Planet quads for the date
+        quads = get_planet_quads(aoi_extent_lat_lon, date)
 
-    return prediction
+        # Generate prediction
+        prediction_file = predict_landcover_aoi(model_id, quads, aoi_extent, project_id, date)
 
-@app.route('/api/generate_predictions', methods=['POST'])
-def start_prediction_generation():
-    data = request.json
-    project_id = data.get('projectId')
-    basemap_dates = data.get('basemapDates', [])
-    aoi_extent = data['aoiExtent']
-    aoi_extent_lat_lon = data['aoiExtentLatLon']
+        # Save prediction to database
+        with session_scope() as session:
+            prediction = Prediction(
+                project_id=project_id,
+                model_id=model_id,
+                file_path=prediction_file,
+                basemap_date=date,
+                name=f"Prediction_{date}"
+            )
+            session.add(prediction)
+            session.flush()  # This will assign an ID to the prediction if it's using auto-increment
+            prediction_id = prediction.id
 
-
-    if not project_id or not basemap_dates:
-        return jsonify({'error': 'Project ID and  basemap dates are required'}), 400
-
-    try:
-        project = Project.query.get(project_id)
-        # Get the latest trained model for the project
-        model = TrainedModel.query.filter_by(project_id=project_id).order_by(TrainedModel.created_at.desc()).first()
+        # Return only the ID and other necessary information, not the full ORM object
+            return {
+                'id': prediction_id,
+                'file_path': prediction_file,
+                'basemap_date': date,
+                'name': f"Prediction_{date}"
+            }
         
-        if not model:
-            return jsonify({'error': 'No trained model found for this project'}), 404
-
-        if not project or not model:
-            return jsonify({'error': 'Invalid Project ID or Model ID'}), 404
-
-        model_id = model.id
-
-        # Start the Celery task
-        task = generate_predictions_for_all_dates.delay(model_id, project_id,  aoi_extent, aoi_extent_lat_lon, basemap_dates)
-
-        return jsonify({
-            'message': 'Prediction generation started',
-            'task_id': task.id
-        }), 202
-
     except Exception as e:
-        logger.error(f"Error starting prediction generation: {str(e)}")
-        return jsonify({'error': 'Failed to start prediction generation'}), 500
+        current_app.logger.error(f"Error in generate_prediction: {str(e)}")
+        raise
 
-@app.route('/api/prediction_status/<task_id>', methods=['GET'])
-def get_prediction_status(task_id):
-    task = generate_predictions_for_all_dates.AsyncResult(task_id)
-    if task.state == 'PENDING':
-        response = {
-            'state': task.state,
-            'status': 'Prediction generation has not started yet'
-        }
-    elif task.state != 'FAILURE':
-        response = {
-            'state': task.state,
-            'status': 'Prediction generation is in progress'
-        }
-    else:
-        response = {
-            'state': task.state,
-            'status': 'Prediction generation failed',
-            'error': str(task.info)
-        }
-    return jsonify(response)
+# @app.route('/api/generate_predictions', methods=['POST'])
+# def start_prediction_generation():
+#     data = request.json
+#     project_id = data.get('projectId')
+#     basemap_dates = data.get('basemapDates', [])
+#     aoi_extent = data['aoiExtent']
+#     aoi_extent_lat_lon = data['aoiExtentLatLon']
+
+
+#     if not project_id or not basemap_dates:
+#         return jsonify({'error': 'Project ID and  basemap dates are required'}), 400
+
+#     try:
+#         project = Project.query.get(project_id)
+#         # Get the latest trained model for the project
+#         model = TrainedModel.query.filter_by(project_id=project_id).order_by(TrainedModel.created_at.desc()).first()
+        
+#         if not model:
+#             return jsonify({'error': 'No trained model found for this project'}), 404
+
+#         if not project or not model:
+#             return jsonify({'error': 'Invalid Project ID or Model ID'}), 404
+
+#         model_id = model.id
+
+#         pdb.set_trace()
+
+#         # Start the Celery task
+#         task = generate_predictions_for_all_dates.delay(model_id, project_id,  aoi_extent, aoi_extent_lat_lon, basemap_dates)
+
+#         return jsonify({
+#             'message': 'Prediction generation started',
+#             'task_id': task.id
+#         }), 202
+
+#     except Exception as e:
+#         logger.error(f"Error starting prediction generation: {str(e)}")
+#         return jsonify({'error': 'Failed to start prediction generation'}), 500
+
+# @app.route('/api/prediction_status/<task_id>', methods=['GET'])
+# def get_prediction_status(task_id):
+#     task = generate_predictions_for_all_dates.AsyncResult(task_id)
+#     if task.state == 'PENDING':
+#         response = {
+#             'state': task.state,
+#             'status': 'Prediction generation has not started yet'
+#         }
+#     elif task.state != 'FAILURE':
+#         response = {
+#             'state': task.state,
+#             'status': 'Prediction generation is in progress'
+#         }
+#     else:
+#         response = {
+#             'state': task.state,
+#             'status': 'Prediction generation failed',
+#             'error': str(task.info)
+#         }
+#     return jsonify(response)
 
 ## Analysis endpoints
 @app.route('/api/analysis/summary/<int:prediction_id>', methods=['GET'])

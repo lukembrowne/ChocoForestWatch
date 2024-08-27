@@ -19,6 +19,7 @@
         <AOIFloatingCard v-if="showAOICard" />
         <DrawingControlsCard v-if="showDrawingControls" />
         <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
+        <PredictAnalyzeManager v-if="showPredictAnalyzeManager" />
       </q-page>
     </q-page-container>
   </q-layout>
@@ -31,17 +32,18 @@ import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
 import ProjectSelectionDialog from 'components/projects/ProjectSelectionDialog.vue'
 import TrainingAndPolygonManager from 'components/training/TrainingAndPolygonManager.vue'
+import PredictAnalyzeManager from 'components/analysis/PredictAnalyzeManager.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import ModelEvaluationDialog from 'components/models/ModelEvaluationDialog.vue'
 import ModelTrainingDialog from 'components/models/ModelTrainingDialog.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
 import DrawingControlsCard from 'components/training/DrawingControlsCard.vue'
-import PredictAnalyzeComponent from 'components/analysis/PredictAnalyzeComponent.vue'
 
 export default {
   name: 'MainLayout',
   components: {
     TrainingAndPolygonManager,
+    PredictAnalyzeManager,
     CustomLayerSwitcher,
     AOIFloatingCard,
     DrawingControlsCard
@@ -55,13 +57,13 @@ export default {
     const showAOICard = ref(false)
     const showDrawingControls = ref(false)
     const showTrainingAndPolygonManager = ref(false)
-
+    const showPredictAnalyzeManager = ref(false)
     const sections = [
       { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
       { name: 'Training data', icon: 'school', component: TrainingAndPolygonManager, tooltip: 'Create training data' },
       { name: 'Fit model', icon: 'model_training', component: null, tooltip: 'Train a new model' },
       { name: 'Model evaluation', icon: 'assessment', component: null, tooltip: 'Evaluate trained models' },
-      { name: 'Predict & Analyze', icon: 'analytics', component: null, tooltip: 'Predict and analyze land cover' }
+      { name: 'Predict & Analyze', icon: 'analytics', component: PredictAnalyzeManager, tooltip: 'Predict and analyze land cover' }
     ]
 
     const handleSectionClick = (section) => {
@@ -72,8 +74,6 @@ export default {
         openProjectDialog()
       } else if (section.name === 'Fit model') {
         openModelTrainingDialog()
-      } else if (section.name === 'Predict & Analyze') {
-        openPredictAnalyzeDialog()
       } else {
         currentSection.value = section.name
       }
@@ -84,6 +84,12 @@ export default {
       } else {
         showDrawingControls.value = false
         showTrainingAndPolygonManager.value = false
+      }
+
+      if (section.name === 'Predict & Analyze') {
+        showPredictAnalyzeManager.value = true
+      } else {
+        showPredictAnalyzeManager.value = false
       }
     }
 
@@ -96,27 +102,27 @@ export default {
 
       // Standard loading sequence
       // Initialize map
-      mapStore.initMap('map')
-      mapStore.initializeBasemapDates()
+      // mapStore.initMap('map')
+      // mapStore.initializeBasemapDates()
 
-      // // Open project dialogue to have user select or create new project
-      openProjectDialog()
+      // // // Open project dialogue to have user select or create new project
+      // openProjectDialog()
 
 
       // // Load default project and map date to make things easier
-      // console.log('Loading default project...')
-      // mapStore.initMap('map')
-      // currentSection.value = 'training'
-      // // Sleep 2 seconds
-      // setTimeout(() => {
-      //   projectStore.loadProject(29)
-      // }, 1000)
+      console.log('Loading default project...')
+      mapStore.initMap('map')
+      currentSection.value = 'training'
+      // Sleep 2 seconds
+      setTimeout(() => {
+        projectStore.loadProject(36)
+      }, 1000)
 
-      // mapStore.initializeBasemapDates()
+      mapStore.initializeBasemapDates()
 
-      // setTimeout(() => {
-      //   mapStore.updateBasemap('2022-08')
-      // }, 1000)
+      setTimeout(() => {
+        mapStore.updateBasemap('2022-08')
+      }, 1000)
 
     })
 
@@ -149,19 +155,6 @@ export default {
     const openModelEvaluationDialog = async () => {
       $q.dialog({
         component: ModelEvaluationDialog
-      })
-    }
-
-    const openPredictAnalyzeDialog = () => {
-      $q.dialog({
-        component: PredictAnalyzeComponent,
-        // You can pass props here if needed
-        // props: {
-        //   someProp: someValue
-        // }
-      }).onOk((result) => {
-        // Handle any result if needed
-        console.log('Predict and Analyze completed:', result)
       })
     }
 
@@ -204,7 +197,8 @@ export default {
       showDrawingControls,
       showTrainingAndPolygonManager,
       openModelEvaluationDialog,
-      handleSectionClick
+      handleSectionClick,
+      showPredictAnalyzeManager
     }
   }
 }
