@@ -4,6 +4,10 @@
       <q-card-section>
         <div class="text-h6">Predict & Analyze</div>
       </q-card-section>
+      <q-card-actions>
+        <q-btn label="Compare Selected" color="primary" @click="compareSelected"
+          :disable="selectedPredictions.length !== 2" />
+      </q-card-actions>
       <q-scroll-area style="height: calc(100vh - 150px);">
         <q-list separator>
           <q-item v-for="prediction in predictions" :key="prediction.id" class="basemap-date-item">
@@ -15,7 +19,7 @@
                   <q-btn icon="visibility" flat round size="sm" @click="displayOnMap(prediction.basemap_date)">
                     <q-tooltip>Display Prediction</q-tooltip>
                   </q-btn>
-                  <q-btn icon="bar_chart" flat round size="sm" @click="showAnalysis(prediction)">
+                  <q-btn icon="bar_chart" flat round size="sm" @click="showAnalysis(prediction.basemap_date)">
                     <q-tooltip>View Statistics</q-tooltip>
                   </q-btn>
                 </div>
@@ -24,10 +28,7 @@
           </q-item>
         </q-list>
       </q-scroll-area>
-      <q-card-actions>
-        <q-btn label="Compare Selected" color="primary" @click="compareSelected"
-          :disable="selectedPredictions.length !== 2" />
-      </q-card-actions>
+      
     </q-card>
 
     <q-card v-if="selectedAnalysis" class="analysis-card">
@@ -57,30 +58,38 @@
     </q-card>
 
     <q-card v-if="changeAnalysis" class="change-analysis-card">
-      <q-card-section>
-        <div class="text-h6">Change Analysis</div>
-        <div class="text-subtitle2">
-          {{ changeAnalysis.prediction1_date }} to {{ changeAnalysis.prediction2_date }}
-        </div>
-      </q-card-section>
+    <q-card-section>
+      <div class="text-h6">Deforestation Analysis</div>
+      <div class="text-subtitle2">
+        {{ changeAnalysis.prediction1_date }} to {{ changeAnalysis.prediction2_date }}
+      </div>
+    </q-card-section>
 
-      <q-card-section>
-        <h6>Land Cover Changes</h6>
-        <q-table :rows="changeAnalysisRows" :columns="changeAnalysisColumns" row-key="class" dense flat
-          :pagination="{ rowsPerPage: 0 }" />
-      </q-card-section>
+    <q-card-section>
+      <div class="text-h5">Deforestation Rate: {{ changeAnalysis.deforestation_rate.toFixed(2) }}%</div>
+      <div>Deforested Area: {{ changeAnalysis.deforested_area_ha.toFixed(2) }} ha</div>
+      <div>Total Forest Area (initial): {{ changeAnalysis.total_forest_area_ha.toFixed(2) }} ha</div>
+    </q-card-section>
 
-      <q-card-section>
-        <div>Total area changed: {{ changeAnalysis.total_change_ha.toFixed(2) }} ha</div>
-        <div>Change rate: {{ changeAnalysis.change_rate.toFixed(2) }}%</div>
-      </q-card-section>
+    <q-card-section>
+      <h6>Forest Transition Matrix</h6>
+      <q-table
+        :rows="forestTransitionRows"
+        :columns="forestTransitionColumns"
+        row-key="from"
+        dense
+        flat
+        :pagination="{ rowsPerPage: 0 }"
+      />
+    </q-card-section>
 
-      <q-card-section>
-        <h6>Confusion Matrix</h6>
-        <q-table :rows="confusionMatrixRows" :columns="confusionMatrixColumns" row-key="predicted" dense flat
-          :pagination="{ rowsPerPage: 0 }" />
-      </q-card-section>
-    </q-card>
+    <q-card-actions align="right">
+      <q-btn label="Display Deforestation Map" color="primary" @click="displayDeforestationMap" />
+      <q-card-actions align="right">
+        <q-btn flat label="Close" color="primary" @click="closeChangeAnalysis" />
+      </q-card-actions>
+    </q-card-actions>
+  </q-card>
 
 
   </div>
@@ -168,6 +177,7 @@ export default {
     };
 
     const showAnalysis = async (date) => {
+      console.log('Showing analysis for date:', date)
       const prediction = predictions.value.find(p => p.basemap_date === date);
       if (prediction) {
         try {
@@ -197,7 +207,7 @@ export default {
 
     const loadPredictionOnMap = async (prediction) => {
       try {
-        await mapStore.displayPrediction(prediction.file_path, `prediction-${prediction.id}`, prediction.name)
+        await mapStore.displayPrediction(prediction.file_path, `prediction-${prediction.id}`, prediction.name, 'prediction')
         $q.notify({
           color: 'positive',
           message: `Loaded prediction: ${prediction.name}`,
@@ -217,6 +227,16 @@ export default {
       selectedAnalysis.value = null;
     };
 
+    const closeChangeAnalysis = () => {
+      changeAnalysis.value = null;
+    };
+
+    const displayDeforestationMap = () => {
+      if (changeAnalysis.value && changeAnalysis.value.deforestation_raster_path) {
+        mapStore.displayPrediction(changeAnalysis.value.deforestation_raster_path, `deforestation-${changeAnalysis.value.prediction1_date}-${changeAnalysis.value.prediction2_date}`, `Deforestation-${changeAnalysis.value.prediction1_date}-${changeAnalysis.value.prediction2_date}`, 'deforestation');
+      }
+    };
+
     const compareSelected = async () => {
       if (selectedPredictions.value.length !== 2) return;
 
@@ -234,23 +254,24 @@ export default {
       }
     };
 
-    const changeAnalysisColumns = [
-      { name: 'class', align: 'left', label: 'Class', field: 'class' },
-      { name: 'area1', align: 'right', label: 'Area T1 (ha)', field: 'area1' },
-      { name: 'area2', align: 'right', label: 'Area T2 (ha)', field: 'area2' },
-      { name: 'change', align: 'right', label: 'Change (ha)', field: 'change' },
-      { name: 'percentChange', align: 'right', label: 'Change (%)', field: 'percentChange' }
+    const forestTransitionColumns = [
+      { name: 'from', align: 'left', label: 'From', field: 'from' },
+      { name: 'forest', align: 'right', label: 'To Forest', field: 'forest' },
+      { name: 'nonForest', align: 'right', label: 'To Non-Forest', field: 'nonForest' },
     ];
 
-    const changeAnalysisRows = computed(() => {
+    const forestTransitionRows = computed(() => {
       if (!changeAnalysis.value) return [];
-      return changeAnalysis.value.class_names.map(className => ({
-        class: className,
-        area1: changeAnalysis.value.areas_time1_ha[className].toFixed(2),
-        area2: changeAnalysis.value.areas_time2_ha[className].toFixed(2),
-        change: changeAnalysis.value.changes_ha[className].toFixed(2),
-        percentChange: ((changeAnalysis.value.changes_ha[className] / changeAnalysis.value.areas_time1_ha[className]) * 100).toFixed(2)
-      }));
+      const forestIndex = changeAnalysis.value.class_names.indexOf('Forest');
+      const matrix = changeAnalysis.value.confusion_matrix;
+      const total = matrix[forestIndex].reduce((a, b) => a + b, 0);
+      return [
+        {
+          from: 'Forest',
+          forest: `${matrix[forestIndex][forestIndex]} (${((matrix[forestIndex][forestIndex] / total) * 100).toFixed(2)}%)`,
+          nonForest: `${total - matrix[forestIndex][forestIndex]} (${(((total - matrix[forestIndex][forestIndex]) / total) * 100).toFixed(2)}%)`
+        }
+      ];
     });
 
     const confusionMatrixColumns = computed(() => {
@@ -289,14 +310,16 @@ export default {
       showAnalysis,
       displayOnMap,
       closeAnalysis,
+      closeChangeAnalysis,
       predictions,
       selectedPredictions,
       changeAnalysis,
       compareSelected,
-      changeAnalysisColumns,
-      changeAnalysisRows,
       confusionMatrixColumns,
       confusionMatrixRows,
+      forestTransitionColumns,
+      forestTransitionRows,
+      displayDeforestationMap,
     };
   }
 };

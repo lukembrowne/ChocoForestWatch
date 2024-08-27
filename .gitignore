@@ -28,3 +28,4 @@ frontend/.env
 *.log
 backend/.env
 frontend/src/pages/AnalysisPage_old.vue
+backend/deforestation/*

@@ -152,7 +152,7 @@ export default {
         for (const prediction of selectedPredictions.value) {
           try {
             const predictionData = await api.getPrediction(prediction.id)
-            await mapStore.displayPrediction(predictionData.file_path, `prediction-${prediction.id}`, prediction.name)
+            await mapStore.displayPrediction(predictionData.file_path, `prediction-${prediction.id}`, prediction.name, 'prediction')
           } catch (error) {
             console.error(`Error loading prediction ${prediction.id}:`, error)
             $q.notify({

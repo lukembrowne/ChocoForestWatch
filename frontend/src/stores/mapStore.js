@@ -286,8 +286,8 @@ export const useMapStore = defineStore('map', () => {
 
 
 
-  const displayPrediction = async (predictionFilePath, layerId, layerName) => {
-    console.log('Displaying prediction:', predictionFilePath);
+  const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'prediction') => {
+    console.log(`Displaying ${mode}:`, predictionFilePath);
     try {
       const url = `http://127.0.0.1:5000/${predictionFilePath}`;
       const tiff = await fromUrl(url);
@@ -306,15 +306,29 @@ export const useMapStore = defineStore('map', () => {
       const imageData = context.createImageData(width, height);
       const data = imageData.data;
 
-      const project = projectStore.currentProject;
-      const classColors = project.classes.reduce((acc, cls) => {
-        acc[cls.name] = cls.color;
-        return acc;
-      }, {});
+      let colorMapping;
+      if (mode === 'prediction') {
+        const project = projectStore.currentProject;
+        colorMapping = project.classes.reduce((acc, cls) => {
+          acc[cls.name] = cls.color;
+          return acc;
+        }, {});
+      } else if (mode === 'deforestation') {
+        colorMapping = {
+          0: '#00FF00',  // Green for no deforestation
+          1: '#FF0000',  // Red for deforestation
+          255: '#808080' // Grey for no data
+        };
+      }
 
       for (let i = 0; i < width * height; i++) {
         const value = rasterData[0][i];
-        const color = classColors[project.classes[value].name];
+        let color;
+        if (mode === 'prediction') {
+          color = colorMapping[projectStore.currentProject.classes[value].name];
+        } else {
+          color = colorMapping[value];
+        }
         const rgb = hexToRgb(color);
         data[i * 4] = rgb.r;
         data[i * 4 + 1] = rgb.g;
@@ -341,8 +355,8 @@ export const useMapStore = defineStore('map', () => {
       map.value.addLayer(newLayer);
       updateLayers();
     } catch (error) {
-      console.error('Error displaying prediction:', error);
-      throw new Error('Failed to display prediction: ' + error.message);
+      console.error(`Error displaying ${mode}:`, error);
+      throw new Error(`Failed to display ${mode}: ` + error.message);
     }
   };
 
@@ -795,7 +809,6 @@ export const useMapStore = defineStore('map', () => {
       throw error; // Rethrow the error so it can be caught in the component
     }
   };
-
 
   // Getters
   const getMap = computed(() => map.value);

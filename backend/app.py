@@ -47,7 +47,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy import create_engine
 from celery.result import AsyncResult
 import time
-
+from rasterio.features import sieve
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -387,6 +387,11 @@ def data_files(filename):
 @app.route('/predictions/<path:filename>')
 def prediction_files(filename):
     return send_from_directory('predictions', filename)
+
+# Serve static files from the 'deforestation' directory
+@app.route('/deforestation/<path:filename>')
+def deforestation_files(filename):
+    return send_from_directory('deforestation', filename)
 
 
 # Project routes
@@ -1602,7 +1607,7 @@ def get_summary_statistics(prediction_id):
 
 
 @app.route('/api/analysis/change/<int:prediction1_id>/<int:prediction2_id>', methods=['GET'])
-def analyze_change(prediction1_id, prediction2_id):
+def  analyze_change(prediction1_id, prediction2_id):
     try:
         prediction1 = Prediction.query.get_or_404(prediction1_id)
         prediction2 = Prediction.query.get_or_404(prediction2_id)
@@ -1618,8 +1623,6 @@ def analyze_change(prediction1_id, prediction2_id):
             return jsonify({'error': 'Predictions use different class sets'}), 400
 
         all_class_names = model1.all_class_names
-        class_index_map1 = {i: all_class_names.index(class_name) for i, class_name in enumerate(model1.label_encoder.classes_)}
-        class_index_map2 = {i: all_class_names.index(class_name) for i, class_name in enumerate(model2.label_encoder.classes_)}
 
         with rasterio.open(prediction1.file_path) as src1, rasterio.open(prediction2.file_path) as src2:
             if src1.bounds != src2.bounds or src1.res != src2.res:
@@ -1630,13 +1633,9 @@ def analyze_change(prediction1_id, prediction2_id):
 
             pixel_area_ha = abs(src1.transform[0] * src1.transform[4]) / 10000  # Area in hectares
 
-            # Map the raster data to the full class set indices
-            mapped_data1 = np.vectorize(class_index_map1.get)(data1)
-            mapped_data2 = np.vectorize(class_index_map2.get)(data2)
-
             # Calculate areas for each class in both predictions
-            areas1 = {all_class_names[i]: np.sum(mapped_data1 == i) * pixel_area_ha for i in range(len(all_class_names))}
-            areas2 = {all_class_names[i]: np.sum(mapped_data2 == i) * pixel_area_ha for i in range(len(all_class_names))}
+            areas1 = {all_class_names[i]: np.sum(data1 == i) * pixel_area_ha for i in range(len(all_class_names))}
+            areas2 = {all_class_names[i]: np.sum(data2 == i) * pixel_area_ha for i in range(len(all_class_names))}
 
             # Calculate changes
             changes = {name: areas2[name] - areas1[name] for name in all_class_names}
@@ -1650,8 +1649,43 @@ def analyze_change(prediction1_id, prediction2_id):
             total_change = sum(abs(change) for change in changes.values()) / 2  # Divide by 2 to avoid double counting
 
             # Generate confusion matrix
-            cm = confusion_matrix(mapped_data1.flatten(), mapped_data2.flatten(), labels=range(len(all_class_names)))
+            cm = confusion_matrix(data1.flatten(), data2.flatten(), labels=range(len(all_class_names)))
             cm_percent = cm / cm.sum() * 100
+
+            # # Generate deforestation raster
+
+            forest_class = all_class_names.index('Forest')
+            cloud_shadow_classes = [all_class_names.index(cls) for cls in ['Cloud', 'Shadow'] if cls in all_class_names]
+
+            # Initialize deforestation array
+            deforestation = np.full_like(data1, 255, dtype=np.uint8)  # Start with all no data
+
+            # Mark areas that are valid (not cloud/shadow) in both periods
+            valid_mask = ~np.isin(data1, cloud_shadow_classes) & ~np.isin(data2, cloud_shadow_classes)
+
+            # Within valid areas, mark no deforestation (0) where it's not forest in first period or where it remains forest
+            deforestation[valid_mask & ((data1 != forest_class) | (data2 == forest_class))] = 0
+
+            # Within valid areas, mark deforestation (1) where it changes from forest to non-forest
+            deforestation[valid_mask & (data1 == forest_class) & (data2 != forest_class)] = 1
+            
+            # Optional: Apply sieve filter to remove small isolated pixels
+            deforestation = sieve(deforestation, size=4)
+
+            # Save deforestation raster
+            deforestation_dir = './deforestation'
+            if not os.path.exists(deforestation_dir):
+                os.makedirs(deforestation_dir)
+
+            deforestation_path = f"{deforestation_dir}/defor_{prediction1_id}_{prediction2_id}_{uuid.uuid4().hex}.tif"
+            with rasterio.open(deforestation_path, 'w', **src1.profile) as dst:
+                dst.write(deforestation, 1)
+
+            # Calculate deforestation statistics
+            total_forest_pixels = np.sum(data1 == forest_class)
+            deforested_pixels = np.sum(deforestation == 1)
+            deforestation_rate = (deforested_pixels / total_forest_pixels) * 100 if total_forest_pixels > 0 else 0
+
 
             results = {
                 "prediction1_name": prediction1.name,
@@ -1668,7 +1702,11 @@ def analyze_change(prediction1_id, prediction2_id):
                 "change_rate": float((total_change / total_area) * 100),
                 "confusion_matrix": cm.tolist(),
                 "confusion_matrix_percent": cm_percent.tolist(),
-                "class_names": all_class_names
+                "class_names": all_class_names,
+                "deforestation_raster_path": deforestation_path,
+                "deforestation_rate": float(deforestation_rate),
+                "deforested_area_ha": float(deforested_pixels * pixel_area_ha),
+                "total_forest_area_ha": float(total_forest_pixels * pixel_area_ha)
             }
 
             return jsonify(results)
