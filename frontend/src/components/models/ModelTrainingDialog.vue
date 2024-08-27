@@ -158,10 +158,11 @@ import { io } from 'socket.io-client'
 import { getBasemapDateOptions } from 'src/utils/dateUtils';
 
 
+
 export default {
   name: 'ModelTrainingDialog',
   components: {
-    TrainingProgress
+    TrainingProgress,
   },
   emits: [...useDialogPluginComponent.emits],
 
@@ -287,6 +288,7 @@ export default {
         })
 
         console.log('Model training initiated:', response)
+
         onDialogOK(response)
         $q.notify({
           color: 'positive',

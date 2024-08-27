@@ -15,7 +15,6 @@ from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm.exc import NoResultFound
-import h5py
 from sklearn.model_selection import train_test_split, cross_val_score
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, classification_report
@@ -27,7 +26,6 @@ from rasterio.windows import Window
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 from flask_socketio import SocketIO, emit
-import threading
 from requests.auth import HTTPBasicAuth
 from shapely.geometry import shape, box
 from loguru import logger
@@ -42,13 +40,13 @@ from shapely import geometry
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
 import uuid
 from shapely.ops import transform
-import pyproj
 from pyproj import Transformer
-from celery import Celery, group
+from celery import Celery, group, shared_task
 from contextlib import contextmanager
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy import create_engine
-
+from celery.result import AsyncResult
+import time
 
 
 # Load environment variables from the .env file
@@ -120,6 +118,7 @@ app = create_app()
 CORS(app)  # Enable CORS for all routes
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:9000"}})
 socketio = SocketIO(app, cors_allowed_origins="*")
+
 
 
 # Configure loguru logger
@@ -847,11 +846,29 @@ def train_model():
         # Get the latest trained model for the project
         model = TrainedModel.query.filter_by(project_id=project_id).order_by(TrainedModel.created_at.desc()).first()
 
-        # Start the Celery task
-        task = generate_predictions_for_all_dates.delay(model.id, project_id,  aoi_extent, aoi_extent_lat_lon, basemap_dates_for_prediction)
+        # Start predictions for all dates
+        # Create a group of tasks to run in parallel
+        tasks = [generate_prediction_for_date.s(model.id, project_id, aoi_extent, aoi_extent_lat_lon, date) for date in basemap_dates_for_prediction]
+        job = group(tasks)
+        
+        # Execute the group of tasks
+        result = job.apply_async()
+
+        total_tasks = len(basemap_dates_for_prediction)
+        completed_tasks = 0
+
+        while not result.ready():
+            completed_tasks = sum(1 for r in result.results if r.ready())
+            progress = completed_tasks / total_tasks
+            update_progress(project_id, 0.7 + progress * .3, f"Predicted {completed_tasks}/{total_tasks} dates")
+            time.sleep(5)  # Wait for 5 seconds before checking again
+
+       # Wait for the main prediction task to complete
+        result.get() 
 
         # Step 5: Return results
-        update_progress(project_id, 1.0, "Training complete")
+        update_progress(project_id, 1.0, "Training and prediction complete!")
+
         return {
             **metrics, 
             "model_id": model.id,
@@ -1190,8 +1207,6 @@ def train_xgboost_model(X, y, feature_ids, project_id, training_set_ids, model_n
 
 
 ### Prediction
-
-
 @app.route('/api/predictions/<int:prediction_id>/rename', methods=['PUT'])
 def rename_prediction(prediction_id):
     try:
@@ -1407,6 +1422,50 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date, sessio
     return output_file
 
 
+@app.route('/api/prediction_status/<task_id>', methods=['GET'])
+def get_prediction_status(task_id):
+    task = AsyncResult(task_id)
+    if task.state == 'PROGRESS':
+        # This is the parent task
+        group_id = task.info.get('group_id')
+        total = task.info.get('total', 0)
+        if group_id:
+            group_result = AsyncResult(group_id)
+            completed_tasks = [r for r in group_result.results if r.ready()]
+            current = len(completed_tasks)
+            successful = sum(1 for r in completed_tasks if r.result and r.result.get('status') == 'success')
+            failed = sum(1 for r in completed_tasks if r.result and r.result.get('status') == 'error')
+            response = {
+                'state': 'PROGRESS',
+                'current': current,
+                'total': total,
+                'successful': successful,
+                'failed': failed,
+                'status': f'Processing: {current}/{total} completed'
+            }
+        else:
+            response = {
+                'state': 'PROGRESS',
+                'current': 0,
+                'total': total,
+                'status': 'Initializing...'
+            }
+    elif task.state == 'SUCCESS':
+        response = {
+            'state': 'SUCCESS',
+            'current': task.result.get('total', 0),
+            'total': task.result.get('total', 0),
+            'status': 'All predictions completed'
+        }
+    else:
+        response = {
+            'state': task.state,
+            'current': 0,
+            'total': 1,
+            'status': str(task.info)
+        }
+    return jsonify(response)
+
 
 @celery.task
 def generate_prediction_for_date(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date):
@@ -1419,22 +1478,6 @@ def generate_prediction_for_date(model_id, project_id, aoi_extent, aoi_extent_la
         logger.error(f"Error generating prediction for date {date}: {str(e)}")
         return None
 
-@celery.task
-def generate_predictions_for_all_dates(model_id, project_id, aoi_extent, aoi_extent_lat_lon, basemap_dates):
-    logger.info(f"Starting prediction generation for model {model_id}")
-
-    # Create a group of tasks to run in parallel
-    tasks = [generate_prediction_for_date.s(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date) for date in basemap_dates]
-    job = group(tasks)
-    
-    # Execute the group of tasks
-    result = job.apply_async()
-    
-    # Wait for all tasks to complete
-    results = result.get(disable_sync_subtasks=False)
-    
-    logger.info(f"Completed prediction generation for model {model_id}")
-    return results
 
 
 @contextmanager
@@ -1454,7 +1497,6 @@ def generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, da
     try:
         # Get Planet quads for the date
         quads = get_planet_quads(aoi_extent_lat_lon, date)
-
        
         with session_scope() as session:
 
@@ -1512,65 +1554,6 @@ def generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, da
     except Exception as e:
         current_app.logger.error(f"Error in generate_prediction: {str(e)}")
         raise
-
-# @app.route('/api/generate_predictions', methods=['POST'])
-# def start_prediction_generation():
-#     data = request.json
-#     project_id = data.get('projectId')
-#     basemap_dates = data.get('basemapDates', [])
-#     aoi_extent = data['aoiExtent']
-#     aoi_extent_lat_lon = data['aoiExtentLatLon']
-
-
-#     if not project_id or not basemap_dates:
-#         return jsonify({'error': 'Project ID and  basemap dates are required'}), 400
-
-#     try:
-#         project = Project.query.get(project_id)
-#         # Get the latest trained model for the project
-#         model = TrainedModel.query.filter_by(project_id=project_id).order_by(TrainedModel.created_at.desc()).first()
-        
-#         if not model:
-#             return jsonify({'error': 'No trained model found for this project'}), 404
-
-#         if not project or not model:
-#             return jsonify({'error': 'Invalid Project ID or Model ID'}), 404
-
-#         model_id = model.id
-
-
-#         # Start the Celery task
-#         task = generate_predictions_for_all_dates.delay(model_id, project_id,  aoi_extent, aoi_extent_lat_lon, basemap_dates)
-
-#         return jsonify({
-#             'message': 'Prediction generation started',
-#             'task_id': task.id
-#         }), 202
-
-#     except Exception as e:
-#         logger.error(f"Error starting prediction generation: {str(e)}")
-#         return jsonify({'error': 'Failed to start prediction generation'}), 500
-
-# @app.route('/api/prediction_status/<task_id>', methods=['GET'])
-# def get_prediction_status(task_id):
-#     task = generate_predictions_for_all_dates.AsyncResult(task_id)
-#     if task.state == 'PENDING':
-#         response = {
-#             'state': task.state,
-#             'status': 'Prediction generation has not started yet'
-#         }
-#     elif task.state != 'FAILURE':
-#         response = {
-#             'state': task.state,
-#             'status': 'Prediction generation is in progress'
-#         }
-#     else:
-#         response = {
-#             'state': task.state,
-#             'status': 'Prediction generation failed',
-#             'error': str(task.info)
-#         }
-#     return jsonify(response)
 
 ## Analysis endpoints
 @app.route('/api/analysis/summary/<int:prediction_id>', methods=['GET'])

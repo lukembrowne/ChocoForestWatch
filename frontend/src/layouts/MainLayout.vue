@@ -39,6 +39,7 @@ import ModelTrainingDialog from 'components/models/ModelTrainingDialog.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
 import DrawingControlsCard from 'components/training/DrawingControlsCard.vue'
 
+
 export default {
   name: 'MainLayout',
   components: {
@@ -46,7 +47,7 @@ export default {
     PredictAnalyzeManager,
     CustomLayerSwitcher,
     AOIFloatingCard,
-    DrawingControlsCard
+    DrawingControlsCard,
   },
   setup() {
     const $q = useQuasar()

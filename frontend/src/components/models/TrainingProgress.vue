@@ -2,7 +2,7 @@
   <q-dialog v-model="dialogModel" persistent>
     <q-card style="min-width: 300px">
       <q-card-section>
-        <div class="text-h6">Training in Progress</div>
+        <div class="text-h6">Training and Prediction in Progress</div>
       </q-card-section>
 
       <q-card-section class="q-pt-none">

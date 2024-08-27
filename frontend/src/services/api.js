@@ -138,16 +138,6 @@ export default {
     }
   },
 
-  async generatePredictions(data) {
-    try {
-      const response = await axios.post(`${API_URL}/generate_predictions`, data);
-      return response.data;
-    } catch (error) {
-      console.error('Error generating predictions:', error);
-      throw error;
-    }
-  },
-
 
   async getPredictions(projectId) {
     try {
