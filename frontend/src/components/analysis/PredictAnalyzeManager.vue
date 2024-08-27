@@ -40,14 +40,22 @@
         </div>
       </q-card-section>
 
-      <q-card-section v-if="selectedAnalysis.results.class_statistics">
-        <h6>Class Statistics</h6>
-        <q-table :rows="classStatisticsRows" :columns="classStatisticsColumns" row-key="class" dense flat
-          :pagination="{ rowsPerPage: 0 }" />
-      </q-card-section>
+      <q-card-section v-if="selectedAnalysis.results">
+      <h6>Summary Statistics</h6>
+      <q-table
+        :rows="summaryStatisticsRows"
+        :columns="summaryStatisticsColumns"
+        row-key="class"
+        dense
+        flat
+        :pagination="{ rowsPerPage: 0 }"
+      />
+      <div class="text-caption q-mt-sm">
+        Total Area: {{ selectedAnalysis.results.total_area_km2.toFixed(2) }} km²
+      </div>
+    </q-card-section>
 
       <q-card-actions align="right">
-        <q-btn flat label="Display on Map" color="primary" @click="displayOnMap" />
         <q-btn flat label="Close" color="primary" @click="closeAnalysis" />
       </q-card-actions>
     </q-card>
@@ -74,16 +82,16 @@ export default {
 
     const availableDates = computed(() => mapStore.availableDates);
 
-    const classStatisticsColumns = [
+    const summaryStatisticsColumns = [
       { name: 'class', align: 'left', label: 'Class', field: 'class' },
       { name: 'area', align: 'right', label: 'Area (km²)', field: 'area' },
       { name: 'percentage', align: 'right', label: 'Percentage', field: 'percentage' }
     ];
 
-    const classStatisticsRows = computed(() => {
-      if (!selectedAnalysis.value?.results.class_statistics) return [];
-      return Object.entries(selectedAnalysis.value.results.class_statistics).map(([className, stats]) => ({
-        class: className,
+    const summaryStatisticsRows = computed(() => {
+      if (!selectedAnalysis.value?.results?.class_statistics) return [];
+      return Object.entries(selectedAnalysis.value.results.class_statistics).map(([classId, stats]) => ({
+        class: projectStore.currentProject.classes[parseInt(classId)].name,
         area: stats.area_km2.toFixed(2),
         percentage: `${stats.percentage.toFixed(2)}%`
       }));
@@ -128,19 +136,24 @@ export default {
       return predictions.value.some(p => p.basemap_date === date)
     };
 
-    const showAnalysis = (date) => {
-      // TODO: Fetch analysis results for the given date
-      selectedAnalysis.value = {
-        date,
-        results: {
-          // Dummy data, replace with actual fetched data
-          summary: { total_area: 1000, prediction_date: date },
-          class_statistics: {
-            'Class A': { area_km2: 500, percentage: 50 },
-            'Class B': { area_km2: 500, percentage: 50 }
-          }
+    const showAnalysis = async (date) => {
+      const prediction = predictions.value.find(p => p.basemap_date === date);
+      if (prediction) {
+        try {
+          const results = await api.getSummaryStatistics(prediction.id);
+          selectedAnalysis.value = {
+            date,
+            results
+          };
+        } catch (error) {
+          console.error('Error fetching summary statistics:', error);
+          $q.notify({
+            color: 'negative',
+            message: 'Failed to fetch summary statistics',
+            icon: 'error'
+          });
         }
-      };
+      }
     };
 
     const displayOnMap = async (date) => {
@@ -176,8 +189,8 @@ export default {
     return {
       availableDates,
       selectedAnalysis,
-      classStatisticsColumns,
-      classStatisticsRows,
+      summaryStatisticsColumns,
+      summaryStatisticsRows,
       formatDate,
       formatLabel,
       formatValue,
