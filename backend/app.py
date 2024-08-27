@@ -44,7 +44,7 @@ import uuid
 from shapely.ops import transform
 import pyproj
 from pyproj import Transformer
-from celery import Celery
+from celery import Celery, group
 from contextlib import contextmanager
 from sqlalchemy.orm import scoped_session, sessionmaker
 
@@ -830,9 +830,6 @@ def train_model():
         # Get the latest trained model for the project
         model = TrainedModel.query.filter_by(project_id=project_id).order_by(TrainedModel.created_at.desc()).first()
 
-        ## FOR DEBUGGING
-        generate_prediction_for_date(model.id, project_id, aoi_extent, aoi_extent_lat_lon, '2023-03')
-        
         # Start the Celery task
         task = generate_predictions_for_all_dates.delay(model.id, project_id,  aoi_extent, aoi_extent_lat_lon, basemap_dates_for_prediction)
 
@@ -1260,6 +1257,7 @@ def predict_landcover():
 
 
 def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
+    
     model_record = TrainedModel.query.get(model_id)
     if model_record is None:
         raise ValueError("Model not found")
@@ -1291,13 +1289,15 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
         logger.warning(f"Basemap date {basemap_date} not in training data. Using nearest date.")
         nearest_date = min(date_encoder.classes_, key=lambda x: abs(int(x.replace('-', '')) - int(basemap_date.replace('-', ''))))
         encoded_date = date_encoder.transform([nearest_date])[0]
+
+        ## Extract and encode the month
+        month = int(nearest_date.split('-')[1])
+        encoded_month = month_encoder.transform([month])[0]
+
     else:
         encoded_date = date_encoder.transform([basemap_date])[0]
-
-    # Extract and encode the month
-    month = int(basemap_date.split('-')[1])
-    encoded_month = month_encoder.transform([month])[0]
-
+        encoded_month = month_encoder.transform([month])[0]
+    
 
     for i, quad in enumerate(quads):
         with rasterio.open(quad['filename']) as src:
@@ -1318,6 +1318,8 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
             date_column = np.full((reshaped_data.shape[0], 1), encoded_date)
             month_column = np.full((reshaped_data.shape[0], 1), encoded_month)
             prediction_data = np.hstack((reshaped_data, date_column, month_column))
+
+
             predictions = model.predict(prediction_data)
 
            # Map predictions to full class set indices
@@ -1349,7 +1351,6 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date):
 
     # Ensure AOI is in the same CRS as the raster
     # aoi_geom = box(*aoi)
-    # pdb.set_trace()
     # aoi_bounds = transform_bounds("EPSG:4326", src.crs, *aoi)
     # aoi_geom = box(*aoi_bounds)
     # logger.debug(f"Transformed AOI bounds: {aoi_bounds}")
@@ -1420,55 +1421,62 @@ def generate_predictions_for_all_dates(model_id, project_id, aoi_extent, aoi_ext
     logger.info(f"Completed prediction generation for model {model_id}")
     return results
 
-@contextmanager
-def session_scope():
-    """Provide a transactional scope around a series of operations."""
-    session = scoped_session(sessionmaker(bind=current_app.extensions['sqlalchemy'].db.engine))
-    try:
-        yield session
-        session.commit()
-    except:
-        session.rollback()
-        raise
-    finally:
-        session.close()
 
 def generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date):
 
     try: 
 
-        pdb.set_trace()
-
         # Get Planet quads for the date
         quads = get_planet_quads(aoi_extent_lat_lon, date)
 
         # Generate prediction
-        prediction_file = predict_landcover_aoi(model_id, quads, aoi_extent, project_id, date)
+        new_prediction_file = predict_landcover_aoi(model_id, quads, aoi_extent, project_id, date)
 
-        # Save prediction to database
-        with session_scope() as session:
+        # Check for existing prediction
+        existing_prediction = Prediction.query.filter_by(
+            project_id=project_id,
+            basemap_date=date
+        ).first()
+
+        if existing_prediction:
+            # Delete the old file
+            if os.path.exists(existing_prediction.file_path):
+                os.remove(existing_prediction.file_path)
+            
+            # Update existing prediction
+            existing_prediction.model_id = model_id
+            existing_prediction.file_path = new_prediction_file
+            existing_prediction.name = f"Prediction_{date}"
+            existing_prediction.created_at = datetime.utcnow()
+            prediction = existing_prediction
+        else:
+            # Create new prediction
             prediction = Prediction(
                 project_id=project_id,
                 model_id=model_id,
-                file_path=prediction_file,
+                file_path=new_prediction_file,
                 basemap_date=date,
                 name=f"Prediction_{date}"
             )
-            session.add(prediction)
-            session.flush()  # This will assign an ID to the prediction if it's using auto-increment
-            prediction_id = prediction.id
+            db.session.add(prediction)
 
-        # Return only the ID and other necessary information, not the full ORM object
-            return {
-                'id': prediction_id,
-                'file_path': prediction_file,
-                'basemap_date': date,
-                'name': f"Prediction_{date}"
-            }
-        
+        db.session.commit()
+        return {
+            'id': prediction.id,
+            'file_path': prediction.file_path,
+            'basemap_date': prediction.basemap_date,
+            'name': prediction.name
+        }
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        current_app.logger.error(f"Database error in generate_prediction: {str(e)}")
+        raise
     except Exception as e:
         current_app.logger.error(f"Error in generate_prediction: {str(e)}")
         raise
+    finally:
+        db.session.close()
 
 # @app.route('/api/generate_predictions', methods=['POST'])
 # def start_prediction_generation():
@@ -1495,7 +1503,6 @@ def generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, da
 
 #         model_id = model.id
 
-#         pdb.set_trace()
 
 #         # Start the Celery task
 #         task = generate_predictions_for_all_dates.delay(model_id, project_id,  aoi_extent, aoi_extent_lat_lon, basemap_dates)

@@ -11,7 +11,7 @@
               <div class="row items-center justify-between">
                 <div class="date-label">{{ date }}</div>
                 <div class="button-group">
-                  <q-btn v-if="!date.hasPrediction" icon="add" flat round size="sm" @click="generatePrediction(date)">
+                  <q-btn v-if="!hasPrediction(date)" icon="add" flat round size="sm" @click="generatePrediction(date)">
                     <q-tooltip>Generate Prediction</q-tooltip>
                   </q-btn>
                   <q-btn v-if="hasPrediction(date)" icon="visibility" flat round size="sm" @click="displayOnMap(date)">

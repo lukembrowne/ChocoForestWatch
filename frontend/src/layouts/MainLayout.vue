@@ -121,7 +121,7 @@ export default {
       mapStore.initializeBasemapDates()
 
       setTimeout(() => {
-        mapStore.updateBasemap('2022-08')
+        mapStore.updateBasemap('2022-01')
       }, 1000)
 
     })
