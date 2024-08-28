@@ -1715,65 +1715,126 @@ def  analyze_change(prediction1_id, prediction2_id):
         logger.error(f"Error in analyze_change: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/analysis/deforestation/<int:project_id>', methods=['GET'])
+def analyze_deforestation(project_id):
+    try:
+        # Fetch all predictions for the project, ordered by date
+        logger.debug(f"Fetching predictions for project {project_id}")
+        predictions = Prediction.query.filter_by(project_id=project_id).order_by(Prediction.basemap_date).all()
+        if len(predictions) < 2:
+                return jsonify({'error': 'Not enough predictions for analysis'}), 400
+        
+        logger.debug(f"Predictions: {predictions}")
 
-# def analyze_change(prediction1_id, prediction2_id):
-#     # Fetch the prediction rasters
-#     prediction1 = Prediction.query.get_or_404(prediction1_id)
-#     prediction2 = Prediction.query.get_or_404(prediction2_id)
+        # Get the model and class names from the first prediction
+        model = TrainedModel.query.get(predictions[0].model_id)
+        all_class_names = model.all_class_names
+        forest_class = all_class_names.index('Forest')
+        cloud_shadow_water_classes = [all_class_names.index(cls) for cls in ['Cloud', 'Shadow', 'Water'] if cls in all_class_names]
 
-#     # Read the rasters
-#     with rasterio.open(prediction1.file_path) as src1, rasterio.open(prediction2.file_path) as src2:
-#         # Ensure the rasters have the same extent and resolution
-#         if src1.bounds != src2.bounds or src1.res != src2.res:
-#             return jsonify({"error": "Predictions have different extents or resolutions"}), 400
+        # Initialize data cube
+        logger.debug(f"Initializing data cube")
+        with rasterio.open(predictions[0].file_path) as src:
+            height, width = src.shape
+            profile = src.profile
 
-#         # Read the data
-#         data1 = src1.read(1)
-#         data2 = src2.read(1)
+        data_cube = np.full((len(predictions), height, width), -1, dtype=np.int8)
 
-#         # Calculate areas
-#         pixel_area = src1.res[0] * src1.res[1] / 1_000_000  # Area in sq km
+        # Load all predictions into the data cube
+        logger.debug(f"Loading all predictions into the data cube")
+        for i, prediction in enumerate(predictions):
+            with rasterio.open(prediction.file_path) as src:
+                data_cube[i] = src.read(1)
 
-#         previous_forest = np.sum(data1 == 1) * pixel_area
-#         previous_non_forest = np.sum(data1 == 0) * pixel_area
-#         current_forest = np.sum(data2 == 1) * pixel_area
-#         current_non_forest = np.sum(data2 == 0) * pixel_area
+        # Establish baseline forest cover
+        baseline_forest = (data_cube[0] == forest_class)
 
-#         # Calculate change
-#         deforested = np.sum((data1 == 1) & (data2 == 0)) * pixel_area
-#         reforested = np.sum((data1 == 0) & (data2 == 1)) * pixel_area
 
-#         total_area = previous_forest + previous_non_forest
-#         deforestation_rate = (deforested - reforested) / previous_forest * 100
-#         total_area_changed = deforested + reforested
+        # Implement moving window approach
+        window_size = 6  # 6 months window
+        forest_threshold = 0.5  # 50% forest threshold
+        min_valid_obs = 3  # Minimum valid observations required
 
-#         results = {
-#             "previousForestArea": float(previous_forest),
-#             "previousNonForestArea": float(previous_non_forest),
-#             "currentForestArea": float(current_forest),
-#             "currentNonForestArea": float(current_non_forest),
-#             "deforestedArea": float(deforested),
-#             "reforestedArea": float(reforested),
-#             "deforestationRate": float(deforestation_rate),
-#             "totalAreaChanged": float(total_area_changed),
-#             "totalArea": float(total_area)
-#         }
 
-#         logger.info(f"Change analysis results: {results}")
+        def analyze_pixel_timeseries(timeseries):
+            if not baseline_forest[i, j]:
+                return 0  # Already deforested at start
+            
+            valid_obs = timeseries[~np.isin(timeseries, cloud_shadow_water_classes)]
 
-#         return jsonify(results)
+            if len(valid_obs) < min_valid_obs:
+                return 255  # Insufficient data
+            
+            for k in range(0, len(valid_obs) - window_size + 1):
+                window = valid_obs[k:k+window_size]
+                if len(window) >= min_valid_obs:
+                    forest_proportion = np.mean(window == forest_class)
+                    if forest_proportion < forest_threshold:
+                        return 1  # Deforestation detected
+            
+            return 0  # Remained forested
 
-# # Add this route to your Flask app
-# @app.route('/api/analyze_change', methods=['POST'])
-# def api_analyze_change():
-#     data = request.json
-#     prediction1_id = data.get('prediction1_id')
-#     prediction2_id = data.get('prediction2_id')
-    
-#     if not prediction1_id or not prediction2_id:
-#         return jsonify({"error": "Both prediction IDs are required"}), 400
+        deforestation = np.full((height, width), 255, dtype=np.uint8)
 
-#     return analyze_change(prediction1_id, prediction2_id)
+        for i in range(height):
+            for j in range(width):
+                pixel_timeseries = data_cube[:, i, j]
+                deforestation[i, j] = analyze_pixel_timeseries(pixel_timeseries)
+
+        # Apply sieve filter to remove small isolated pixels
+        deforestation = sieve(deforestation, size=4)
+
+        # Save deforestation raster
+        logger.debug(f"Saving deforestation raster")
+        deforestation_dir = './deforestation'
+        os.makedirs(deforestation_dir, exist_ok=True)
+        unique_id = uuid.uuid4().hex
+        deforestation_path = f"{deforestation_dir}/defor_project_{project_id}_{unique_id}.tif"
+        
+        profile.update(dtype=rasterio.uint8, count=1)
+        with rasterio.open(deforestation_path, 'w', **profile) as dst:
+            dst.write(deforestation, 1)
+
+
+        # Save datacube raster with all bands
+        logger.debug(f"Saving datacube raster with all bands")
+        datacube_dir = './deforestation'
+        os.makedirs(datacube_dir, exist_ok=True)
+        datacube_path = f"{datacube_dir}/defor_project_{project_id}_{unique_id}_datacube.tif"
+        profile.update(dtype=rasterio.uint8, count=data_cube.shape[0]) # Add number of bands
+        # Save the data_cube as a raster
+        with rasterio.open(datacube_path, 'w', **profile) as dst:
+            for i in range(data_cube.shape[0]):
+                dst.write(data_cube[i, :, :], i + 1)
+
+        # Calculate statistics
+        logger.debug(f"Calculating statistics")
+        pixel_area_ha = abs(profile['transform'][0] * profile['transform'][4]) / 10000  # Area in hectares
+        total_pixels = height * width
+        forest_pixels = np.sum(data_cube[0] == forest_class)
+        deforested_pixels = np.sum(deforestation == 1)
+        no_data_pixels = np.sum(deforestation == 255)
+
+        deforestation_rate = (deforested_pixels / forest_pixels) * 100 if forest_pixels > 0 else 0
+
+        results = {
+            "project_id": project_id,
+            "start_date": predictions[0].basemap_date,
+            "end_date": predictions[-1].basemap_date,
+            "total_area_ha": float(total_pixels * pixel_area_ha),
+            "initial_forest_area_ha": float(forest_pixels * pixel_area_ha),
+            "deforested_area_ha": float(deforested_pixels * pixel_area_ha),
+            "no_data_area_ha": float(no_data_pixels * pixel_area_ha),
+            "deforestation_rate": float(deforestation_rate),
+            "deforestation_raster_path": deforestation_path
+        }
+
+        logger.debug(f"Results: {results}")
+        return jsonify(results)
+
+    except Exception as e:
+        logger.error(f"Error in analyze_deforestation: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 
 

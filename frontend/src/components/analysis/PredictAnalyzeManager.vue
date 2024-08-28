@@ -7,6 +7,8 @@
       <q-card-actions>
         <q-btn label="Compare Selected" color="primary" @click="compareSelected"
           :disable="selectedPredictions.length !== 2" />
+
+          <q-btn label="Deforestation Analysis" color="primary" @click="deforestationTimeSeriesAnalysis" />
       </q-card-actions>
       <q-scroll-area style="height: calc(100vh - 150px);">
         <q-list separator>
@@ -254,6 +256,24 @@ export default {
       }
     };
 
+    const deforestationTimeSeriesAnalysis = async () => {
+
+      try {
+        const results = await api.getDeforestationAnalysis(projectStore.currentProject.id);
+
+        console.log('Deforestation analysis:', results)
+
+        mapStore.displayPrediction(results.deforestation_raster_path, `deforestation-time-series`, `Deforestation-time-series`, 'deforestation');
+      } catch (error) {
+
+        console.error('Error fetching deforestation analysis:', error);
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to fetch deforestation analysis',
+          icon: 'error'
+        });
+      }
+    };
     const forestTransitionColumns = [
       { name: 'from', align: 'left', label: 'From', field: 'from' },
       { name: 'forest', align: 'right', label: 'To Forest', field: 'forest' },
@@ -320,6 +340,7 @@ export default {
       forestTransitionColumns,
       forestTransitionRows,
       displayDeforestationMap,
+      deforestationTimeSeriesAnalysis
     };
   }
 };

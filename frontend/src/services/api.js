@@ -164,6 +164,16 @@ export default {
     }
   },
 
+  async getDeforestationAnalysis(projectId) {
+    try {
+      const response = await axios.get(`${API_URL}/analysis/deforestation/${projectId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting deforestation analysis:', error);
+      throw error;
+    }
+  },
+
   async getChangeAnalysis(predictionId1, predictionId2) {
     try {
       const response = await axios.get(`${API_URL}/analysis/change/${predictionId1}/${predictionId2}`);
