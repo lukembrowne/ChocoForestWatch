@@ -47,7 +47,7 @@
   </template>
   
   <script>
-  import { ref, computed, onMounted, onUnmounted } from 'vue';
+  import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
   import { useMapStore } from 'src/stores/mapStore';
   import { getBasemapDateOptions } from 'src/utils/dateUtils';
   import { storeToRefs } from 'pinia'
@@ -110,6 +110,10 @@
       onUnmounted(() => {
         window.removeEventListener('keydown', handleKeyDown)
       })
+
+      watch(() => mapStore.layers, (newLayers) => {
+        console.log("Layers changed to:", newLayers);
+      });
   
       return {
         mapStore,

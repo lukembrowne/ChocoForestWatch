@@ -734,9 +734,10 @@ export const useMapStore = defineStore('map', () => {
 
   const initializeBasemapDates = async () => {
     availableDates.value = getBasemapDateOptions().map(option => option.value);
-    if (availableDates.value.length > 0) {
-      await setSelectedBasemapDate(availableDates.value[0]);
-    }
+    // Set the first date in the available dates array as the selected basemap date
+    // if (availableDates.value.length > 0) {
+    //   await setSelectedBasemapDate(availableDates.value[0]);
+    // }
   };
 
   const setSelectedBasemapDate = async (date) => {

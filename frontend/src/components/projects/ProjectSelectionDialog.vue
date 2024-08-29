@@ -37,7 +37,7 @@
           <q-input dense rounded outlined v-model="newProject.description" label="Description" type="textarea"
             class="q-mb-md" />
 
-          <div class="text-subtitle2 q-mb-sm">Define Land Cover Classes</div>
+          <!-- <div class="text-subtitle2 q-mb-sm">Define Land Cover Classes</div>
           <div v-for="(classItem, index) in newProject.classes" :key="index" class="row q-mb-sm">
             <q-input dense rounded outlined v-model="classItem.name" label="Class Name" class="col-6"
               :rules="[val => !!val || 'Name is required']" />
@@ -47,7 +47,7 @@
             <q-btn flat round color="negative" icon="remove" @click="removeClass(index)" class="col-1 q-ml-sm" />
           </div>
           <q-btn densed rounded outlined label="Add Class" icon="add" color="positive" @click="addClass"
-            class="q-mb-md" />
+            class="q-mb-md" /> -->
 
           <q-btn label="Create Project" type="submit" color="primary" class="q-mt-md full-width" rounded />
         </q-form>

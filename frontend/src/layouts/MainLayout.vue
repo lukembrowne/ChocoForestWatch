@@ -103,27 +103,27 @@ export default {
 
       // Standard loading sequence
       // Initialize map
-      // mapStore.initMap('map')
-      // mapStore.initializeBasemapDates()
+      mapStore.initMap('map')
+      mapStore.initializeBasemapDates()
 
-      // // // Open project dialogue to have user select or create new project
-      // openProjectDialog()
+      // // Open project dialogue to have user select or create new project
+      openProjectDialog()
 
 
       // // Load default project and map date to make things easier
-      console.log('Loading default project...')
-      mapStore.initMap('map')
-      currentSection.value = 'training'
-      // Sleep 2 seconds
-      setTimeout(() => {
-        projectStore.loadProject(36)
-      }, 2000)
+      // console.log('Loading default project...')
+      // mapStore.initMap('map')
+      // currentSection.value = 'training'
+      // // Sleep 2 seconds
+      // setTimeout(() => {
+      //   projectStore.loadProject(36)
+      // }, 2000)
 
-      mapStore.initializeBasemapDates()
+      // mapStore.initializeBasemapDates()
 
-      setTimeout(() => {
-        mapStore.updateBasemap('2022-01')
-      }, 1000)
+      // setTimeout(() => {
+      //   mapStore.updateBasemap('2022-01')
+      // }, 1000)
 
     })
 
@@ -163,6 +163,7 @@ export default {
       // Clear existing AOIs
       mapStore.clearAOI()
 
+      console.log("Loading project")
       await projectStore.loadProject(project.id)
 
       if (project.isNew !== undefined || !projectStore.currentProject.aoi) {

@@ -27,6 +27,8 @@ import Draw, {
 } from 'ol/interaction/Draw.js'; import { Vector as VectorLayer } from 'ol/layer'
 import { Vector as VectorSource } from 'ol/source'
 import GeoJSON from 'ol/format/GeoJSON'
+import { Style, Fill, Stroke } from 'ol/style'
+
 
 export default {
     name: 'AOIFloatingCard',
@@ -60,11 +62,19 @@ export default {
             vectorSource = new VectorSource()
             vectorLayer = new VectorLayer({
                 source: vectorSource,
-                style: {
-                    'fill-color': 'rgba(255, 255, 255, 0.2)',
-                    'stroke-color': '#ffcc33',
-                    'stroke-width': 2
-                }
+                title: "Area of Interest",
+                visible: true,
+                id: 'area-of-interest',
+                zIndex: 100,
+                style: new Style({
+                    fill: new Fill({
+                        color: 'rgba(255, 255, 255, 0)'
+                    }),
+                    stroke: new Stroke({
+                        color: '#000000',
+                        width: 2
+                    })
+                }),
             })
             mapStore.map.addLayer(vectorLayer)
         }

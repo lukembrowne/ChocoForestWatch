@@ -32,6 +32,7 @@ export const useProjectStore = defineStore('project', {
     },
     async createProject(projectData) {
       try {
+        console.log("Creating project:", projectData)
         const response = await api.createProject(projectData)
         this.projects.push(response.data)
         return response.data
@@ -40,10 +41,14 @@ export const useProjectStore = defineStore('project', {
         throw error
       }
     },
+
+
     async setCurrentProject(project) {
       console.log("Current Project: ", project)
       this.currentProject = project
     },
+
+
     async loadProject(projectId) {
 
       console.log('Loading project:', projectId)
@@ -51,11 +56,9 @@ export const useProjectStore = defineStore('project', {
       try {
         const response = await api.getProject(projectId)
         this.currentProject = response.data
-
         const mapStore = useMapStore();  // Access the mapStore
         mapStore.updateTrainingLayerStyle();
         if (this.currentProject['aoi'] && mapStore.mapInitialized) {
-          console.log("Displaying AOI from within projectSTore")
           mapStore.displayAOI(this.currentProject.aoi)
         }
         return this.currentProject
