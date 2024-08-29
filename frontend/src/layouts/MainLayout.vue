@@ -16,7 +16,7 @@
       <q-page class="relative-position">
         <div id="map" class="map-container"></div>
         <custom-layer-switcher />
-        <AOIFloatingCard v-if="showAOICard" />
+        <AOIFloatingCard v-if="showAOICard" v-on:aoiSaved="handleAOISaved" />
         <DrawingControlsCard v-if="showDrawingControls" />
         <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
         <PredictAnalyzeManager v-if="showPredictAnalyzeManager" />
@@ -171,13 +171,24 @@ export default {
         currentSection.value = null
       } else {
         showAOICard.value = false
-        handleSectionClick({name: 'Training data'})
+        handleSectionClick({ name: 'Training data' })
         $q.notify({
           message: 'Project loaded successfully',
           color: 'positive',
           icon: 'check'
         })
       }
+    }
+
+    const handleAOISaved = (eventData) => {
+      console.log('AOI saved event received in MainLayout', eventData)
+      showAOICard.value = false
+      handleSectionClick({ name: 'Training data' })
+      $q.notify({
+        message: 'AOI saved successfully. Entering training mode.',
+        color: 'positive',
+        icon: 'check'
+      })
     }
 
     watch(() => projectStore.currentProject?.aoi, (newAOI) => {
@@ -200,7 +211,8 @@ export default {
       showTrainingAndPolygonManager,
       openModelEvaluationDialog,
       handleSectionClick,
-      showPredictAnalyzeManager
+      showPredictAnalyzeManager,
+      handleAOISaved
     }
   }
 }

@@ -38,7 +38,8 @@ import { getArea } from 'ol/sphere'
 
 export default {
     name: 'AOIFloatingCard',
-    setup() {
+    emits: ['aoiSaved', 'clearAOI'], // Declare the emits
+    setup(props, { emit }) { 
         const projectStore = useProjectStore()
         const mapStore = useMapStore()
         const $q = useQuasar()
@@ -68,6 +69,13 @@ export default {
         })
 
         const initializeVectorLayer = () => {
+            console.log("Initializing vector layer in AOIFloatingCard")
+
+            if (vectorSource) {
+                vectorSource.clear()
+                return
+            }
+
             vectorSource = new VectorSource()
             vectorLayer = new VectorLayer({
                 source: vectorSource,
@@ -132,6 +140,7 @@ export default {
         const clearAOI = () => {
             vectorSource.clear()
             aoiDrawn.value = false
+            emit('clearAOI')
         }
 
         const saveAOI = async () => {
@@ -141,10 +150,13 @@ export default {
             const geojson = new GeoJSON().writeFeatureObject(feature)
 
             try {
+                // Note - imagery download is handled in the background by the backend
+                console.log("Saving AOI and downloading imagery in the background")
                 await mapStore.setProjectAOI(geojson)
 
-                // Load project to make layer list
-                await projectStore.loadProject(projectStore.currentProject.id)
+                 // Emit an event to signal that the AOI has been saved
+                 console.log("Emitting aoiSaved event")
+                 emit('aoiSaved')
 
                 $q.notify({
                     color: 'positive',
@@ -278,7 +290,7 @@ export default {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    width: 400px;
+    width: 800px;
     max-width: 90%;
     z-index: 1000;
     border-radius: 8px;
