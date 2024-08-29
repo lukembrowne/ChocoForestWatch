@@ -2,23 +2,26 @@
     <q-card class="aoi-floating-card">
         <q-card-section>
             <div class="text-h6">Define Area of Interest</div>
-            <p>Please draw the Area of Interest (AOI) for your project on the map or upload a GeoJSON file.</p>
+            <p>Please draw the Area of Interest (AOI) for your project on the map or upload a GeoJSON file or .zipped Shapefile.</p>
+            <p>Current AOI Size: {{ aoiSizeHa.toFixed(2) }} ha</p>
+            <p v-if="aoiSizeHa > maxAoiSizeHa">Warning: AOI size exceeds the maximum allowed ({{ maxAoiSizeHa }} ha)</p>
         </q-card-section>
 
         <q-card-actions align="center" class="q-gutter-md">
-            <q-btn label="Draw AOI" color="primary" icon="create" @click="startDrawingAOI" :disable="isDrawing" />
-            <q-btn label="Upload GeoJSON" color="secondary" icon="upload_file" @click="triggerFileUpload" />
-            <q-btn label="Clear AOI" color="negative" icon="clear" @click="clearAOI" :disable="!aoiDrawn" />
+            <q-btn label="Draw AOI" color="primary" icon="create" @click="startDrawingAOI" />
+            <q-btn label="Upload AOI file (.geojson, zipped shapefile)" color="secondary" icon="upload_file"
+                @click="triggerFileUpload" />
+            <q-btn label="Clear AOI" color="negative" icon="clear" @click="clearAOI"/>
             <q-btn label="Save AOI" color="positive" icon="save" @click="saveAOI" :disable="!aoiDrawn" />
         </q-card-actions>
 
-        <input type="file" ref="fileInput" style="display: none" accept=".geojson,application/geo+json"
+        <input type="file" ref="fileInput" style="display: none" accept=".geojson,application/geo+json,.zip"
             @change="handleFileUpload" />
     </q-card>
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
 import { useQuasar } from 'quasar'
@@ -28,6 +31,9 @@ import Draw, {
 import { Vector as VectorSource } from 'ol/source'
 import GeoJSON from 'ol/format/GeoJSON'
 import { Style, Fill, Stroke } from 'ol/style'
+import shp from 'shpjs';
+import { getArea } from 'ol/sphere'
+
 
 
 export default {
@@ -40,6 +46,9 @@ export default {
         const isDrawing = ref(false)
         const aoiDrawn = ref(false)
         const fileInput = ref(null)
+        const aoiSizeHa = ref(0)
+        const maxAoiSizeHa = ref(10000) // Maximum AOI size in ha
+
 
         let drawInteraction
         let vectorLayer
@@ -93,12 +102,29 @@ export default {
             })
 
             drawInteraction.on('drawend', (event) => {
-                isDrawing.value = false
-                aoiDrawn.value = true
-                vectorSource.clear()
-                mapStore.map.removeInteraction(drawInteraction)
+                const feature = event.feature;
+                const area = getArea(feature.getGeometry()) / 10000; // Convert to ha
+                console.log("Area of AOI: ", area)
+                aoiSizeHa.value = area
+                if (area > maxAoiSizeHa.value) {
+                    vectorSource.clear()
+                    aoiDrawn.value = false;
+                    $q.notify({
+                        color: 'negative',
+                        message: `Drawn AOI is too large. Maximum allowed area is ${maxAoiSizeHa.value} ha`,
+                        icon: 'error'
+                    });
 
-            })
+                } else {
+                    console.log("Drawing finished")
+                    console.log("Feature: ", feature)
+                    isDrawing.value = false;
+                    aoiDrawn.value = true;
+                    vectorSource.clear()
+                }
+
+                mapStore.map.removeInteraction(drawInteraction);
+            });
 
             mapStore.map.addInteraction(drawInteraction)
         }
@@ -122,7 +148,7 @@ export default {
 
                 $q.notify({
                     color: 'positive',
-                    message: 'AOI saved successfully and imagery download initiated',
+                    message: 'AOI saved successfully and imagery download initiated in the background',
                     icon: 'check'
                 })
 
@@ -141,46 +167,93 @@ export default {
         }
 
         const handleFileUpload = (event) => {
-            const file = event.target.files[0]
-            if (!file) return
+            const file = event.target.files[0];
+            if (!file) return;
 
-            const reader = new FileReader()
+            if (file.name.endsWith('.geojson')) {
+                handleGeoJSON(file);
+            } else if (file.name.endsWith('.zip')) {
+                handleShapefile(file);
+            } else {
+                $q.notify({
+                    color: 'negative',
+                    message: 'Unsupported file type. Please upload a GeoJSON or a Zipped Shapefile.',
+                    icon: 'error'
+                });
+            }
+        };
+
+        const handleGeoJSON = (file) => {
+            const reader = new FileReader();
             reader.onload = (e) => {
                 try {
-                    const geojson = JSON.parse(e.target.result)
-                    const features = new GeoJSON().readFeatures(geojson, {
-                        featureProjection: mapStore.map.getView().getProjection()
-                    })
-
-                    // Clear existing features and add only the first feature from the file
-                    clearAOI()
-                    if (features.length > 0) {
-                        vectorSource.addFeature(features[0])
-                        aoiDrawn.value = true
-
-                        // Zoom to the extent of the uploaded feature
-                        const extent = vectorSource.getExtent()
-                        mapStore.map.getView().fit(extent, { padding: [50, 50, 50, 50] })
-
-                        $q.notify({
-                            color: 'positive',
-                            message: 'GeoJSON file uploaded successfully',
-                            icon: 'check'
-                        })
-                    } else {
-                        throw new Error('No valid features found in the GeoJSON file')
-                    }
+                    const geojson = JSON.parse(e.target.result);
+                    processGeoJSON(geojson);
                 } catch (error) {
-                    console.error('Error parsing GeoJSON:', error)
+                    console.error('Error parsing GeoJSON:', error);
                     $q.notify({
                         color: 'negative',
                         message: 'Failed to parse GeoJSON file',
                         icon: 'error'
-                    })
+                    });
                 }
+            };
+            reader.readAsText(file);
+        };
+
+        const handleShapefile = async (file) => {
+            try {
+                // Check if it's a zip file
+                if (file.type === "application/zip" || file.name.endsWith('.zip')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const geojson = await shp(arrayBuffer);
+                    processGeoJSON(geojson);
+                }
+            } catch (error) {
+                console.error('Error parsing Shapefile:', error);
+                $q.notify({
+                    color: 'negative',
+                    message: 'Failed to parse Shapefile: ' + error.message,
+                    icon: 'error'
+                });
             }
-            reader.readAsText(file)
-        }
+        };
+
+        const processGeoJSON = (geojson) => {
+            const features = new GeoJSON().readFeatures(geojson, {
+                featureProjection: mapStore.map.getView().getProjection()
+            });
+
+            clearAOI();
+            if (features.length > 0) {
+                vectorSource.addFeature(features[0]);
+
+                // Add area to aoiSizeHa
+                aoiSizeHa.value = getArea(features[0].getGeometry()) / 10000;
+
+                const extent = vectorSource.getExtent();
+                mapStore.map.getView().fit(extent, { padding: [50, 50, 50, 50] });
+
+                if (aoiSizeHa.value > maxAoiSizeHa.value) {
+                    aoiDrawn.value = false;
+                    $q.notify({
+                        color: 'negative',
+                        message: `Uploaded AOI is too large. Maximum allowed area is ${maxAoiSizeHa.value} ha`,
+                        icon: 'error'
+                    });
+
+                } else {
+                    aoiDrawn.value = true;
+                    $q.notify({
+                        color: 'positive',
+                        message: 'File uploaded successfully',
+                        icon: 'check'
+                    });
+                }
+            } else {
+                throw new Error('No valid features found in the file');
+            }
+        };
 
 
         return {
@@ -191,7 +264,9 @@ export default {
             saveAOI,
             triggerFileUpload,
             handleFileUpload,
-            fileInput
+            fileInput,
+            aoiSizeHa,
+            maxAoiSizeHa
         }
     }
 }
