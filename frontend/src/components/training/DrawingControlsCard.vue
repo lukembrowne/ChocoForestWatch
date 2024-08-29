@@ -1,33 +1,26 @@
 <template>
-    <q-card class="drawing-controls-card">
-        <q-card-section>
-            <div class="text-h6">Drawing Controls</div>
-            <div class="row q-gutter-sm">
-                <q-btn-toggle v-model="interactionMode" :options="[
-                    { label: 'Draw (d)', value: 'draw', icon: 'create' },
-                    { label: 'Pan (m)', value: 'pan', icon: 'pan_tool' },
-                    { label: 'Zoom in (z)', value: 'zoom_in', icon: 'zoom_in' },
-                    { label: 'Zoom out (x)', value: 'zoom_out', icon: 'zoom_out' }
-                ]" @update:model-value="setInteractionMode" />
-                <q-btn label="Undo (Ctrl/Cmd+Z)" color="secondary" icon="undo" @click="undoLastDraw"
-                    :disable="interactionMode !== 'draw'" />
-            </div>
-        </q-card-section>
-
-        <q-card-section>
-            <div class="text-subtitle2">Polygon Size (meters)</div>
-            <q-slider v-model="polygonSize" :min="10" :max="500" :step="10" label label-always color="primary"
-                @update:model-value="updatePolygonSize" />
-        </q-card-section>
-        <q-card-section>
-            <div class="text-subtitle2">Select Class</div>
-            <q-radio v-model="selectedClass" :val="className" :label="className" v-for="className in projectClasses"
-                :key="className" @update:model-value="setClassLabel" />
-        </q-card-section>
-
-
-    </q-card>
-</template>
+    <div class="drawing-controls">
+      <div class="text-h6">Drawing Controls</div>
+      <div class="row q-gutter-sm">
+        <q-btn-toggle v-model="interactionMode" :options="[
+          { label: 'Draw (d)', value: 'draw', icon: 'create' },
+          { label: 'Pan (m)', value: 'pan', icon: 'pan_tool' },
+          { label: 'Zoom in (z)', value: 'zoom_in', icon: 'zoom_in' },
+          { label: 'Zoom out (x)', value: 'zoom_out', icon: 'zoom_out' }
+        ]" @update:model-value="setInteractionMode" />
+        <q-btn label="Undo (Ctrl/Cmd+Z)" color="secondary" icon="undo" @click="undoLastDraw"
+          :disable="interactionMode !== 'draw'" />
+      </div>
+  
+      <div class="text-subtitle2 q-mt-md">Polygon Size (meters)</div>
+      <q-slider v-model="polygonSize" :min="10" :max="500" :step="10" label label-always color="primary"
+        @update:model-value="updatePolygonSize" />
+  
+      <div class="text-subtitle2 q-mt-md">Select Class</div>
+      <q-radio v-model="selectedClass" :val="className" :label="className" v-for="className in projectClasses"
+        :key="className" @update:model-value="setClassLabel" />
+    </div>
+  </template>
 
 <script>
 import { computed, onMounted, watch } from 'vue'
@@ -148,16 +141,11 @@ export default {
 </script>
 
 <style scoped>
-.drawing-controls-card {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 800px;
-    max-width: 90%;
-    z-index: 1000;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
-    background-color: white;
+.drawing-controls {
+  padding: 16px;
+  background-color: rgba(255, 255, 255, 1.0);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
 }
 </style>

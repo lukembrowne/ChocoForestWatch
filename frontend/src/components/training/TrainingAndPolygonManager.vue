@@ -19,9 +19,18 @@
         </q-card>
 
 
-        <q-card v-if="drawnPolygons.length > 0" class="polygon-list-card">
+        <q-separator />
+
+        <!-- Add DrawingControlsCard here -->
+        <drawing-controls-card />
+
+        <q-separator />
+
+
+
+        <q-card class="polygon-list-card">
             <q-card-section class="q-pa-sm">
-                <div class="text-h6">Training Polygons</div>
+                <div class="text-h6">Training Summary</div>
                 <div class="summary q-gutter-xs">
                     <div v-for="(summary, className) in classSummary" :key="className">
                         {{ className }}: {{ summary.count }} features, {{ summary.area.toFixed(2) }} ha
@@ -29,25 +38,6 @@
                 </div>
             </q-card-section>
             <q-separator />
-            <p>Polygon list</p>
-            <q-card-section class="polygon-list q-pa-none">
-                <q-list dense>
-                    <q-item v-for="(polygon, index) in drawnPolygons" :key="index" class="q-py-xs">
-                        <q-item-section avatar>
-                            <q-icon name="lens" :style="{ color: getClassColor(polygon.properties.classLabel) }"
-                                size="xs" />
-                        </q-item-section>
-                        <q-item-section>
-                            <q-item-label>{{ polygon.properties.classLabel }}</q-item-label>
-                            <q-item-label caption>{{ (calculateArea(polygon) / 10000).toFixed(2) }} ha</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                            <q-btn flat round dense color="negative" icon="delete" size="sm"
-                                @click="deletePolygon(index)" />
-                        </q-item-section>
-                    </q-item>
-                </q-list>
-            </q-card-section>
         </q-card>
 
 
@@ -62,9 +52,14 @@ import { useProjectStore } from 'src/stores/projectStore'
 import { getArea } from 'ol/sphere'
 import { GeoJSON } from 'ol/format'
 import { useQuasar } from 'quasar'
+import DrawingControlsCard from './DrawingControlsCard.vue'
+
 
 export default {
     name: 'TrainingAndPolygonManager',
+    components: {
+        DrawingControlsCard
+    },
     setup() {
         const mapStore = useMapStore()
         const projectStore = useProjectStore()
@@ -115,7 +110,8 @@ export default {
             const summary = {}
             drawnPolygons.value.forEach(polygon => {
                 const classLabel = polygon.properties.classLabel
-                const area = calculateArea(polygon) / 10000 // Convert to hectares
+                let area = calculateArea(polygon) // Convert to hectares
+                area = area / 10000 // Convert to hectares
                 if (!summary[classLabel]) {
                     summary[classLabel] = { count: 0, area: 0 }
                 }
@@ -194,8 +190,5 @@ export default {
     margin-bottom: 8px;
 }
 
-.polygon-list {
-    max-height: calc(100vh - 200px);
-    overflow-y: auto;
-}
+
 </style>

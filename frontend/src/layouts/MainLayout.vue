@@ -17,7 +17,6 @@
         <div id="map" class="map-container"></div>
         <custom-layer-switcher />
         <AOIFloatingCard v-if="showAOICard" v-on:aoiSaved="handleAOISaved" />
-        <DrawingControlsCard v-if="showDrawingControls" />
         <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
         <PredictAnalyzeManager v-if="showPredictAnalyzeManager" />
       </q-page>
@@ -37,7 +36,6 @@ import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import ModelEvaluationDialog from 'components/models/ModelEvaluationDialog.vue'
 import ModelTrainingDialog from 'components/models/ModelTrainingDialog.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
-import DrawingControlsCard from 'components/training/DrawingControlsCard.vue'
 
 
 export default {
@@ -47,7 +45,6 @@ export default {
     PredictAnalyzeManager,
     CustomLayerSwitcher,
     AOIFloatingCard,
-    DrawingControlsCard,
   },
   setup() {
     const $q = useQuasar()
@@ -56,7 +53,6 @@ export default {
     const currentSection = ref('aoi')
     const currentProject = computed(() => projectStore.currentProject)
     const showAOICard = ref(false)
-    const showDrawingControls = ref(false)
     const showTrainingAndPolygonManager = ref(false)
     const showPredictAnalyzeManager = ref(false)
     const sections = [
@@ -67,32 +63,7 @@ export default {
       { name: 'Predict & Analyze', icon: 'analytics', component: PredictAnalyzeManager, tooltip: 'Predict and analyze land cover' }
     ]
 
-    const handleSectionClick = (section) => {
-      console.log("Clicked section: ", section)
-      if (section.name === 'Model evaluation') {
-        openModelEvaluationDialog()
-      } else if (section.name === 'projects') {
-        openProjectDialog()
-      } else if (section.name === 'Fit model') {
-        openModelTrainingDialog()
-      } else {
-        currentSection.value = section.name
-      }
-
-      if (section.name === 'Training data') {
-        showDrawingControls.value = true
-        showTrainingAndPolygonManager.value = true
-      } else {
-        showDrawingControls.value = false
-        showTrainingAndPolygonManager.value = false
-      }
-
-      if (section.name === 'Predict & Analyze') {
-        showPredictAnalyzeManager.value = true
-      } else {
-        showPredictAnalyzeManager.value = false
-      }
-    }
+   
 
     const sidebarWidth = computed(() => isExpanded.value ? 300 : 60)
     const currentSectionComponent = computed(() =>
@@ -126,6 +97,31 @@ export default {
       // }, 1000)
 
     })
+
+    const handleSectionClick = (section) => {
+      console.log("Clicked section: ", section)
+      if (section.name === 'Model evaluation') {
+        openModelEvaluationDialog()
+      } else if (section.name === 'projects') {
+        openProjectDialog()
+      } else if (section.name === 'Fit model') {
+        openModelTrainingDialog()
+      } else {
+        currentSection.value = section.name
+      }
+
+      if (section.name === 'Training data') {
+        showTrainingAndPolygonManager.value = true
+      } else {
+        showTrainingAndPolygonManager.value = false
+      }
+
+      if (section.name === 'Predict & Analyze') {
+        showPredictAnalyzeManager.value = true
+      } else {
+        showPredictAnalyzeManager.value = false
+      }
+    }
 
     const openProjectDialog = () => {
       $q.dialog({
@@ -170,8 +166,17 @@ export default {
         showAOICard.value = true
         currentSection.value = null
       } else {
+
+        // Clear AOI
         showAOICard.value = false
+
+        // Set default basemap after loading a project
+        mapStore.updateBasemap('2022-01')
+
+        // Switching to training data section
         handleSectionClick({ name: 'Training data' })
+
+        // Notify user
         $q.notify({
           message: 'Project loaded successfully',
           color: 'positive',
@@ -180,6 +185,7 @@ export default {
       }
     }
 
+    // NOT WORKING - not receving the emits
     const handleAOISaved = (eventData) => {
       console.log('AOI saved event received in MainLayout', eventData)
       showAOICard.value = false
@@ -207,7 +213,6 @@ export default {
       openProjectDialog,
       openModelTrainingDialog,
       showAOICard,
-      showDrawingControls,
       showTrainingAndPolygonManager,
       openModelEvaluationDialog,
       handleSectionClick,
