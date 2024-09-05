@@ -1,25 +1,5 @@
 <template>
     <div class="custom-layer-switcher">
-      <div class="basemap-selector q-mb-md">
-        <q-select
-          v-model="selectedBasemapDate"
-          :options="basemapOptions"
-          label="Select Planet Basemap Date"
-          dense
-          options-dense
-          @update:model-value="onBasemapDateChange"
-        >
-          <template v-slot:option="scope">
-            <q-item v-bind="scope.itemProps">
-              <q-item-section>
-                <q-item-label>{{ scope.opt.label }}</q-item-label>
-                <q-item-label caption>{{ scope.opt.value }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </template>
-        </q-select>
-      </div>
-  
       <p class="text-subtitle2 q-mb-sm">Layers</p>
         <div v-for="layer in mapStore.layers" :key="layer.id" class="layer-item q-mb-xs">
             <div class="row items-center no-wrap">
@@ -49,20 +29,12 @@
   <script>
   import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
   import { useMapStore } from 'src/stores/mapStore';
-  import { getBasemapDateOptions } from 'src/utils/dateUtils';
   import { storeToRefs } from 'pinia'
   
   export default {
     name: 'CustomLayerSwitcher',
     setup() {
       const mapStore = useMapStore();
-      const { selectedBasemapDate } = storeToRefs(mapStore)
-      const basemapOptions = computed(() => {
-        return getBasemapDateOptions().map(option => ({
-          label: option.label,
-          value: option.value
-        }));
-      });
   
       const toggleLayerVisibility = (layerId) => {
         mapStore.toggleLayerVisibility(layerId);
@@ -74,42 +46,6 @@
   
 
 
-      const handleKeyDown = (event) => {
-        const currentIndex = basemapOptions.value.findIndex(option => option.value === selectedBasemapDate.value)
-        let newIndex
-  
-        if (event.key === 'ArrowUp') {
-          newIndex = (currentIndex - 1 + basemapOptions.value.length) % basemapOptions.value.length
-        } else if (event.key === 'ArrowDown') {
-          newIndex = (currentIndex + 1) % basemapOptions.value.length
-        } else {
-          return
-        }
-  
-        mapStore.setSelectedBasemapDate(basemapOptions.value[newIndex].value)
-      }
-
-      const onBasemapDateChange = (date) => {
-        console.log("Basemap date changed to: ", date);
-        mapStore.setSelectedBasemapDate(date['value']);
-      };
-  
-      onMounted(() => {
-        if (basemapOptions.value.length > 0) {
-          selectedBasemapDate.value = basemapOptions.value[0].value;
-
-          if(mapStore.mapInitialized) {
-            onBasemapDateChange(selectedBasemapDate.value);
-          }
-        }
-        
-        window.addEventListener('keydown', handleKeyDown)
-
-      });
-
-      onUnmounted(() => {
-        window.removeEventListener('keydown', handleKeyDown)
-      })
 
       watch(() => mapStore.layers, (newLayers) => {
         // console.log("Layers changed to:", newLayers);
@@ -117,11 +53,8 @@
   
       return {
         mapStore,
-        selectedBasemapDate,
-        basemapOptions,
         toggleLayerVisibility,
         updateLayerOpacity,
-        onBasemapDateChange
       };
     }
   };

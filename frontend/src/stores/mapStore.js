@@ -772,7 +772,7 @@ export const useMapStore = defineStore('map', () => {
     console.log("Loading training polygons for date within MapStore:", date);
     try {
       const response = await api.getTrainingPolygons(projectStore.currentProject.id);
-      console.log(response.data)
+      // console.log(response.data)
       const trainingSet = response.data.find(set => set.basemap_date === date);
       if (trainingSet) {
         const polygons = await api.getSpecificTrainingPolygons(projectStore.currentProject.id, trainingSet.id);

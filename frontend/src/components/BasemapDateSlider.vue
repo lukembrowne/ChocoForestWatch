@@ -24,7 +24,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useMapStore } from 'src/stores/mapStore';
 import { getBasemapDateOptions } from 'src/utils/dateUtils';
 import { useProjectStore } from 'src/stores/projectStore';
@@ -50,6 +50,9 @@ export default {
                 console.log("Fetching training dates for project:", projectStore.currentProject.id);
                 await projectStore.fetchTrainingDates();
             }
+
+            window.addEventListener('keydown', handleKeyDown)
+
         });
 
         const hasTrainingData = (date) => {
@@ -57,7 +60,7 @@ export default {
         };
 
         const updateSelectedDate = async (value) => {
-            console.log("hasUnsavedChanges within updateSelectedDate:", hasUnsavedChanges.value);
+            console.log("Updating selected date with argument:", value);
 
             // If unsaved changes, prompt to save
             if (hasUnsavedChanges.value) {
@@ -86,6 +89,32 @@ export default {
             const yearStart = dates.value.findIndex(date => date.startsWith(year));
             return (yearStart / (dates.value.length - 1)) * 100;
         };
+
+        const handleKeyDown = (event) => {
+
+            console.log("dates.value:", dates.value);
+            console.log("mapStore.selectedBasemapDate:", mapStore.selectedBasemapDate);
+            const currentIndex = dates.value.findIndex(option => option === mapStore.selectedBasemapDate)
+            console.log("currentIndex:", currentIndex);
+            let newIndex
+
+            if (event.key === 'ArrowLeft') {
+                newIndex = (currentIndex - 1 + dates.value.length) % dates.value.length
+            } else if (event.key === 'ArrowRight') {
+                newIndex = (currentIndex + 1) % dates.value.length
+            } else {
+                return
+            }
+
+            console.log("dates.value[newIndex]:", dates.value[newIndex]);
+            updateSelectedDate(newIndex)
+            sliderValue.value = newIndex
+        }
+
+        onUnmounted(() => {
+            window.removeEventListener('keydown', handleKeyDown)
+        })
+
 
         return {
             sliderValue,
