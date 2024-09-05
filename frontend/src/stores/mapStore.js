@@ -761,7 +761,7 @@ export const useMapStore = defineStore('map', () => {
   };
 
   const loadTrainingPolygonsForDate = async (date) => {
-    console.log("Loading training polygons for date")
+    console.log("Loading training polygons for date within MapStore:", date);
     try {
       const response = await api.getTrainingPolygons(projectStore.currentProject.id);
       console.log(response.data)

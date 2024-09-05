@@ -13,8 +13,8 @@ export const useProjectStore = defineStore('project', {
     map: null,
     mapInitialized: false,
     isLoading: false,
-    currentTrainingSet: null  
-
+    currentTrainingSet: null,
+    trainingDates: [],  // New state for training dates
   }),
   getters: {
     projectClasses: (state) => state.currentProject?.classes || []
@@ -61,6 +61,10 @@ export const useProjectStore = defineStore('project', {
         if (this.currentProject['aoi'] && mapStore.mapInitialized) {
           mapStore.displayAOI(this.currentProject.aoi)
         }
+
+        // Fetch training dates when a project is loaded
+        this.fetchTrainingDates();
+
         return this.currentProject
       } catch (error) {
         console.error('Error loading project:', error)
@@ -124,6 +128,25 @@ export const useProjectStore = defineStore('project', {
 
     clearCurrentTrainingSet() {
       this.currentTrainingSet = null;
+    },
+
+    async fetchTrainingDates() {
+      if (this.currentProject) {
+        try {
+          const trainingPolygons = await api.getTrainingPolygons(this.currentProject.id);
+          this.trainingDates = trainingPolygons.data.map(set => set.basemap_date);
+        } catch (error) {
+          console.error('Error fetching training polygon dates:', error);
+        }
+      }
+    },
+
+    hasTrainingData(date) {
+      console.log("Checking if training data exists for date within ProjectStore:", date);
+      console.log("Training dates:", this.trainingDates);
+      const exists = this.trainingDates.includes(date);
+      console.log("Training data exists:", exists);
+      return exists ;
     }
   }
 });

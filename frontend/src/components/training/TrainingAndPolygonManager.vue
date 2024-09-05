@@ -1,27 +1,7 @@
 <template>
     <div class="training-and-polygon-manager">
-        <q-card class="manager-card">
-            <q-card-section>
-                <div class="text-h6">Training Set Manager</div>
-                <div class="text-subtitle1">Current Date: {{ selectedBasemapDate }}</div>
-
-                <q-btn-group spread>
-                    <q-btn label="Previous Date" icon="chevron_left" @click="moveToPreviousDate"
-                        :disable="isFirstDate" />
-                    <q-btn label="Next Date" icon="chevron_right" @click="moveToNextDate" :disable="isLastDate" />
-                </q-btn-group>
-
-                <q-btn label="Save and Move to Next Period" @click="saveAndMoveNext" color="primary"
-                    class="q-mt-md full-width" />
-            </q-card-section>
-
-            <q-separator />
-        </q-card>
-
-
-        <q-separator />
-
-        <!-- Add DrawingControlsCard here -->
+       
+        <!-- DrawingControlsCard here -->
         <drawing-controls-card />
 
         <q-separator />
@@ -30,7 +10,7 @@
 
         <q-card class="polygon-list-card">
             <q-card-section class="q-pa-sm">
-                <div class="text-h6">Training Summary</div>
+                <div class="text-h6">Training Data Summary</div>
                 <div class="summary q-gutter-xs">
                     <div v-for="(summary, className) in classSummary" :key="className">
                         {{ className }}: {{ summary.count }} features, {{ summary.area.toFixed(2) }} ha
@@ -48,7 +28,6 @@
 <script>
 import { ref, computed } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
-import { useProjectStore } from 'src/stores/projectStore'
 import { getArea } from 'ol/sphere'
 import { GeoJSON } from 'ol/format'
 import { useQuasar } from 'quasar'
@@ -62,42 +41,9 @@ export default {
     },
     setup() {
         const mapStore = useMapStore()
-        const projectStore = useProjectStore()
         const $q = useQuasar()
         const selectedBasemapDate = computed(() => mapStore.selectedBasemapDate)
         const drawnPolygons = computed(() => mapStore.drawnPolygons)
-        const isFirstDate = computed(() => {
-            return mapStore.availableDates.indexOf(selectedBasemapDate.value) === 0
-        })
-        const isLastDate = computed(() => {
-            return mapStore.availableDates.indexOf(selectedBasemapDate.value) === mapStore.availableDates.length - 1
-        })
-
-        const moveToPreviousDate = async () => {
-            await mapStore.moveToPreviousDate()
-        }
-
-        const moveToNextDate = async () => {
-            await mapStore.moveToNextDate()
-        }
-
-        const saveAndMoveNext = async () => {
-            try {
-                await mapStore.saveCurrentTrainingPolygons()
-                await mapStore.moveToNextDate()
-                $q.notify({
-                    color: 'positive',
-                    message: 'Training polygons saved and moved to next date',
-                    icon: 'check'
-                })
-            } catch (error) {
-                $q.notify({
-                    color: 'negative',
-                    message: 'Failed to save training polygons',
-                    icon: 'error'
-                })
-            }
-        }
 
 
         // Polygon list functions
@@ -135,11 +81,6 @@ export default {
 
         return {
             selectedBasemapDate,
-            isFirstDate,
-            isLastDate,
-            moveToPreviousDate,
-            moveToNextDate,
-            saveAndMoveNext,
             drawnPolygons,
             calculateArea,
             classSummary,
