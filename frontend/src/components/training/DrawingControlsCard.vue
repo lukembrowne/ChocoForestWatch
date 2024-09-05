@@ -10,7 +10,8 @@
         ]" @update:model-value="setInteractionMode" />
         <q-btn label="Undo (Ctrl/Cmd+Z)" color="secondary" icon="undo" @click="undoLastDraw"
           :disable="interactionMode !== 'draw'" />
-        <q-btn label="Save Polygons" color="primary" icon="save" @click="saveTrainingPolygons" />
+        <q-btn label="Save Polygons (Ctrl/Cmd+S)" color="primary" icon="save" @click="saveTrainingPolygons" />
+        <q-btn label="Clear All" color="negative" icon="delete_sweep" @click="clearDrawnPolygons" />
       </div>
   
       <div class="text-subtitle2 q-mt-md">Polygon Size (meters)</div>
@@ -103,6 +104,9 @@ export default {
             } else if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
                 event.preventDefault(); // Prevent the default undo behavior if necessary
                 mapStore.undoLastDraw();
+            } else if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+                event.preventDefault(); // Prevent the default undo behavior if necessary
+                saveTrainingPolygons();
             } else if (event.key === 'z') {
                 mapStore.setInteractionMode('zoom_in');
             } else if (event.key === 'x') {
@@ -143,6 +147,10 @@ export default {
             }
         };
 
+        const clearDrawnPolygons = () => {
+            mapStore.clearDrawnPolygons(true)
+        }
+
         return {
             interactionMode,
             selectedClass,
@@ -155,7 +163,8 @@ export default {
             selectedBasemapDate,
             polygonSize,
             updatePolygonSize,
-            saveTrainingPolygons
+            saveTrainingPolygons,
+            clearDrawnPolygons
         }
     }
 }

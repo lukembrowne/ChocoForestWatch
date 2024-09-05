@@ -576,11 +576,14 @@ export const useMapStore = defineStore('map', () => {
     // console.log("Drawn polygons after deletion: ", drawnPolygons.value);
   };
 
-  const clearDrawnPolygons = () => {
+  const clearDrawnPolygons = (setUnsavedChanges = false) => {
     if (trainingPolygonsLayer.value) {
       trainingPolygonsLayer.value.getSource().clear();
     }
     drawnPolygons.value = [];
+    if (setUnsavedChanges) {
+      hasUnsavedChanges.value = true;
+    }
   };
 
   const updateTrainingLayerStyle = () => {

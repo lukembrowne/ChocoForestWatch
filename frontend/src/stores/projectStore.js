@@ -134,7 +134,8 @@ export const useProjectStore = defineStore('project', {
       if (this.currentProject) {
         try {
           const trainingPolygons = await api.getTrainingPolygons(this.currentProject.id);
-          this.trainingDates = trainingPolygons.data.map(set => set.basemap_date);
+          // Filter out dates with no featuresd
+          this.trainingDates = trainingPolygons.data.filter(set => set.feature_count > 0).map(set => set.basemap_date);
         } catch (error) {
           console.error('Error fetching training polygon dates:', error);
         }
