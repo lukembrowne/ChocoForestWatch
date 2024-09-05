@@ -23,6 +23,7 @@ import { Feature } from 'ol';
 import { Polygon } from 'ol/geom';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { transformExtent } from 'ol/proj'
+import { useQuasar } from 'quasar';
 
 
 
@@ -42,6 +43,7 @@ export const useMapStore = defineStore('map', () => {
   const layers = ref([]);
   const selectedBasemapDate = ref(null);
   const polygonSize = ref(100); // Default size in meters
+  const hasUnsavedChanges = ref(false);
 
 
   // Internal state
@@ -56,6 +58,8 @@ export const useMapStore = defineStore('map', () => {
   const dragZoomOutInteraction = ref(null);
   const drawInteraction = ref(null);
   const availableDates = ref([]);
+
+  const $q = useQuasar();
 
   // New computed property for visual indicator
   const modeIndicator = computed(() => {
@@ -539,6 +543,8 @@ export const useMapStore = defineStore('map', () => {
       updateTrainingLayerStyle();
       console.log("Drawn polygons: ", drawnPolygons.value);
       console.log("Features from trainingPolygonsLayer: ", trainingPolygonsLayer.value.getSource().getFeatures());
+      console.log("Has unsaved changes changed to true: ");
+      hasUnsavedChanges.value = true;
     };
 
     map.value.on('click', map.value.clickListener);
@@ -565,6 +571,7 @@ export const useMapStore = defineStore('map', () => {
 
       // Use splice to ensure reactivity
       drawnPolygons.value.splice(index, 1);
+      hasUnsavedChanges.value = true;
     }
     // console.log("Drawn polygons after deletion: ", drawnPolygons.value);
   };
@@ -725,6 +732,7 @@ export const useMapStore = defineStore('map', () => {
       }
 
       console.log("Removed last drawn polygon");
+      hasUnsavedChanges.value = true;
     } else {
       console.log("No polygons to remove");
     }
@@ -778,38 +786,79 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
-  const saveCurrentTrainingPolygons = async () => {
+  const promptSaveChanges = async () => {
+    console.log("promptSaveChanges within MapStore:", hasUnsavedChanges.value);
+
+    if (hasUnsavedChanges.value) {
+        return new Promise((resolve, reject) => {
+            $q.dialog({
+                title: 'Unsaved Changes',
+                message: 'You have unsaved changes. Would you like to save them?',
+                ok: 'Save',
+                cancel: 'Discard'
+            }).onOk(async () => {
+                await saveCurrentTrainingPolygons(selectedBasemapDate.value);
+                resolve(); // Resolve the promise after saving
+            }).onCancel(() => {
+                console.log('Changes discarded');
+                hasUnsavedChanges.value = false;
+                resolve(); // Resolve the promise even if discarded, to allow the app to move forward
+            }).onDismiss(() => {
+                resolve(); // Ensure the promise is resolved even if the dialog is dismissed
+            });
+        });
+    } else {
+        return Promise.resolve(); // If no unsaved changes, resolve immediately
+    }
+};
+
+  const saveCurrentTrainingPolygons = async (date) => {
     const projectStore = useProjectStore();
     const polygons = getDrawnPolygonsGeoJSON();
     try {
       // First, check if a training set for this date already exists
       const response = await api.getTrainingPolygons(projectStore.currentProject.id);
-      const existingSet = response.data.find(set => set.basemap_date === selectedBasemapDate.value);
+      const existingSet = response.data.find(set => set.basemap_date === date);
 
       if (existingSet) {
         // Update existing training set
         await api.updateTrainingPolygons({
           project_id: projectStore.currentProject.id,
           id: existingSet.id,
-          basemap_date: selectedBasemapDate.value,
+          basemap_date: date,
           polygons: polygons,
-          name: `Training_Set_${selectedBasemapDate.value}`
+          name: `Training_Set_${date}`
         });
+        console.log("Training set updated successfully for date:", date);
       } else {
         // Create new training set
         await api.saveTrainingPolygons({
           project_id: projectStore.currentProject.id,
-          basemap_date: selectedBasemapDate.value,
+          basemap_date: date,
           polygons: polygons,
-          name: `Training_Set_${selectedBasemapDate.value}`
+          name: `Training_Set_${date}`
         });
+        console.log("Training set created successfully for date:", date);
       }
+      hasUnsavedChanges.value = false;
+
+      // Re-fetch training dates to update the UI
+      await projectStore.fetchTrainingDates();
+
+ 
     } catch (error) {
       console.error('Error saving training polygons:', error);
       // Handle error (e.g., show notification to user)
       throw error; // Rethrow the error so it can be caught in the component
     }
   };
+
+
+  // Print to console every time hasUnsavedChanges is set to true
+  watch(hasUnsavedChanges, (newVal) => {
+    console.log("hasUnsavedChanges has been set to true");
+  });
+
 
   // Getters
   const getMap = computed(() => map.value);
@@ -832,6 +881,7 @@ export const useMapStore = defineStore('map', () => {
     selectedBasemapDate,
     availableDates,
     polygonSize,
+    hasUnsavedChanges,
     // Actions
     initMap,
     setAOI,
@@ -864,6 +914,7 @@ export const useMapStore = defineStore('map', () => {
     loadTrainingPolygonsForDate,
     saveCurrentTrainingPolygons,
     setPolygonSize,
+    promptSaveChanges,
     // Getters
     getMap
   };

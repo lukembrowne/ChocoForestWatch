@@ -43,6 +43,8 @@ export default {
             return Array.from(uniqueYears);
         });
 
+        const hasUnsavedChanges = computed(() => mapStore.hasUnsavedChanges);
+
         onMounted(async () => {
             if (projectStore.currentProject) {
                 console.log("Fetching training dates for project:", projectStore.currentProject.id);
@@ -54,12 +56,17 @@ export default {
             return projectStore.hasTrainingData(date);
         };
 
-        const updateSelectedDate = (value) => {
-            console.log("Updating selected basemapdate to within updateSelectedDate:", dates.value[value]);
+        const updateSelectedDate = async (value) => {
+            console.log("hasUnsavedChanges within updateSelectedDate:", hasUnsavedChanges.value);
+
+            // If unsaved changes, prompt to save
+            if (hasUnsavedChanges.value) {
+                await mapStore.promptSaveChanges();
+            }
+
             mapStore.updateBasemap(dates.value[value]);
 
             // Load training polygons for the selected date
-            console.log("Loading training polygons for date within updateSelectedDate:", dates.value[value]);
             mapStore.loadTrainingPolygonsForDate(dates.value[value]);
         };
 

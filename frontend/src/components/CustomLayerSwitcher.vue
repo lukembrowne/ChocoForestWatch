@@ -112,7 +112,7 @@
       })
 
       watch(() => mapStore.layers, (newLayers) => {
-        console.log("Layers changed to:", newLayers);
+        // console.log("Layers changed to:", newLayers);
       });
   
       return {

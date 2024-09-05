@@ -76,8 +76,7 @@ export default {
             return classObj ? classObj.color : '#000000'
         }
 
-
-
+        const hasUnsavedChanges = computed(() => mapStore.hasUnsavedChanges);
 
         return {
             selectedBasemapDate,

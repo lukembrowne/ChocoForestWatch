@@ -101,7 +101,11 @@ export default {
 
     })
 
-    const handleSectionClick = (section) => {
+    const handleSectionClick = async (section) => {
+      // if (currentSection.value === 'Training data') {
+      //   await promptSaveChanges();
+      // }
+      
       console.log("Clicked section: ", section)
       if (section.name === 'Model evaluation') {
         openModelEvaluationDialog()

@@ -142,10 +142,10 @@ export const useProjectStore = defineStore('project', {
     },
 
     hasTrainingData(date) {
-      console.log("Checking if training data exists for date within ProjectStore:", date);
-      console.log("Training dates:", this.trainingDates);
+      // console.log("Checking if training data exists for date within ProjectStore:", date);
+      // console.log("Training dates:", this.trainingDates);
       const exists = this.trainingDates.includes(date);
-      console.log("Training data exists:", exists);
+      // console.log("Training data exists:", exists);
       return exists ;
     }
   }

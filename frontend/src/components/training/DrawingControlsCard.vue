@@ -10,6 +10,7 @@
         ]" @update:model-value="setInteractionMode" />
         <q-btn label="Undo (Ctrl/Cmd+Z)" color="secondary" icon="undo" @click="undoLastDraw"
           :disable="interactionMode !== 'draw'" />
+        <q-btn label="Save Polygons" color="primary" icon="save" @click="saveTrainingPolygons" />
       </div>
   
       <div class="text-subtitle2 q-mt-md">Polygon Size (meters)</div>
@@ -26,6 +27,8 @@
 import { computed, onMounted, watch } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
 import { useProjectStore } from 'src/stores/projectStore'
+import { useQuasar } from 'quasar'
+
 
 
 export default {
@@ -33,7 +36,7 @@ export default {
     setup() {
         const mapStore = useMapStore()
         const projectStore = useProjectStore()
-
+        const $q = useQuasar()
         const drawnPolygons = computed(() => mapStore.drawnPolygons)
         const selectedBasemapDate = computed(() => mapStore.selectedBasemapDate)
 
@@ -113,7 +116,7 @@ export default {
         };
 
         watch(drawnPolygons, () => {
-            console.log("Drawn polygons changed - watcher in drawingcontrolscard")
+            // console.log("Drawn polygons changed - watcher in drawingcontrolscard")
             drawnPolygons.value = mapStore.drawnPolygons
         }, { immediate: true });
 
@@ -122,6 +125,23 @@ export default {
                 selectedClass.value = newClasses[0].value
             }
         }, { immediate: true })
+
+        const saveTrainingPolygons = async () => {
+            try {
+                await mapStore.saveCurrentTrainingPolygons(selectedBasemapDate.value);
+                // Show success notification
+                $q.notify({
+                    type: 'positive',
+                    message: 'Training polygons saved successfully'
+                });
+            } catch (error) {
+                // Show error notification
+                $q.notify({
+                    type: 'negative',
+                    message: 'Error saving training polygons'
+                });
+            }
+        };
 
         return {
             interactionMode,
@@ -134,7 +154,8 @@ export default {
             handleKeyDown,
             selectedBasemapDate,
             polygonSize,
-            updatePolygonSize
+            updatePolygonSize,
+            saveTrainingPolygons
         }
     }
 }
