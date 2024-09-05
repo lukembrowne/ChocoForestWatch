@@ -188,6 +188,7 @@ class TrainingPolygonSet(db.Model):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
     feature_count = db.Column(db.Integer)
+    excluded = db.Column(db.Boolean, default=False)
 
     project = db.relationship("Project", back_populates="training_polygon_sets")
 
@@ -531,6 +532,8 @@ def save_training_polygons():
     basemap_date = data.get('basemap_date')
     polygons = data.get('polygons')
     name = data.get('name')  # New field for the name
+    excluded = data.get('excluded', False)  # Add this line
+
 
     if not project_id or not basemap_date or not polygons or not name:
         return jsonify({'error': 'Missing required data'}), 400
@@ -550,7 +553,8 @@ def save_training_polygons():
         basemap_date=basemap_date,
         polygons=polygons,
         name=name,
-        feature_count=len(polygons['features'])
+        feature_count=len(polygons['features']),
+        excluded=excluded 
     )
     db.session.add(training_set)
 
@@ -570,7 +574,8 @@ def get_training_polygons(project_id):
         'basemap_date': s.basemap_date,
         'feature_count': s.feature_count,
         'created_at': s.created_at.isoformat(),
-        'updated_at': s.updated_at.isoformat()
+        'updated_at': s.updated_at.isoformat(),
+        'excluded': s.excluded
     } for s in sets])
 
 
@@ -588,6 +593,7 @@ def update_training_polygons(project_id, set_id):
     name = data.get('name')
     basemap_date = data.get('basemap_date')
     polygons = data.get('polygons')
+    excluded = data.get('excluded')  # Add this line
 
     try:
         training_set = TrainingPolygonSet.query.filter_by(id=set_id, project_id=project_id).first()
@@ -601,6 +607,8 @@ def update_training_polygons(project_id, set_id):
         if polygons:
             training_set.polygons = polygons
             training_set.feature_count = len(polygons['features'])
+        if excluded is not None:  # Add this block
+            training_set.excluded = excluded
 
         training_set.updated_at = datetime.utcnow()
 
@@ -633,7 +641,7 @@ def nan_to_null(obj):
 @app.route('/api/training_data_summary/<int:project_id>', methods=['GET'])
 def get_training_data_summary(project_id):
     try:
-        training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id).all()
+        training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id, excluded=False).all()
         
         summary = {
             'totalSets': len(training_sets),
@@ -792,7 +800,7 @@ def train_model():
     
     try:
         # Fetch all training sets
-        training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id).all()
+        training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id, excluded=False).all()
         if not training_sets:
             return jsonify({"error": "No training sets found for this project"}), 404
 
@@ -1836,7 +1844,19 @@ def analyze_deforestation(project_id):
         logger.error(f"Error in analyze_deforestation: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-
+@app.route('/api/projects/<int:project_id>/training-sets/<int:set_id>/excluded', methods=['PUT'])
+def update_training_set_excluded(project_id, set_id):
+    try:
+        data = request.json
+        excluded = data.get('excluded', False)
+        training_set = TrainingPolygonSet.query.filter_by(id=set_id, project_id=project_id).first_or_404()
+        training_set.excluded = excluded
+        db.session.commit()
+        
+        return jsonify({'message': 'Training set excluded status updated successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     logger.info("Starting Flask application")

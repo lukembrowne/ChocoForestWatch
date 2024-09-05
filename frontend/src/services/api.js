@@ -55,7 +55,9 @@ export default {
     return axios.delete(`${API_URL}/training_polygons/${projectId}/${setId}`);
   },
 
-
+  updateTrainingSetExcluded(projectId, trainingSetId, excluded) {
+    return axios.put(`${API_URL}/projects/${projectId}/training-sets/${trainingSetId}/excluded`, { excluded })
+  },
 
   async getTrainedModels(projectId) {
     try {

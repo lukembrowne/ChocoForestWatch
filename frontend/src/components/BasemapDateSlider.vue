@@ -15,7 +15,7 @@
             </q-slider>
             <div class="month-markers">
                 <div v-for="(date, index) in dates" :key="index" class="month-marker"
-                    :class="{ 'has-data': hasTrainingData(date) }">
+                    :class="{ 'has-data': hasTrainingData(date), 'excluded': isDateExcluded(date) }">
                     {{ formatMonth(date) }}
                 </div>
             </div>
@@ -26,8 +26,8 @@
 <script>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useMapStore } from 'src/stores/mapStore';
-import { getBasemapDateOptions } from 'src/utils/dateUtils';
 import { useProjectStore } from 'src/stores/projectStore';
+import { getBasemapDateOptions } from 'src/utils/dateUtils';
 
 export default {
     name: 'BasemapDateSlider',
@@ -57,6 +57,10 @@ export default {
 
         const hasTrainingData = (date) => {
             return projectStore.hasTrainingData(date);
+        };
+
+        const isDateExcluded = (date) => {
+            return projectStore.isDateExcluded(date);
         };
 
         const updateSelectedDate = async (value) => {
@@ -126,6 +130,7 @@ export default {
             formatMonth,
             getYearPosition,
             hasTrainingData,
+            isDateExcluded,
         };
     },
 };
@@ -187,6 +192,11 @@ export default {
 .month-marker.has-data {
     font-weight: bold;
     color: #4CAF50;
+}
+
+.month-marker.excluded {
+    color: #ff0000;
+    text-decoration: line-through;
 }
 
 .q-slider {

@@ -52,11 +52,10 @@
       <q-card-section v-if="trainingDataSummary">
         <div class="text-subtitle1">Basemap dates with training data:</div>
         <q-chip v-for="date in basemapOptions" :key="date"
-          :color="trainingDataSummary.trainingSetDates.includes(date['value']) ? 'primary' : 'grey-4'"
-          :text-color="trainingDataSummary.trainingSetDates.includes(date['value']) ? 'white' : 'black'">
+          :color="getChipColor(date['value'])"
+          :text-color="getChipTextColor(date['value'])">
           {{ date['label'] }}
         </q-chip>
-
       </q-card-section>
 
       <q-card-section>
@@ -279,7 +278,9 @@ export default {
           projectId: projectStore.currentProject.id,
           aoiExtent: extent,
           aoiExtentLatLon: extentLatLon,
-          basemapDates: basemapOptions.value.map(option => option.value),
+          basemapDates: basemapOptions.value
+            .map(option => option.value)
+            .filter(date => !projectStore.isDateExcluded(date)),
           modelName: modelName.value,
           modelDescription: modelDescription.value,
           trainTestSplit: trainTestSplit.value,
@@ -323,6 +324,20 @@ export default {
         return col
       }
 
+      const getChipColor = (date) => {
+        if (projectStore.isDateExcluded(date)) {
+          return 'negative'
+        }
+        return trainingDataSummary.value.trainingSetDates.includes(date) ? 'primary' : 'grey-4'
+      }
+
+      const getChipTextColor = (date) => {
+        if (projectStore.isDateExcluded(date)) {
+          return 'white'
+        }
+        return trainingDataSummary.value.trainingSetDates.includes(date) ? 'white' : 'black'
+      }
+
       return {
         dialogRef,
         onDialogHide,
@@ -343,7 +358,9 @@ export default {
         basemapOptions,
         totalArea,
         getClassColor,
+        getChipColor,
+        getChipTextColor,
       }
     }
   }
-</script>
+</script>w

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import api from 'src/services/api';
 import 'ol/ol.css';
 import { useMapStore } from './mapStore';  // Import the mapStore
+import { ref, computed } from 'vue';
 
 
 
@@ -15,6 +16,8 @@ export const useProjectStore = defineStore('project', {
     isLoading: false,
     currentTrainingSet: null,
     trainingDates: [],  // New state for training dates
+    excludedTrainingDates: ref([]),
+    trainingPolygonSets: [],
   }),
   getters: {
     projectClasses: (state) => state.currentProject?.classes || []
@@ -135,7 +138,12 @@ export const useProjectStore = defineStore('project', {
         try {
           const trainingPolygons = await api.getTrainingPolygons(this.currentProject.id);
           // Filter out dates with no featuresd
+          this.trainingPolygonSets = trainingPolygons.data
           this.trainingDates = trainingPolygons.data.filter(set => set.feature_count > 0).map(set => set.basemap_date);
+
+          // Set excluded dates
+          this.excludedTrainingDates = this.trainingPolygonSets.filter(set => set.excluded).map(set => set.basemap_date);
+
         } catch (error) {
           console.error('Error fetching training polygon dates:', error);
         }
@@ -148,6 +156,49 @@ export const useProjectStore = defineStore('project', {
       const exists = this.trainingDates.includes(date);
       // console.log("Training data exists:", exists);
       return exists ;
-    }
+    },
+
+    async toggleExcludedDate(date) {
+      const index = this.excludedTrainingDates.indexOf(date)
+      if (index === -1) {
+        this.excludedTrainingDates.push(date)
+      } else {
+        this.excludedTrainingDates.splice(index, 1)
+      }
+      
+      try {
+        // Find the training set with the matching date
+        const trainingSet = this.trainingPolygonSets.find(set => set.basemap_date === date)
+        if (trainingSet) {
+          // Update the excluded status
+          const response = await api.updateTrainingSetExcluded(this.currentProject.id, trainingSet.id, index === -1)
+          if (response.status === 200) {
+            // Update the local state
+            trainingSet.excluded = index === -1
+          } else {
+            throw new Error('Failed to update training set excluded status')
+          }
+        } else {
+          throw new Error('Training set not found for the given date')
+        }
+      } catch (error) {
+        console.error('Error updating excluded status:', error)
+        // Revert the local change if the API call fails
+        if (index === -1) {
+          this.excludedTrainingDates.pop()
+        } else {
+          this.excludedTrainingDates.splice(index, 0, date)
+        }
+        throw error
+      }
+    },
+
+    isDateExcluded(date) {
+      return this.excludedTrainingDates.includes(date)
+    },
+
+    includedTrainingDates() {
+      return this.trainingDates.filter(date => !this.isDateExcluded(date))
+    },
   }
 });

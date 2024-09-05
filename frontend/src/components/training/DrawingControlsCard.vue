@@ -12,6 +12,7 @@
           :disable="interactionMode !== 'draw'" />
         <q-btn label="Save Polygons (Ctrl/Cmd+S)" color="primary" icon="save" @click="saveTrainingPolygons" />
         <q-btn label="Clear All" color="negative" icon="delete_sweep" @click="clearDrawnPolygons" />
+        <q-btn label="Exclude Date" color="negative" icon="block" @click="toggleExcludeCurrentDate"   :disable="isCurrentDateExcluded" />
       </div>
   
       <div class="text-subtitle2 q-mt-md">Polygon Size (meters)</div>
@@ -151,6 +152,14 @@ export default {
             mapStore.clearDrawnPolygons(true)
         }
 
+        const isCurrentDateExcluded = computed(() => {
+            return projectStore.isDateExcluded(mapStore.selectedBasemapDate);
+        });
+
+        const toggleExcludeCurrentDate = () => {
+            projectStore.toggleExcludedDate(mapStore.selectedBasemapDate);
+        };
+
         return {
             interactionMode,
             selectedClass,
@@ -164,7 +173,9 @@ export default {
             polygonSize,
             updatePolygonSize,
             saveTrainingPolygons,
-            clearDrawnPolygons
+            clearDrawnPolygons,
+            isCurrentDateExcluded,
+            toggleExcludeCurrentDate,
         }
     }
 }
