@@ -19,6 +19,7 @@
         <AOIFloatingCard v-if="showAOICard" v-on:aoiSaved="handleAOISaved" />
         <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
         <PredictAnalyzeManager v-if="showPredictAnalyzeManager" />
+        <BasemapDateSlider />
       </q-page>
     </q-page-container>
   </q-layout>
@@ -36,6 +37,7 @@ import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import ModelEvaluationDialog from 'components/models/ModelEvaluationDialog.vue'
 import ModelTrainingDialog from 'components/models/ModelTrainingDialog.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
+import BasemapDateSlider from 'components/BasemapDateSlider.vue'
 
 
 export default {
@@ -45,6 +47,7 @@ export default {
     PredictAnalyzeManager,
     CustomLayerSwitcher,
     AOIFloatingCard,
+    BasemapDateSlider
   },
   setup() {
     const $q = useQuasar()
@@ -172,6 +175,9 @@ export default {
 
         // Set default basemap after loading a project
         mapStore.updateBasemap('2022-01')
+
+        // Load training polygons for the current date
+        mapStore.loadTrainingPolygonsForDate('2022-01')
 
         // Switching to training data section
         handleSectionClick({ name: 'Training data' })
