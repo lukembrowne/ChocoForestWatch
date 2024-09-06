@@ -184,11 +184,11 @@ class TrainingPolygonSet(db.Model):
     name = db.Column(db.String(100), nullable=False)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     basemap_date = db.Column(db.String(7), nullable=False)
-    polygons = db.Column(JSONB)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
     feature_count = db.Column(db.Integer)
     excluded = db.Column(db.Boolean, default=False)
+    polygons = db.Column(JSONB)
 
     project = db.relationship("Project", back_populates="training_polygon_sets")
 
@@ -409,13 +409,29 @@ def create_project():
     db.session.add(project)
     db.session.commit()
     
+    # Initialize TrainingPolygonSet entries
+    basemap_dates = data.get('basemap_dates', [])
+    initialize_training_polygon_sets(project.id, basemap_dates)
+    
     return jsonify({
         "id": project.id,
         "name": project.name,
         "description": project.description,
         "classes": project.classes
-        # "aoi": json.loads(db.session.scalar(project.aoi.ST_AsGeoJSON()))
     }), 201
+
+def initialize_training_polygon_sets(project_id, basemap_dates):
+    for date in basemap_dates:
+        training_set = TrainingPolygonSet(
+            project_id=project_id,
+            basemap_date=date,
+            name=f"Training_Set_{date}",
+            polygons={"type": "FeatureCollection", "features": []},
+            feature_count=0,
+            excluded=False
+        )
+        db.session.add(training_set)
+    db.session.commit()
 
 @celery.task
 def download_quads_for_aoi(aoi_extent, basemap_dates):
@@ -641,7 +657,7 @@ def nan_to_null(obj):
 @app.route('/api/training_data_summary/<int:project_id>', methods=['GET'])
 def get_training_data_summary(project_id):
     try:
-        training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id, excluded=False).all()
+        training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id, excluded=False).filter(TrainingPolygonSet.feature_count > 0).all()
         
         summary = {
             'totalSets': len(training_sets),
@@ -800,7 +816,7 @@ def train_model():
     
     try:
         # Fetch all training sets
-        training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id, excluded=False).all()
+        training_sets = TrainingPolygonSet.query.filter_by(project_id=project_id, excluded=False).filter(TrainingPolygonSet.feature_count > 0).all()
         if not training_sets:
             return jsonify({"error": "No training sets found for this project"}), 404
 

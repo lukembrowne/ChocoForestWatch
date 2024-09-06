@@ -12,7 +12,12 @@
           :disable="interactionMode !== 'draw'" />
         <q-btn label="Save Polygons (Ctrl/Cmd+S)" color="primary" icon="save" @click="saveTrainingPolygons" />
         <q-btn label="Clear All" color="negative" icon="delete_sweep" @click="clearDrawnPolygons" />
-        <q-btn label="Exclude Date" color="negative" icon="block" @click="toggleExcludeCurrentDate"   :disable="isCurrentDateExcluded" />
+        <q-btn
+          :label="isCurrentDateExcluded ? 'Include Date' : 'Exclude Date'"
+          :color="isCurrentDateExcluded ? 'positive' : 'negative'"
+          :icon="isCurrentDateExcluded ? 'add_circle' : 'block'"
+          @click="toggleExcludeCurrentDate"
+        />
       </div>
   
       <div class="text-subtitle2 q-mt-md">Polygon Size (meters)</div>
@@ -156,8 +161,21 @@ export default {
             return projectStore.isDateExcluded(mapStore.selectedBasemapDate);
         });
 
-        const toggleExcludeCurrentDate = () => {
-            projectStore.toggleExcludedDate(mapStore.selectedBasemapDate);
+        const toggleExcludeCurrentDate = async () => {
+            try {
+                await projectStore.toggleExcludedDate(mapStore.selectedBasemapDate);
+                $q.notify({
+                    type: 'positive',
+                    message: isCurrentDateExcluded.value
+                        ? 'Date has been included'
+                        : 'Date has been excluded'
+                });
+            } catch (error) {
+                $q.notify({
+                    type: 'negative',
+                    message: 'Error toggling date exclusion status'
+                });
+            }
         };
 
         return {

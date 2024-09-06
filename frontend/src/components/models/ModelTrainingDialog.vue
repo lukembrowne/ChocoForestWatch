@@ -280,7 +280,8 @@ export default {
           aoiExtentLatLon: extentLatLon,
           basemapDates: basemapOptions.value
             .map(option => option.value)
-            .filter(date => !projectStore.isDateExcluded(date)),
+            .filter(date => !projectStore.isDateExcluded(date)) // Exclude excluded dates
+            .filter(date => projectStore.hasTrainingData(date)), // Exclude dates with no training data
           modelName: modelName.value,
           modelDescription: modelDescription.value,
           trainTestSplit: trainTestSplit.value,
@@ -328,14 +329,22 @@ export default {
         if (projectStore.isDateExcluded(date)) {
           return 'negative'
         }
-        return trainingDataSummary.value.trainingSetDates.includes(date) ? 'primary' : 'grey-4'
+
+        if(projectStore.hasTrainingData(date)){
+          return 'primary'
+        }
+        return 'grey-4'
       }
 
       const getChipTextColor = (date) => {
         if (projectStore.isDateExcluded(date)) {
           return 'white'
         }
-        return trainingDataSummary.value.trainingSetDates.includes(date) ? 'white' : 'black'
+
+        if(projectStore.hasTrainingData(date)){
+          return 'white'
+        }
+        return 'black'
       }
 
       return {

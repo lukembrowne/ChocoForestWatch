@@ -3,6 +3,8 @@ import api from 'src/services/api';
 import 'ol/ol.css';
 import { useMapStore } from './mapStore';  // Import the mapStore
 import { ref, computed } from 'vue';
+import { getBasemapDateOptions } from 'src/utils/dateUtils';
+
 
 
 
@@ -35,8 +37,17 @@ export const useProjectStore = defineStore('project', {
     },
     async createProject(projectData) {
       try {
+        
         console.log("Creating project:", projectData)
-        const response = await api.createProject(projectData)
+
+        // Get basemap dates to initialize training polygon sets in database
+        const basemapDates = getBasemapDateOptions().map(option => option.value);
+
+
+        const response = await api.createProject({
+          ...projectData,
+          basemap_dates:basemapDates
+        })
         this.projects.push(response.data)
         return response.data
       } catch (error) {
@@ -159,31 +170,47 @@ export const useProjectStore = defineStore('project', {
     },
 
     async toggleExcludedDate(date) {
-      const index = this.excludedTrainingDates.indexOf(date)
-      if (index === -1) {
-        this.excludedTrainingDates.push(date)
-      } else {
-        this.excludedTrainingDates.splice(index, 1)
-      }
-      
       try {
+        const index = this.excludedTrainingDates.indexOf(date)
+        const shouldExclude = index === -1
+
+        if (shouldExclude) {
+          this.excludedTrainingDates.push(date)
+        } else {
+          this.excludedTrainingDates.splice(index, 1)
+        }
+
         // Find the training set with the matching date
         const trainingSet = this.trainingPolygonSets.find(set => set.basemap_date === date)
+        
         if (trainingSet) {
           // Update the excluded status
-          const response = await api.updateTrainingSetExcluded(this.currentProject.id, trainingSet.id, index === -1)
+          const response = await api.updateTrainingSetExcluded(this.currentProject.id, trainingSet.id, shouldExclude)
           if (response.status === 200) {
             // Update the local state
-            trainingSet.excluded = index === -1
+            trainingSet.excluded = shouldExclude
           } else {
             throw new Error('Failed to update training set excluded status')
           }
         } else {
-          throw new Error('Training set not found for the given date')
+          // If no training set exists, create a new one with the excluded status
+          const response = await api.createTrainingSet(this.currentProject.id, {
+            basemap_date: date,
+            excluded: shouldExclude,
+            name: `Training_Set_${date}`,
+            polygons: { type: "FeatureCollection", features: [] },
+            feature_count: 0
+          })
+          if (response.status === 201) {
+            this.trainingPolygonSets.push(response.data)
+          } else {
+            throw new Error('Failed to create new training set')
+          }
         }
       } catch (error) {
         console.error('Error updating excluded status:', error)
         // Revert the local change if the API call fails
+        const index = this.excludedTrainingDates.indexOf(date)
         if (index === -1) {
           this.excludedTrainingDates.pop()
         } else {
