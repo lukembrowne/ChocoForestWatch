@@ -750,10 +750,10 @@ def get_trained_models(project_id):
         } for model in models])
 
 
-@app.route('/api/trained_models/<int:model_id>/metrics', methods=['GET'])
-def get_model_metrics(model_id):
+@app.route('/api/trained_models/<int:project_id>/metrics', methods=['GET'])
+def get_model_metrics(project_id):
     try:
-        model = TrainedModel.query.get_or_404(model_id)
+        model = TrainedModel.query.filter_by(project_id=project_id).first()
         return jsonify(model.to_dict())
     except SQLAlchemyError as e:
         return jsonify({'error': 'Database error occurred', 'details': str(e)}), 500

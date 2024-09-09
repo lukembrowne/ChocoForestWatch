@@ -34,7 +34,6 @@ import ProjectSelectionDialog from 'components/projects/ProjectSelectionDialog.v
 import TrainingAndPolygonManager from 'components/training/TrainingAndPolygonManager.vue'
 import PredictAnalyzeManager from 'components/analysis/PredictAnalyzeManager.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
-import ModelEvaluationDialog from 'components/models/ModelEvaluationDialog.vue'
 import ModelTrainingDialog from 'components/models/ModelTrainingDialog.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
 import BasemapDateSlider from 'components/BasemapDateSlider.vue'
@@ -62,11 +61,8 @@ export default {
       { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
       { name: 'Training data', icon: 'school', component: TrainingAndPolygonManager, tooltip: 'Create training data' },
       { name: 'Fit model', icon: 'model_training', component: null, tooltip: 'Train a new model' },
-      { name: 'Model evaluation', icon: 'assessment', component: null, tooltip: 'Evaluate trained models' },
       { name: 'Predict & Analyze', icon: 'analytics', component: PredictAnalyzeManager, tooltip: 'Predict and analyze land cover' }
     ]
-
-   
 
     const sidebarWidth = computed(() => isExpanded.value ? 300 : 60)
     const currentSectionComponent = computed(() =>
@@ -107,9 +103,7 @@ export default {
       // }
       
       console.log("Clicked section: ", section)
-      if (section.name === 'Model evaluation') {
-        openModelEvaluationDialog()
-      } else if (section.name === 'projects') {
+      if (section.name === 'projects') {
         openProjectDialog()
       } else if (section.name === 'Fit model') {
         openModelTrainingDialog()
@@ -139,7 +133,6 @@ export default {
     }
 
 
-
     const openModelTrainingDialog = () => {
       $q.dialog({
         component: ModelTrainingDialog
@@ -152,13 +145,6 @@ export default {
           icon: 'check'
         })
 
-        openModelEvaluationDialog()
-      })
-    }
-
-    const openModelEvaluationDialog = async () => {
-      $q.dialog({
-        component: ModelEvaluationDialog
       })
     }
 
@@ -224,7 +210,6 @@ export default {
       openModelTrainingDialog,
       showAOICard,
       showTrainingAndPolygonManager,
-      openModelEvaluationDialog,
       handleSectionClick,
       showPredictAnalyzeManager,
       handleAOISaved

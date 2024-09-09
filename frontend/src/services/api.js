@@ -100,29 +100,10 @@ export default {
     }
   },
 
-  async renameModel(modelId, newName) {
-    try {
-      const response = await axios.put(`${API_URL}/trained_models/${modelId}/rename`, { new_name: newName });
-      return response.data;
-    } catch (error) {
-      console.error('Error renaming model:', error);
-      throw error;
-    }
-  },
 
-  async deleteModel(modelId) {
+  async fetchModelMetrics(projectID) {
     try {
-      const response = await axios.delete(`${API_URL}/trained_models/${modelId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error deleting model:', error);
-      throw error;
-    }
-  },
-
-  async fetchModelMetrics(modelId) {
-    try {
-      const response = await axios.get(`${API_URL}/trained_models/${modelId}/metrics`);
+      const response = await axios.get(`${API_URL}/trained_models/${projectID}/metrics`);
       return response.data;
     } catch (error) {
       console.error('Error fetching model metrics:', error);
