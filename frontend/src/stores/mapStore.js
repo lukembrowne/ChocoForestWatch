@@ -52,6 +52,7 @@ export const useMapStore = defineStore('map', () => {
       color: 'rgba(255, 255, 0, 0.1)'
     })
   });
+  const sliderValue = ref(0);
 
   // Internal state
   const projectStore = useProjectStore();
@@ -300,6 +301,12 @@ export const useMapStore = defineStore('map', () => {
 
     // Need to insert at index 2 to make sure the new layer is above the OSM layer but below AOI and training polygons layer
     map.value.getLayers().insertAt(2, planetBasemap);
+  }
+
+    // Update slider value
+  const dateIndex = availableDates.value.findIndex(d => d === date);
+  if (dateIndex !== -1) {
+    updateSliderValue(dateIndex);
   }
 
     selectedBasemapDate.value = date;
@@ -919,6 +926,10 @@ export const useMapStore = defineStore('map', () => {
     updateLayers();
   };
 
+  const updateSliderValue = (value) => {
+    sliderValue.value = value;
+  };
+
   // Print to console every time hasUnsavedChanges is set to true
   watch(hasUnsavedChanges, (newVal) => {
     console.log("hasUnsavedChanges has been set to true");
@@ -949,6 +960,7 @@ export const useMapStore = defineStore('map', () => {
     hasUnsavedChanges,
     selectedFeature,
     selectedFeatureStyle,
+    sliderValue,
     // Actions
     initMap,
     setAOI,
@@ -984,6 +996,7 @@ export const useMapStore = defineStore('map', () => {
     reorderLayers,
     setSelectedFeature,
     deleteSelectedFeature,
+    updateSliderValue,
     // Getters
     getMap
   };

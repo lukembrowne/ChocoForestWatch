@@ -18,10 +18,10 @@
           <q-item v-for="prediction in predictions" :key="prediction.id" class="basemap-date-item">
             <q-item-section>
               <div class="row items-center justify-between">
-                <div class="date-label">{{ prediction.basemap_date }}</div>
+                <div class="date-label">{{ formatDate(prediction.basemap_date) }}</div>
                 <div class="button-group">
                   <q-checkbox v-model="selectedPredictions" :val="prediction" />
-                  <q-btn icon="visibility" flat round size="sm" @click="displayOnMap(prediction.basemap_date)">
+                  <q-btn icon="add" flat round size="sm" @click="displayOnMap(prediction.basemap_date)">
                     <q-tooltip>Display Prediction</q-tooltip>
                   </q-btn>
                   <q-btn icon="bar_chart" flat round size="sm" @click="showAnalysis(prediction.basemap_date)">
@@ -165,7 +165,14 @@ export default {
     }
 
     const formatDate = (dateString) => {
-      return date.formatDate(dateString, 'MMMM, YYYY');
+      // Split the date string into year and month
+      const [year, month] = dateString.split('-');
+      
+      // Create a new Date object, forcing it to be interpreted as UTC
+      const utcDate = new Date(Date.UTC(parseInt(year), parseInt(month), 1));
+      
+      // Format the date
+      return date.formatDate(utcDate, 'MMMM, YYYY');
     };
 
     const formatLabel = (key) => {
@@ -210,6 +217,11 @@ export default {
         await loadPredictionOnMap(prediction)
       }
       mapStore.updateBasemap(date)
+      // Sync the BasemapDateSlider
+      const dateIndex = mapStore.availableDates.findIndex(d => d === date);
+      if (dateIndex !== -1) {
+        mapStore.updateSliderValue(dateIndex);
+      }
     };
 
     const loadPredictionOnMap = async (prediction) => {

@@ -24,7 +24,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useMapStore } from 'src/stores/mapStore';
 import { useProjectStore } from 'src/stores/projectStore';
 import { getBasemapDateOptions } from 'src/utils/dateUtils';
@@ -116,6 +116,10 @@ export default {
             window.removeEventListener('keydown', handleKeyDown)
         })
 
+        // Add a watcher for the mapStore's sliderValue
+        watch(() => mapStore.sliderValue, (newValue) => {
+            sliderValue.value = newValue;
+        });
 
         return {
             sliderValue,
