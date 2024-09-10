@@ -49,10 +49,18 @@
     setup() {
       const mapStore = useMapStore();
 
+      // const sortableLayers = computed(() => {
+      //   let sortedLayers = [...mapStore.layers].sort((a, b) => b.zIndex - a.zIndex);
+      //   console.log("sortableLayers within CustomLayerSwitcher.vue", sortedLayers)
+      //   return sortedLayers;
+      // });
+
       const sortableLayers = computed(() => {
-      return [...mapStore.layers].sort((a, b) => b.layer.getZIndex() - a.layer.getZIndex());
-    });
+        return mapStore.layers;
+      });
+
       const onDragEnd = (event) => {
+        console.log("drag end event", event)
         console.log("Layers before reorder", mapStore.layers)
         mapStore.reorderLayers(event.oldIndex, event.newIndex);
         console.log("Layers after reorder", mapStore.layers)

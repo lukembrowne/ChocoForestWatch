@@ -138,15 +138,17 @@ export const useMapStore = defineStore('map', () => {
 
   const updateLayers = () => {
     if (map.value) {
-      layers.value = map.value.getLayers().getArray().map(layer => ({
-        id: layer.get('id'),
-        title: layer.get('title'),
-        visible: layer.getVisible(),
-        opacity: layer.getOpacity(),
-        showOpacity: false,
-        zIndex: layer.getZIndex(),
-        layer: layer
-      }));
+      layers.value = map.value.getLayers().getArray()
+        .map(layer => ({
+          id: layer.get('id'),
+          title: layer.get('title'),
+          zIndex: layer.getZIndex(),
+          visible: layer.getVisible(),
+          opacity: layer.getOpacity(),
+          showOpacity: false,
+          layer: layer
+        }))
+
     }
   };
 
@@ -238,9 +240,10 @@ export const useMapStore = defineStore('map', () => {
     });
 
     // Add new AOI layer to map
-    map.value.addLayer(aoiLayer.value);
+    // map.value.addLayer(aoiLayer.value);
+    map.value.getLayers().insertAt(0, aoiLayer.value);
 
-    // Zoom to AOI
+    // Zoom to AOI  
     map.value.getView().fit(vectorSource.getExtent(), { padding: [50, 50, 50, 50] });
 
     // Reinitialize interactions so that the AOI layer is not selectable
@@ -267,26 +270,32 @@ export const useMapStore = defineStore('map', () => {
       url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
     });
 
-    const newLayer = new TileLayer({
+  let planetBasemap = map.value.getLayers().getArray().find(layer => layer.get('id') === 'planet-basemap');
+
+  if (planetBasemap) {
+    // Update existing layer
+    console.log("Updating existing planet basemap layer...");
+    planetBasemap.setSource(newSource);
+    planetBasemap.set('title', `Planet Basemap ${date}`);
+  } else {
+    // Create new layer if it doesn't exist
+    console.log("Creating new planet basemap layer...");
+    planetBasemap = new TileLayer({
       source: newSource,
       title: `Planet Basemap ${date}`,
       type: 'base',
       visible: true,
-      id: `planet-basemap-${date}`,
+      id: 'planet-basemap',
       zIndex: 1
     });
-
-    // Remove old base layers
-    map.value.getLayers().getArray()
-      .filter(layer => layer.get('id').startsWith('planet-basemap-'))
-      .forEach(layer => map.value.removeLayer(layer));
-
-    // Add the new layer
-    map.value.addLayer(newLayer);
+    map.value.getLayers().insertAt(2, planetBasemap);
+  }
 
     selectedBasemapDate.value = date;
-
     isLoading.value = false;
+
+    // Ensure the layer order is updated in the store
+    updateLayers();
   };
 
 
@@ -388,7 +397,8 @@ export const useMapStore = defineStore('map', () => {
       id: 'training-polygons',
       zIndex: 2
     });
-    addLayer(trainingPolygonsLayer.value);
+
+     map.value.getLayers().insertAt(0, trainingPolygonsLayer.value);
 
     // Load existing polygons from store
     drawnPolygons.value.forEach(polygon => {
@@ -658,25 +668,31 @@ export const useMapStore = defineStore('map', () => {
     });
 
     if (trainingPolygonsLayer.value) {
-      map.value.removeLayer(trainingPolygonsLayer.value);
+      // Update existing layer instead of removing and re-adding
+      trainingPolygonsLayer.value.getSource().clear();
+      trainingPolygonsLayer.value.getSource().addFeatures(features);
+    } else {
+      // Create new layer if it doesn't exist
+      const vectorSource = new VectorSource({
+        features: features
+      });
+  
+      trainingPolygonsLayer.value = new VectorLayer({
+        source: vectorSource,
+        title: 'Training Polygons',
+        visible: true,
+        zIndex: 2,
+        id: 'training-polygons',
+      });
+  
+      map.value.getLayers().insertAt(0, trainingPolygonsLayer.value);
+      // map.value.addLayer(trainingPolygonsLayer.value);
     }
-
-    const vectorSource = new VectorSource({
-      features: features
-    });
-
-    trainingPolygonsLayer.value = new VectorLayer({
-      source: vectorSource,
-      title: 'Training Polygons',
-      visible: true,
-      zIndex: 1000,
-      id: 'training-polygons',
-    });
-
-    map.value.addLayer(trainingPolygonsLayer.value);
 
     drawnPolygons.value = polygonsData.features;
 
+    // Ensure the layer order is updated in the store
+    updateLayers();
   };
 
   // Method to set interaction mode
@@ -862,11 +878,15 @@ export const useMapStore = defineStore('map', () => {
     if (fromIndex === toIndex) return;
   
     const layerArray = map.value.getLayers().getArray();
+    // const layerArray = layers.value;
+    console.log("layerArray within reorderLayers:", layerArray);
+
     const [movedLayer] = layerArray.splice(fromIndex, 1);
     layerArray.splice(toIndex, 0, movedLayer);
   
     // Update z-index for all layers
     layerArray.forEach((layer, index) => {
+      console.log("Setting z-index for layer:", layer.get('id'), "to", layerArray.length - index);
       layer.setZIndex(layerArray.length - index);
     });
   
