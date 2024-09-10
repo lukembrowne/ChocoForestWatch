@@ -2,11 +2,9 @@
   <div class="predict-analyze-container">
     <q-card class="basemap-dates-card">
       <q-card-section>
-        <div class="text-h6">Predict & Analyze</div>
+        <div class="text-subtitle1 q-mb-sm">Predict and Analyze</div>
       </q-card-section>
       <q-card-actions>
-
-        <q-btn label="Evaluate Model" color="primary" @click="openModelEvaluationDialog"/>
 
         <q-btn label="Compare Selected" color="primary" @click="compareSelected"
           :disable="selectedPredictions.length !== 2" />
@@ -16,6 +14,7 @@
 
       <q-scroll-area style="height: calc(100vh - 150px);">
         <q-list separator>
+          <div class="text-subtitle1 q-mb-sm">Predictions</div>
           <q-item v-for="prediction in predictions" :key="prediction.id" class="basemap-date-item">
             <q-item-section>
               <div class="row items-center justify-between">
@@ -108,7 +107,7 @@ import { useProjectStore } from 'src/stores/projectStore'
 import { date } from 'quasar';
 import api from 'src/services/api'
 import { useQuasar } from 'quasar'
-import ModelEvaluationDialog from 'components/models/ModelEvaluationDialog.vue'
+
 
 
 export default {
@@ -145,12 +144,6 @@ export default {
       await fetchPredictions()
       console.log('Predictions:', predictions.value)
     })
-
-    const openModelEvaluationDialog = async () => {
-      $q.dialog({
-        component: ModelEvaluationDialog
-      })
-    }
 
     const fetchPredictions = async () => {
       try {
@@ -353,7 +346,6 @@ export default {
       forestTransitionRows,
       displayDeforestationMap,
       deforestationTimeSeriesAnalysis,
-      openModelEvaluationDialog
     };
   }
 };
@@ -362,8 +354,6 @@ export default {
 <style lang="scss" scoped>
 .predict-analyze-container {
   position: absolute;
-  top: 50px;
-  left: 10px;
   display: flex;
   gap: 10px;
 }

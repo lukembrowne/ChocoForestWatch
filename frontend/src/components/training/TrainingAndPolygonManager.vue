@@ -28,9 +28,18 @@
                 </div>
             </q-card-section>
             <q-separator />
-            <q-card-actions align="center">
-                <q-btn label="Fit Model" color="primary" @click="openModelTrainingDialog" />
-            </q-card-actions>
+
+            <q-card>
+                <q-card-section class="q-pa-sm">
+
+                <div class="text-subtitle1 q-mb-sm">Fit and Evaluate Model</div>
+                <q-card-actions align="center">
+                    <q-btn label="Fit Model" color="primary" @click="openModelTrainingDialog" />
+                    <q-btn label="Evaluate Model" color="primary" @click="openModelEvaluationDialog" />
+
+                </q-card-actions>
+                </q-card-section>
+            </q-card>
         </q-card>
 
 
@@ -47,6 +56,7 @@ import { GeoJSON } from 'ol/format'
 import { useQuasar } from 'quasar'
 import DrawingControlsCard from './DrawingControlsCard.vue'
 import ModelTrainingDialog from 'components/models/ModelTrainingDialog.vue'
+import ModelEvaluationDialog from 'components/models/ModelEvaluationDialog.vue'
 
 
 export default {
@@ -73,6 +83,12 @@ export default {
                 mapStore.map.un('click', handleFeatureClick);
             }
         });
+
+        const openModelEvaluationDialog = async () => {
+            $q.dialog({
+                component: ModelEvaluationDialog
+            })
+        }
 
         const calculateArea = (polygon) => {
 
@@ -104,22 +120,22 @@ export default {
         const handleFeatureClick = (event) => {
 
             // Only allow feature selection if not in drawing mode
-            if(!mapStore.isDrawing){
+            if (!mapStore.isDrawing) {
 
-            const feature = mapStore.map.forEachFeatureAtPixel(
-                event.pixel,
-                (feature) => feature,
-                {
-                    layerFilter: (layer) => {
-                        // Exclude the AOI layer from selection
-                        return layer.get('id') !== 'area-of-interest';
+                const feature = mapStore.map.forEachFeatureAtPixel(
+                    event.pixel,
+                    (feature) => feature,
+                    {
+                        layerFilter: (layer) => {
+                            // Exclude the AOI layer from selection
+                            return layer.get('id') !== 'area-of-interest';
+                        }
                     }
-                }
-            );
-            console.log("selecdted", feature)
-            mapStore.setSelectedFeature(feature);
-        };
-    }
+                );
+                console.log("selecdted", feature)
+                mapStore.setSelectedFeature(feature);
+            };
+        }
 
         const getClassColor = (className) => {
             const classObj = projectStore.currentProject?.classes.find(cls => cls.name === className)
@@ -149,6 +165,7 @@ export default {
             classSummary,
             getClassColor,
             openModelTrainingDialog,
+            openModelEvaluationDialog
         }
     }
 }
