@@ -1,39 +1,44 @@
 <template>
   <div class="predict-analyze-container">
     <q-card class="basemap-dates-card">
-      <q-card-section>
-        <div class="text-subtitle1 q-mb-sm">Predict and Analyze</div>
-      </q-card-section>
-      <q-card-actions>
 
-        <q-btn label="Compare Selected" color="primary" @click="compareSelected"
-          :disable="selectedPredictions.length !== 2" />
+      <q-card class="q-mt-md">
+        <q-card-section>
+          <div class="text-subtitle1 q-mb-sm">Deforestation Analysis</div>
+          <div class="row q-gutter-md">
+            <q-select v-model="startDate" :options="predictionDates" label="Start Date" class="col" />
+            <q-select v-model="endDate" :options="predictionDates" label="End Date" class="col" />
+          </div>
+          <q-btn label="Analyze Deforestation" color="primary" class="q-mt-sm" @click="analyzeDeforestation"
+            :disable="!startDate || !endDate || startDate === endDate" />
+        </q-card-section>
+      </q-card>
 
-          <q-btn label="Deforestation Analysis" color="primary" @click="deforestationTimeSeriesAnalysis" />
-      </q-card-actions>
 
-      <q-scroll-area style="height: calc(100vh - 150px);">
-        <q-list separator>
-          <div class="text-subtitle1 q-mb-sm">Predictions</div>
-          <q-item v-for="prediction in predictions" :key="prediction.id" class="basemap-date-item">
-            <q-item-section>
-              <div class="row items-center justify-between">
-                <div class="date-label">{{ formatDate(prediction.basemap_date) }}</div>
-                <div class="button-group">
-                  <q-checkbox v-model="selectedPredictions" :val="prediction" />
-                  <q-btn icon="add" flat round size="sm" @click="displayOnMap(prediction.basemap_date)">
-                    <q-tooltip>Display Prediction</q-tooltip>
-                  </q-btn>
-                  <q-btn icon="bar_chart" flat round size="sm" @click="showAnalysis(prediction.basemap_date)">
-                    <q-tooltip>View Statistics</q-tooltip>
-                  </q-btn>
+      <q-separator />
+      <q-card class="q-mt-md">
+        <div class="text-subtitle1 q-mb-sm">Predictions</div>
+        <q-scroll-area style="height: calc(100vh - 150px);">
+          <q-list separator>
+            <q-item v-for="prediction in predictions" :key="prediction.id" class="basemap-date-item">
+              <q-item-section>
+                <div class="row items-center justify-between">
+                  <div class="date-label">{{ formatDate(prediction.basemap_date) }}</div>
+                  <div class="button-group">
+                    <q-checkbox v-model="selectedPredictions" :val="prediction" />
+                    <q-btn icon="add" flat round size="sm" @click="displayOnMap(prediction.basemap_date)">
+                      <q-tooltip>Display Prediction</q-tooltip>
+                    </q-btn>
+                    <q-btn icon="bar_chart" flat round size="sm" @click="showAnalysis(prediction.basemap_date)">
+                      <q-tooltip>View Statistics</q-tooltip>
+                    </q-btn>
+                  </div>
                 </div>
-              </div>
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-scroll-area>
-      
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-scroll-area>
+      </q-card>
     </q-card>
 
     <q-card v-if="selectedAnalysis" class="analysis-card">
@@ -63,38 +68,33 @@
     </q-card>
 
     <q-card v-if="changeAnalysis" class="change-analysis-card">
-    <q-card-section>
-      <div class="text-h6">Deforestation Analysis</div>
-      <div class="text-subtitle2">
-        {{ changeAnalysis.prediction1_date }} to {{ changeAnalysis.prediction2_date }}
-      </div>
-    </q-card-section>
+      <q-card-section>
+        <div class="text-h6">Deforestation Analysis</div>
+        <div class="text-subtitle2">
+          {{ changeAnalysis.prediction1_date }} to {{ changeAnalysis.prediction2_date }}
+        </div>
+      </q-card-section>
 
-    <q-card-section>
-      <div class="text-h5">Deforestation Rate: {{ changeAnalysis.deforestation_rate.toFixed(2) }}%</div>
-      <div>Deforested Area: {{ changeAnalysis.deforested_area_ha.toFixed(2) }} ha</div>
-      <div>Total Forest Area (initial): {{ changeAnalysis.total_forest_area_ha.toFixed(2) }} ha</div>
-    </q-card-section>
+      <q-card-section>
+        <div class="text-h5">Deforestation Rate: {{ changeAnalysis.deforestation_rate.toFixed(2) }}%</div>
+        <div>Deforested Area: {{ changeAnalysis.deforested_area_ha.toFixed(2) }} ha</div>
+        <div>Total Forest Area (initial): {{ changeAnalysis.total_forest_area_ha.toFixed(2) }} ha</div>
+      </q-card-section>
 
-    <q-card-section>
-      <h6>Forest Transition Matrix</h6>
-      <q-table
-        :rows="forestTransitionRows"
-        :columns="forestTransitionColumns"
-        row-key="from"
-        dense
-        flat
-        :pagination="{ rowsPerPage: 0 }"
-      />
-    </q-card-section>
+      <q-card-section>
+        <h6>Forest Transition Matrix</h6>
+        <q-table :rows="forestTransitionRows" :columns="forestTransitionColumns" row-key="from" dense flat
+          :pagination="{ rowsPerPage: 0 }" />
+      </q-card-section>
 
-    <q-card-actions align="right">
-      <q-btn label="Display Deforestation Map" color="primary" @click="displayDeforestationMap" />
       <q-card-actions align="right">
-        <q-btn flat label="Close" color="primary" @click="closeChangeAnalysis" />
+        <q-btn label="Display Deforestation Map" color="primary" @click="displayDeforestationMap" />
+        <q-card-actions align="right">
+          <q-btn flat label="Close" color="primary" @click="closeChangeAnalysis" />
+        </q-card-actions>
       </q-card-actions>
-    </q-card-actions>
-  </q-card>
+    </q-card>
+
 
 
   </div>
@@ -121,7 +121,72 @@ export default {
     const selectedPredictions = ref([]);
     const changeAnalysis = ref(null);
 
+    const startDate = ref(null);
+    const endDate = ref(null);
 
+    const predictionDates = computed(() => {
+      return predictions.value.map(p => ({
+        label: formatDate(p.basemap_date),
+        value: p.basemap_date
+      }));
+    });
+
+    const analyzeDeforestation = async () => {
+      if (!startDate.value || !endDate.value) {
+        $q.notify({
+          color: 'negative',
+          message: 'Please select both start and end dates.'
+        });
+        return;
+      }
+
+      if (startDate.value === endDate.value) {
+        $q.notify({
+          color: 'negative',
+          message: 'Start and end dates must be different.'
+        });
+        return;
+      }
+
+      try {
+        const pred1 = predictions.value.find(p => p.basemap_date === startDate.value.value);
+        const pred2 = predictions.value.find(p => p.basemap_date === endDate.value.value);
+
+        console.log('Pred1:', pred1);
+        console.log('startDate', startDate.value);
+        console.log('endDate', endDate.value);
+        console.log('predictions', predictions.value);
+
+        if (!pred1 || !pred2) {
+          $q.notify({
+            color: 'negative',
+            message: 'Could not find predictions for the selected dates.'
+          });
+          return;
+        }
+
+        const results = await api.getChangeAnalysis(pred1.id, pred2.id);
+        changeAnalysis.value = results;
+
+        $q.notify({
+          color: 'positive',
+          message: 'Deforestation analysis completed successfully.',
+          icon: 'check'
+        });
+
+        // You might want to add logic here to display the results
+        // For example, you could set a flag to show a results component
+        // showAnalysisResults.value = true;
+
+      } catch (error) {
+        console.error('Error analyzing deforestation:', error);
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to analyze deforestation',
+          icon: 'error'
+        });
+      }
+    };
 
     const availableDates = computed(() => mapStore.availableDates);
 
@@ -167,10 +232,10 @@ export default {
     const formatDate = (dateString) => {
       // Split the date string into year and month
       const [year, month] = dateString.split('-');
-      
+
       // Create a new Date object, forcing it to be interpreted as UTC
       const utcDate = new Date(Date.UTC(parseInt(year), parseInt(month), 1));
-      
+
       // Format the date
       return date.formatDate(utcDate, 'MMMM, YYYY');
     };
@@ -256,22 +321,6 @@ export default {
       }
     };
 
-    const compareSelected = async () => {
-      if (selectedPredictions.value.length !== 2) return;
-
-      try {
-        const [pred1, pred2] = selectedPredictions.value;
-        const results = await api.getChangeAnalysis(pred1.id, pred2.id);
-        changeAnalysis.value = results;
-      } catch (error) {
-        console.error('Error fetching change analysis:', error);
-        $q.notify({
-          color: 'negative',
-          message: 'Failed to fetch change analysis',
-          icon: 'error'
-        });
-      }
-    };
 
     const deforestationTimeSeriesAnalysis = async () => {
 
@@ -351,13 +400,16 @@ export default {
       predictions,
       selectedPredictions,
       changeAnalysis,
-      compareSelected,
       confusionMatrixColumns,
       confusionMatrixRows,
       forestTransitionColumns,
       forestTransitionRows,
       displayDeforestationMap,
       deforestationTimeSeriesAnalysis,
+      startDate,
+      endDate,
+      predictionDates,
+      analyzeDeforestation,
     };
   }
 };
