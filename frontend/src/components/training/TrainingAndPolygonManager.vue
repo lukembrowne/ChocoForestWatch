@@ -32,12 +32,12 @@
             <q-card>
                 <q-card-section class="q-pa-sm">
 
-                <div class="text-subtitle1 q-mb-sm">Fit and Evaluate Model</div>
-                <q-card-actions align="center">
-                    <q-btn label="Fit Model" color="primary" @click="openModelTrainingDialog" />
-                    <q-btn label="Evaluate Model" color="primary" @click="openModelEvaluationDialog" />
+                    <div class="text-subtitle1 q-mb-sm">Fit and Evaluate Model</div>
+                    <q-card-actions align="center">
+                        <q-btn label="Fit Model" color="primary" @click="openModelTrainingDialog" />
+                        <q-btn label="Evaluate Model" color="primary" @click="openModelEvaluationDialog" />
 
-                </q-card-actions>
+                    </q-card-actions>
                 </q-card-section>
             </q-card>
         </q-card>
