@@ -36,7 +36,7 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, reactive } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
 import { useProjectStore } from 'src/stores/projectStore'
 import { getArea } from 'ol/sphere'
@@ -58,18 +58,25 @@ export default {
         const drawnPolygons = computed(() => mapStore.drawnPolygons)
 
 
-        // Polygon list functions
-        const calculateArea = (polygon) => {
-            const feature = new GeoJSON().readFeature(polygon)
-            return getArea(feature.getGeometry())
-        }
+      const calculateArea = (polygon) => {
+        const feature = new GeoJSON().readFeature(polygon)
+        const geometry = feature.getGeometry()
+        
+        // Transform the geometry to EPSG:3857 (Web Mercator) for accurate area calculation
+        const transformedGeometry = geometry.clone().transform('EPSG:4326', 'EPSG:3857')
+        
+        const areaInSquareMeters = getArea(transformedGeometry)
+        const areaInHectares = areaInSquareMeters / 10000 // Convert to hectares
+        
+        
+        return areaInHectares
+    }
 
         const classSummary = computed(() => {
-            const summary = {}
+            const summary = reactive({})
             drawnPolygons.value.forEach(polygon => {
                 const classLabel = polygon.properties.classLabel
-                let area = calculateArea(polygon) // Convert to hectares
-                area = area / 10000 // Convert to hectares
+                const area = calculateArea(polygon)
                 if (!summary[classLabel]) {
                     summary[classLabel] = { count: 0, area: 0 }
                 }
