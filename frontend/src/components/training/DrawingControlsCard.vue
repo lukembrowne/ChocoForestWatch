@@ -228,7 +228,7 @@ export default {
 
 <style scoped>
 .drawing-controls {
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 1.0);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 </style>

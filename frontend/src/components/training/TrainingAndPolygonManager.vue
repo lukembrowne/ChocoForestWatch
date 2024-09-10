@@ -11,10 +11,20 @@
         <q-card class="polygon-list-card">
             <q-card-section class="q-pa-sm">
                 <div class="text-subtitle1 q-mb-sm">Training Data Summary</div>
-                <div class="summary q-gutter-xs">
-                    <div v-for="(summary, className) in classSummary" :key="className">
-                        {{ className }}: {{ summary.count }} features, {{ summary.area.toFixed(2) }} ha
-                    </div>
+                <div class="summary-grid">
+                    <q-item v-for="(summary, className) in classSummary" :key="className" class="summary-item">
+                        <q-item-section>
+                            <q-item-label>{{ className }}</q-item-label>
+                            <q-item-label caption>
+                                {{ summary.count }} feature{{ summary.count !== 1 ? 's' : '' }}
+                            </q-item-label>
+                        </q-item-section>
+                        <q-item-section side>
+                            <q-chip color="primary" text-color="white" size="sm">
+                                {{ summary.area.toFixed(2) }} ha
+                            </q-chip>
+                        </q-item-section>
+                    </q-item>
                 </div>
             </q-card-section>
             <q-separator />
@@ -28,6 +38,7 @@
 <script>
 import { ref, computed } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
+import { useProjectStore } from 'src/stores/projectStore'
 import { getArea } from 'ol/sphere'
 import { GeoJSON } from 'ol/format'
 import { useQuasar } from 'quasar'
@@ -41,6 +52,7 @@ export default {
     },
     setup() {
         const mapStore = useMapStore()
+        const projectStore = useProjectStore()
         const $q = useQuasar()
         const selectedBasemapDate = computed(() => mapStore.selectedBasemapDate)
         const drawnPolygons = computed(() => mapStore.drawnPolygons)
@@ -113,6 +125,10 @@ export default {
     height: 100%;
 }
 
+.polygon-list-card {
+    border-radius: 0px;
+}
+
 .polygon-list-section {
     flex-grow: 1;
     overflow-y: auto;
@@ -128,6 +144,17 @@ export default {
     display: flex;
     flex-wrap: wrap;
     margin-bottom: 8px;
+}
+
+.summary-grid {
+    display: grid;
+    gap: 8px;
+    width: 60%;
+}
+
+.summary-item {
+    background-color: rgba(0, 0, 0, 0.03);
+    width: 100%;
 }
 
 
