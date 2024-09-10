@@ -10,7 +10,7 @@
 
         <q-card class="polygon-list-card">
             <q-card-section class="q-pa-sm">
-                <div class="text-h6">Training Data Summary</div>
+                <div class="text-subtitle1 q-mb-sm">Training Data Summary</div>
                 <div class="summary q-gutter-xs">
                     <div v-for="(summary, className) in classSummary" :key="className">
                         {{ className }}: {{ summary.count }} features, {{ summary.area.toFixed(2) }} ha
@@ -93,7 +93,7 @@ export default {
 <style lang="scss" scoped>
 .training-and-polygon-manager {
     position: absolute;
-    top: 50px; // Adjust this value to account for the header height
+    top: 0px; // Adjust this value to account for the header height
     left: 0;
     bottom: 0;
     width: 350px;

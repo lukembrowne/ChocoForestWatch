@@ -1,32 +1,59 @@
 <template>
-    <div class="drawing-controls">
-      <div class="text-h6">Drawing Controls</div>
-      <div class="row q-gutter-sm">
-        <q-btn-toggle v-model="interactionMode" :options="[
-          { label: 'Draw (d)', value: 'draw', icon: 'create' },
-          { label: 'Pan (m)', value: 'pan', icon: 'pan_tool' },
-          { label: 'Zoom in (z)', value: 'zoom_in', icon: 'zoom_in' },
-          { label: 'Zoom out (x)', value: 'zoom_out', icon: 'zoom_out' }
-        ]" @update:model-value="setInteractionMode" />
-        <q-btn label="Undo (Ctrl/Cmd+Z)" color="secondary" icon="undo" @click="undoLastDraw"
-          :disable="interactionMode !== 'draw'" />
-        <q-btn label="Save Polygons (Ctrl/Cmd+S)" color="primary" icon="save" @click="saveTrainingPolygons" />
-        <q-btn label="Clear All" color="negative" icon="delete_sweep" @click="clearDrawnPolygons" />
+    <div class="drawing-controls q-pa-sm">
+      <div class="text-subtitle1 q-mb-sm">Drawing Controls</div>
+      <div class="row q-gutter-xs">
+        <q-btn-toggle
+          v-model="interactionMode"
+          :options="[
+            { label: 'Draw', value: 'draw', icon: 'create' },
+            { label: 'Pan', value: 'pan', icon: 'pan_tool' },
+            { label: 'Zoom in', value: 'zoom_in', icon: 'zoom_in' },
+            { label: 'Zoom out', value: 'zoom_out', icon: 'zoom_out' }
+          ]"
+          @update:model-value="setInteractionMode"
+          dense
+          size="sm"
+        />
+      </div>
+      <div class="row q-gutter-xs q-mt-sm">
+        <q-btn dense label="Undo" size="sm" icon="undo" @click="undoLastDraw" :disable="interactionMode !== 'draw'" />
+        <q-btn dense label="Save" size="sm" icon="save" @click="saveTrainingPolygons" />
+        <q-btn dense label="Clear" size="sm" icon="delete_sweep" @click="clearDrawnPolygons" />
         <q-btn
+          dense
           :label="isCurrentDateExcluded ? 'Include Date' : 'Exclude Date'"
-          :color="isCurrentDateExcluded ? 'positive' : 'negative'"
+          size="sm"
           :icon="isCurrentDateExcluded ? 'add_circle' : 'block'"
           @click="toggleExcludeCurrentDate"
         />
       </div>
-  
-      <div class="text-subtitle2 q-mt-md">Polygon Size (meters)</div>
-      <q-slider v-model="polygonSize" :min="10" :max="500" :step="10" label label-always color="primary"
-        @update:model-value="updatePolygonSize" />
-  
-      <div class="text-subtitle2 q-mt-md">Select Class</div>
-      <q-radio v-model="selectedClass" :val="className" :label="className" v-for="className in projectClasses"
-        :key="className" @update:model-value="setClassLabel" />
+
+      <div class="text-caption q-mt-sm">Polygon Size (m)</div>
+      <q-slider
+        v-model="polygonSize"
+        :min="10"
+        :max="500"
+        :step="10"
+        label
+        label-always
+        color="primary"
+        @update:model-value="updatePolygonSize"
+        dense
+      />
+
+      <div class="text-caption q-mt-sm">Select Class</div>
+      <div class="row q-gutter-xs">
+        <q-btn
+          v-for="className in projectClasses"
+          :key="className"
+          :label="className"
+          :color="selectedClass === className ? 'primary' : 'grey-4'"
+          :text-color="selectedClass === className ? 'white' : 'black'"
+          @click="setClassLabel(className)"
+          dense
+          size="sm"
+        />
+      </div>
     </div>
   </template>
 
@@ -201,10 +228,7 @@ export default {
 
 <style scoped>
 .drawing-controls {
-  padding: 16px;
-  background-color: rgba(255, 255, 255, 1.0);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
-  display: flex;
-  flex-direction: column;
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 </style>
