@@ -1,58 +1,74 @@
 <template>
     <div class="custom-layer-switcher">
       <p class="text-subtitle2 q-mb-sm">Layers</p>
-        <div v-for="layer in mapStore.layers" :key="layer.id" class="layer-item q-mb-xs">
+      <Sortable
+        :list="sortableLayers"
+        item-key="id"
+        @end="onDragEnd"
+        :options="{ handle: '.drag-handle' }"
+      >
+        <template #item="{ element }">
+          <div class="layer-item q-mb-xs">
             <div class="row items-center no-wrap">
-                <q-checkbox v-model="layer.visible" :label="layer.title"
-                    @update:model-value="toggleLayerVisibility(layer.id)" dense class="col" />
-                <q-btn flat round dense icon="tune" size="sm" @click="layer.showOpacity = !layer.showOpacity" />
+                <q-icon name="drag_indicator" class="drag-handle cursor-move q-mr-sm" />
+                <q-checkbox v-model="element.visible" :label="element.title"
+                    @update:model-value="toggleLayerVisibility(element.id)" dense class="col" />
+                <q-btn flat round dense icon="tune" size="sm" @click="element.showOpacity = !element.showOpacity" />
             </div>
             <q-slide-transition>
-                <div v-show="layer.showOpacity" class="opacity-slider q-mt-xs">
+                <div v-show="element.showOpacity" class="opacity-slider q-mt-xs">
                     <q-slider
-                        v-model="layer.opacity"
+                        v-model="element.opacity"
                         :min="0"
                         :max="1"
                         :step="0.1"
                         label
                         label-always
                         color="primary"
-                        @update:model-value="updateLayerOpacity(layer.id, $event)"
+                        @update:model-value="updateLayerOpacity(element.id, $event)"
                         dense
                     />
                 </div>
             </q-slide-transition>
-        </div>
+          </div>
+        </template>
+      </Sortable>
     </div>
   </template>
   
   <script>
-  import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+  import { ref, computed } from 'vue';
   import { useMapStore } from 'src/stores/mapStore';
-  import { storeToRefs } from 'pinia'
-  
+  import { Sortable } from 'sortablejs-vue3';
+
   export default {
     name: 'CustomLayerSwitcher',
+    components: {
+      Sortable,
+    },
     setup() {
       const mapStore = useMapStore();
-  
+
+      const sortableLayers = computed(() => {
+      return [...mapStore.layers].sort((a, b) => b.layer.getZIndex() - a.layer.getZIndex());
+    });
+      const onDragEnd = (event) => {
+        console.log("Layers before reorder", mapStore.layers)
+        mapStore.reorderLayers(event.oldIndex, event.newIndex);
+        console.log("Layers after reorder", mapStore.layers)
+      };
+
       const toggleLayerVisibility = (layerId) => {
         mapStore.toggleLayerVisibility(layerId);
       };
-  
+
       const updateLayerOpacity = (layerId, opacity) => {
         mapStore.updateLayerOpacity(layerId, opacity);
       };
-  
 
-
-
-      watch(() => mapStore.layers, (newLayers) => {
-        // console.log("Layers changed to:", newLayers);
-      });
-  
       return {
-        mapStore,
+        sortableLayers,
+        onDragEnd,
         toggleLayerVisibility,
         updateLayerOpacity,
       };
@@ -91,5 +107,9 @@
 
   .opacity-slider {
     padding-left: 28px; // Align with checkbox label
+}
+
+.drag-handle {
+  cursor: move;
 }
   </style>

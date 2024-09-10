@@ -25,8 +25,6 @@ import { fromLonLat, toLonLat } from 'ol/proj';
 import { transformExtent } from 'ol/proj'
 import { useQuasar } from 'quasar';
 
-
-
 export const useMapStore = defineStore('map', () => {
 
   // State
@@ -87,7 +85,8 @@ export const useMapStore = defineStore('map', () => {
           name: 'baseMap',
           title: 'OpenStreetMap',
           visible: true,
-          id: 'osm'
+          id: 'osm',
+          zIndex: 0
         })
       ],
       view: new View({
@@ -145,6 +144,7 @@ export const useMapStore = defineStore('map', () => {
         visible: layer.getVisible(),
         opacity: layer.getOpacity(),
         showOpacity: false,
+        zIndex: layer.getZIndex(),
         layer: layer
       }));
     }
@@ -223,7 +223,7 @@ export const useMapStore = defineStore('map', () => {
       title: "Area of Interest",
       visible: true,
       id: 'area-of-interest',
-      zIndex: 100,
+      zIndex: 3,
       style: new Style({
         fill: new Fill({
           color: 'rgba(255, 255, 255, 0)'
@@ -273,6 +273,7 @@ export const useMapStore = defineStore('map', () => {
       type: 'base',
       visible: true,
       id: `planet-basemap-${date}`,
+      zIndex: 1
     });
 
     // Remove old base layers
@@ -376,17 +377,18 @@ export const useMapStore = defineStore('map', () => {
 
 
 
+  // Modified initTrainingLayer function
   const initTrainingLayer = () => {
     if (!map.value) return;
 
     trainingPolygonsLayer.value = new VectorLayer({
       source: new VectorSource(),
       style: featureStyleFunction,
-      zIndex: 100,
       title: 'Training Polygons',
-      id: 'training-polygons'
+      id: 'training-polygons',
+      zIndex: 2
     });
-    map.value.addLayer(trainingPolygonsLayer.value);
+    addLayer(trainingPolygonsLayer.value);
 
     // Load existing polygons from store
     drawnPolygons.value.forEach(polygon => {
@@ -856,6 +858,20 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
+  const reorderLayers = (fromIndex, toIndex) => {
+    if (fromIndex === toIndex) return;
+  
+    const layerArray = map.value.getLayers().getArray();
+    const [movedLayer] = layerArray.splice(fromIndex, 1);
+    layerArray.splice(toIndex, 0, movedLayer);
+  
+    // Update z-index for all layers
+    layerArray.forEach((layer, index) => {
+      layer.setZIndex(layerArray.length - index);
+    });
+  
+    updateLayers();
+  };
 
   // Print to console every time hasUnsavedChanges is set to true
   watch(hasUnsavedChanges, (newVal) => {
@@ -918,6 +934,7 @@ export const useMapStore = defineStore('map', () => {
     saveCurrentTrainingPolygons,
     setPolygonSize,
     promptSaveChanges,
+    reorderLayers,
     // Getters
     getMap
   };
