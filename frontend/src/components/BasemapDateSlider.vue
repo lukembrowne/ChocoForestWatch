@@ -139,32 +139,33 @@ export default {
 <style scoped>
 .basemap-date-slider {
     position: absolute;
-    bottom: 20px;
+    bottom: 10px;
     left: 50%;
     transform: translateX(-50%);
-    width: 50%;
+    width: 75%;
     background-color: rgba(255, 255, 255, 0.95);
-    padding: 10px;
+    padding: 5px 20px 5px 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1001;
 }
 
 .current-date {
     text-align: center;
     font-size: 1.2em;
     font-weight: bold;
-    margin-bottom: 10px;
+    margin-bottom: 0px;
 }
 
 .slider-container {
     position: relative;
-    padding: 20px 0;
+    padding: 10px 0;
 }
 
 .year-markers {
     position: absolute;
     top: 0;
-    left: 0;
+    left: 10px;
     right: 0;
     height: 20px;
 }
@@ -179,13 +180,13 @@ export default {
 .month-markers {
     display: flex;
     justify-content: space-between;
-    margin-top: 5px;
+    margin-top: 0px;
 }
 
 .month-marker {
     font-size: 0.9em;
     color: #888;
-    width: 20px;
+    width: 10px;
     text-align: center;
 }
 
@@ -200,7 +201,7 @@ export default {
 }
 
 .q-slider {
-    height: 40px;
+    height: 10px;
 }
 
 .q-slider__track-container {
@@ -213,7 +214,11 @@ export default {
 
 .q-slider__thumb {
     background-color: #4CAF50;
-    width: 20px;
-    height: 20px;
+    width: 10px;
+    height: 10px;
+}
+
+.slider-container {
+    padding: 10px 0 0 0;
 }
 </style>
