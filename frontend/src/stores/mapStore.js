@@ -288,6 +288,8 @@ export const useMapStore = defineStore('map', () => {
       id: 'planet-basemap',
       zIndex: 1
     });
+
+    // Need to insert at index 2 to make sure the new layer is above the OSM layer but below AOI and training polygons layer
     map.value.getLayers().insertAt(2, planetBasemap);
   }
 
