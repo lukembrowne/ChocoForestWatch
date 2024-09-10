@@ -98,6 +98,10 @@ export default {
 
 
         const handleFeatureClick = (event) => {
+
+            // Only allow feature selection if not in drawing mode
+            if(!mapStore.isDrawing){
+
             const feature = mapStore.map.forEachFeatureAtPixel(
                 event.pixel,
                 (feature) => feature,
@@ -111,6 +115,7 @@ export default {
             console.log("selecdted", feature)
             mapStore.setSelectedFeature(feature);
         };
+    }
 
         const getClassColor = (className) => {
             const classObj = projectStore.currentProject?.classes.find(cls => cls.name === className)
