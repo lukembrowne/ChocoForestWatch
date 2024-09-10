@@ -19,7 +19,8 @@
         <AOIFloatingCard v-if="showAOICard" v-on:aoiSaved="handleAOISaved" />
         <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
         <PredictAnalyzeManager v-if="showPredictAnalyzeManager" />
-        <BasemapDateSlider />
+        <!-- Dont show map date slider when AOI is being created -->
+        <BasemapDateSlider v-if="!showAOICard"/>
       </q-page>
     </q-page-container>
   </q-layout>

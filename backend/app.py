@@ -48,6 +48,9 @@ from sqlalchemy import create_engine
 from celery.result import AsyncResult
 import time
 from rasterio.features import sieve
+from rasterio.mask import mask
+from shapely.geometry import box, mapping
+import tempfile
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -794,13 +797,13 @@ def train_model():
     data = request.json
     project_id = data['projectId']
     model_name = data['modelName']
+    aoi_shape = data['aoiShape']
     aoi_extent = data['aoiExtent']
     aoi_extent_lat_lon = data['aoiExtentLatLon']
     model_description = data.get('modelDescription', '')
     split_method = data.get('splitMethod', 'feature')
     train_test_split = data.get('trainTestSplit', 0.2)
     basemap_dates_for_prediction = data.get('basemapDates', [])
-
 
     model_params = {
         'objective': 'multi:softmax',
@@ -877,7 +880,7 @@ def train_model():
 
         # Start predictions for all dates
         # Create a group of tasks to run in parallel
-        tasks = [generate_prediction_for_date.s(model.id, project_id, aoi_extent, aoi_extent_lat_lon, date) for date in basemap_dates_for_prediction]
+        tasks = [generate_prediction_for_date.s(model.id, project_id, aoi_shape, aoi_extent, aoi_extent_lat_lon, date) for date in basemap_dates_for_prediction]
         job = group(tasks)
         
         # Execute the group of tasks
@@ -1274,47 +1277,48 @@ def delete_prediction(prediction_id):
 
 
 
-@app.route('/api/predict_landcover', methods=['POST'])
-def predict_landcover():
-    data = request.json
-    project_id = data['projectId']
-    model_id = data['modelId']
-    basemap_date = data['basemapDate']
-    prediction_name = data['predictionName']
-    aoi_extent = data['aoiExtent']
-    aoi_extent_lat_lon = data['aoiExtentLatLon']
+# @app.route('/api/predict_landcover', methods=['POST'])
+# def predict_landcover():
+#     data = request.json
+#     project_id = data['projectId']
+#     model_id = data['modelId']
+#     basemap_date = data['basemapDate']
+#     prediction_name = data['predictionName']
+#     aoi_shape = data['aoiShape']
+#     aoi_extent = data['aoiExtent']
+#     aoi_extent_lat_lon = data['aoiExtentLatLon']
 
 
-    # Fetch the model
-    model = TrainedModel.query.get(model_id)
-    if not model:
-        return jsonify({"error": "Model not found"}), 404
+#     # Fetch the model
+#     model = TrainedModel.query.get(model_id)
+#     if not model:
+#         return jsonify({"error": "Model not found"}), 404
 
-    # Fetch the quads for the AOI and basemap date
-    quads = get_planet_quads(aoi_extent_lat_lon, basemap_date)
+#     # Fetch the quads for the AOI and basemap date
+#     quads = get_planet_quads(aoi_extent_lat_lon, basemap_date)
 
-    # Perform the prediction
-    prediction_file = predict_landcover_aoi(model.id, quads, aoi_extent, project_id, basemap_date)
+#     # Perform the prediction
+#     prediction_file = predict_landcover_aoi(model.id, quads, aoi_shape, project_id, basemap_date)
 
-    # Save prediction to database
-    prediction = Prediction(
-        project_id=project_id,
-        model_id=model.id,
-        file_path=prediction_file,
-        basemap_date=basemap_date,
-        name=prediction_name
-    )
-    db.session.add(prediction)
-    db.session.commit()
+#     # Save prediction to database
+#     prediction = Prediction(
+#         project_id=project_id,
+#         model_id=model.id,
+#         file_path=prediction_file,
+#         basemap_date=basemap_date,
+#         name=prediction_name
+#     )
+#     db.session.add(prediction)
+#     db.session.commit()
 
-    return jsonify({
-        "message": "Prediction completed",
-        "prediction_id": prediction.id,
-        "file_path": prediction.file_path
-    })
+#     return jsonify({
+#         "message": "Prediction completed",
+#         "prediction_id": prediction.id,
+#         "file_path": prediction.file_path
+#     })
 
 
-def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date, session):
+def predict_landcover_aoi(model_id, quads, aoi_shape, aoi_extent, project_id, basemap_date, session):
     
     model_record = session.query(TrainedModel).get(model_id)
     if model_record is None:
@@ -1396,41 +1400,55 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date, sessio
             predicted_rasters.append(rasterio.open(temp_filename))
             temp_files.append(temp_filename)
 
-    # # Check if quads are adjacent or overlapping
-    # are_quads_adjacent = check_quads_adjacent(quad_bounds)
-    # logger.debug(f"Are quads adjacent or overlapping: {are_quads_adjacent}")
+    mosaic, out_transform = merge(predicted_rasters)
 
-    # if are_quads_adjacent:
-    #     # Use rasterio merge if quads are adjacent or overlapping
-    #     mosaic, out_transform = merge(predicted_rasters)
-    # else:
-    #     # Manual merging if quads are not adjacent
-    #     mosaic, out_transform = manual_merge(predicted_rasters, quad_bounds)
-
-
-    # Ensure AOI is in the same CRS as the raster
-    # aoi_geom = box(*aoi)
-    # aoi_bounds = transform_bounds("EPSG:4326", src.crs, *aoi)
-    # aoi_geom = box(*aoi_bounds)
-    # logger.debug(f"Transformed AOI bounds: {aoi_bounds}")
-    mosaic, out_transform = merge(predicted_rasters, bounds = aoi)
-
-    
-    logger.debug(f"Merged raster shape: {mosaic.shape}")
-    logger.debug(f"Merged raster transform: {out_transform}")
-    
-    # Create a temporary file for the merged prediction
-    merged_temp_filename = 'temp_merged_prediction.tif'
-    merged_meta = src.meta.copy()
+    # Create merged metadata
+    merged_meta = predicted_rasters[0].meta.copy()
     merged_meta.update({
-            "driver": "GTiff",
-            "height": mosaic.shape[1],
-            "width": mosaic.shape[2],
-            "transform": out_transform,
-            "compress": 'lzw'
-        })
-    merged_meta.update(count=1)
+        "driver": "GTiff",
+        "height": mosaic.shape[1],
+        "width": mosaic.shape[2],
+        "transform": out_transform,
+        "compress": 'lzw',
+        "nodata": 255
+    })
 
+    # Create a temporary file for the merged raster
+    with tempfile.NamedTemporaryFile(suffix='.tif', delete=False) as tmp:
+        temp_tif = tmp.name
+
+    # Write the merged raster to the temporary file
+    with rasterio.open(temp_tif, 'w', **merged_meta) as dst:
+        dst.write(mosaic)
+
+    # Use the AOI GeoJSON directly if it's already in the correct format
+    if isinstance(aoi_shape, dict) and aoi_shape.get('type') == 'Polygon':
+        aoi_geojson = aoi_shape
+    else:
+        # Convert to shapely geometry if it's not already a GeoJSON
+        aoi_shape = shape(aoi_shape) if isinstance(aoi_shape, dict) else aoi_shape
+        aoi_geojson = mapping(aoi_shape)
+
+    # Clip the mosaic to the AOI
+    with rasterio.open(temp_tif) as src:
+        clipped_mosaic, clipped_transform = mask(
+            src,
+            shapes=[aoi_geojson],
+            crop=True,
+            filled=True,
+            nodata=255  # Use 255 as the nodata value
+        )
+    
+    logger.info(f"Merged raster shape: {mosaic.shape}")
+    logger.info(f"Merged raster transform: {out_transform}")
+
+    # Update merged_meta with clipped raster information
+    merged_meta.update({
+        "height": clipped_mosaic.shape[1],
+        "width": clipped_mosaic.shape[2],
+        "transform": clipped_transform,
+    })
+    
     # Create the final output file
     unique_id = uuid.uuid4().hex
     output_file = f"./predictions/landcover_prediction_project{project_id}_{basemap_date}_{unique_id}.tif"
@@ -1438,8 +1456,10 @@ def predict_landcover_aoi(model_id, quads, aoi, project_id, basemap_date, sessio
 
     # Write the clipped raster
     with rasterio.open(output_file, "w", **merged_meta) as dest:
-        dest.write(mosaic)
+        dest.write(clipped_mosaic[0], 1)  # Write the first (and only) band
 
+    # Clean up the temporary file
+    os.unlink(temp_tif)
     # Clean up temporary files
     for raster in predicted_rasters:
         raster.close()
@@ -1497,12 +1517,12 @@ def get_prediction_status(task_id):
 
 
 @celery.task
-def generate_prediction_for_date(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date):
+def generate_prediction_for_date(model_id, project_id, aoi_shape, aoi_extent, aoi_extent_lat_lon, date):
     try:
         logger.info(f"Generating prediction for date {date}")
-        prediction = generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date)
+        prediction = generate_prediction(model_id, project_id, aoi_shape, aoi_extent, aoi_extent_lat_lon, date)
         logger.info(f"Successfully generated prediction for date {date}")
-        return prediction
+        return prediction   
     except Exception as e:
         logger.error(f"Error generating prediction for date {date}: {str(e)}")
         return None
@@ -1522,7 +1542,7 @@ def session_scope():
     finally:
         session.close()
 
-def generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, date):
+def generate_prediction(model_id, project_id, aoi_shape, aoi_extent, aoi_extent_lat_lon, date):
     try:
         # Get Planet quads for the date
         quads = get_planet_quads(aoi_extent_lat_lon, date)
@@ -1530,7 +1550,7 @@ def generate_prediction(model_id, project_id, aoi_extent, aoi_extent_lat_lon, da
         with session_scope() as session:
 
              # Generate prediction
-            new_prediction_file = predict_landcover_aoi(model_id, quads, aoi_extent, project_id, date, session)
+            new_prediction_file = predict_landcover_aoi(model_id, quads, aoi_shape, aoi_extent, project_id, date, session)
 
             # Check for existing prediction
             existing_prediction = session.query(Prediction).filter_by(

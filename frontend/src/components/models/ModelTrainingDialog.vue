@@ -276,6 +276,7 @@ export default {
 
         const response = await apiService.trainModel({
           projectId: projectStore.currentProject.id,
+          aoiShape: geojsonString,
           aoiExtent: extent,
           aoiExtentLatLon: extentLatLon,
           basemapDates: basemapOptions.value
@@ -299,6 +300,9 @@ export default {
         })
       } catch (error) {
         console.error('Error training model:', error)
+        setTimeout(() => {
+          isTraining.value = false
+        }, 5000)
         $q.notify({
           color: 'negative',
           message: `Failed to ${existingModel.value ? 'update' : 'initiate training for'} model`,

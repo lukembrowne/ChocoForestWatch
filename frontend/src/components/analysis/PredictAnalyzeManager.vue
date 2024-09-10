@@ -291,6 +291,8 @@ export default {
 
     const loadPredictionOnMap = async (prediction) => {
       try {
+        console.log('Loading prediction on map:', prediction)
+        console.log(prediction.name)
         await mapStore.displayPrediction(prediction.file_path, `prediction-${prediction.id}`, prediction.name, 'prediction')
         $q.notify({
           color: 'positive',

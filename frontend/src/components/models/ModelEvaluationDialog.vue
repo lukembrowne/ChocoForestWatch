@@ -3,6 +3,9 @@
     <q-card class="q-dialog-plugin" style="width: 700px; max-width: 80vw;">
       <q-card-section>
         <div class="text-h6">Model Evaluation</div>
+        <q-card-section v-if="!metrics">
+          No model metrics available. Please train a model first.
+        </q-card-section>
       </q-card-section>
 
       <q-card-section v-if="metrics">

@@ -1,8 +1,9 @@
 <template>
   <q-dialog v-model="dialogModel" persistent>
     <q-card style="min-width: 300px">
-      <q-card-section>
+      <q-card-section class="row items-center">
         <div class="text-h6">Training and Prediction in Progress</div>
+        <q-space />
       </q-card-section>
 
       <q-card-section class="q-pt-none">
@@ -22,7 +23,7 @@
 </template>
 
 <script>
-import { defineComponent, computed } from 'vue';
+import { defineComponent, computed} from 'vue';
 
 export default defineComponent({
   name: 'TrainingProgress',
@@ -39,7 +40,7 @@ export default defineComponent({
     });
 
     return {
-      dialogModel
+      dialogModel,
     };
   }
 });

@@ -339,6 +339,8 @@ export const useMapStore = defineStore('map', () => {
       const data = imageData.data;
 
       let colorMapping;
+      const noDataValue = 255; // Assuming 255 is the 'no data' value
+
       if (mode === 'prediction') {
         const project = projectStore.currentProject;
         colorMapping = project.classes.reduce((acc, cls) => {
@@ -349,7 +351,7 @@ export const useMapStore = defineStore('map', () => {
         colorMapping = {
           0: '#00FF00',  // Green for no deforestation
           1: '#FF0000',  // Red for deforestation
-          255: '#808080' // Grey for no data
+          [noDataValue]: '#808080' // Grey for no data
         };
       }
 
@@ -357,6 +359,14 @@ export const useMapStore = defineStore('map', () => {
         const value = rasterData[0][i];
         let color;
         if (mode === 'prediction') {
+          if (value === noDataValue) {
+            // Set transparent color for 'no data' pixels
+            data[i * 4] = 0;
+            data[i * 4 + 1] = 0;
+            data[i * 4 + 2] = 0;
+            data[i * 4 + 3] = 0; // Fully transparent
+            continue;
+          }
           color = colorMapping[projectStore.currentProject.classes[value].name];
         } else {
           color = colorMapping[value];
@@ -572,9 +582,9 @@ export const useMapStore = defineStore('map', () => {
       });
       drawnPolygons.value.push(newPolygon);
       updateTrainingLayerStyle();
-      console.log("Drawn polygons: ", drawnPolygons.value);
-      console.log("Features from trainingPolygonsLayer: ", trainingPolygonsLayer.value.getSource().getFeatures());
-      console.log("Has unsaved changes changed to true: ");
+      // console.log("Drawn polygons: ", drawnPolygons.value);
+      // console.log("Features from trainingPolygonsLayer: ", trainingPolygonsLayer.value.getSource().getFeatures());
+      // console.log("Has unsaved changes changed to true: ");
       hasUnsavedChanges.value = true;
     };
 
