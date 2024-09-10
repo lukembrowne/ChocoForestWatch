@@ -42,7 +42,16 @@ export const useMapStore = defineStore('map', () => {
   const selectedBasemapDate = ref(null);
   const polygonSize = ref(100); // Default size in meters
   const hasUnsavedChanges = ref(false);
-
+  const selectedFeature = ref(null);
+  const selectedFeatureStyle = new Style({
+    stroke: new Stroke({
+      color: 'yellow',
+      width: 3
+    }),
+    fill: new Fill({
+      color: 'rgba(255, 255, 0, 0.1)'
+    })
+  });
 
   // Internal state
   const projectStore = useProjectStore();
@@ -575,21 +584,32 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
+  const setSelectedFeature = (feature) => {
+    if (selectedFeature.value) {
+      selectedFeature.value.setStyle(null); // Reset the previous selection
+    }
+    selectedFeature.value = feature;
+    if (feature) {
+      feature.setStyle(selectedFeatureStyle);
+    }
+  };
 
-  const deletePolygon = (index) => {
-    // console.log("Deleting polygon with index: ", index);
-    // console.log("Drawn polygons before deletion: ", drawnPolygons.value);
+  const deleteSelectedFeature = () => {
+    if (selectedFeature.value) {
+      const vectorSource = map.value.getLayers().getArray().find(layer => layer.get('id') === 'training-polygons').getSource();
+      vectorSource.removeFeature(selectedFeature.value);
 
-    if (index >= 0 && index < drawnPolygons.value.length) {
-      const feature = trainingPolygonsLayer.value.getSource().getFeatures()[index];
-      trainingPolygonsLayer.value.getSource().removeFeature(feature);
+      // Remove the feature from drawnPolygons array
+    const featureId = selectedFeature.value.getId();
+    drawnPolygons.value = drawnPolygons.value.filter(polygon => polygon.id !== featureId);
+    
 
-      // Use splice to ensure reactivity
-      drawnPolygons.value.splice(index, 1);
+      selectedFeature.value = null;
       hasUnsavedChanges.value = true;
     }
-    // console.log("Drawn polygons after deletion: ", drawnPolygons.value);
   };
+
+
 
   const clearDrawnPolygons = (setUnsavedChanges = false) => {
     if (trainingPolygonsLayer.value) {
@@ -927,6 +947,8 @@ export const useMapStore = defineStore('map', () => {
     availableDates,
     polygonSize,
     hasUnsavedChanges,
+    selectedFeature,
+    selectedFeatureStyle,
     // Actions
     initMap,
     setAOI,
@@ -937,7 +959,6 @@ export const useMapStore = defineStore('map', () => {
     startDrawing,
     stopDrawing,
     clearDrawnPolygons,
-    deletePolygon,
     toggleDrawing,
     setClassLabel,
     getDrawnPolygonsGeoJSON,
@@ -961,6 +982,8 @@ export const useMapStore = defineStore('map', () => {
     setPolygonSize,
     promptSaveChanges,
     reorderLayers,
+    setSelectedFeature,
+    deleteSelectedFeature,
     // Getters
     getMap
   };

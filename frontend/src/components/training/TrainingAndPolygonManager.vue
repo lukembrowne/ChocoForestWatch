@@ -1,6 +1,6 @@
 <template>
     <div class="training-and-polygon-manager">
-       
+
         <!-- DrawingControlsCard here -->
         <drawing-controls-card />
 
@@ -36,7 +36,7 @@
 </template>
 
 <script>
-import { ref, computed, watch, reactive } from 'vue'
+import { ref, computed, watch, reactive, onMounted, onUnmounted } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
 import { useProjectStore } from 'src/stores/projectStore'
 import { getArea } from 'ol/sphere'
@@ -58,38 +58,29 @@ export default {
         const drawnPolygons = computed(() => mapStore.drawnPolygons)
 
 
-      const calculateArea = (polygon) => {
+        onMounted(() => {
+            if (mapStore.map) {
+                mapStore.map.on('click', handleFeatureClick);
+            }
+        });
 
-        console.log('polygon:', polygon)
+        onUnmounted(() => {
+            if (mapStore.map) {
+                mapStore.map.un('click', handleFeatureClick);
+            }
+        });
 
-        // const format = new GeoJSON()
-        // const feature = format.readFeature(polygon, {
-        //     dataProjection: 'EPSG:3857',
-        //     featureProjection: 'EPSG:3857'
-        // })
-        // const geometry = feature.getGeometry()
-        
-        // console.log('Assumed projection: EPSG:3857')
+        const calculateArea = (polygon) => {
 
-        // const areaInSquareMeters = getArea(geometry)
-        // const areaInHectares = areaInSquareMeters / 10000 // Convert to hectares
-        
-        // console.log('Area in square meters:', areaInSquareMeters)
-        // console.log('Area in hectares:', areaInHectares)
-        
-        // return areaInHectares
+            const feature = new GeoJSON().readFeature(polygon)
+            const geometry = feature.getGeometry()
 
+            // Transform the geometry to EPSG:3857 (Web Mercator) for accurate area calculation
+            const areaInSquareMeters = getArea(geometry)
+            const areaInHectares = areaInSquareMeters / 10000 // Convert to hectares
 
-        const feature = new GeoJSON().readFeature(polygon)
-        const geometry = feature.getGeometry()
-        
-        // Transform the geometry to EPSG:3857 (Web Mercator) for accurate area calculation
-        const areaInSquareMeters = getArea(geometry)
-        console.log('Area in square meters:', areaInSquareMeters)
-        const areaInHectares = areaInSquareMeters / 10000 // Convert to hectares
-        
-        return areaInHectares
-    }
+            return areaInHectares
+        }
 
         const classSummary = computed(() => {
             const summary = reactive({})
@@ -105,9 +96,21 @@ export default {
             return summary
         })
 
-        const deletePolygon = (index) => {
-            mapStore.deletePolygon(index)
-        }
+
+        const handleFeatureClick = (event) => {
+            const feature = mapStore.map.forEachFeatureAtPixel(
+                event.pixel,
+                (feature) => feature,
+                {
+                    layerFilter: (layer) => {
+                        // Exclude the AOI layer from selection
+                        return layer.get('id') !== 'area-of-interest';
+                    }
+                }
+            );
+            console.log("selecdted", feature)
+            mapStore.setSelectedFeature(feature);
+        };
 
         const getClassColor = (className) => {
             const classObj = projectStore.currentProject?.classes.find(cls => cls.name === className)
@@ -121,7 +124,6 @@ export default {
             drawnPolygons,
             calculateArea,
             classSummary,
-            deletePolygon,
             getClassColor,
         }
     }
@@ -133,11 +135,13 @@ export default {
     position: absolute;
     top: 0px; // Adjust this value to account for the header height
     left: 0;
-    bottom: 0;
     width: 350px;
     z-index: 1000;
     display: flex;
     flex-direction: column;
+    // Add max-height and overflow-y properties
+    max-height: 100vh;
+    overflow-y: auto;
 }
 
 .manager-card {
@@ -145,10 +149,6 @@ export default {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
-}
-
-.full-height {
-    height: 100%;
 }
 
 .polygon-list-card {
@@ -182,6 +182,4 @@ export default {
     background-color: rgba(0, 0, 0, 0.03);
     width: 100%;
 }
-
-
 </style>

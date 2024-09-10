@@ -19,6 +19,7 @@
         <q-btn dense label="Undo" size="sm" icon="undo" @click="undoLastDraw" :disable="interactionMode !== 'draw'" />
         <q-btn dense label="Save" size="sm" icon="save" @click="saveTrainingPolygons" />
         <q-btn dense label="Clear" size="sm" icon="delete_sweep" @click="clearDrawnPolygons" />
+        <q-btn dense label="Delete Feature" size="sm" icon="delete" @click="deleteSelectedFeature"/>
         <q-btn
           dense
           :label="isCurrentDateExcluded ? 'Include Date' : 'Exclude Date'"
@@ -130,8 +131,8 @@ export default {
                 selectedClass.value = projectStore.projectClasses[numKey - 1]['name'];
                 mapStore.setClassLabel(selectedClass.value);
                 mapStore.setInteractionMode('draw');
-            } else if ((event.key === 'Delete' || event.key === 'Backspace') && mapStore.selectedPolygon !== null) {
-                mapStore.deletePolygon(mapStore.selectedPolygon);
+            } else if ((event.key === 'Delete' || event.key === 'Backspace')) {
+                mapStore.deleteSelectedFeature();
             } else if (event.key === 'm') {
                 mapStore.setInteractionMode('pan');
             } else if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
@@ -205,6 +206,25 @@ export default {
             }
         };
 
+        const deleteSelectedFeature = () => {
+            if (mapStore.selectedFeature) {
+                console.log("selected feature", mapStore.selectedFeature)
+                $q.dialog({
+                    title: 'Delete Feature',
+                    message: 'Are you sure you want to delete this feature?',
+                    cancel: true,
+                    persistent: true
+                }).onOk(() => {
+                    mapStore.deleteSelectedFeature();
+                });
+            } else {
+                $q.notify({
+                    type: 'negative',
+                    message: 'No feature selected'
+                });
+            }
+        };
+
         return {
             interactionMode,
             selectedClass,
@@ -221,6 +241,7 @@ export default {
             clearDrawnPolygons,
             isCurrentDateExcluded,
             toggleExcludeCurrentDate,
+            deleteSelectedFeature
         }
     }
 }
@@ -230,5 +251,10 @@ export default {
 .drawing-controls {
   background-color: rgba(255, 255, 255, 1.0);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.q-slider {
+  margin-top: 16px;
+  width: 75%;
 }
 </style>
