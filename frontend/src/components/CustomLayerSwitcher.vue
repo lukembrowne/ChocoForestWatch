@@ -1,6 +1,7 @@
 <template>
     <div class="custom-layer-switcher">
-      <p class="text-subtitle2 q-mb-sm">Layers</p>
+      <p class="text-subtitle2 q-mb-sm">Map Layers</p>
+      <q-separator class="q-mb-sm" />
       <Sortable
         :list="sortableLayers"
         item-key="id"

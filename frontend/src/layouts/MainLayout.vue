@@ -34,7 +34,6 @@ import ProjectSelectionDialog from 'components/projects/ProjectSelectionDialog.v
 import TrainingAndPolygonManager from 'components/training/TrainingAndPolygonManager.vue'
 import PredictAnalyzeManager from 'components/analysis/PredictAnalyzeManager.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
-import ModelTrainingDialog from 'components/models/ModelTrainingDialog.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
 import BasemapDateSlider from 'components/BasemapDateSlider.vue'
 
@@ -59,8 +58,7 @@ export default {
     const showPredictAnalyzeManager = ref(false)
     const sections = [
       { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
-      { name: 'Training data', icon: 'school', component: TrainingAndPolygonManager, tooltip: 'Create training data' },
-      { name: 'Fit model', icon: 'model_training', component: null, tooltip: 'Train a new model' },
+      { name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager, tooltip: 'Train Model' },
       { name: 'Predict & Analyze', icon: 'analytics', component: PredictAnalyzeManager, tooltip: 'Predict and analyze land cover' }
     ]
 
@@ -98,20 +96,18 @@ export default {
     })
 
     const handleSectionClick = async (section) => {
-      // if (currentSection.value === 'Training data') {
+      // if (currentSection.value === 'Train Model') {
       //   await promptSaveChanges();
       // }
       
       console.log("Clicked section: ", section)
       if (section.name === 'projects') {
         openProjectDialog()
-      } else if (section.name === 'Fit model') {
-        openModelTrainingDialog()
       } else {
         currentSection.value = section.name
       }
 
-      if (section.name === 'Training data') {
+      if (section.name === 'Train Model') {
         showTrainingAndPolygonManager.value = true
       } else {
         showTrainingAndPolygonManager.value = false
@@ -132,21 +128,7 @@ export default {
       })
     }
 
-
-    const openModelTrainingDialog = () => {
-      $q.dialog({
-        component: ModelTrainingDialog
-      }).onOk((response) => {
-        // Handle the response from model training
-        console.log('Model training completed:', response)
-        $q.notify({
-          color: 'positive',
-          message: 'Model training initiated successfully',
-          icon: 'check'
-        })
-
-      })
-    }
+    // Remove the openModelTrainingDialog function from here
 
     const selectProject = async (project) => {
       // Clear existing AOIs
@@ -169,8 +151,8 @@ export default {
         // Load training polygons for the current date
         mapStore.loadTrainingPolygonsForDate('2022-01')
 
-        // Switching to training data section
-        handleSectionClick({ name: 'Training data' })
+        // Switching to Train Model section
+        handleSectionClick({ name: 'Train Model' })
 
         // Notify user
         $q.notify({
@@ -185,7 +167,7 @@ export default {
     const handleAOISaved = (eventData) => {
       console.log('AOI saved event received in MainLayout', eventData)
       showAOICard.value = false
-      handleSectionClick({ name: 'Training data' })
+      handleSectionClick({ name: 'Train Model' })
       $q.notify({
         message: 'AOI saved successfully. Entering training mode.',
         color: 'positive',
@@ -196,7 +178,7 @@ export default {
     watch(() => projectStore.currentProject?.aoi, (newAOI) => {
       if (newAOI) {
         showAOICard.value = false
-        currentSection.value = 'Training data'
+        currentSection.value = 'Train Model'
       }
     })
 
@@ -207,7 +189,6 @@ export default {
       currentSectionComponent,
       currentProject,
       openProjectDialog,
-      openModelTrainingDialog,
       showAOICard,
       showTrainingAndPolygonManager,
       handleSectionClick,

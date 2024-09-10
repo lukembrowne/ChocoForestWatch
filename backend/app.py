@@ -1860,6 +1860,8 @@ def analyze_deforestation(project_id):
         logger.error(f"Error in analyze_deforestation: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+
+
 @app.route('/api/projects/<int:project_id>/training-sets/<int:set_id>/excluded', methods=['PUT'])
 def update_training_set_excluded(project_id, set_id):
     try:

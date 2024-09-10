@@ -28,6 +28,9 @@
                 </div>
             </q-card-section>
             <q-separator />
+            <q-card-actions align="center">
+                <q-btn label="Fit Model" color="primary" @click="openModelTrainingDialog" />
+            </q-card-actions>
         </q-card>
 
 
@@ -43,6 +46,7 @@ import { getArea } from 'ol/sphere'
 import { GeoJSON } from 'ol/format'
 import { useQuasar } from 'quasar'
 import DrawingControlsCard from './DrawingControlsCard.vue'
+import ModelTrainingDialog from 'components/models/ModelTrainingDialog.vue'
 
 
 export default {
@@ -124,12 +128,27 @@ export default {
 
         const hasUnsavedChanges = computed(() => mapStore.hasUnsavedChanges);
 
+        const openModelTrainingDialog = () => {
+            $q.dialog({
+                component: ModelTrainingDialog
+            }).onOk((response) => {
+                // Handle the response from model training
+                console.log('Model training completed:', response)
+                $q.notify({
+                    color: 'positive',
+                    message: 'Model training initiated successfully',
+                    icon: 'check'
+                })
+            })
+        }
+
         return {
             selectedBasemapDate,
             drawnPolygons,
             calculateArea,
             classSummary,
             getClassColor,
+            openModelTrainingDialog,
         }
     }
 }
