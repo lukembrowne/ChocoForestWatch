@@ -551,6 +551,7 @@ export const useMapStore = defineStore('map', () => {
       trainingPolygonsLayer.value.getSource().addFeature(feature);
 
       const newPolygon = new GeoJSON().writeFeatureObject(feature, {
+        dataProjection: 'EPSG:3857',
         featureProjection: 'EPSG:3857'
       });
       drawnPolygons.value.push(newPolygon);
@@ -664,7 +665,10 @@ export const useMapStore = defineStore('map', () => {
     clearDrawnPolygons();
     const geoJSONFormat = new GeoJSON();
     const features = polygonsData.features.map(feature => {
-      const olFeature = geoJSONFormat.readFeature(feature);
+      const olFeature = geoJSONFormat.readFeature(feature, {
+        dataProjection:  'EPSG:3857',
+        featureProjection: 'EPSG:3857'
+      });
       olFeature.setStyle(featureStyleFunction);
       return olFeature;
     });
@@ -795,10 +799,10 @@ export const useMapStore = defineStore('map', () => {
     console.log("Loading training polygons for date within MapStore:", date);
     try {
       const response = await api.getTrainingPolygons(projectStore.currentProject.id);
-      // console.log(response.data)
       const trainingSet = response.data.find(set => set.basemap_date === date);
       if (trainingSet) {
         const polygons = await api.getSpecificTrainingPolygons(projectStore.currentProject.id, trainingSet.id);
+        console.log("polygons within MapStore:", polygons.data)
         loadPolygons(polygons.data);
       } else {
         clearDrawnPolygons();

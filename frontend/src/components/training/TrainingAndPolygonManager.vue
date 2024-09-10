@@ -59,15 +59,34 @@ export default {
 
 
       const calculateArea = (polygon) => {
+
+        console.log('polygon:', polygon)
+
+        // const format = new GeoJSON()
+        // const feature = format.readFeature(polygon, {
+        //     dataProjection: 'EPSG:3857',
+        //     featureProjection: 'EPSG:3857'
+        // })
+        // const geometry = feature.getGeometry()
+        
+        // console.log('Assumed projection: EPSG:3857')
+
+        // const areaInSquareMeters = getArea(geometry)
+        // const areaInHectares = areaInSquareMeters / 10000 // Convert to hectares
+        
+        // console.log('Area in square meters:', areaInSquareMeters)
+        // console.log('Area in hectares:', areaInHectares)
+        
+        // return areaInHectares
+
+
         const feature = new GeoJSON().readFeature(polygon)
         const geometry = feature.getGeometry()
         
         // Transform the geometry to EPSG:3857 (Web Mercator) for accurate area calculation
-        const transformedGeometry = geometry.clone().transform('EPSG:4326', 'EPSG:3857')
-        
-        const areaInSquareMeters = getArea(transformedGeometry)
+        const areaInSquareMeters = getArea(geometry)
+        console.log('Area in square meters:', areaInSquareMeters)
         const areaInHectares = areaInSquareMeters / 10000 // Convert to hectares
-        
         
         return areaInHectares
     }

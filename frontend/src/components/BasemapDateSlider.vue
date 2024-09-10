@@ -96,10 +96,7 @@ export default {
 
         const handleKeyDown = (event) => {
 
-            console.log("dates.value:", dates.value);
-            console.log("mapStore.selectedBasemapDate:", mapStore.selectedBasemapDate);
             const currentIndex = dates.value.findIndex(option => option === mapStore.selectedBasemapDate)
-            console.log("currentIndex:", currentIndex);
             let newIndex
 
             if (event.key === 'ArrowLeft') {
