@@ -40,7 +40,7 @@
             <q-table :rows="summaryStatisticsRows" :columns="summaryStatisticsColumns" row-key="class" dense flat
               :pagination="{ rowsPerPage: 0 }" />
             <div class="text-caption q-mt-sm">
-              Total Area: {{ selectedAnalysis.results.total_area_km2.toFixed(2) }} km²
+              Total Area: {{ selectedAnalysis.results.total_area_ha.toFixed(2) }} ha
             </div>
           </div>
         </q-scroll-area>
@@ -73,7 +73,7 @@ export default {
 
     const summaryStatisticsColumns = [
       { name: 'class', align: 'left', label: 'Class', field: 'class' },
-      { name: 'area', align: 'right', label: 'Area (km²)', field: 'area' },
+      { name: 'area', align: 'right', label: 'Area (ha)', field: 'area' },
       { name: 'percentage', align: 'right', label: 'Percentage', field: 'percentage' }
     ];
 
@@ -81,7 +81,7 @@ export default {
       if (!selectedAnalysis.value?.results?.class_statistics) return [];
       return Object.entries(selectedAnalysis.value.results.class_statistics).map(([classId, stats]) => ({
         class: projectStore.currentProject.classes[parseInt(classId)].name,
-        area: stats.area_km2.toFixed(2),
+        area: stats.area_ha.toFixed(2),
         percentage: `${stats.percentage.toFixed(2)}%`
       }));
     });

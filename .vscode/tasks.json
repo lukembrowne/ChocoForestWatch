@@ -9,7 +9,8 @@
             "isBackground": false,
             "presentation": {
                 "reveal": "always",
-                "panel": "new"
+                "panel": "new",
+                "showReuseMessage": false,
             }
         },
         {
@@ -20,7 +21,8 @@
             "isBackground": false,
             "presentation": {
                 "reveal": "always",
-                "panel": "new"
+                "panel": "new",
+                "showReuseMessage": false,
             }
         },
         {
@@ -31,8 +33,9 @@
             "isBackground": false,
             "presentation": {
                 "reveal": "always",
-                "panel": "new"
-            }
+                "panel": "new",
+                "showReuseMessage": false,
+            },
         },
         {
             "label": "Run Redis Server",
@@ -53,7 +56,8 @@
             "isBackground": false,
             "presentation": {
                 "reveal": "always",
-                "panel": "new"
+                "panel": "new",
+                "showReuseMessage": false,
             }
         },
         {
@@ -79,6 +83,19 @@
             "presentation": {
                 "reveal": "always",
                 "panel": "new"
+            }
+        },
+        {
+            "label": "Restart Flask and Celery Worker",
+            "dependsOn": [
+                "Run Flask",
+                "Run Celery Worker",
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new",
+                "showReuseMessage": false,
             }
         }
     ]

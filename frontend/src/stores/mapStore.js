@@ -689,7 +689,7 @@ export const useMapStore = defineStore('map', () => {
     if (!trainingPolygonsLayer.value) return null;
 
     const features = trainingPolygonsLayer.value.getSource().getFeatures();
-    console.log("Features from trainingPolygonsLayer: ", features)
+    // console.log("Features from trainingPolygonsLayer: ", features)
 
     const geoJSONFormat = new GeoJSON();
     const featureCollection = {

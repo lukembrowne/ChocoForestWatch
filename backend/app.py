@@ -1384,7 +1384,7 @@ def predict_landcover_aoi(model_id, quads, aoi_shape, aoi_extent, project_id, ba
     
             # Reshape the prediction map
             prediction_map = prediction_map.reshape(data.shape[1], data.shape[2])
-    
+
             # Create a temporary file for this quad's prediction with a unique name
             unique_id = uuid.uuid4().hex
             temp_filename = f'temp_prediction_{unique_id}.tif'
@@ -1395,6 +1395,7 @@ def predict_landcover_aoi(model_id, quads, aoi_shape, aoi_extent, project_id, ba
             temp_files.append(temp_filename)
 
     mosaic, out_transform = merge(predicted_rasters)
+
 
     # Create merged metadata
     merged_meta = predicted_rasters[0].meta.copy()
@@ -1425,6 +1426,7 @@ def predict_landcover_aoi(model_id, quads, aoi_shape, aoi_extent, project_id, ba
 
     # Clip the mosaic to the AOI
     with rasterio.open(temp_tif) as src:
+
         clipped_mosaic, clipped_transform = mask(
             src,
             shapes=[aoi_geojson],
@@ -1626,9 +1628,11 @@ def calculate_summary_statistics(prediction):
             
             # Get unique class values and their counts
             unique, counts = np.unique(raster_data, return_counts=True)
-            
-            # Calculate total area
-            total_area = raster_data.size * pixel_area_ha
+
+            # Calculate total area excluding nodata pixels
+            valid_pixels = raster_data[raster_data != 255]
+            total_area = float(valid_pixels.size * pixel_area_ha)
+
             # Get class names from the project
             project = Project.query.get(prediction.project_id)
             class_names = {i: cls['name'] for i, cls in enumerate(project.classes)}
@@ -1638,8 +1642,8 @@ def calculate_summary_statistics(prediction):
             for value, count in zip(unique, counts):
                 if value in class_names:
                     area = count * pixel_area_ha
-                    percentage = (count / raster_data.size) * 100
-                    class_stats[int(value)] = { 'area_km2': area, 'percentage': percentage}
+                    percentage = (area / total_area) * 100
+                    class_stats[int(value)] = { 'area_ha': area, 'percentage': percentage}
 
                     logger.debug(f"Class {value} has area {area} and percentage {percentage}")
                     logger.debug(print(class_stats))
@@ -1648,7 +1652,7 @@ def calculate_summary_statistics(prediction):
             result = {
                 'prediction_name': prediction.name,
                 'prediction_date': prediction.basemap_date,
-                'total_area_km2': total_area,
+                'total_area_ha': total_area,
                 'class_statistics': class_stats
             }
 
