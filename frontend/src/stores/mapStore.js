@@ -394,8 +394,19 @@ export const useMapStore = defineStore('map', () => {
         opacity: 0.7
       });
 
+      // Insert at index 0 to make sure the new layer is above the AOI layer
+      // map.value.getLayers().insertAt(0, newLayer);
       map.value.addLayer(newLayer);
-      updateLayers();
+
+
+      // Get current number of layers
+      const numLayers = map.value.getLayers().getArray().length;
+      
+      // Reorder layers to make sure the new layer is above the AOI layer
+      // This takes the last layer and moves it to the top
+      // Need to do numLayers - 1 because of 0 based indexing
+     reorderLayers(numLayers-1, 0) // This also updates the layers
+
     } catch (error) {
       console.error(`Error displaying ${mode}:`, error);
       throw new Error(`Failed to display ${mode}: ` + error.message);
@@ -921,7 +932,7 @@ export const useMapStore = defineStore('map', () => {
     if (fromIndex === toIndex) return;
   
     const layerArray = map.value.getLayers().getArray();
-    // const layerArray = layers.value;
+    
     console.log("layerArray within reorderLayers:", layerArray);
 
     const [movedLayer] = layerArray.splice(fromIndex, 1);
