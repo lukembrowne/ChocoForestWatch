@@ -356,6 +356,7 @@ class Prediction(db.Model):
     file_path = db.Column(db.String(255), nullable=False)
     basemap_date = db.Column(db.String(7), nullable=False)  # Store as 'YYYY-MM'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    summary_statistics = db.Column(JSONB, nullable=True)
 
     project = db.relationship('Project', back_populates='predictions')
     model = db.relationship('TrainedModel', back_populates='predictions')
@@ -650,13 +651,6 @@ def delete_training_set(project_id, set_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-
-
-def nan_to_null(obj):
-    if isinstance(obj, float) and math.isnan(obj):
-        return None
-    return obj
-
 @app.route('/api/training_data_summary/<int:project_id>', methods=['GET'])
 def get_training_data_summary(project_id):
     try:
@@ -1586,6 +1580,23 @@ def generate_prediction(model_id, project_id, aoi_shape, aoi_extent, aoi_extent_
                 )
                 session.add(prediction)
 
+
+            # Calculate and store summary statistics in dadtabase
+            summary_stats = calculate_summary_statistics(prediction)
+            if summary_stats:
+                try:
+                    json_stats = json.dumps(summary_stats)
+                    logger.debug(f"Serialized summary stats: {json_stats}")
+                    prediction.summary_statistics = json.loads(json_stats)
+                    session.commit()
+                    logger.info(f"Successfully saved summary statistics for prediction {prediction.id}")
+                except json.JSONDecodeError as e:
+                    logger.error(f"Error serializing summary stats: {str(e)}")
+                except SQLAlchemyError as e:
+                    session.rollback()
+                    logger.error(f"Error saving summary statistics: {str(e)}")
+
+
             # Flush to ensure the prediction gets an ID if it's new
             session.flush()
 
@@ -1594,7 +1605,8 @@ def generate_prediction(model_id, project_id, aoi_shape, aoi_extent, aoi_extent_
                 'id': prediction.id,
                 'file_path': prediction.file_path,
                 'basemap_date': prediction.basemap_date,
-                'name': prediction.name
+                'name': prediction.name,
+                'summary_statistics': prediction.summary_statistics
             }
 
     except SQLAlchemyError as e:
@@ -1604,13 +1616,11 @@ def generate_prediction(model_id, project_id, aoi_shape, aoi_extent, aoi_extent_
         current_app.logger.error(f"Error in generate_prediction: {str(e)}")
         raise
 
-## Analysis endpoints
-@app.route('/api/analysis/summary/<int:prediction_id>', methods=['GET'])
-def get_summary_statistics(prediction_id):
-    try:
-        prediction = Prediction.query.get_or_404(prediction_id)
 
+def calculate_summary_statistics(prediction):
+    try:
         with rasterio.open(prediction.file_path) as src:
+
             raster_data = src.read(1)  # Assuming single band raster
             pixel_area_ha = abs(src.transform[0] * src.transform[4]) / 10000  # Convert to hectares
             
@@ -1641,13 +1651,21 @@ def get_summary_statistics(prediction_id):
                 'total_area_km2': total_area,
                 'class_statistics': class_stats
             }
-            
 
-            return jsonify(result)
-    
+            return result
     except Exception as e:
-        logger.error(f"Error in get_summary_statistics: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error calculating summary statistics: {str(e)}")
+        return None
+
+
+## Analysis endpoints
+@app.route('/api/analysis/summary/<int:prediction_id>', methods=['GET'])
+def get_summary_statistics(prediction_id):
+    prediction = Prediction.query.get_or_404(prediction_id)
+    if prediction.summary_statistics:
+        return jsonify(prediction.summary_statistics)
+    else:
+        return jsonify({'error': 'Summary statistics not available'}), 404
 
 
 @app.route('/api/analysis/change/<int:prediction1_id>/<int:prediction2_id>', methods=['GET'])

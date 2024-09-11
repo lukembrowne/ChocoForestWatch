@@ -4,25 +4,30 @@
     <q-card class="analysis-card">
       <q-card-section>
         <div class="text-subtitle1 q-mb-sm">Land Cover Predictions</div>
-        <q-scroll-area style="height: 40vh;">
+        <q-scroll-area v-if="predictions.length > 0" style="height: 40vh;">
           <q-list separator>
-            <q-item v-for="prediction in predictions" :key="prediction.id" class="prediction-item">
+            <q-item 
+              v-for="prediction in predictions" 
+              :key="prediction.id" 
+              class="prediction-item cursor-pointer"
+              @click="showPrediction(prediction.basemap_date)"
+              clickable
+              v-ripple
+            >
               <q-item-section>
                 <div class="row items-center justify-between">
                   <div class="date-label">{{ formatDate(prediction.basemap_date) }}</div>
-                  <div class="button-group">
-                    <q-btn icon="add" flat round size="sm" @click="displayOnMap(prediction.basemap_date)">
-                      <q-tooltip>Display Prediction</q-tooltip>
-                    </q-btn>
-                    <q-btn icon="bar_chart" flat round size="sm" @click="showAnalysis(prediction.basemap_date)">
-                      <q-tooltip>View Statistics</q-tooltip>
-                    </q-btn>
-                  </div>
+                  <q-icon name="visibility" size="sm">
+                    <q-tooltip>View Prediction</q-tooltip>
+                  </q-icon>
                 </div>
               </q-item-section>
             </q-item>
           </q-list>
         </q-scroll-area>
+        <div v-else class="text-caption q-pa-md">
+          No predictions available. Please train a model and make land cover predictions first.
+        </div>
       </q-card-section>
 
       <q-separator />
@@ -143,14 +148,14 @@ export default {
         await mapStore.displayPrediction(prediction.file_path, `prediction-${prediction.id}`, `Land Cover - ${date_title}`, 'prediction');
         $q.notify({
           color: 'positive',
-          message: `Loaded prediction: ${prediction.name}`,
+          message: `Loaded land cover map for: ${date_title}`,
           icon: 'check' 
         });
       } catch (error) {
         console.error('Error loading prediction on map:', error);
         $q.notify({
           color: 'negative',
-          message: 'Failed to load prediction on map',
+          message: 'Failed to load land cover map',
           icon: 'error'
         });
       }
@@ -158,6 +163,11 @@ export default {
 
     const closeAnalysis = () => {
       selectedAnalysis.value = null;
+    };
+
+    const showPrediction = async (date) => {
+      await displayOnMap(date);
+      await showAnalysis(date);
     };
 
     return {
@@ -169,6 +179,7 @@ export default {
       showAnalysis,
       displayOnMap,
       closeAnalysis,
+      showPrediction,
     };
   }
 };
@@ -194,7 +205,7 @@ export default {
     transition: background-color 0.3s;
   
     &:hover {
-      background-color: #e0e0e0;
+      background-color: rgba(0, 0, 0, 0.05);
     }
   }
 

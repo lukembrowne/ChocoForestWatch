@@ -933,14 +933,14 @@ export const useMapStore = defineStore('map', () => {
   
     const layerArray = map.value.getLayers().getArray();
     
-    console.log("layerArray within reorderLayers:", layerArray);
+    // console.log("layerArray within reorderLayers:", layerArray);
 
     const [movedLayer] = layerArray.splice(fromIndex, 1);
     layerArray.splice(toIndex, 0, movedLayer);
   
     // Update z-index for all layers
     layerArray.forEach((layer, index) => {
-      console.log("Setting z-index for layer:", layer.get('id'), "to", layerArray.length - index);
+      // console.log("Setting z-index for layer:", layer.get('id'), "to", layerArray.length - index);
       layer.setZIndex(layerArray.length - index);
     });
   
