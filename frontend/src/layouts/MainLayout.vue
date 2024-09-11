@@ -18,7 +18,8 @@
         <custom-layer-switcher />
         <AOIFloatingCard v-if="showAOICard" v-on:aoiSaved="handleAOISaved" />
         <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
-        <PredictAnalyzeManager v-if="showPredictAnalyzeManager" />
+        <LandCoverAnalysis v-if="showLandCoverAnalysis" />
+        <DeforestationAnalysis v-if="showDeforestationAnalysis" />
         <!-- Dont show map date slider when AOI is being created -->
         <BasemapDateSlider v-if="!showAOICard"/>
       </q-page>
@@ -33,20 +34,22 @@ import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
 import ProjectSelectionDialog from 'components/projects/ProjectSelectionDialog.vue'
 import TrainingAndPolygonManager from 'components/training/TrainingAndPolygonManager.vue'
-import PredictAnalyzeManager from 'components/analysis/PredictAnalyzeManager.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
 import BasemapDateSlider from 'components/BasemapDateSlider.vue'
+import LandCoverAnalysis from 'components/analysis/LandCoverAnalysis.vue'
+import DeforestationAnalysis from 'components/analysis/DeforestationAnalysis.vue'
 
 
 export default {
   name: 'MainLayout',
   components: {
     TrainingAndPolygonManager,
-    PredictAnalyzeManager,
     CustomLayerSwitcher,
     AOIFloatingCard,
-    BasemapDateSlider
+    BasemapDateSlider,
+    LandCoverAnalysis,
+    DeforestationAnalysis
   },
   setup() {
     const $q = useQuasar()
@@ -56,11 +59,13 @@ export default {
     const currentProject = computed(() => projectStore.currentProject)
     const showAOICard = ref(false)
     const showTrainingAndPolygonManager = ref(false)
-    const showPredictAnalyzeManager = ref(false)
+    const showLandCoverAnalysis = ref(false)
+    const showDeforestationAnalysis = ref(false)
     const sections = [
       { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
       { name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager, tooltip: 'Train Model' },
-      { name: 'Predict & Analyze', icon: 'analytics', component: PredictAnalyzeManager, tooltip: 'Predict and analyze land cover' }
+      { name: 'Land Cover', icon: 'analytics', component: LandCoverAnalysis, tooltip: 'Predict and analyze land cover' },
+      { name: 'Deforestation', icon: 'forest', component: DeforestationAnalysis, tooltip: 'Analyze deforestation' }
     ]
 
     const sidebarWidth = computed(() => isExpanded.value ? 300 : 60)
@@ -114,10 +119,16 @@ export default {
         showTrainingAndPolygonManager.value = false
       }
 
-      if (section.name === 'Predict & Analyze') {
-        showPredictAnalyzeManager.value = true
+      if (section.name === 'Land Cover') {
+        showLandCoverAnalysis.value = true
       } else {
-        showPredictAnalyzeManager.value = false
+        showLandCoverAnalysis.value = false
+      }
+
+      if (section.name === 'Deforestation') {
+        showDeforestationAnalysis.value = true
+      } else {
+        showDeforestationAnalysis.value = false
       }
     }
 
@@ -193,8 +204,9 @@ export default {
       showAOICard,
       showTrainingAndPolygonManager,
       handleSectionClick,
-      showPredictAnalyzeManager,
-      handleAOISaved
+      handleAOISaved,
+      showLandCoverAnalysis,
+      showDeforestationAnalysis
     }
   }
 }
