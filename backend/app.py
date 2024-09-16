@@ -51,6 +51,8 @@ from rasterio.features import sieve
 from rasterio.mask import mask
 from shapely.geometry import box, mapping
 import tempfile
+from flask_migrate import Migrate
+
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -71,6 +73,7 @@ session = requests.Session()
 session.auth = (PLANET_API_KEY, "")
 
 db = SQLAlchemy()
+migrate = Migrate()
 celery = Celery(__name__)
 
 # Initialize database engine and session factory
@@ -94,6 +97,7 @@ def create_app():
     }
     
     db.init_app(app)
+    migrate.init_app(app, db)  # Initialize Flask-Migrate with the app and db
 
     # Initialize engine and SessionFactory
     global engine, SessionFactory
@@ -347,7 +351,7 @@ class TrainedModel(db.Model):
             'class_names': self.class_names,  # Add this line
             'confusion_matrix': self.confusion_matrix,
             'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat(),  # Add this line
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,  # Add this line
             'model_parameters': self.model_parameters
         }
 
@@ -759,7 +763,7 @@ def get_model_metrics(project_id):
         if model:
             model_dict = model.to_dict()
             model_dict['created_at'] = model.created_at.isoformat()
-            model_dict['updated_at'] = model.updated_at.isoformat()
+            model_dict['updated_at'] = model.updated_at.isoformat() if model.updated_at else None
             return jsonify(model_dict)
         else:
             return jsonify({'error': 'No model found for this project'}), 404

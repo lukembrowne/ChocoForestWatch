@@ -12,7 +12,7 @@
         <div class="text-subtitle2">
           Created: {{ formatDate(metrics.created_at) }}
           <br>
-          Last Updated: {{ formatDate(metrics.updated_at) }}
+          Last Updated: {{ metrics.updated_at ? formatDate(metrics.updated_at) : 'No updated date' }}
         </div>
 
         <div class="text-h6 q-mt-md">Model Metrics</div>

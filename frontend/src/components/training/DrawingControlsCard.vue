@@ -242,9 +242,14 @@ export default {
             };
             const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: "application/geo+json" });
             const url = URL.createObjectURL(blob);
+
+            // Retrieve and sanitize the project name
+            const projectNameRaw = projectStore.currentProject?.name || 'unknown_project';
+            const projectName = projectNameRaw.replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_').replace(/\s+/g, '_');
+
             const link = document.createElement('a');
             link.href = url;
-            link.download = `training_polygons_${mapStore.selectedBasemapDate}.geojson`;
+            link.download = `training_polygons_${projectName}_${mapStore.selectedBasemapDate}.geojson`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -258,9 +263,6 @@ export default {
         const loadPolygons = (event) => {
             const file = event.target.files[0];
             if (!file) return;
-
-            // Print drawn polygons before loading from file
-            console.log("Drawn polygons before loading from file", mapStore.drawnPolygons)
 
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -280,10 +282,6 @@ export default {
                             });
                         }
                     });
-
-                    // Print drawn polygons after loading from file
-                    console.log("Drawn polygons", mapStore.drawnPolygons)
-
                     $q.notify({
                         type: 'positive',
                         message: 'Polygons loaded successfully'
