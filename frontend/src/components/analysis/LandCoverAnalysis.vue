@@ -4,7 +4,7 @@
     <q-card class="analysis-card">
       <q-card-section>
         <div class="text-subtitle1 q-mb-sm">Land Cover Predictions</div>
-        <q-scroll-area v-if="predictions.length > 0" style="height: 40vh;">
+        <q-scroll-area v-if="predictions.length > 0" style="height: 20vh;">
           <q-list separator>
             <q-item 
               v-for="prediction in predictions" 
@@ -188,19 +188,21 @@ export default {
 <style lang="scss" scoped>
 .land-cover-analysis-container {
   position: absolute;
-  height: calc(100vh - 60px);
+  height: calc(100vh - 60px - 100px); /* 20px for additional padding */
   width: 300px;
+  overflow-y: auto; /* Add scrolling if content exceeds the height */
 }
 
 .analysis-card {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: auto;
 }
 
 .prediction-item {
     border-radius: 8px;
-    margin: 8px;
+    margin: 4px;
     background-color: #f5f5f5;
     transition: background-color 0.3s;
   

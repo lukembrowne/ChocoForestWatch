@@ -138,6 +138,10 @@ export default {
 </script>
 
 <style scoped>
+:root {
+  --basemap-date-slider-height: 100px; /* Adjust this value based on the actual height of your slider */
+}
+
 .basemap-date-slider {
     position: absolute;
     bottom: 10px;
@@ -149,6 +153,7 @@ export default {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     z-index: 1001;
+    height: var(--basemap-date-slider-height);
 }
 
 .current-date {

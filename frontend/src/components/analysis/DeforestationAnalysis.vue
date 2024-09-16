@@ -194,13 +194,15 @@
   position: absolute;
   display: flex;
   gap: 10px;
+  max-height: calc(100vh - 60px - 100px); /* 20px for additional padding */
+  overflow-y: auto; /* Add scrolling if content exceeds the height */
 }
 
 .analysis-card,
 .results-card {
   width: 300px;
-  max-height: calc(100vh - 60px);
+  max-height: 100%; /* Allow cards to take full height of the container */
   border-radius: 8px;
-  overflow: hidden;
+  overflow-y: auto;
 }
 </style>
