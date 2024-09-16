@@ -9,7 +9,13 @@
       </q-card-section>
 
       <q-card-section v-if="metrics">
-        <div class="text-h6">Model Metrics</div>
+        <div class="text-subtitle2">
+          Created: {{ formatDate(metrics.created_at) }}
+          <br>
+          Last Updated: {{ formatDate(metrics.updated_at) }}
+        </div>
+
+        <div class="text-h6 q-mt-md">Model Metrics</div>
         <div>Overall Accuracy: {{ (metrics.accuracy * 100).toFixed(2) }}%</div>
 
         <div v-for="(classMetrics, className) in metrics.class_metrics" :key="className">
@@ -66,11 +72,10 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
-import { useDialogPluginComponent } from 'quasar'
+import { useDialogPluginComponent, date } from 'quasar'
 import api from 'src/services/api'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useQuasar } from 'quasar'
-
 
 export default {
   name: 'ModelEvaluationDialog',
@@ -85,7 +90,6 @@ export default {
     const loading = ref(false)
     const $q = useQuasar()
 
-
     onMounted(async () => {
       console.log("Fetching models")
 
@@ -98,7 +102,6 @@ export default {
         console.error("Error fetching model metrics:", error)
       }
     })
-
 
     const confusionMatrixColumns = computed(() => {
       if (!metrics.value || !metrics.value.class_names) return [];
@@ -138,7 +141,9 @@ export default {
       return metrics.value.confusion_matrix[index].reduce((a, b) => a + b, 0);
     };
 
-
+    const formatDate = (dateString) => {
+      return date.formatDate(dateString, 'MMMM D, YYYY HH:mm:ss')
+    };
 
     return {
       dialogRef,
@@ -152,7 +157,8 @@ export default {
       confusionMatrixRows,
       loading,
       isClassInTraining,
-      getClassTotal
+      getClassTotal,
+      formatDate
     }
   }
 }

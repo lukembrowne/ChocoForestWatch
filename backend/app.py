@@ -201,6 +201,8 @@ class TrainedModel(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Add this line
     training_set_ids = db.Column(db.JSON, nullable=False)  # Store as JSON array
     training_periods = db.Column(db.JSON)  # Store as a list of date ranges
     num_training_samples = db.Column(db.Integer)
@@ -208,7 +210,6 @@ class TrainedModel(db.Model):
     class_metrics = db.Column(db.JSON)  # This will store precision, recall, and F1 for each class
     confusion_matrix = db.Column(db.JSON)
     file_path = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     model_parameters = db.Column(db.JSON)
     class_names = db.Column(db.JSON)  # Add this line
     date_encoder = db.Column(db.PickleType)  # Add this field to store the encoder
@@ -228,6 +229,7 @@ class TrainedModel(db.Model):
             # Update existing model
             logger.info(f"Updating existing model for project {project_id}")
             existing_model.name = name
+            existing_model.updated_at = datetime.utcnow()  # Add this line
             existing_model.description = description
             existing_model.training_set_ids = training_set_ids
             existing_model.training_periods = training_periods
@@ -345,6 +347,7 @@ class TrainedModel(db.Model):
             'class_names': self.class_names,  # Add this line
             'confusion_matrix': self.confusion_matrix,
             'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),  # Add this line
             'model_parameters': self.model_parameters
         }
 
@@ -753,7 +756,13 @@ def get_trained_models(project_id):
 def get_model_metrics(project_id):
     try:
         model = TrainedModel.query.filter_by(project_id=project_id).first()
-        return jsonify(model.to_dict())
+        if model:
+            model_dict = model.to_dict()
+            model_dict['created_at'] = model.created_at.isoformat()
+            model_dict['updated_at'] = model.updated_at.isoformat()
+            return jsonify(model_dict)
+        else:
+            return jsonify({'error': 'No model found for this project'}), 404
     except SQLAlchemyError as e:
         return jsonify({'error': 'Database error occurred', 'details': str(e)}), 500
 
