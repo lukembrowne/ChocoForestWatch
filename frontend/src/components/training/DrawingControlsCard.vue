@@ -27,7 +27,11 @@
           :icon="isCurrentDateExcluded ? 'add_circle' : 'block'"
           @click="toggleExcludeCurrentDate"
         />
+        <q-btn dense label="Download Polygons" size="sm" icon="download" @click="downloadPolygons" />
+        <q-btn dense label="Load Polygons" size="sm" icon="upload_file" @click="triggerFileUpload" />
       </div>
+
+      <input type="file" ref="fileInput" style="display: none" accept=".geojson" @change="loadPolygons" />
 
       <div class="text-caption q-mt-sm">Polygon Size (m)</div>
       <q-slider
@@ -56,15 +60,13 @@
         />
       </div>
     </div>
-  </template>
+</template>
 
 <script>
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, watch, ref } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useQuasar } from 'quasar'
-
-
 
 export default {
     name: 'DrawingControlsCard',
@@ -74,6 +76,8 @@ export default {
         const $q = useQuasar()
         const drawnPolygons = computed(() => mapStore.drawnPolygons)
         const selectedBasemapDate = computed(() => mapStore.selectedBasemapDate)
+
+        const fileInput = ref(null)
 
         onMounted(async () => {
             window.addEventListener('keydown', handleKeyDown);
@@ -154,13 +158,12 @@ export default {
         };
 
         watch(drawnPolygons, () => {
-            // console.log("Drawn polygons changed - watcher in drawingcontrolscard")
             drawnPolygons.value = mapStore.drawnPolygons
         }, { immediate: true });
 
         watch(() => projectClasses.value, (newClasses) => {
             if (newClasses.length > 0 && !selectedClass.value) {
-                selectedClass.value = newClasses[0].value
+                selectedClass.value = newClasses[0]
             }
         }, { immediate: true })
 
@@ -225,6 +228,79 @@ export default {
             }
         };
 
+        const downloadPolygons = () => {
+            const polygons = mapStore.drawnPolygons.map(polygon => ({
+                ...polygon,
+                properties: {
+                    ...polygon.properties,
+                    basemapDate: mapStore.selectedBasemapDate
+                }
+            }));
+            const geojson = {
+                type: "FeatureCollection",
+                features: polygons
+            };
+            const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: "application/geo+json" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `training_polygons_${mapStore.selectedBasemapDate}.geojson`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        };
+
+        const triggerFileUpload = () => {
+            fileInput.value.click()
+        };
+
+        const loadPolygons = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Print drawn polygons before loading from file
+            console.log("Drawn polygons before loading from file", mapStore.drawnPolygons)
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const geojson = JSON.parse(e.target.result);
+                    if (geojson.type !== 'FeatureCollection') {
+                        throw new Error('Invalid GeoJSON format');
+                    }
+                    geojson.features.forEach(feature => {
+                        if (feature.geometry && feature.properties) {
+                            mapStore.addPolygon({
+                                ...feature,
+                                properties: {
+                                    ...feature.properties,
+                                    basemapDate: feature.properties.basemapDate || mapStore.selectedBasemapDate
+                                }
+                            });
+                        }
+                    });
+
+                    // Print drawn polygons after loading from file
+                    console.log("Drawn polygons", mapStore.drawnPolygons)
+
+                    $q.notify({
+                        type: 'positive',
+                        message: 'Polygons loaded successfully'
+                    });
+                } catch (error) {
+                    console.error('Error loading GeoJSON:', error);
+                    $q.notify({
+                        type: 'negative',
+                        message: 'Failed to load polygons from file'
+                    });
+                }
+            };
+            reader.readAsText(file);
+            // Reset the file input
+            event.target.value = null;
+        };
+
         return {
             interactionMode,
             selectedClass,
@@ -241,7 +317,11 @@ export default {
             clearDrawnPolygons,
             isCurrentDateExcluded,
             toggleExcludeCurrentDate,
-            deleteSelectedFeature
+            deleteSelectedFeature,
+            downloadPolygons,
+            triggerFileUpload,
+            loadPolygons,
+            fileInput
         }
     }
 }

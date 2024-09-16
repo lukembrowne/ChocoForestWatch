@@ -928,6 +928,30 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
+   // Used when loading polygons from a file
+   const addPolygon = (polygonGeoJSON) => {
+    // Convert GeoJSON to OpenLayers Feature
+    const geojsonFormat = new GeoJSON();
+    const feature = geojsonFormat.readFeature(polygonGeoJSON, {
+        dataProjection: 'EPSG:3857',
+        featureProjection: 'EPSG:3857'
+    });
+
+    // Add to the training polygons layer
+    trainingPolygonsLayer.value.getSource().addFeature(feature);
+
+    // Update drawnPolygons
+    drawnPolygons.value.push({
+        ...polygonGeoJSON,
+        properties: {
+            ...polygonGeoJSON.properties,
+            basemapDate: polygonGeoJSON.properties.basemapDate || selectedBasemapDate.value
+        }
+    });
+
+    hasUnsavedChanges.value = true;
+};
+
   const reorderLayers = (fromIndex, toIndex) => {
     if (fromIndex === toIndex) return;
   
@@ -1018,6 +1042,7 @@ export const useMapStore = defineStore('map', () => {
     setSelectedFeature,
     deleteSelectedFeature,
     updateSliderValue,
+    addPolygon,
     // Getters
     getMap
   };
