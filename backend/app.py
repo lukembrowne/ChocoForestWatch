@@ -521,14 +521,16 @@ def set_project_aoi(project_id):
         return jsonify({'error': 'AOI data is required'}), 400
 
     try:
-        # Convert GeoJSON to shapely geometry
-        geojson = data['aoi']
-        shape = geometry.shape(geojson['geometry'])
-        aoi_extent = data['aoi_extent']
-        basemap_dates = data['basemap_dates']
 
-        # Trigger background download of imagery
-        download_quads_for_aoi.delay(aoi_extent, basemap_dates)
+        ## If downloading the imagery in the background when the projetc AOI is created, use the code below
+        # # Convert GeoJSON to shapely geometry
+        # geojson = data['aoi']
+        # shape = geometry.shape(geojson['geometry'])
+        # aoi_extent = data['aoi_extent']
+        # basemap_dates = data['basemap_dates']
+
+        # # Trigger background download of imagery
+        # download_quads_for_aoi.delay(aoi_extent, basemap_dates)
         
         # Convert shapely geometry to WKT
         wkt = shape.wkt
