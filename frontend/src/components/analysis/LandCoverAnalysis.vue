@@ -93,6 +93,9 @@ export default {
     const fetchPredictions = async () => {
       try {
         predictions.value = await api.getPredictions(projectStore.currentProject.id);
+
+        // filter to type == "landcover"
+        predictions.value = predictions.value.filter(p => p.type === "land_cover");
         predictions.value.sort((a, b) => new Date(a.basemap_date) - new Date(b.basemap_date));
       } catch (error) {
         console.error('Error fetching predictions:', error);

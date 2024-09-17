@@ -1,8 +1,9 @@
 <!-- frontend/src/components/analysis/DeforestationAnalysis.vue -->
 <template>
-    <div class="deforestation-analysis-container">
-      <q-card class="analysis-card">
-        <q-card-section>
+  <div class="deforestation-analysis-container">
+    <q-card class="analysis-card">
+
+      <q-card-section>
           <div class="text-subtitle1 q-mb-sm">Deforestation Analysis</div>
           <div class="row q-gutter-md">
             <q-select v-model="startDate" :options="predictionDates" label="Start Date" class="col" />
@@ -10,70 +11,113 @@
           </div>
           <q-btn label="Analyze Deforestation" color="primary" class="q-mt-sm" @click="analyzeDeforestation"
             :disable="!startDate || !endDate || startDate === endDate" />
-        </q-card-section>
-      </q-card>
-  
-      <q-card v-if="changeAnalysis" class="results-card">
-        <q-card-section>
-          <div class="text-h6">Deforestation Analysis Results</div>
-          <div class="text-subtitle2">
-            {{ formatDate(changeAnalysis.prediction1_date) }} to {{ formatDate(changeAnalysis.prediction2_date) }}
+      </q-card-section>
+
+      <q-separator />
+
+      <q-card-section>
+        <div class="text-subtitle1 q-mb-sm">Deforestation Maps</div>
+        <q-scroll-area v-if="deforestationMaps.length > 0" style="height: 20vh;">
+          <q-list separator>
+            <q-item 
+              v-for="map in deforestationMaps" 
+              :key="map.id"
+              class="map-item cursor-pointer"
+              @click="displayDeforestationMap(map)"
+              clickable
+              v-ripple
+            >
+              <q-item-section>
+                <div class="row items-center justify-between">
+                  <div class="date-label">{{ map.name }}</div>
+                  <q-icon name="visibility" size="sm">
+                    <q-tooltip>View Deforestation Map</q-tooltip>
+                  </q-icon>
+                </div>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-scroll-area>
+        <div v-else class="text-caption q-pa-md">
+          No deforestation maps available. Please perform deforestation analysis first.
+        </div>
+      </q-card-section>
+
+      <q-separator />
+
+      <q-card-section v-if="changeAnalysis" class="analysis-section">
+        <div class="text-subtitle1 q-mb-sm">Analysis for {{ formatDateRange(changeAnalysis.prediction1_date, changeAnalysis.prediction2_date) }}</div>
+        <q-scroll-area style="height: 40vh;">
+          <div v-if="changeAnalysis.results">
+            <h6>Deforestation Statistics</h6>
+            <q-table :rows="deforestationStatisticsRows" :columns="deforestationStatisticsColumns" row-key="metric" dense flat
+              :pagination="{ rowsPerPage: 0 }" />
+            <div class="text-caption q-mt-sm">
+              Total Area Analyzed: {{ selectedAnalysis.results.total_area_ha.toFixed(2) }} ha
+            </div>
           </div>
-        </q-card-section>
-  
-        <q-card-section>
-          <div class="text-h5">Deforestation Rate: {{ changeAnalysis.deforestation_rate.toFixed(2) }}%</div>
-          <div>Deforested Area: {{ changeAnalysis.deforested_area_ha.toFixed(2) }} ha</div>
-          <div>Total Forest Area (initial): {{ changeAnalysis.total_forest_area_ha.toFixed(2) }} ha</div>
-        </q-card-section>
-  
-        <q-card-section>
-          <h6>Forest Transition Matrix</h6>
-          <q-table :rows="forestTransitionRows" :columns="forestTransitionColumns" row-key="from" dense flat
-            :pagination="{ rowsPerPage: 0 }" />
-        </q-card-section>
-  
-        <q-card-actions align="right">
-          <q-btn label="Display Deforestation Map" color="primary" @click="displayDeforestationMap" />
-          <q-btn flat label="Close" color="primary" @click="closeChangeAnalysis" />
-        </q-card-actions>
-      </q-card>
-    </div>
-  </template>
-  
-  <script>
-  import { ref, computed, onMounted } from 'vue';
-  import { useMapStore } from 'src/stores/mapStore';
-  import { useProjectStore } from 'src/stores/projectStore';
-  import { date } from 'quasar';
-  import api from 'src/services/api';
-  import { useQuasar } from 'quasar';
-  
-  export default {
-    name: 'DeforestationAnalysis',
-    setup() {
-      const mapStore = useMapStore();
-      const projectStore = useProjectStore();
-      const $q = useQuasar();
-      const predictions = ref([]);
-      const changeAnalysis = ref(null);
-      const startDate = ref(null);
-      const endDate = ref(null);
-  
-      const predictionDates = computed(() => {
+        </q-scroll-area>
+      </q-card-section>
+
+      <q-card-section v-else class="analysis-section">
+        <div class="text-subtitle1 q-mb-sm">Analysis</div>
+        <p class="text-caption">Select a deforestation map to view its analysis.</p>
+      </q-card-section>
+    </q-card>
+  </div>
+</template>
+
+<script>
+import { ref, computed, onMounted } from 'vue';
+import { useMapStore } from 'src/stores/mapStore';
+import { useProjectStore } from 'src/stores/projectStore';
+import { date } from 'quasar';
+import api from 'src/services/api';
+import { useQuasar } from 'quasar';
+
+export default {
+  name: 'DeforestationAnalysis',
+  setup() {
+    const mapStore = useMapStore();
+    const projectStore = useProjectStore();
+    const $q = useQuasar();
+    const selectedAnalysis = ref(null);
+    const deforestationMaps = ref([]);
+    const predictions = ref([]);
+    const startDate = ref(null);
+    const endDate = ref(null);
+    const changeAnalysis = ref(null);
+    const predictionDates = computed(() => {
         return predictions.value.map(p => ({
           label: formatDate(p.basemap_date),
           value: p.basemap_date
         }));
       });
-  
-      onMounted(async () => {
-        await fetchPredictions();
-      });
-  
-      const fetchPredictions = async () => {
+
+    const deforestationStatisticsColumns = [
+      { name: 'metric', align: 'left', label: 'Metric', field: 'metric' },
+      { name: 'value', align: 'right', label: 'Value', field: 'value' },
+    ];
+
+    const deforestationStatisticsRows = computed(() => {
+      if (!selectedAnalysis.value?.results) return [];
+      return [
+        { metric: 'Deforested Area', value: `${selectedAnalysis.value.results.deforested_area_ha.toFixed(2)} ha` },
+        { metric: 'Deforestation Rate', value: `${selectedAnalysis.value.results.deforestation_rate.toFixed(2)}%` },
+        { metric: 'Total Forest Area (Start)', value: `${selectedAnalysis.value.results.total_forest_area_ha.toFixed(2)} ha` },
+      ];
+    });
+
+    onMounted(async () => {
+      await fetchPredictions();
+      await fetchDeforestationMaps();
+    });
+
+    const fetchPredictions = async () => {
         try {
           predictions.value = await api.getPredictions(projectStore.currentProject.id);
+          // filter to type == "land_cover"
+          predictions.value = predictions.value.filter(p => p.type === "land_cover");
           predictions.value.sort((a, b) => new Date(a.basemap_date) - new Date(b.basemap_date));
         } catch (error) {
           console.error('Error fetching predictions:', error);
@@ -85,13 +129,51 @@
         }
       };
   
-      const formatDate = (dateString) => {
+
+    const fetchDeforestationMaps = async () => {
+      try {
+        deforestationMaps.value = await api.getPredictions(projectStore.currentProject.id);
+        // filter to type == "deforestation"
+        deforestationMaps.value = deforestationMaps.value.filter(p => p.type === "deforestation");
+        deforestationMaps.value.sort((a, b) => new Date(b.end_date) - new Date(a.end_date));
+
+        console.log('Fetched deforestation maps:', deforestationMaps.value);
+      } catch (error) {
+        console.error('Error fetching deforestation maps:', error);
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to fetch deforestation maps',
+          icon: 'error'
+        });
+      }
+    };
+
+    const formatDate = (dateString) => {
         const [year, month] = dateString.split('-');
         const utcDate = new Date(Date.UTC(parseInt(year), parseInt(month), 1));
         return date.formatDate(utcDate, 'MMMM, YYYY');
       };
   
-      const analyzeDeforestation = async () => {
+
+    const formatDateRange = (startDate, endDate) => {
+      return `${date.formatDate(startDate, 'MMM YYYY')} - ${date.formatDate(endDate, 'MMM YYYY')}`;
+    };
+
+    const displayDeforestationMap = (map) => {
+      console.log('Displaying deforestation map:', map.file_path);
+        if (map.file_path) {
+          console.log('Displaying deforestation map within if statement:', map.file_path);
+          mapStore.displayPrediction(
+            map.file_path,
+            map.name,
+            map.name,
+            'deforestation'
+          );
+        }
+      };
+
+
+    const analyzeDeforestation = async () => {
         if (!startDate.value || !endDate.value) {
           $q.notify({
             color: 'negative',
@@ -122,6 +204,9 @@
   
           const results = await api.getChangeAnalysis(pred1.id, pred2.id);
           changeAnalysis.value = results;
+
+          await fetchDeforestationMaps();
+
   
           $q.notify({
             color: 'positive',
@@ -137,53 +222,19 @@
           });
         }
       };
-  
-      const displayDeforestationMap = () => {
-        if (changeAnalysis.value && changeAnalysis.value.deforestation_raster_path) {
-          mapStore.displayPrediction(
-            changeAnalysis.value.deforestation_raster_path,
-            `deforestation-${changeAnalysis.value.prediction1_date}-${changeAnalysis.value.prediction2_date}`,
-            `Deforestation-${changeAnalysis.value.prediction1_date}-${changeAnalysis.value.prediction2_date}`,
-            'deforestation'
-          );
-        }
-      };
-  
-      const closeChangeAnalysis = () => {
-        changeAnalysis.value = null;
-      };
-  
-      const forestTransitionColumns = [
-        { name: 'from', align: 'left', label: 'From', field: 'from' },
-        { name: 'forest', align: 'right', label: 'To Forest', field: 'forest' },
-        { name: 'nonForest', align: 'right', label: 'To Non-Forest', field: 'nonForest' },
-      ];
-  
-      const forestTransitionRows = computed(() => {
-        if (!changeAnalysis.value) return [];
-        const forestIndex = changeAnalysis.value.class_names.indexOf('Forest');
-        const matrix = changeAnalysis.value.confusion_matrix;
-        const total = matrix[forestIndex].reduce((a, b) => a + b, 0);
-        return [
-          {
-            from: 'Forest',
-            forest: `${matrix[forestIndex][forestIndex]} (${((matrix[forestIndex][forestIndex] / total) * 100).toFixed(2)}%)`,
-            nonForest: `${total - matrix[forestIndex][forestIndex]} (${(((total - matrix[forestIndex][forestIndex]) / total) * 100).toFixed(2)}%)`
-          }
-            ];
-    });
-
     return {
-      startDate,
-      endDate,  
-      predictionDates,
-      changeAnalysis,
-      forestTransitionColumns,
-      forestTransitionRows,
-      formatDate,
-      analyzeDeforestation,
+      deforestationMaps,
+      selectedAnalysis,
+      deforestationStatisticsColumns,
+      deforestationStatisticsRows,
+      formatDateRange,
       displayDeforestationMap,
-      closeChangeAnalysis,
+      analyzeDeforestation,
+      predictionDates,
+      startDate,
+      endDate,
+      changeAnalysis,
+
     };
   }
 };
@@ -192,17 +243,36 @@
 <style lang="scss" scoped>
 .deforestation-analysis-container {
   position: absolute;
-  display: flex;
-  gap: 10px;
-  max-height: calc(100vh - 60px - 100px); /* 20px for additional padding */
-  overflow-y: auto; /* Add scrolling if content exceeds the height */
+  height: calc(100vh - 60px - 100px);
+  width: 300px;
+  overflow-y: auto;
 }
 
-.analysis-card,
-.results-card {
-  width: 300px;
-  max-height: 100%; /* Allow cards to take full height of the container */
+.analysis-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.map-item {
   border-radius: 8px;
-  overflow-y: auto;
+  margin: 4px;
+  background-color: #f5f5f5;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+}
+
+.date-label {
+  font-weight: bold;
+}
+
+.analysis-section {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 }
 </style>

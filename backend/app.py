@@ -359,9 +359,10 @@ class Prediction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
     model_id = db.Column(db.Integer, db.ForeignKey('trained_model.id'), nullable=False)
+    type = db.Column(db.String(20), nullable=False)  # 'land_cover' or 'deforestation'
     name = db.Column(db.String(100), nullable=False)
     file_path = db.Column(db.String(255), nullable=False)
-    basemap_date = db.Column(db.String(7), nullable=False)  # Store as 'YYYY-MM'
+    basemap_date = db.Column(db.String(7), nullable=True)  # Store as 'YYYY-MM'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     summary_statistics = db.Column(JSONB, nullable=True)
 
@@ -717,6 +718,7 @@ def get_predictions(project_id):
         'model_id': p.model_id,
         'model_name': TrainedModel.query.get(p.model_id).name, 
         'name': p.name,
+        'type': p.type,
         'basemap_date': p.basemap_date,
         'created_at': p.created_at.isoformat(),
         'file_path': p.file_path
@@ -1591,6 +1593,7 @@ def generate_prediction(model_id, project_id, aoi_shape, aoi_extent, aoi_extent_
                 prediction = Prediction(
                     project_id=project_id,
                     model_id=model_id,
+                    type='land_cover',
                     file_path=new_prediction_file,
                     basemap_date=date,
                     name=f"Prediction_{date}"
@@ -1623,6 +1626,7 @@ def generate_prediction(model_id, project_id, aoi_shape, aoi_extent, aoi_extent_
                 'file_path': prediction.file_path,
                 'basemap_date': prediction.basemap_date,
                 'name': prediction.name,
+                'type': prediction.type,
                 'summary_statistics': prediction.summary_statistics
             }
 
@@ -1667,6 +1671,7 @@ def calculate_summary_statistics(prediction):
             result = {
                 'prediction_name': prediction.name,
                 'prediction_date': prediction.basemap_date,
+                'type': prediction.type,
                 'total_area_ha': total_area,
                 'class_statistics': class_stats
             }
@@ -1758,7 +1763,7 @@ def  analyze_change(prediction1_id, prediction2_id):
             if not os.path.exists(deforestation_dir):
                 os.makedirs(deforestation_dir)
 
-            deforestation_path = f"{deforestation_dir}/defor_{prediction1_id}_{prediction2_id}_{uuid.uuid4().hex}.tif"
+            deforestation_path = f"{deforestation_dir}/defor_project{prediction1.project_id}_{prediction1.basemap_date}_{prediction2.basemap_date}_{uuid.uuid4().hex}.tif"
             with rasterio.open(deforestation_path, 'w', **src1.profile) as dst:
                 dst.write(deforestation, 1)
 
@@ -1790,134 +1795,29 @@ def  analyze_change(prediction1_id, prediction2_id):
                 "total_forest_area_ha": float(total_forest_pixels * pixel_area_ha)
             }
 
+            # Create a new Prediction record for the deforestation analysis
+            deforestation_prediction = Prediction(
+                project_id=prediction1.project_id,  # Assuming both predictions are from the same project
+                model_id=prediction1.model_id,  # Use the model from the first prediction
+                name=f"Deforestation_{prediction1.basemap_date}_to_{prediction2.basemap_date}",
+                file_path=deforestation_path,
+                created_at=datetime.utcnow(),
+                summary_statistics=results,
+                type='deforestation'
+            )
+
+            db.session.add(deforestation_prediction)
+            db.session.commit()
+
+            # Add the new prediction ID to the results
+            results["deforestation_prediction_id"] = deforestation_prediction.id
+
             return jsonify(results)
 
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Error in analyze_change: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
-@app.route('/api/analysis/deforestation/<int:project_id>', methods=['GET'])
-def analyze_deforestation(project_id):
-    try:
-        # Fetch all predictions for the project, ordered by date
-        logger.debug(f"Fetching predictions for project {project_id}")
-        predictions = Prediction.query.filter_by(project_id=project_id).order_by(Prediction.basemap_date).all()
-        if len(predictions) < 2:
-                return jsonify({'error': 'Not enough predictions for analysis'}), 400
-        
-        logger.debug(f"Predictions: {predictions}")
-
-        # Get the model and class names from the first prediction
-        model = TrainedModel.query.get(predictions[0].model_id)
-        all_class_names = model.all_class_names
-        forest_class = all_class_names.index('Forest')
-        cloud_shadow_water_classes = [all_class_names.index(cls) for cls in ['Cloud', 'Shadow', 'Water'] if cls in all_class_names]
-
-        # Initialize data cube
-        logger.debug(f"Initializing data cube")
-        with rasterio.open(predictions[0].file_path) as src:
-            height, width = src.shape
-            profile = src.profile
-
-        data_cube = np.full((len(predictions), height, width), -1, dtype=np.int8)
-
-        # Load all predictions into the data cube
-        logger.debug(f"Loading all predictions into the data cube")
-        for i, prediction in enumerate(predictions):
-            with rasterio.open(prediction.file_path) as src:
-                data_cube[i] = src.read(1)
-
-        # Establish baseline forest cover
-        baseline_forest = (data_cube[0] == forest_class)
-
-
-        # Implement moving window approach
-        window_size = 6  # 6 months window
-        forest_threshold = 0.5  # 50% forest threshold
-        min_valid_obs = 3  # Minimum valid observations required
-
-
-        def analyze_pixel_timeseries(timeseries):
-            if not baseline_forest[i, j]:
-                return 0  # Already deforested at start
-            
-            valid_obs = timeseries[~np.isin(timeseries, cloud_shadow_water_classes)]
-
-            if len(valid_obs) < min_valid_obs:
-                return 255  # Insufficient data
-            
-            for k in range(0, len(valid_obs) - window_size + 1):
-                window = valid_obs[k:k+window_size]
-                if len(window) >= min_valid_obs:
-                    forest_proportion = np.mean(window == forest_class)
-                    if forest_proportion < forest_threshold:
-                        return 1  # Deforestation detected
-            
-            return 0  # Remained forested
-
-        deforestation = np.full((height, width), 255, dtype=np.uint8)
-
-        for i in range(height):
-            for j in range(width):
-                pixel_timeseries = data_cube[:, i, j]
-                deforestation[i, j] = analyze_pixel_timeseries(pixel_timeseries)
-
-        # Apply sieve filter to remove small isolated pixels
-        deforestation = sieve(deforestation, size=4)
-
-        # Save deforestation raster
-        logger.debug(f"Saving deforestation raster")
-        deforestation_dir = './deforestation'
-        os.makedirs(deforestation_dir, exist_ok=True)
-        unique_id = uuid.uuid4().hex
-        deforestation_path = f"{deforestation_dir}/defor_project_{project_id}_{unique_id}.tif"
-        
-        profile.update(dtype=rasterio.uint8, count=1)
-        with rasterio.open(deforestation_path, 'w', **profile) as dst:
-            dst.write(deforestation, 1)
-
-
-        # Save datacube raster with all bands
-        logger.debug(f"Saving datacube raster with all bands")
-        datacube_dir = './deforestation'
-        os.makedirs(datacube_dir, exist_ok=True)
-        datacube_path = f"{datacube_dir}/defor_project_{project_id}_{unique_id}_datacube.tif"
-        profile.update(dtype=rasterio.uint8, count=data_cube.shape[0]) # Add number of bands
-        # Save the data_cube as a raster
-        with rasterio.open(datacube_path, 'w', **profile) as dst:
-            for i in range(data_cube.shape[0]):
-                dst.write(data_cube[i, :, :], i + 1)
-
-        # Calculate statistics
-        logger.debug(f"Calculating statistics")
-        pixel_area_ha = abs(profile['transform'][0] * profile['transform'][4]) / 10000  # Area in hectares
-        total_pixels = height * width
-        forest_pixels = np.sum(data_cube[0] == forest_class)
-        deforested_pixels = np.sum(deforestation == 1)
-        no_data_pixels = np.sum(deforestation == 255)
-
-        deforestation_rate = (deforested_pixels / forest_pixels) * 100 if forest_pixels > 0 else 0
-
-        results = {
-            "project_id": project_id,
-            "start_date": predictions[0].basemap_date,
-            "end_date": predictions[-1].basemap_date,
-            "total_area_ha": float(total_pixels * pixel_area_ha),
-            "initial_forest_area_ha": float(forest_pixels * pixel_area_ha),
-            "deforested_area_ha": float(deforested_pixels * pixel_area_ha),
-            "no_data_area_ha": float(no_data_pixels * pixel_area_ha),
-            "deforestation_rate": float(deforestation_rate),
-            "deforestation_raster_path": deforestation_path
-        }
-
-        logger.debug(f"Results: {results}")
-        return jsonify(results)
-
-    except Exception as e:
-        logger.error(f"Error in analyze_deforestation: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
 
 @app.route('/api/projects/<int:project_id>/training-sets/<int:set_id>/excluded', methods=['PUT'])
 def update_training_set_excluded(project_id, set_id):
