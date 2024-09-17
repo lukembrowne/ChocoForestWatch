@@ -48,12 +48,12 @@
       <q-card-section v-if="changeAnalysis" class="analysis-section">
         <div class="text-subtitle1 q-mb-sm">Analysis for {{ formatDateRange(changeAnalysis.prediction1_date, changeAnalysis.prediction2_date) }}</div>
         <q-scroll-area style="height: 40vh;">
-          <div v-if="changeAnalysis.results">
+          <div v-if="changeAnalysis">
             <h6>Deforestation Statistics</h6>
             <q-table :rows="deforestationStatisticsRows" :columns="deforestationStatisticsColumns" row-key="metric" dense flat
               :pagination="{ rowsPerPage: 0 }" />
             <div class="text-caption q-mt-sm">
-              Total Area Analyzed: {{ selectedAnalysis.results.total_area_ha.toFixed(2) }} ha
+              Total Area Analyzed: {{ changeAnalysis.total_area_ha.toFixed(2) }} ha
             </div>
           </div>
         </q-scroll-area>
@@ -100,11 +100,11 @@ export default {
     ];
 
     const deforestationStatisticsRows = computed(() => {
-      if (!selectedAnalysis.value?.results) return [];
+      if (!changeAnalysis.value) return [];
       return [
-        { metric: 'Deforested Area', value: `${selectedAnalysis.value.results.deforested_area_ha.toFixed(2)} ha` },
-        { metric: 'Deforestation Rate', value: `${selectedAnalysis.value.results.deforestation_rate.toFixed(2)}%` },
-        { metric: 'Total Forest Area (Start)', value: `${selectedAnalysis.value.results.total_forest_area_ha.toFixed(2)} ha` },
+        { metric: 'Deforested Area', value: `${changeAnalysis.value.deforested_area_ha.toFixed(2)} ha` },
+        { metric: 'Deforestation Rate', value: `${changeAnalysis.value.deforestation_rate.toFixed(2)}%` },
+        { metric: 'Total Forest Area (Start)', value: `${changeAnalysis.value.total_forest_area_ha.toFixed(2)} ha` },
       ];
     });
 
@@ -160,9 +160,8 @@ export default {
     };
 
     const displayDeforestationMap = (map) => {
-      console.log('Displaying deforestation map:', map.file_path);
+      console.log('Displaying deforestation map:', map);
         if (map.file_path) {
-          console.log('Displaying deforestation map within if statement:', map.file_path);
           mapStore.displayPrediction(
             map.file_path,
             map.name,
@@ -170,6 +169,11 @@ export default {
             'deforestation'
           );
         }
+
+
+      changeAnalysis.value = map.summary_statistics;
+      console.log('Change analysis:', changeAnalysis.value);
+
       };
 
 

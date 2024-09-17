@@ -721,7 +721,8 @@ def get_predictions(project_id):
         'type': p.type,
         'basemap_date': p.basemap_date,
         'created_at': p.created_at.isoformat(),
-        'file_path': p.file_path
+        'file_path': p.file_path,
+        'summary_statistics': p.summary_statistics
         } for p in predictions])
 
 @app.route('/api/prediction/<int:prediction_id>', methods=['GET'])
