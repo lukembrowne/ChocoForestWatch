@@ -1795,17 +1795,40 @@ def  analyze_change(prediction1_id, prediction2_id):
                 "total_forest_area_ha": float(total_forest_pixels * pixel_area_ha)
             }
 
-            # Create a new Prediction record for the deforestation analysis
-            deforestation_prediction = Prediction(
-                project_id=prediction1.project_id,  # Assuming both predictions are from the same project
-                model_id=prediction1.model_id,  # Use the model from the first prediction
-                name=f"Deforestation_{prediction1.basemap_date}_to_{prediction2.basemap_date}",
-                file_path=deforestation_path,
-                created_at=datetime.utcnow(),
-                summary_statistics=results,
-                type='deforestation'
-            )
 
+
+            # Check for existing prediction
+            existing_prediction = Prediction.query.filter_by(
+                project_id=prediction1.project_id,
+                name=f"Deforestation_{prediction1.basemap_date}_to_{prediction2.basemap_date}",
+            ).first()
+
+            if existing_prediction:
+                logger.debug(f"Deleting old prediction file {existing_prediction.file_path}")
+
+                # Delete the old file
+                if os.path.exists(existing_prediction.file_path):
+                    os.remove(existing_prediction.file_path)
+                
+                # Update existing prediction
+                existing_prediction.model_id = prediction1.model_id
+                existing_prediction.file_path = deforestation_path
+                existing_prediction.name = f"Deforestation_{prediction1.basemap_date}_to_{prediction2.basemap_date}"
+                existing_prediction.created_at = datetime.utcnow()
+                existing_prediction.summary_statistic = results
+                deforestation_prediction = existing_prediction
+            else:
+                # Create a new Prediction record for the deforestation analysis
+                deforestation_prediction = Prediction(
+                    project_id=prediction1.project_id,  # Assuming both predictions are from the same project
+                    model_id=prediction1.model_id,  # Use the model from the first prediction
+                    name=f"Deforestation_{prediction1.basemap_date}_to_{prediction2.basemap_date}",
+                    file_path=deforestation_path,
+                    created_at=datetime.utcnow(),
+                    summary_statistics=results,
+                    type='deforestation'
+                )
+       
             db.session.add(deforestation_prediction)
             db.session.commit()
 
