@@ -661,6 +661,7 @@ def delete_training_set(project_id, set_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+    
 @app.route('/api/training_data_summary/<int:project_id>', methods=['GET'])
 def get_training_data_summary(project_id):
     try:
@@ -1434,6 +1435,7 @@ def predict_landcover_aoi(model_id, quads, aoi_shape, aoi_extent, project_id, ba
     with rasterio.open(temp_tif, 'w', **merged_meta) as dst:
         dst.write(mosaic)
 
+    # Clip the mosaic to the AOI
     # Use the AOI GeoJSON directly if it's already in the correct format
     if isinstance(aoi_shape, dict) and aoi_shape.get('type') == 'Polygon':
         aoi_geojson = aoi_shape
@@ -1693,9 +1695,14 @@ def get_summary_statistics(prediction_id):
         return jsonify({'error': 'Summary statistics not available'}), 404
 
 
-@app.route('/api/analysis/change/<int:prediction1_id>/<int:prediction2_id>', methods=['GET'])
-def  analyze_change(prediction1_id, prediction2_id):
-    try:
+@app.route('/api/analysis/change/', methods=['POST'])
+def  analyze_change():
+    # try:
+        data = request.json
+        prediction1_id = data.get('prediction1_id')
+        prediction2_id = data.get('prediction2_id')
+        aoi_shape = data.get('aoi_shape')
+
         prediction1 = Prediction.query.get_or_404(prediction1_id)
         prediction2 = Prediction.query.get_or_404(prediction2_id)
 
@@ -1728,7 +1735,9 @@ def  analyze_change(prediction1_id, prediction2_id):
             changes = {name: areas2[name] - areas1[name] for name in all_class_names}
 
             # Calculate percentages
-            total_area = data1.size * pixel_area_ha
+            # Calculate total area excluding nodata pixels
+            valid_pixels = data1[data1 != 255]
+            total_area = float(valid_pixels.size * pixel_area_ha)
             percentages1 = {name: (area / total_area) * 100 for name, area in areas1.items()}
             percentages2 = {name: (area / total_area) * 100 for name, area in areas2.items()}
 
@@ -1759,14 +1768,50 @@ def  analyze_change(prediction1_id, prediction2_id):
             # Optional: Apply sieve filter to remove small isolated pixels
             deforestation = sieve(deforestation, size=4)
 
+            # Create a temporary file for the deforestation raster
+            with tempfile.NamedTemporaryFile(suffix='.tif', delete=False) as tmp:
+                temp_tif = tmp.name
+
+            # Write the merged raster to the temporary file
+            with rasterio.open(temp_tif, 'w', **src1.profile) as dst:
+                dst.write(deforestation, 1)
+
+            # Create merged metadata
+            meta = src1.meta.copy()
+            meta.update({
+                "driver": "GTiff",
+                "compress": 'lzw',
+                "nodata": 255
+            })
+
+            # Clip the deforestation raster to the AOI
+            # Use the AOI GeoJSON directly if it's already in the correct format
+            if isinstance(aoi_shape, dict) and aoi_shape.get('type') == 'Polygon':
+                aoi_geojson = aoi_shape
+            else:
+                # Convert to shapely geometry if it's not already a GeoJSON
+                aoi_shape = shape(aoi_shape) if isinstance(aoi_shape, dict) else aoi_shape
+                aoi_geojson = mapping(aoi_shape)
+
+            # Clip the mosaic to the AOI
+            with rasterio.open(temp_tif) as src:
+
+                clipped_deforestation, clipped_transform = mask(
+                    src,
+                    shapes=[aoi_geojson],
+                    crop=True,
+                    filled=True,
+                    nodata=255  # Use 255 as the nodata value
+                )
+            
             # Save deforestation raster
             deforestation_dir = './deforestation'
             if not os.path.exists(deforestation_dir):
                 os.makedirs(deforestation_dir)
 
             deforestation_path = f"{deforestation_dir}/defor_project{prediction1.project_id}_{prediction1.basemap_date}_{prediction2.basemap_date}_{uuid.uuid4().hex}.tif"
-            with rasterio.open(deforestation_path, 'w', **src1.profile) as dst:
-                dst.write(deforestation, 1)
+            with rasterio.open(deforestation_path, 'w', **meta) as dst:
+                dst.write(clipped_deforestation[0], 1)
 
             # Calculate deforestation statistics
             total_forest_pixels = np.sum(data1 == forest_class)
@@ -1838,10 +1883,10 @@ def  analyze_change(prediction1_id, prediction2_id):
 
             return jsonify(results)
 
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error in analyze_change: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+    # except Exception as e:
+    #     db.session.rollback()
+    #     logger.error(f"Error in analyze_change: {str(e)}")
+    #     return jsonify({'error': str(e)}), 500
 
 @app.route('/api/projects/<int:project_id>/training-sets/<int:set_id>/excluded', methods=['PUT'])
 def update_training_set_excluded(project_id, set_id):

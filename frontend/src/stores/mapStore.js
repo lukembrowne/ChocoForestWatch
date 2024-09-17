@@ -358,15 +358,17 @@ export const useMapStore = defineStore('map', () => {
       for (let i = 0; i < width * height; i++) {
         const value = rasterData[0][i];
         let color;
+
+        if (value === noDataValue) {
+          // Set transparent color for 'no data' pixels
+          data[i * 4] = 0;
+          data[i * 4 + 1] = 0;
+          data[i * 4 + 2] = 0;
+          data[i * 4 + 3] = 0; // Fully transparent
+          continue;
+        }
+
         if (mode === 'prediction') {
-          if (value === noDataValue) {
-            // Set transparent color for 'no data' pixels
-            data[i * 4] = 0;
-            data[i * 4 + 1] = 0;
-            data[i * 4 + 2] = 0;
-            data[i * 4 + 3] = 0; // Fully transparent
-            continue;
-          }
           color = colorMapping[projectStore.currentProject.classes[value].name];
         } else {
           color = colorMapping[value];

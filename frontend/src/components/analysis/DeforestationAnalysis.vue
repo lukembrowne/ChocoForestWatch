@@ -205,8 +205,16 @@ export default {
             });
             return;
           }
+
+          const aoiShape = projectStore.currentProject.aoi
   
-          const results = await api.getChangeAnalysis(pred1.id, pred2.id);
+          const results = await api.getChangeAnalysis({
+            prediction1_id: pred1.id,
+            prediction2_id: pred2.id,
+            aoi_shape: aoiShape
+          });
+
+          // update changeAnalysis with results
           changeAnalysis.value = results;
 
           await fetchDeforestationMaps();

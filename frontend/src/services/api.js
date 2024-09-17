@@ -157,9 +157,9 @@ export default {
     }
   },
 
-  async getChangeAnalysis(predictionId1, predictionId2) {
+  async getChangeAnalysis(data) {
     try {
-      const response = await axios.get(`${API_URL}/analysis/change/${predictionId1}/${predictionId2}`);
+      const response = await axios.post(`${API_URL}/analysis/change/`, data);
       return response.data;
     } catch (error) {
       console.error('Error getting change analysis:', error);
