@@ -162,7 +162,7 @@ export default {
         // Format the date for the layer title
         const date_title = formatDate(prediction.basemap_date);
 
-        await mapStore.displayPrediction(prediction.file_path, `prediction-${prediction.id}`, `Land Cover - ${date_title}`, 'prediction');
+        await mapStore.displayPrediction(prediction.file_path, `prediction-${prediction.id}-${Date.now()}`, `Land Cover - ${date_title}`, 'prediction');
         $q.notify({
           color: 'positive',
           message: `Loaded land cover map for: ${date_title}`,

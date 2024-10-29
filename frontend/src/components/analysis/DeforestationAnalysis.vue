@@ -164,7 +164,7 @@ export default {
         if (map.file_path) {
           mapStore.displayPrediction(
             map.file_path,
-            `deforestation-map-${Date.now()}`,
+            `deforestation-map-${map.id}-${Date.now()}`,
             map.name,
             'deforestation'
           );
