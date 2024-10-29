@@ -15,6 +15,18 @@
                 <q-checkbox v-model="element.visible" :label="element.title"
                     @update:model-value="toggleLayerVisibility(element.id)" dense class="col" />
                 <q-btn flat round dense icon="tune" size="sm" @click="element.showOpacity = !element.showOpacity" />
+                <q-btn
+                  v-if="element.id.includes('prediction') || element.id.includes('deforestation')"
+                  flat
+                  round
+                  dense
+                  icon="delete"
+                  color="negative"
+                  size="sm"
+                  @click="removeLayer(element.id)"
+                >
+                  <q-tooltip>Remove layer</q-tooltip>
+                </q-btn>
             </div>
             <q-slide-transition>
                 <div v-show="element.showOpacity" class="opacity-slider q-mt-xs">
@@ -75,11 +87,16 @@
         mapStore.updateLayerOpacity(layerId, opacity);
       };
 
+      const removeLayer = (layerId) => {
+        mapStore.removeLayer(layerId);
+      };
+
       return {
         sortableLayers,
         onDragEnd,
         toggleLayerVisibility,
         updateLayerOpacity,
+        removeLayer,
       };
     }
   };

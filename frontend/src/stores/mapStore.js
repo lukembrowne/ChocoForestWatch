@@ -317,7 +317,7 @@ export const useMapStore = defineStore('map', () => {
   };
 
 
-
+// Display predictions or deforesation maps
   const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'prediction') => {
     console.log(`Displaying ${mode}:`, predictionFilePath);
     try {
