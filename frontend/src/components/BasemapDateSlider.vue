@@ -1,5 +1,6 @@
 <template>
     <div class="basemap-date-slider">
+        <p style="margin: 0; padding: 0;">Basemap Date</p>
         <div class="slider-container">
             <div class="year-markers">
                 <div v-for="year in years" :key="year" class="year-marker"

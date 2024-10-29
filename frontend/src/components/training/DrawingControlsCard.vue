@@ -63,7 +63,7 @@
 </template>
 
 <script>
-import { computed, onMounted, watch, ref } from 'vue'
+import { computed, onMounted, onUnmounted, watch, ref } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useQuasar } from 'quasar'
@@ -85,6 +85,11 @@ export default {
             if (projectClasses.value.length > 0 && !selectedClass.value) {
                 selectedClass.value = projectClasses.value[0].name
             }
+        })
+
+        onUnmounted(() => {
+            window.removeEventListener('keydown', handleKeyDown);
+            mapStore.setInteractionMode('pan');
         })
 
         const polygonSize = computed({
