@@ -827,6 +827,7 @@ def train_model():
         'gamma': data.get('gamma', 0),
         'colsample_bytree': data.get('colsample_bytree', 0.8),
         'subsample': data.get('subsample', 0.8),
+        'sieve_size': data.get('sieve_size', 0)
     }
 
     
@@ -1470,19 +1471,27 @@ def predict_landcover_aoi(model_id, quads, aoi_shape, aoi_extent, project_id, ba
     output_file = f"./predictions/landcover_prediction_project{project_id}_{basemap_date}_{unique_id}.tif"
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
-    # Apply sieve filter to remove isolated pixels
-    sieved_mosaic = np.zeros_like(clipped_mosaic)
-    for i in range(len(all_class_names)):
-        # Create a binary mask for this class
-        class_mask = (clipped_mosaic[0] == i).astype('uint8')
-        # Apply sieve filter to this class
-        sieved_class = sieve(class_mask, size=100)  # Adjust size parameter as needed
-        # Add back to the final mosaic
-        sieved_mosaic[0][sieved_class == 1] = i
+    # Get the sieve size from the model parameters
+    sieve_size = model_record.model_parameters.get('sieve_size', 0)  # Default to 10 if not specified
 
-    # Write the sieved and clipped raster
+    # Apply sieve filter only if sieve_size > 0
+    if sieve_size > 0:
+        sieved_mosaic = np.zeros_like(clipped_mosaic)
+        for i in range(len(all_class_names)):
+            # Create a binary mask for this class
+            class_mask = (clipped_mosaic[0] == i).astype('uint8')
+            # Apply sieve filter to this class
+            sieved_class = sieve(class_mask, size=sieve_size)
+            # Add back to the final mosaic
+            sieved_mosaic[0][sieved_class == 1] = i
+        
+        final_mosaic = sieved_mosaic
+    else:
+        final_mosaic = clipped_mosaic
+
+    # Write the final raster
     with rasterio.open(output_file, "w", **merged_meta) as dest:
-        dest.write(sieved_mosaic[0], 1)  # Write the first (and only) band
+        dest.write(final_mosaic[0], 1)  # Write the first (and only) band
 
     # Clean up the temporary file
     os.unlink(temp_tif)

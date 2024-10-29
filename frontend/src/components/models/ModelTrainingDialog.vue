@@ -130,6 +130,14 @@
               <p class="text-caption">Fraction of features used for building each tree. Can help in reducing
                 overfitting.</p>
             </div>
+            <div class="col-12 col-md-6">
+              <p>Sieve Filter Size:</p>
+              <q-slider v-model="options.sieve_size" :min="0" :max="100" :step="5" label label-always
+                color="primary" />
+              <p class="text-caption">Minimum size of connected pixel groups to keep in the final prediction. 
+                Higher values create a more generalized map by removing small isolated patches. 
+                Set to 0 to disable filtering.</p>
+            </div>
           </div>
         </q-expansion-item>
       </q-card-section>
@@ -198,7 +206,8 @@ export default {
       min_child_weight: 1,
       gamma: 0,
       subsample: 0.8,
-      colsample_bytree: 0.8
+      colsample_bytree: 0.8,
+      sieve_size: 10
     })
 
 
@@ -215,7 +224,31 @@ export default {
           existingModel.value = response[0]
           modelName.value = existingModel.value.name
           modelDescription.value = existingModel.value.description
-          // You may want to populate other fields with existing model data
+
+          // Populate model parameters from existing model
+          if (existingModel.value.model_parameters) {
+            const params = existingModel.value.model_parameters
+            options.value = {
+              n_estimators: params.n_estimators || 100,
+              max_depth: params.max_depth || 3,
+              learning_rate: params.learning_rate || 0.1,
+              min_child_weight: params.min_child_weight || 1,
+              gamma: params.gamma || 0,
+              subsample: params.subsample || 0.8,
+              colsample_bytree: params.colsample_bytree || 0.8,
+              sieve_size: params.sieve_size || 10
+            }
+
+            // Set split method and train/test split if they exist
+            if (params.split_method) {
+              splitMethod.value = params.split_method
+            }
+            if (params.train_test_split) {
+              trainTestSplit.value = params.train_test_split
+            }
+          }
+          
+          console.log('Loaded existing model parameters:', options.value)
         }
       } catch (error) {
         console.error('Error checking existing model:', error)
