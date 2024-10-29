@@ -4,8 +4,10 @@
     <q-card class="analysis-card">
       <q-card-section>
         <div class="text-subtitle1 q-mb-sm">Land Cover Predictions</div>
+        <!-- Scroll area to display predictions if available -->
         <q-scroll-area v-if="predictions.length > 0" style="height: 20vh;">
           <q-list separator>
+            <!-- Loop through predictions and display each one as a list item -->
             <q-item 
               v-for="prediction in predictions" 
               :key="prediction.id" 
@@ -20,11 +22,12 @@
                   <q-icon name="visibility" size="sm">
                     <q-tooltip>View Prediction</q-tooltip>
                   </q-icon>
-                </div>
+                </div>  
               </q-item-section>
             </q-item>
           </q-list>
         </q-scroll-area>
+        <!-- Message to display if no predictions are available -->
         <div v-else class="text-caption q-pa-md">
           No predictions available. Please train a model and make land cover predictions first.
         </div>
@@ -32,11 +35,13 @@
 
       <q-separator />
 
+      <!-- Section to display analysis of the selected prediction -->
       <q-card-section v-if="selectedAnalysis" class="analysis-section">
         <div class="text-subtitle1 q-mb-sm">Analysis for {{ formatDate(selectedAnalysis.date) }}</div>
         <q-scroll-area style="height: 40vh;">
           <div v-if="selectedAnalysis.results">
             <h6>Summary Statistics</h6>
+            <!-- Table to display summary statistics of the analysis -->
             <q-table :rows="summaryStatisticsRows" :columns="summaryStatisticsColumns" row-key="class" dense flat
               :pagination="{ rowsPerPage: 0 }" />
             <div class="text-caption q-mt-sm">
@@ -46,6 +51,7 @@
         </q-scroll-area>
       </q-card-section>
 
+      <!-- Message to display if no analysis is selected -->
       <q-card-section v-else class="analysis-section">
         <div class="text-subtitle1 q-mb-sm">Analysis</div>
         <p class="text-caption">Select a prediction to view its analysis.</p>
@@ -68,15 +74,17 @@ export default {
     const mapStore = useMapStore();
     const projectStore = useProjectStore();
     const $q = useQuasar();
-    const selectedAnalysis = ref(null);
-    const predictions = ref([]);
+    const selectedAnalysis = ref(null); // Ref to store the selected analysis
+    const predictions = ref([]); // Ref to store the list of predictions
 
+    // Columns configuration for the summary statistics table
     const summaryStatisticsColumns = [
       { name: 'class', align: 'left', label: 'Class', field: 'class' },
       { name: 'area', align: 'right', label: 'Area (ha)', field: 'area' },
       { name: 'percentage', align: 'right', label: 'Percentage', field: 'percentage' }
     ];
 
+    // Computed property to generate rows for the summary statistics table
     const summaryStatisticsRows = computed(() => {
       if (!selectedAnalysis.value?.results?.class_statistics) return [];
       return Object.entries(selectedAnalysis.value.results.class_statistics).map(([classId, stats]) => ({
@@ -86,16 +94,19 @@ export default {
       }));
     });
 
+    // Fetch predictions when the component is mounted
     onMounted(async () => {
       await fetchPredictions();
     });
 
+    // Function to fetch predictions from the API
     const fetchPredictions = async () => {
       try {
         predictions.value = await api.getPredictions(projectStore.currentProject.id);
 
-        // filter to type == "landcover"
+        // Filter predictions to only include those of type "land_cover"
         predictions.value = predictions.value.filter(p => p.type === "land_cover");
+        // Sort predictions by date
         predictions.value.sort((a, b) => new Date(a.basemap_date) - new Date(b.basemap_date));
       } catch (error) {
         console.error('Error fetching predictions:', error);
@@ -107,12 +118,14 @@ export default {
       }
     };
 
+    // Function to format a date string into "MMMM, YYYY"
     const formatDate = (dateString) => {
       const [year, month] = dateString.split('-');
       const utcDate = new Date(Date.UTC(parseInt(year), parseInt(month), 1));
       return date.formatDate(utcDate, 'MMMM, YYYY');
     };
 
+    // Function to show analysis for a selected prediction date
     const showAnalysis = async (date) => {
       const prediction = predictions.value.find(p => p.basemap_date === date);
       if (prediction) {
@@ -130,6 +143,7 @@ export default {
       }
     };
 
+    // Function to display a prediction on the map
     const displayOnMap = async (date) => {
       const prediction = predictions.value.find(p => p.basemap_date === date);
       if (prediction) {
@@ -142,9 +156,9 @@ export default {
       }
     };
 
+    // Function to load a prediction on the map
     const loadPredictionOnMap = async (prediction) => {
       try {
-
         // Format the date for the layer title
         const date_title = formatDate(prediction.basemap_date);
 
@@ -164,10 +178,12 @@ export default {
       }
     };
 
+    // Function to close the analysis view
     const closeAnalysis = () => {
       selectedAnalysis.value = null;
     };
 
+    // Function to show a prediction and its analysis
     const showPrediction = async (date) => {
       await displayOnMap(date);
       await showAnalysis(date);

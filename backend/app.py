@@ -1766,7 +1766,7 @@ def  analyze_change():
             deforestation[valid_mask & (data1 == forest_class) & (data2 != forest_class)] = 1
             
             # Optional: Apply sieve filter to remove small isolated pixels
-            deforestation = sieve(deforestation, size=4)
+            deforestation = sieve(deforestation, size=10)
 
             # Create a temporary file for the deforestation raster
             with tempfile.NamedTemporaryFile(suffix='.tif', delete=False) as tmp:
