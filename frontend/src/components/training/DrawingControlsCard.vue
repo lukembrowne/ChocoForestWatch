@@ -29,6 +29,14 @@
         />
         <q-btn dense label="Download Polygons" size="sm" icon="download" @click="downloadPolygons" />
         <q-btn dense label="Load Polygons" size="sm" icon="upload_file" @click="triggerFileUpload" />
+        <q-btn
+          dense
+          :label="drawingMode === 'square' ? 'Square Mode' : 'Freehand Mode'"
+          size="sm"
+          :icon="drawingMode === 'square' ? 'crop_square' : 'gesture'"
+          @click="toggleDrawingMode"
+          :color="drawingMode === 'square' ? 'primary' : 'secondary'"
+        />
       </div>
 
       <input type="file" ref="fileInput" style="display: none" accept=".geojson" @change="loadPolygons" />
@@ -159,6 +167,8 @@ export default {
             } else if (event.key == 'Escape') {
                 mapStore.setInteractionMode('pan');
                 mapStore.stopDrawing();
+            } else if (event.key === 'f') {
+                toggleDrawingMode();
             }
         };
 
@@ -304,6 +314,12 @@ export default {
             event.target.value = null;
         };
 
+        const drawingMode = computed(() => mapStore.drawingMode)
+
+        const toggleDrawingMode = () => {
+            mapStore.toggleDrawingMode()
+        }
+
         return {
             interactionMode,
             selectedClass,
@@ -324,7 +340,9 @@ export default {
             downloadPolygons,
             triggerFileUpload,
             loadPolygons,
-            fileInput
+            fileInput,
+            drawingMode,
+            toggleDrawingMode,
         }
     }
 }

@@ -60,6 +60,7 @@ export const useMapStore = defineStore('map', () => {
   const modifyInteraction = ref(null);
   const selectInteraction = ref(null);
   const selectedClass = ref('Forest');
+  const drawingMode = ref('square'); // 'square' or 'freehand'
   const interactionMode = ref(null); // 'draw', 'pan', or 'zoom'
   const dragPanInteraction = ref(null);
   const dragZoomInInteraction = ref(null);
@@ -280,34 +281,34 @@ export const useMapStore = defineStore('map', () => {
       url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
     });
 
-  let planetBasemap = map.value.getLayers().getArray().find(layer => layer.get('id') === 'planet-basemap');
+    let planetBasemap = map.value.getLayers().getArray().find(layer => layer.get('id') === 'planet-basemap');
 
-  if (planetBasemap) {
-    // Update existing layer
-    console.log("Updating existing planet basemap layer...");
-    planetBasemap.setSource(newSource);
-    planetBasemap.set('title', `Planet Basemap ${date}`);
-  } else {
-    // Create new layer if it doesn't exist
-    console.log("Creating new planet basemap layer...");
-    planetBasemap = new TileLayer({
-      source: newSource,
-      title: `Planet Basemap ${date}`,
-      type: 'base',
-      visible: true,
-      id: 'planet-basemap',
-      zIndex: 1
-    });
+    if (planetBasemap) {
+      // Update existing layer
+      console.log("Updating existing planet basemap layer...");
+      planetBasemap.setSource(newSource);
+      planetBasemap.set('title', `Planet Basemap ${date}`);
+    } else {
+      // Create new layer if it doesn't exist
+      console.log("Creating new planet basemap layer...");
+      planetBasemap = new TileLayer({
+        source: newSource,
+        title: `Planet Basemap ${date}`,
+        type: 'base',
+        visible: true,
+        id: 'planet-basemap',
+        zIndex: 1
+      });
 
-    // Need to insert at index 2 to make sure the new layer is above the OSM layer but below AOI and training polygons layer
-    map.value.getLayers().insertAt(2, planetBasemap);
-  }
+      // Need to insert at index 2 to make sure the new layer is above the OSM layer but below AOI and training polygons layer
+      map.value.getLayers().insertAt(2, planetBasemap);
+    }
 
     // Update slider value
-  const dateIndex = availableDates.value.findIndex(d => d === date);
-  if (dateIndex !== -1) {
-    updateSliderValue(dateIndex);
-  }
+    const dateIndex = availableDates.value.findIndex(d => d === date);
+    if (dateIndex !== -1) {
+      updateSliderValue(dateIndex);
+    }
 
     selectedBasemapDate.value = date;
     isLoading.value = false;
@@ -317,7 +318,7 @@ export const useMapStore = defineStore('map', () => {
   };
 
 
-// Display predictions or deforesation maps
+  // Display predictions or deforesation maps
   const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'prediction') => {
     console.log(`Displaying ${mode}:`, predictionFilePath);
     try {
@@ -403,11 +404,11 @@ export const useMapStore = defineStore('map', () => {
 
       // Get current number of layers
       const numLayers = map.value.getLayers().getArray().length;
-      
+
       // Reorder layers to make sure the new layer is above the AOI layer
       // This takes the last layer and moves it to the top
       // Need to do numLayers - 1 because of 0 based indexing
-     reorderLayers(numLayers-1, 0) // This also updates the layers
+      reorderLayers(numLayers - 1, 0) // This also updates the layers
 
     } catch (error) {
       console.error(`Error displaying ${mode}:`, error);
@@ -439,7 +440,7 @@ export const useMapStore = defineStore('map', () => {
       zIndex: 2
     });
 
-     map.value.getLayers().insertAt(0, trainingPolygonsLayer.value);
+    map.value.getLayers().insertAt(0, trainingPolygonsLayer.value);
 
     // Load existing polygons from store
     drawnPolygons.value.forEach(polygon => {
@@ -558,59 +559,105 @@ export const useMapStore = defineStore('map', () => {
 
     isDrawing.value = true;
 
-    // Remove any existing click listener
-    if (map.value.clickListener) {
-      map.value.un('click', map.value.clickListener);
+    if (drawingMode.value === 'freehand') {
+      console.log("Freehand drawing mode");
+      // Freehand drawing mode
+      drawInteraction.value = new Draw({
+        source: trainingPolygonsLayer.value.getSource(),
+        type: 'Polygon',
+        freehand: true
+      });
+
+      // This is duplicate code as below .. not great
+      drawInteraction.value.on('drawend', (event) => {
+        const feature = event.feature;
+        feature.set('classLabel', selectedClass.value);
+        feature.setId(Date.now().toString());
+        trainingPolygonsLayer.value.getSource().addFeature(feature);
+        const newPolygon = new GeoJSON().writeFeatureObject(feature, {
+          dataProjection: 'EPSG:3857',
+          featureProjection: 'EPSG:3857'
+        });
+        drawnPolygons.value.push(newPolygon);
+        updateTrainingLayerStyle();
+        hasUnsavedChanges.value = true;
+      });
+
+      // Add the interaction to the map
+      map.value.addInteraction(drawInteraction.value);
+
+    } else if (drawingMode.value === 'square') {
+
+      // Remove any existing click listener
+      if (map.value.clickListener) {
+        map.value.un('click', map.value.clickListener);
+      }
+
+      map.value.clickListener = (event) => {
+        const clickCoordinate = event.coordinate;
+        const [x, y] = clickCoordinate;
+
+        // Use polygonSize.value instead of a fixed value
+        const halfSize = polygonSize.value / 2;
+
+        const polygonCoordinates = [
+          [x - halfSize, y - halfSize],
+          [x + halfSize, y - halfSize],
+          [x + halfSize, y + halfSize],
+          [x - halfSize, y + halfSize],
+          [x - halfSize, y - halfSize] // Close the polygon
+        ];
+
+        const polygonGeometry = new Polygon([polygonCoordinates]);
+        const feature = new Feature({
+          geometry: polygonGeometry
+        });
+
+        feature.set('classLabel', selectedClass.value);
+        feature.setId(Date.now().toString()); // Generate a unique ID
+
+        // Explicitly add the feature to the layer's source
+        trainingPolygonsLayer.value.getSource().addFeature(feature);
+
+        const newPolygon = new GeoJSON().writeFeatureObject(feature, {
+          dataProjection: 'EPSG:3857',
+          featureProjection: 'EPSG:3857'
+        });
+        drawnPolygons.value.push(newPolygon);
+        updateTrainingLayerStyle();
+        // console.log("Drawn polygons: ", drawnPolygons.value);
+        // console.log("Features from trainingPolygonsLayer: ", trainingPolygonsLayer.value.getSource().getFeatures());
+        // console.log("Has unsaved changes changed to true: ");
+        hasUnsavedChanges.value = true;
+      };
+
+      map.value.on('click', map.value.clickListener);
     }
+  };
 
-    map.value.clickListener = (event) => {
-      const clickCoordinate = event.coordinate;
-      const [x, y] = clickCoordinate;
-
-      // Use polygonSize.value instead of a fixed value
-      const halfSize = polygonSize.value / 2;
-
-      const polygonCoordinates = [
-        [x - halfSize, y - halfSize],
-        [x + halfSize, y - halfSize],
-        [x + halfSize, y + halfSize],
-        [x - halfSize, y + halfSize],
-        [x - halfSize, y - halfSize] // Close the polygon
-      ];
-
-      const polygonGeometry = new Polygon([polygonCoordinates]);
-      const feature = new Feature({
-        geometry: polygonGeometry
-      });
-
-      feature.set('classLabel', selectedClass.value);
-      feature.setId(Date.now().toString()); // Generate a unique ID
-
-      // Explicitly add the feature to the layer's source
-      trainingPolygonsLayer.value.getSource().addFeature(feature);
-
-      const newPolygon = new GeoJSON().writeFeatureObject(feature, {
-        dataProjection: 'EPSG:3857',
-        featureProjection: 'EPSG:3857'
-      });
-      drawnPolygons.value.push(newPolygon);
-      updateTrainingLayerStyle();
-      // console.log("Drawn polygons: ", drawnPolygons.value);
-      // console.log("Features from trainingPolygonsLayer: ", trainingPolygonsLayer.value.getSource().getFeatures());
-      // console.log("Has unsaved changes changed to true: ");
-      hasUnsavedChanges.value = true;
-    };
-
-    map.value.on('click', map.value.clickListener);
+  const toggleDrawingMode = () => {
+    drawingMode.value = drawingMode.value === 'square' ? 'freehand' : 'square';
+    if (isDrawing.value) {
+      stopDrawing();
+      startDrawing();
+    }
   };
 
   const stopDrawing = () => {
     if (!map.value) return;
 
     isDrawing.value = false;
+    
+    // Remove click listener (for square mode)
     if (map.value.clickListener) {
       map.value.un('click', map.value.clickListener);
       map.value.clickListener = null;
+    }
+
+    // Remove draw interaction (for freehand mode)
+    if (drawInteraction.value) {
+      map.value.removeInteraction(drawInteraction.value);
+      drawInteraction.value = null;
     }
   };
 
@@ -630,9 +677,9 @@ export const useMapStore = defineStore('map', () => {
       vectorSource.removeFeature(selectedFeature.value);
 
       // Remove the feature from drawnPolygons array
-    const featureId = selectedFeature.value.getId();
-    drawnPolygons.value = drawnPolygons.value.filter(polygon => polygon.id !== featureId);
-    
+      const featureId = selectedFeature.value.getId();
+      drawnPolygons.value = drawnPolygons.value.filter(polygon => polygon.id !== featureId);
+
 
       selectedFeature.value = null;
       hasUnsavedChanges.value = true;
@@ -716,7 +763,7 @@ export const useMapStore = defineStore('map', () => {
     const geoJSONFormat = new GeoJSON();
     const features = polygonsData.features.map(feature => {
       const olFeature = geoJSONFormat.readFeature(feature, {
-        dataProjection:  'EPSG:3857',
+        dataProjection: 'EPSG:3857',
         featureProjection: 'EPSG:3857'
       });
       olFeature.setStyle(featureStyleFunction);
@@ -732,7 +779,7 @@ export const useMapStore = defineStore('map', () => {
       const vectorSource = new VectorSource({
         features: features
       });
-  
+
       trainingPolygonsLayer.value = new VectorLayer({
         source: vectorSource,
         title: 'Training Polygons',
@@ -740,7 +787,7 @@ export const useMapStore = defineStore('map', () => {
         zIndex: 2,
         id: 'training-polygons',
       });
-  
+
       map.value.getLayers().insertAt(0, trainingPolygonsLayer.value);
       // map.value.addLayer(trainingPolygonsLayer.value);
     }
@@ -760,7 +807,6 @@ export const useMapStore = defineStore('map', () => {
     if (dragPanInteraction.value) map.value.removeInteraction(dragPanInteraction.value);
     if (dragZoomInInteraction.value) map.value.removeInteraction(dragZoomInInteraction.value);
     if (dragZoomOutInteraction.value) map.value.removeInteraction(dragZoomOutInteraction.value);
-    if (drawInteraction.value) map.value.removeInteraction(drawInteraction.value);
 
     // Add interaction based on mode
     switch (mode) {
@@ -867,27 +913,27 @@ export const useMapStore = defineStore('map', () => {
     console.log("promptSaveChanges within MapStore:", hasUnsavedChanges.value);
 
     if (hasUnsavedChanges.value) {
-        return new Promise((resolve, reject) => {
-            $q.dialog({
-                title: 'Unsaved Changes',
-                message: 'You have unsaved changes. Would you like to save them?',
-                ok: 'Save',
-                cancel: 'Discard'
-            }).onOk(async () => {
-                await saveCurrentTrainingPolygons(selectedBasemapDate.value);
-                resolve(); // Resolve the promise after saving
-            }).onCancel(() => {
-                console.log('Changes discarded');
-                hasUnsavedChanges.value = false;
-                resolve(); // Resolve the promise even if discarded, to allow the app to move forward
-            }).onDismiss(() => {
-                resolve(); // Ensure the promise is resolved even if the dialog is dismissed
-            });
+      return new Promise((resolve, reject) => {
+        $q.dialog({
+          title: 'Unsaved Changes',
+          message: 'You have unsaved changes. Would you like to save them?',
+          ok: 'Save',
+          cancel: 'Discard'
+        }).onOk(async () => {
+          await saveCurrentTrainingPolygons(selectedBasemapDate.value);
+          resolve(); // Resolve the promise after saving
+        }).onCancel(() => {
+          console.log('Changes discarded');
+          hasUnsavedChanges.value = false;
+          resolve(); // Resolve the promise even if discarded, to allow the app to move forward
+        }).onDismiss(() => {
+          resolve(); // Ensure the promise is resolved even if the dialog is dismissed
         });
+      });
     } else {
-        return Promise.resolve(); // If no unsaved changes, resolve immediately
+      return Promise.resolve(); // If no unsaved changes, resolve immediately
     }
-};
+  };
 
   const saveCurrentTrainingPolygons = async (date) => {
     const projectStore = useProjectStore();
@@ -922,7 +968,7 @@ export const useMapStore = defineStore('map', () => {
       // Re-fetch training dates to update the UI
       await projectStore.fetchTrainingDates();
 
- 
+
     } catch (error) {
       console.error('Error saving training polygons:', error);
       // Handle error (e.g., show notification to user)
@@ -930,13 +976,13 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
-   // Used when loading polygons from a file
-   const addPolygon = (polygonGeoJSON) => {
+  // Used when loading polygons from a file
+  const addPolygon = (polygonGeoJSON) => {
     // Convert GeoJSON to OpenLayers Feature
     const geojsonFormat = new GeoJSON();
     const feature = geojsonFormat.readFeature(polygonGeoJSON, {
-        dataProjection: 'EPSG:3857',
-        featureProjection: 'EPSG:3857'
+      dataProjection: 'EPSG:3857',
+      featureProjection: 'EPSG:3857'
     });
 
     // Add to the training polygons layer
@@ -944,32 +990,32 @@ export const useMapStore = defineStore('map', () => {
 
     // Update drawnPolygons
     drawnPolygons.value.push({
-        ...polygonGeoJSON,
-        properties: {
-            ...polygonGeoJSON.properties,
-            basemapDate: polygonGeoJSON.properties.basemapDate || selectedBasemapDate.value
-        }
+      ...polygonGeoJSON,
+      properties: {
+        ...polygonGeoJSON.properties,
+        basemapDate: polygonGeoJSON.properties.basemapDate || selectedBasemapDate.value
+      }
     });
 
     hasUnsavedChanges.value = true;
-};
+  };
 
   const reorderLayers = (fromIndex, toIndex) => {
     if (fromIndex === toIndex) return;
-  
+
     const layerArray = map.value.getLayers().getArray();
-    
+
     // console.log("layerArray within reorderLayers:", layerArray);
 
     const [movedLayer] = layerArray.splice(fromIndex, 1);
     layerArray.splice(toIndex, 0, movedLayer);
-  
+
     // Update z-index for all layers
     layerArray.forEach((layer, index) => {
       // console.log("Setting z-index for layer:", layer.get('id'), "to", layerArray.length - index);
       layer.setZIndex(layerArray.length - index);
     });
-  
+
     updateLayers();
   };
 
@@ -1008,6 +1054,7 @@ export const useMapStore = defineStore('map', () => {
     selectedFeature,
     selectedFeatureStyle,
     sliderValue,
+    drawingMode,
     // Actions
     initMap,
     setAOI,
@@ -1045,6 +1092,7 @@ export const useMapStore = defineStore('map', () => {
     deleteSelectedFeature,
     updateSliderValue,
     addPolygon,
+    toggleDrawingMode,
     // Getters
     getMap
   };
