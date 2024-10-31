@@ -1023,6 +1023,67 @@ export const useMapStore = defineStore('map', () => {
     sliderValue.value = value;
   };
 
+
+  const addGeoJSON = (layerId, geoJSON) => {
+
+    console.log("Adding GeoJSON to map:", geoJSON);
+
+    // Remove existing layer if it exists
+    if (layers.value[layerId]) {
+      map.value.removeLayer(layers.value[layerId]);
+    }
+
+    // Create vector source from GeoJSON
+    const vectorSource = new VectorSource({
+      features: new GeoJSON().readFeatures(geoJSON)
+    });
+
+    // Create style based on options or defaults
+    const style = new Style({
+      fill: new Fill({
+        color: 'rgba(255, 68, 68, 0.2)'
+      }),
+      stroke: new Stroke({
+        color:  '#FF4444',
+        width: 2
+      })
+    });
+
+    // Create vector layer
+    const vectorLayer = new VectorLayer({
+      source: vectorSource,
+      style: style,
+      title: layerId,
+      id: layerId,
+      zIndex: 1
+    });
+
+    // Add layer to map and store reference
+    map.value.addLayer(vectorLayer);
+    layers.value[layerId] = vectorLayer;
+
+    return vectorLayer;
+  };
+
+  const fitBounds = (geometry) => {
+    if (!map.value) return;
+
+    // Create temporary source to get extent of geometry
+    const tempSource = new VectorSource({
+      features: new GeoJSON().readFeatures(geometry, {
+        featureProjection: map.value.getView().getProjection()
+      })
+    });
+
+    const extent = tempSource.getExtent();
+    map.value.getView().fit(extent, {
+      padding: [50, 50, 50, 50],
+      maxZoom: 18,
+      duration: 1000  // Smooth animation
+    });
+  };
+
+
   // Print to console every time hasUnsavedChanges is set to true
   watch(hasUnsavedChanges, (newVal) => {
     console.log("hasUnsavedChanges has been set to true");
@@ -1093,6 +1154,8 @@ export const useMapStore = defineStore('map', () => {
     updateSliderValue,
     addPolygon,
     toggleDrawingMode,
+    fitBounds,
+    addGeoJSON,
     // Getters
     getMap
   };

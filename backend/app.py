@@ -52,6 +52,11 @@ from rasterio.mask import mask
 from shapely.geometry import box, mapping
 import tempfile
 from flask_migrate import Migrate
+from rasterio import features
+import shapely.ops
+from shapely.geometry import shape, mapping
+# import geopandas as gpd
+import math
 
 
 # Load environment variables from the .env file
@@ -1397,6 +1402,7 @@ def predict_landcover_aoi(model_id, quads, aoi_shape, aoi_extent, project_id, ba
             prediction_data = np.hstack((reshaped_data, date_column, month_column))
 
 
+
             predictions = model.predict(prediction_data)
 
            # Map predictions to full class set indices
@@ -1917,6 +1923,69 @@ def update_training_set_excluded(project_id, set_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analysis/deforestation_hotspots/<int:prediction_id>', methods=['GET'])
+def get_deforestation_hotspots(prediction_id):
+    try:
+        # Get parameters from query string
+        min_area_ha = float(request.args.get('min_area_ha', 1.0))  # Default 1 hectare
+        
+        prediction = Prediction.query.get_or_404(prediction_id)
+        
+        with rasterio.open(prediction.file_path) as src:
+            # Read the deforestation raster (1 = deforestation, 0 = no deforestation, 255 = nodata)
+            defor_data = src.read(1)
+            
+            # Create mask of deforested pixels
+            defor_mask = defor_data == 1
+            
+            # Get pixel area in hectares
+            pixel_area_ha = abs(src.transform[0] * src.transform[4]) / 10000
+            
+            # Convert minimum area to pixels
+            min_pixels = int(min_area_ha / pixel_area_ha)
+            
+            # Get shapes of connected components
+            shapes = features.shapes(
+                defor_data, 
+                mask=defor_mask,
+                transform=src.transform
+            )
+            
+            # Convert to GeoJSON features with properties
+            hotspots = []
+            for geom, value in shapes:
+                if value == 1:  # Only process deforested areas
+                    polygon = shape(geom)
+                    area_ha = polygon.area * pixel_area_ha
+                    
+                    if area_ha >= min_area_ha:
+                        feature = {
+                            "type": "Feature",
+                            "geometry": mapping(polygon),
+                            "properties": {
+                                "area_ha": round(area_ha, 2),
+                                "perimeter_m": round(polygon.length, 2),
+                                "compactness": round(4 * math.pi * polygon.area / (polygon.length ** 2), 3)
+                            }
+                        }
+                        hotspots.append(feature)
+            
+            # Sort hotspots by area (largest first)
+            hotspots.sort(key=lambda x: x["properties"]["area_ha"], reverse=True)
+            
+            return jsonify({
+                "type": "FeatureCollection",
+                "features": hotspots,
+                "metadata": {
+                    "total_hotspots": len(hotspots),
+                    "min_area_ha": min_area_ha,
+                    "total_area_ha": sum(h["properties"]["area_ha"] for h in hotspots)
+                }
+            })
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     logger.info("Starting Flask application")

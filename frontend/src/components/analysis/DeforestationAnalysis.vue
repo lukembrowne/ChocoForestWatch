@@ -63,6 +63,68 @@
         <div class="text-subtitle1 q-mb-sm">Analysis</div>
         <p class="text-caption">Select a deforestation map to view its analysis.</p>
       </q-card-section>
+
+      <q-separator />
+
+      <q-card-section v-if="selectedDeforestationMap">
+        <div class="text-subtitle1 q-mb-sm">Deforestation Hotspots</div>
+        <div class="row q-gutter-md">
+          <q-input
+            v-model.number="minHotspotArea"
+            type="number"
+            label="Minimum Area (ha)"
+            class="col"
+            :rules="[val => val > 0 || 'Area must be greater than 0']"
+          />
+          <q-btn
+            label="Detect Hotspots"
+            color="warning"
+            class="col"
+            @click="detectHotspots"
+            :loading="loadingHotspots"
+          />
+        </div>
+        
+        <!-- Hotspots List -->
+        <q-scroll-area v-if="hotspots.length" style="height: 200px;" class="q-mt-md">
+          <q-list separator>
+            <q-item
+              v-for="(hotspot, index) in hotspots"
+              :key="index"
+              clickable
+              v-ripple
+              @click="focusHotspot(hotspot)"
+            >
+              <q-item-section>
+                <q-item-label>Hotspot #{{ index + 1 }}</q-item-label>
+                <q-item-label caption>
+                  Area: {{ hotspot.properties.area_ha.toFixed(2) }} ha
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn
+                  flat
+                  round
+                  icon="center_focus_strong"
+                  @click.stop="focusHotspot(hotspot)"
+                >
+                  <q-tooltip>Focus on this hotspot</q-tooltip>
+                </q-btn>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-scroll-area>
+        
+        <!-- Summary Stats -->
+        <div v-if="hotspotMetadata" class="q-mt-md">
+          <div class="text-caption">
+            Total Hotspots: {{ hotspotMetadata.total_hotspots }}
+          </div>
+          <div class="text-caption">
+            Total Area: {{ hotspotMetadata.total_area_ha.toFixed(2) }} ha
+          </div>
+        </div>
+      </q-card-section>
     </q-card>
   </div>
 </template>
@@ -108,6 +170,12 @@ export default {
       ];
     });
 
+    const minHotspotArea = ref(1.0);
+    const hotspots = ref([]);
+    const hotspotMetadata = ref(null);
+    const loadingHotspots = ref(false);
+    const selectedDeforestationMap = ref(null);
+
     onMounted(async () => {
       await fetchPredictions();
       await fetchDeforestationMaps();
@@ -148,17 +216,50 @@ export default {
       }
     };
 
-    const formatDate = (dateString) => {
-        const [year, month] = dateString.split('-');
-        const utcDate = new Date(Date.UTC(parseInt(year), parseInt(month), 1));
-        return date.formatDate(utcDate, 'MMMM, YYYY');
-      };
-  
-
-    const formatDateRange = (startDate, endDate) => {
-      return `${date.formatDate(startDate, 'MMM YYYY')} - ${date.formatDate(endDate, 'MMM YYYY')}`;
+    
+    const detectHotspots = async () => {
+      if (!selectedDeforestationMap.value) return;
+      
+      loadingHotspots.value = true;
+      try {
+        const response = await api.getDeforestationHotspots(
+          selectedDeforestationMap.value.id,
+          minHotspotArea.value
+        );
+        
+        console.log('Deforestation hotspots:', response);
+        
+        hotspots.value = response.features;
+        hotspotMetadata.value = response.metadata;
+        
+        // Add hotspots to map
+        mapStore.addGeoJSON(
+          `hotspots-${selectedDeforestationMap.value.id}`,
+          response,
+          {
+            style: {
+              color: '#FF4444',
+              weight: 2,
+              fillOpacity: 0.2
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Error detecting hotspots:', error);
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to detect deforestation hotspots',
+          icon: 'error'
+        });
+      } finally {
+        loadingHotspots.value = false;
+      }
     };
-
+    
+    const focusHotspot = (hotspot) => {
+      mapStore.fitBounds(hotspot.geometry);
+    };
+    
     const displayDeforestationMap = (map) => {
       console.log('Displaying deforestation map:', map);
         if (map.file_path) {
@@ -174,7 +275,12 @@ export default {
       changeAnalysis.value = map.summary_statistics;
       console.log('Change analysis:', changeAnalysis.value);
 
-      };
+      selectedDeforestationMap.value = map;
+      // Clear existing hotspots when switching maps
+      hotspots.value = [];
+      hotspotMetadata.value = null;
+      mapStore.removeLayer(`hotspots-${map.id}`);
+    };
 
 
     const analyzeDeforestation = async () => {
@@ -234,6 +340,19 @@ export default {
           });
         }
       };
+
+      const formatDate = (dateString) => {
+        const [year, month] = dateString.split('-');
+        const utcDate = new Date(Date.UTC(parseInt(year), parseInt(month), 1));
+        return date.formatDate(utcDate, 'MMMM, YYYY');
+      };
+  
+
+    const formatDateRange = (startDate, endDate) => {
+      return `${date.formatDate(startDate, 'MMM YYYY')} - ${date.formatDate(endDate, 'MMM YYYY')}`;
+    };
+
+
     return {
       deforestationMaps,
       selectedAnalysis,
@@ -246,7 +365,13 @@ export default {
       startDate,
       endDate,
       changeAnalysis,
-
+      minHotspotArea,
+      hotspots,
+      hotspotMetadata,
+      loadingHotspots,
+      selectedDeforestationMap,
+      detectHotspots,
+      focusHotspot
     };
   }
 };

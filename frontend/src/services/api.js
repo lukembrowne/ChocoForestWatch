@@ -187,4 +187,17 @@ export default {
     }
   },
 
+  async getDeforestationHotspots(predictionId, minAreaHa) {
+    try {
+      const response = await axios.get(
+        `${API_URL}/analysis/deforestation_hotspots/${predictionId}`, 
+        { params: { min_area_ha: minAreaHa } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error detecting deforestation hotspots:', error);
+      throw error;
+    }
+  },
+
 };
