@@ -15,30 +15,53 @@
             @update:model-value="loadHotspots"
           />
 
-          <!-- Add minimum area control -->
-          <q-input
-            v-model.number="minAreaHa"
-            type="number"
-            label="Minimum Area (ha)"
-            class="q-mb-md"
-            :rules="[
-              val => val >= 0 || 'Area must be positive',
-              val => val <= 1000 || 'Area must be less than 1000 ha'
-            ]"
-          >
-            <template v-slot:append>
+          <!-- Move export buttons next to minimum area input -->
+          <div class="row items-center q-mb-md">
+            <q-input
+              v-model.number="minAreaHa"
+              type="number"
+              label="Minimum Area (ha)"
+              class="col"
+              :rules="[
+                val => val >= 0 || 'Area must be positive',
+                val => val <= 1000 || 'Area must be less than 1000 ha'
+              ]"
+            >
+              <template v-slot:append>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="refresh"
+                  @click="loadHotspots"
+                  :disable="!selectedDeforestationMap"
+                >
+                  <q-tooltip>Refresh hotspots</q-tooltip>
+                </q-btn>
+              </template>
+            </q-input>
+            
+            <div class="col-auto q-ml-md">
               <q-btn
                 flat
-                round
                 dense
-                icon="refresh"
-                @click="loadHotspots"
-                :disable="!selectedDeforestationMap"
+                color="primary"
+                icon="download"
+                @click="exportHotspots('all')"
               >
-                <q-tooltip>Refresh hotspots</q-tooltip>
+                <q-tooltip>Export All Hotspots</q-tooltip>
               </q-btn>
-            </template>
-          </q-input>
+              <q-btn
+                flat
+                dense
+                color="green"
+                icon="download"
+                @click="exportHotspots('verified')"
+              >
+                <q-tooltip>Export Verified Hotspots</q-tooltip>
+              </q-btn>
+            </div>
+          </div>
 
           <!-- Hotspots List -->
           <q-scroll-area v-if="hotspots.length" style="height: calc(100vh - 250px)">
@@ -527,6 +550,84 @@ export default {
       selectHotspot(hotspots.value[newIndex]);
     };
 
+    const exportHotspots = (type) => {
+      try {
+        let hotspotsToExport = [];
+        if (type === 'verified') {
+          hotspotsToExport = hotspots.value.filter(h => 
+            h.properties.verification_status === 'verified'
+          );
+        } else {
+          hotspotsToExport = hotspots.value;
+        }
+
+        // Create GeoJSON feature collection with metadata and CRS
+        const geojson = {
+          type: 'FeatureCollection',
+          crs: {
+            type: 'name',
+            properties: {
+              name: 'EPSG:3857'  // Web Mercator projection
+            }
+          },
+          metadata: {
+            prediction_id: selectedDeforestationMap.value.id,
+            prediction_name: selectedDeforestationMap.value.name,
+            before_date: selectedDeforestationMap.value.before_date,
+            after_date: selectedDeforestationMap.value.after_date,
+            total_hotspots: hotspotsToExport.length,
+            total_area_ha: hotspotsToExport.reduce((sum, h) => sum + h.properties.area_ha, 0),
+            min_area_ha: minAreaHa.value,
+            export_type: type,
+            export_timestamp: new Date().toISOString(),
+            projection: 'EPSG:3857',  // Also add to metadata for clarity
+            projection_name: 'Web Mercator'
+          },
+          features: hotspotsToExport.map(h => ({
+            type: 'Feature',
+            geometry: h.geometry,
+            properties: {
+              id: h.properties.id,
+              area_ha: h.properties.area_ha,
+              verification_status: h.properties.verification_status
+            }
+          }))
+        };
+
+        // Create and trigger download
+        const blob = new Blob([JSON.stringify(geojson, null, 2)], {
+          type: 'application/json'
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Generate filename with timestamp
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = `deforestation_hotspots_${type}_${timestamp}.geojson`;
+        
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        // Show success notification
+        $q.notify({
+          color: 'positive',
+          message: `Successfully exported ${hotspotsToExport.length} hotspots`,
+          icon: 'check'
+        });
+      } catch (error) {
+        console.error('Error exporting hotspots:', error);
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to export hotspots',
+          icon: 'error'
+        });
+      }
+    };
+
     onMounted(async () => {
       console.log('Component mounted');
       await loadDeforestationMaps();
@@ -556,6 +657,7 @@ export default {
       selectHotspot,
       verifyHotspot,
       minAreaHa,
+      exportHotspots,
     };
   }
 };
@@ -665,6 +767,14 @@ export default {
   
   &:hover:not(.selected-hotspot):not(.verified-hotspot):not(.rejected-hotspot):not(.unsure-hotspot) {
     background: #f5f5f5 !important;
+  }
+}
+
+.export-section {
+  padding: 16px 0;
+  
+  .q-btn {
+    min-width: 135px;  // Make buttons equal width
   }
 }
 </style> 
