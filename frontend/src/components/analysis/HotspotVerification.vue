@@ -222,8 +222,9 @@ export default {
         );
         hotspots.value = response.features;
 
-        // Update the before/after maps with appropriate imagery
+        // Update the before/after maps with appropriate imagery and all hotspots
         updateComparisonMaps(selectedDeforestationMap.value);
+        displayAllHotspots();
       } catch (error) {
         console.error('Error loading hotspots:', error);
         $q.notify({
@@ -289,50 +290,101 @@ export default {
       }
     };
 
-    const selectHotspot = (hotspot) => {
-      selectedHotspot.value = hotspot;
-
-      // Clear existing hotspot layers
+    const displayAllHotspots = () => {
+      // Remove existing hotspot layers if they exist
       if (hotspotLayers.value.before) {
         beforeMapInstance.value.removeLayer(hotspotLayers.value.before);
         afterMapInstance.value.removeLayer(hotspotLayers.value.after);
       }
 
-      const style = new Style({
+      // Create GeoJSON FeatureCollection
+      const hotspotsGeoJSON = {
+        type: 'FeatureCollection',
+        features: hotspots.value
+      };
+
+      // Create styles
+      const normalStyle = new Style({
         fill: new Fill({
-          color: 'rgba(255, 0, 0, 0.2)'
+          color: 'rgba(255, 68, 68, 0.2)'
         }),
         stroke: new Stroke({
-          color: '#FF0000',
+          color: '#FF4444',
           width: 2
         })
       });
 
-      // Create separate vector sources for each map
-      const beforeVectorSource = new VectorSource({
-        features: new GeoJSON().readFeatures(hotspot, {
-          featureProjection: beforeMapInstance.value.getView().getProjection()
+      const selectedStyle = new Style({
+        fill: new Fill({
+          color: 'rgba(255, 255, 0, 0.3)'
+        }),
+        stroke: new Stroke({
+          color: '#FFFF00',
+          width: 3
         })
       });
 
-      const afterVectorSource = new VectorSource({
-        features: new GeoJSON().readFeatures(hotspot, {
-          featureProjection: afterMapInstance.value.getView().getProjection()
-        })
+      // Create vector sources
+      const beforeSource = new VectorSource({
+        features: new GeoJSON().readFeatures(hotspotsGeoJSON)
       });
 
-      // Create separate vector layers for each map
+      const afterSource = new VectorSource({
+        features: new GeoJSON().readFeatures(hotspotsGeoJSON)
+      });
+
+      // Create vector layers
       hotspotLayers.value = {
-        before: new VectorLayer({ source: beforeVectorSource, style }),
-        after: new VectorLayer({ source: afterVectorSource, style })
+        before: new VectorLayer({
+          source: beforeSource,
+          style: (feature) => {
+            return selectedHotspot.value && 
+                   feature.get('id') === selectedHotspot.value.properties.id ? 
+                   selectedStyle : normalStyle;
+          },
+          title: 'hotspots-before',
+          id: 'hotspots-before',
+          zIndex: 2
+        }),
+        after: new VectorLayer({
+          source: afterSource,
+          style: (feature) => {
+            return selectedHotspot.value && 
+                   feature.get('id') === selectedHotspot.value.properties.id ? 
+                   selectedStyle : normalStyle;
+          },
+          title: 'hotspots-after',
+          id: 'hotspots-after',
+          zIndex: 2
+        })
       };
 
+      // Add layers to maps
       beforeMapInstance.value.addLayer(hotspotLayers.value.before);
       afterMapInstance.value.addLayer(hotspotLayers.value.after);
 
-      // Fit maps to hotspot extent
-      const extent = beforeVectorSource.getExtent();
-      beforeMapInstance.value.getView().fit(extent, { padding: [50, 50, 50, 50] });
+      console.log('Added hotspot layers:', hotspotLayers.value);
+      console.log('Number of features:', beforeSource.getFeatures().length);
+    };
+
+    const selectHotspot = (hotspot) => {
+      selectedHotspot.value = hotspot;
+
+      // Refresh the layer styles to highlight the selected hotspot
+      if (hotspotLayers.value.before) {
+        hotspotLayers.value.before.changed();
+        hotspotLayers.value.after.changed();
+      }
+
+      // Fit maps to selected hotspot extent
+      const extent = new GeoJSON().readFeature(hotspot, {
+        featureProjection: beforeMapInstance.value.getView().getProjection()
+      }).getGeometry().getExtent();
+      
+      beforeMapInstance.value.getView().fit(extent, { 
+        padding: [50, 50, 50, 50],
+        duration: 1000 // Smooth animation
+      });
     };
 
     const verifyHotspot = async (hotspot, status) => {
