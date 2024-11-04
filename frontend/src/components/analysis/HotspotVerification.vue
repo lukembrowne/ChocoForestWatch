@@ -1,5 +1,5 @@
 <template>
-  <div class="row no-wrap">
+  <div class="row no-wrap" style="height: 100vh;">
     <!-- Left Panel - Hotspots List -->
     <div class="hotspot-list-container">
       <q-card class="hotspot-list-card">
@@ -80,7 +80,7 @@
     </div>
 
     <!-- Right Panel - Side by Side Comparison -->
-    <div class="comparison-container" v-if="selectedDeforestationMap">
+    <div class="comparison-container">
       <div class="comparison-maps">
         <div class="map-container">
           <div ref="beforeMap" class="comparison-map"></div>
@@ -96,7 +96,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { useMapStore } from 'src/stores/mapStore';
 import { useProjectStore } from 'src/stores/projectStore';
 import { useQuasar } from 'quasar';
@@ -136,40 +136,33 @@ export default {
 
     // Initialize the comparison maps
     const initializeMaps = () => {
-      const createMap = (target) => new Map({
-        target,
-        layers: [
-        new TileLayer({
-          source: new OSM(),
-          name: 'baseMap',
-          title: 'OpenStreetMap',
-          visible: true,
-          id: 'osm',
-          zIndex: 0
-        })
-      ],
-      view: new View({
-        center: fromLonLat([-79.81822466589962, 0.460628082970743]),
-        zoom: 12
-      })
-    });
+      console.log('Initializing maps');
+      console.log('beforeMap element:', beforeMap.value);
+      console.log('afterMap element:', afterMap.value);
 
-      beforeMapInstance.value = createMap(beforeMap.value);
-      afterMapInstance.value = createMap(afterMap.value);
+      const createMap = (target) => {
+        console.log('Creating map for target:', target);
+        return new Map({
+          target: target,
+          layers: [
+            new TileLayer({
+              source: new OSM(),
+              name: 'baseMap'
+            })
+          ],
+          view: new View({
+            center: fromLonLat([-79.81822466589962, 0.460628082970743]),
+            zoom: 12
+          })
+        });
+      };
 
-      // Sync map movements
-      beforeMapInstance.value.getView().on('change:center', (event) => {
-        afterMapInstance.value.getView().setCenter(event.target.getCenter());
-      });
-      beforeMapInstance.value.getView().on('change:resolution', (event) => {
-        afterMapInstance.value.getView().setResolution(event.target.getResolution());
-      });
+      nextTick(() => {
+        beforeMapInstance.value = createMap(beforeMap.value);
+        afterMapInstance.value = createMap(afterMap.value);
 
-      afterMapInstance.value.getView().on('change:center', (event) => {
-        beforeMapInstance.value.getView().setCenter(event.target.getCenter());
-      });
-      afterMapInstance.value.getView().on('change:resolution', (event) => {
-        beforeMapInstance.value.getView().setResolution(event.target.getResolution());
+        beforeMapInstance.value.updateSize();
+        afterMapInstance.value.updateSize();
       });
     };
 
@@ -339,8 +332,11 @@ export default {
     };
 
     onMounted(async () => {
+      console.log('Component mounted');
       await loadDeforestationMaps();
-      initializeMaps();
+      setTimeout(() => {
+        initializeMaps();
+      }, 100);
     });
 
     onUnmounted(() => {
@@ -379,13 +375,13 @@ export default {
   flex: 1;
   height: calc(100vh - 50px);
   padding: 16px;
-  z-index: 1000;
 }
 
 .comparison-maps {
   display: flex;
   gap: 16px;
   height: 100%;
+  width: 100%;
 }
 
 .map-container {
@@ -394,11 +390,15 @@ export default {
   border: 1px solid #ddd;
   border-radius: 8px;
   overflow: hidden;
+  min-height: 500px;
 }
 
 .comparison-map {
   width: 100%;
   height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .map-label {
@@ -409,5 +409,6 @@ export default {
   padding: 4px 8px;
   border-radius: 4px;
   font-weight: bold;
+  z-index: 1;
 }
 </style> 
