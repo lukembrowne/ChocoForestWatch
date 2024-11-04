@@ -23,7 +23,10 @@
                 v-for="(hotspot, index) in hotspots"
                 :key="index"
                 :class="{
-                  'selected-hotspot': selectedHotspot === hotspot
+                  'selected-hotspot': selectedHotspot === hotspot,
+                  'verified-hotspot': hotspot.properties.verification_status === 'verified',
+                  'rejected-hotspot': hotspot.properties.verification_status === 'rejected',
+                  'unsure-hotspot': hotspot.properties.verification_status === 'unsure'
                 }"
                 clickable
                 v-ripple
@@ -47,7 +50,17 @@
                     Area: {{ hotspot.properties.area_ha.toFixed(2) }} ha
                   </q-item-label>
                   <q-item-label caption>
-                    Status: {{ hotspot.properties.verification_status || 'Unverified' }}
+                    Edge Density: {{ hotspot.properties.edge_density.toFixed(3) }}
+                  </q-item-label>
+                  <q-item-label caption>
+                    Status: 
+                    <span :class="{
+                      'text-positive': hotspot.properties.verification_status === 'verified',
+                      'text-negative': hotspot.properties.verification_status === 'rejected',
+                      'text-warning': hotspot.properties.verification_status === 'unsure'
+                    }">
+                      {{ hotspot.properties.verification_status || 'Unverified' }}
+                    </span>
                   </q-item-label>
                 </q-item-section>
                 
@@ -318,20 +331,42 @@ export default {
         features: hotspots.value
       };
 
-      // Update styles to only show outlines
-      const normalStyle = new Style({
-        stroke: new Stroke({
-          color: '#FF4444',
-          width: 1
-        })
-      });
+      // Create styles based on verification status
+      const getHotspotStyle = (feature) => {
+        const status = feature.get('verification_status');
+        const isSelected = selectedHotspot.value && 
+                          selectedHotspot.value.properties.id === feature.get('id');
+        
+        let color, width;
+        
+        if (isSelected) {
+          color = '#FFFF00';  // Yellow for selected
+          width = 3;
+        } else {
+          switch(status) {
+            case 'verified':
+              color = '#4CAF50';  // Green for verified
+              break;
+            case 'rejected':
+              color = '#F44336';  // Red for rejected
+              break;
+            case 'unsure':
+              color = '#FFA726';  // Orange for unsure
+              break;
+            default:
+              color = '#FF4444';  // Default red
+          }
+          width = 2;
+        }
 
-      const selectedStyle = new Style({
-        stroke: new Stroke({
-          color: '#FFFF00',
-          width: 1,
-        })
-      });
+        return new Style({
+          stroke: new Stroke({
+            color: color,
+            width: width,
+            lineDash: isSelected ? [10, 10] : undefined
+          })
+        });
+      };
 
       // Create vector sources
       const beforeSource = new VectorSource({
@@ -346,24 +381,14 @@ export default {
       hotspotLayers.value = {
         before: new VectorLayer({
           source: beforeSource,
-          style: (feature) => {
-            const featureId = feature.get('id'); // Get ID from properties
-            const isSelected = selectedHotspot.value && 
-                              selectedHotspot.value.properties.id === featureId;
-            return isSelected ? selectedStyle : normalStyle;
-          },
+          style: getHotspotStyle,
           title: 'hotspots-before',
           id: 'hotspots-before',
           zIndex: 2
         }),
         after: new VectorLayer({
           source: afterSource,
-          style: (feature) => {
-            const featureId = feature.get('id'); // Get ID from properties
-            const isSelected = selectedHotspot.value && 
-                              selectedHotspot.value.properties.id === featureId;
-            return isSelected ? selectedStyle : normalStyle;
-          },
+          style: getHotspotStyle,
           title: 'hotspots-after',
           id: 'hotspots-after',
           zIndex: 2
@@ -397,9 +422,18 @@ export default {
 
     const verifyHotspot = async (hotspot, status) => {
       try {
-        await api.verifyHotspot(hotspot.id, status);
+        await api.verifyHotspot(hotspot.properties.id, status);
+        
         // Update local state
         hotspot.properties.verification_status = status;
+
+        // Update the hotspot styling
+        if (hotspotLayers.value.before) {
+          hotspotLayers.value.before.changed();
+          hotspotLayers.value.after.changed();
+        }
+
+        // Show success notification
         $q.notify({
           color: 'positive',
           message: 'Hotspot verification updated',
@@ -514,5 +548,18 @@ export default {
     background: #f5f5f5 !important;
     border-left-color: #e0e0e0;
   }
+}
+
+// Add status-specific styling
+.verified-hotspot {
+  border-left-color: #4CAF50 !important;
+}
+
+.rejected-hotspot {
+  border-left-color: #F44336 !important;
+}
+
+.unsure-hotspot {
+  border-left-color: #FFA726 !important;
 }
 </style> 

@@ -200,4 +200,11 @@ export default {
     }
   },
 
+  async verifyHotspot(hotspotId, status) {
+    const response = await axios.post(`/api/hotspots/${hotspotId}/verify`, {
+      status: status
+    });
+    return response.data;
+  },
+
 };
