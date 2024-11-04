@@ -216,22 +216,15 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
-  const displayAOI = (aoiGeojson) => {
-
-    if (!map.value) return;
-
-    // Remove existing AOI layer if it exists
-    if (aoiLayer.value) {
-      map.value.removeLayer(aoiLayer.value);
-    }
-
-    // Create new AOI layer
+  // Add new reusable function to create AOI layer
+  const createAOILayer = (aoiGeojson) => {
     const format = new GeoJSON();
     const feature = format.readFeature(aoiGeojson);
     const vectorSource = new VectorSource({
       features: [feature]
     });
-    aoiLayer.value = new VectorLayer({
+    
+    const aoiLayer = new VectorLayer({
       source: vectorSource,
       title: "Area of Interest",
       visible: true,
@@ -250,16 +243,32 @@ export const useMapStore = defineStore('map', () => {
       interactive: false
     });
 
+    return {
+      layer: aoiLayer,
+      source: vectorSource
+    };
+  };
+
+  // Modify existing displayAOI to use the new function
+  const displayAOI = (aoiGeojson) => {
+    if (!map.value) return;
+
+    // Remove existing AOI layer if it exists
+    if (aoiLayer.value) {
+      map.value.removeLayer(aoiLayer.value);
+    }
+
+    const { layer, source } = createAOILayer(aoiGeojson);
+    aoiLayer.value = layer;
+
     // Add new AOI layer to map
-    // map.value.addLayer(aoiLayer.value);
     map.value.getLayers().insertAt(0, aoiLayer.value);
 
     // Zoom to AOI  
-    map.value.getView().fit(vectorSource.getExtent(), { padding: [50, 50, 50, 50] });
+    map.value.getView().fit(source.getExtent(), { padding: [50, 50, 50, 50] });
 
     // Reinitialize interactions so that the AOI layer is not selectable
     initInteractions();
-
   };
 
   const clearAOI = () => {
@@ -1169,7 +1178,8 @@ export const useMapStore = defineStore('map', () => {
     fitBounds,
     addGeoJSON,
     createPlanetBasemap,
+    createAOILayer,
     // Getters
-    getMap
+    getMap,
   };
 });

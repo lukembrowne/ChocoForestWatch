@@ -237,20 +237,16 @@ export default {
     const updateComparisonMaps = async (deforestationMap) => {
       if (!beforeMapInstance.value || !afterMapInstance.value) return;
 
-      // Clear existing layers except base layer
+      // Clear existing layers
       beforeMapInstance.value.getLayers().forEach(layer => {
-        if (layer.get('name') !== 'baseMap') {
-          beforeMapInstance.value.removeLayer(layer);
-        }
+        beforeMapInstance.value.removeLayer(layer);
       });
       
       afterMapInstance.value.getLayers().forEach(layer => {
-        if (layer.get('name') !== 'baseMap') {
-          afterMapInstance.value.removeLayer(layer);
-        }
+        afterMapInstance.value.removeLayer(layer);
       });
 
-      // Create Planet basemap layers for before and after dates
+      // Add Planet basemap layers
       const beforeLayer = mapStore.createPlanetBasemap(deforestationMap.summary_statistics.prediction1_date);
       const afterLayer = mapStore.createPlanetBasemap(deforestationMap.summary_statistics.prediction2_date);
 
@@ -258,7 +254,24 @@ export default {
         beforeMapInstance.value.addLayer(beforeLayer);
         afterMapInstance.value.addLayer(afterLayer);
 
-        // Update labels to show dates
+        // Add AOI layers if project has AOI
+        if (projectStore.currentProject?.aoi) {
+          const { layer: beforeAOILayer, source: beforeAOISource } = mapStore.createAOILayer(
+            projectStore.currentProject.aoi
+          );
+          const { layer: afterAOILayer } = mapStore.createAOILayer(
+            projectStore.currentProject.aoi
+          );
+
+          beforeMapInstance.value.addLayer(beforeAOILayer);
+          afterMapInstance.value.addLayer(afterAOILayer);
+
+          // Fit to AOI extent
+          const extent = beforeAOISource.getExtent();
+          beforeMapInstance.value.getView().fit(extent, { padding: [50, 50, 50, 50] });
+        }
+
+        // Update labels
         const beforeLabel = document.querySelector('.map-container:first-child .map-label');
         const afterLabel = document.querySelector('.map-container:last-child .map-label');
         
@@ -266,15 +279,6 @@ export default {
           beforeLabel.textContent = `Before (${deforestationMap.summary_statistics.prediction1_date})`;
           afterLabel.textContent = `After (${deforestationMap.summary_statistics.prediction2_date})`;
         }
-
-        // If we have an AOI, fit to it
-        // if (projectStore.currentProject?.aoi) {
-        //   const aoi = new GeoJSON().readFeature(projectStore.currentProject.aoi, {
-        //     featureProjection: beforeMapInstance.value.getView().getProjection()
-        //   });
-        //   const extent = aoi.getGeometry().getExtent();
-        //   beforeMapInstance.value.getView().fit(extent, { padding: [50, 50, 50, 50] });
-        // }
       } else {
         console.error('Failed to create Planet basemap layers');
         $q.notify({
