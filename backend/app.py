@@ -57,7 +57,7 @@ import shapely.ops
 from shapely.geometry import shape, mapping
 # import geopandas as gpd
 import math
-
+from flask_cors import cross_origin
 
 
 # Load environment variables from the .env file
@@ -1940,6 +1940,47 @@ def update_training_set_excluded(project_id, set_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+    
+
+@app.route('/api/hotspots/<int:hotspot_id>/verify', methods=['PUT', 'OPTIONS'])
+@cross_origin()
+def verify_hotspot(hotspot_id):
+    print(f"=== VERIFY HOTSPOT ENDPOINT ===")
+    print(f"Method: {request.method}")
+    print(f"Hotspot ID: {hotspot_id}")
+    print(f"Request JSON: {request.json}")
+    print(f"Headers: {dict(request.headers)}")
+    
+    if request.method == 'OPTIONS':
+        return '', 200
+        
+    try:
+        status = request.json.get('status')
+        print(f"Processing status: {status}")
+        
+        if status not in ['verified', 'rejected', 'unsure']:
+            print(f"Invalid status: {status}")
+            return jsonify({"error": "Invalid status"}), 400
+            
+        hotspot = DeforestationHotspot.query.get_or_404(hotspot_id)
+        print(f"Found hotspot: {hotspot.id}")
+        
+        hotspot.verification_status = status
+        db.session.commit()
+        print("Successfully updated hotspot")
+        
+        return jsonify({"message": "Hotspot verification updated"})
+    except Exception as e:
+        print(f"Error in verify_hotspot: {str(e)}")
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+# Add this right after your route definition
+print("=== DEBUG ===")
+print("All registered routes:")
+for rule in app.url_map.iter_rules():
+    print(f"{rule.endpoint}: {rule.methods} {rule}")
+print("============")
 
 @app.route('/api/analysis/deforestation_hotspots/<int:prediction_id>', methods=['GET'])
 def get_deforestation_hotspots(prediction_id):
@@ -2060,28 +2101,15 @@ def get_deforestation_hotspots(prediction_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/hotspots/<int:hotspot_id>/verify', methods=['POST'])
-def verify_hotspot(hotspot_id):
-    try:
-        status = request.json.get('status')
-        if status not in ['verified', 'rejected', 'unsure']:
-            return jsonify({"error": "Invalid status"}), 400
-            
-        hotspot = DeforestationHotspot.query.get_or_404(hotspot_id)
-        hotspot.verification_status = status
-        db.session.commit()
-        
-        return jsonify({"message": "Hotspot verification updated"})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-
 
 
 
 if __name__ == '__main__':
     logger.info("Starting Flask application")
+
+    print("Registered routes:")
+    for rule in app.url_map.iter_rules():
+        print(f"{rule.endpoint}: {rule.methods} {rule}")
     app.run(debug=True)
 
 
