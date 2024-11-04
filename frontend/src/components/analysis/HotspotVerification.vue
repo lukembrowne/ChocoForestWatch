@@ -108,6 +108,10 @@ import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import { GeoJSON } from 'ol/format';
 import { Style, Fill, Stroke } from 'ol/style';
+import OSM from 'ol/source/OSM'
+import { fromLonLat, toLonLat } from 'ol/proj';
+
+
 
 export default {
   name: 'HotspotVerification',
@@ -135,17 +139,20 @@ export default {
       const createMap = (target) => new Map({
         target,
         layers: [
-          // We'll use the same base layer as the main map
-          // You might want to adjust this based on your needs
-          new TileLayer({
-            source: mapStore.baseLayer.getSource()
-          })
-        ],
-        view: new View({
-          center: [0, 0],
-          zoom: 12
+        new TileLayer({
+          source: new OSM(),
+          name: 'baseMap',
+          title: 'OpenStreetMap',
+          visible: true,
+          id: 'osm',
+          zIndex: 0
         })
-      });
+      ],
+      view: new View({
+        center: fromLonLat([-79.81822466589962, 0.460628082970743]),
+        zoom: 12
+      })
+    });
 
       beforeMapInstance.value = createMap(beforeMap.value);
       afterMapInstance.value = createMap(afterMap.value);
@@ -188,7 +195,7 @@ export default {
       try {
         const response = await api.getDeforestationHotspots(
           selectedDeforestationMap.value.id,
-          1.0 // minimum area in hectares
+          50.0 // minimum area in hectares
         );
         hotspots.value = response.features;
       } catch (error) {
@@ -210,13 +217,6 @@ export default {
         afterMapInstance.value.removeLayer(hotspotLayers.value.after);
       }
 
-      // Create new vector layers for the hotspot
-      const vectorSource = new VectorSource({
-        features: new GeoJSON().readFeatures(hotspot, {
-          featureProjection: beforeMapInstance.value.getView().getProjection()
-        })
-      });
-
       const style = new Style({
         fill: new Fill({
           color: 'rgba(255, 0, 0, 0.2)'
@@ -227,17 +227,30 @@ export default {
         })
       });
 
-      // Add hotspot overlay to both maps
+      // Create separate vector sources for each map
+      const beforeVectorSource = new VectorSource({
+        features: new GeoJSON().readFeatures(hotspot, {
+          featureProjection: beforeMapInstance.value.getView().getProjection()
+        })
+      });
+
+      const afterVectorSource = new VectorSource({
+        features: new GeoJSON().readFeatures(hotspot, {
+          featureProjection: afterMapInstance.value.getView().getProjection()
+        })
+      });
+
+      // Create separate vector layers for each map
       hotspotLayers.value = {
-        before: new VectorLayer({ source: vectorSource.clone(), style }),
-        after: new VectorLayer({ source: vectorSource.clone(), style })
+        before: new VectorLayer({ source: beforeVectorSource, style }),
+        after: new VectorLayer({ source: afterVectorSource, style })
       };
 
       beforeMapInstance.value.addLayer(hotspotLayers.value.before);
       afterMapInstance.value.addLayer(hotspotLayers.value.after);
 
       // Fit maps to hotspot extent
-      const extent = vectorSource.getExtent();
+      const extent = beforeVectorSource.getExtent();
       beforeMapInstance.value.getView().fit(extent, { padding: [50, 50, 50, 50] });
     };
 
@@ -302,6 +315,7 @@ export default {
   flex: 1;
   height: calc(100vh - 50px);
   padding: 16px;
+  z-index: 1000;
 }
 
 .comparison-maps {

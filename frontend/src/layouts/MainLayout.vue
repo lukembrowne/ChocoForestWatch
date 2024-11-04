@@ -14,15 +14,15 @@
 
     <q-page-container>
       <q-page class="relative-position">
-        <div id="map" class="map-container"></div>
-        <custom-layer-switcher />
+        <div id="map" class="map-container" v-if="!showHotspotVerification"></div>
+        <custom-layer-switcher v-if="!showHotspotVerification" />
         <AOIFloatingCard v-if="showAOICard" v-on:aoiSaved="handleAOISaved" />
         <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
         <LandCoverAnalysis v-if="showLandCoverAnalysis" />
         <DeforestationAnalysis v-if="showDeforestationAnalysis" />
         <HotspotVerification v-if="showHotspotVerification" />
         <!-- Dont show map date slider when AOI is being created -->
-        <BasemapDateSlider v-if="!showAOICard"/>
+        <BasemapDateSlider v-if="!showAOICard & !showHotspotVerification"/>
       </q-page>
     </q-page-container>
   </q-layout>
