@@ -161,8 +161,37 @@ export default {
         beforeMapInstance.value = createMap(beforeMap.value);
         afterMapInstance.value = createMap(afterMap.value);
 
+        // Force a redraw
         beforeMapInstance.value.updateSize();
         afterMapInstance.value.updateSize();
+
+        // Sync map movements
+        const beforeView = beforeMapInstance.value.getView();
+        const afterView = afterMapInstance.value.getView();
+
+        // Sync center changes
+        beforeView.on('change:center', () => {
+          afterView.setCenter(beforeView.getCenter());
+        });
+        afterView.on('change:center', () => {
+          beforeView.setCenter(afterView.getCenter());
+        });
+
+        // Sync zoom changes
+        beforeView.on('change:resolution', () => {
+          afterView.setResolution(beforeView.getResolution());
+        });
+        afterView.on('change:resolution', () => {
+          beforeView.setResolution(afterView.getResolution());
+        });
+
+        // Sync rotation changes
+        beforeView.on('change:rotation', () => {
+          afterView.setRotation(beforeView.getRotation());
+        });
+        afterView.on('change:rotation', () => {
+          beforeView.setRotation(afterView.getRotation());
+        });
       });
     };
 
