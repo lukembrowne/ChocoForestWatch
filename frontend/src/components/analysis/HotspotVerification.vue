@@ -80,7 +80,7 @@
     </div>
 
     <!-- Right Panel - Side by Side Comparison -->
-    <div class="comparison-container" v-if="selectedHotspot">
+    <div class="comparison-container" v-if="selectedDeforestationMap">
       <div class="comparison-maps">
         <div class="map-container">
           <div ref="beforeMap" class="comparison-map"></div>
@@ -193,11 +193,15 @@ export default {
       if (!selectedDeforestationMap.value) return;
 
       try {
+        // Load hotspots
         const response = await api.getDeforestationHotspots(
           selectedDeforestationMap.value.id,
           50.0 // minimum area in hectares
         );
         hotspots.value = response.features;
+
+        // Update the before/after maps with appropriate imagery
+        updateComparisonMaps(selectedDeforestationMap.value);
       } catch (error) {
         console.error('Error loading hotspots:', error);
         $q.notify({
@@ -206,6 +210,66 @@ export default {
           icon: 'error'
         });
       }
+    };
+
+    const updateComparisonMaps = async (deforestationMap) => {
+      if (!beforeMapInstance.value || !afterMapInstance.value) return;
+
+      // Clear existing layers except base layer
+      beforeMapInstance.value.getLayers().forEach(layer => {
+        if (layer.get('name') !== 'baseMap') {
+          beforeMapInstance.value.removeLayer(layer);
+        }
+      });
+      
+      afterMapInstance.value.getLayers().forEach(layer => {
+        if (layer.get('name') !== 'baseMap') {
+          afterMapInstance.value.removeLayer(layer);
+        }
+      });
+
+      // Add imagery layers for before and after dates
+    //   const beforeLayer = new TileLayer({
+    //     source: mapStore.createPlanetaryComputerSource(deforestationMap.start_date),
+    //     name: 'beforeImagery',
+    //     zIndex: 1
+    //   });
+
+    //   const afterLayer = new TileLayer({
+    //     source: mapStore.createPlanetaryComputerSource(deforestationMap.end_date),
+    //     name: 'afterImagery',
+    //     zIndex: 1
+    //   });
+
+    const beforeLayer = new TileLayer({
+        source: new OSM(),
+          name: 'baseMap',
+          title: 'OpenStreetMap',
+          visible: true,
+          id: 'osm',
+          zIndex: 0
+        });
+
+      const afterLayer = new TileLayer({
+        source: new OSM(),
+          name: 'baseMap',
+          title: 'OpenStreetMap',
+          visible: true,
+          id: 'osm',
+          zIndex: 0
+        });
+
+      beforeMapInstance.value.addLayer(beforeLayer);
+      afterMapInstance.value.addLayer(afterLayer);
+
+      // If we have an AOI, fit to it
+    //   if (projectStore.currentProject?.aoi) {
+    //     const aoi = new GeoJSON().readFeature(projectStore.currentProject.aoi, {
+    //       featureProjection: beforeMapInstance.value.getView().getProjection()
+    //     });
+    //     const extent = aoi.getGeometry().getExtent();
+    //     beforeMapInstance.value.getView().fit(extent, { padding: [50, 50, 50, 50] });
+    //   }
     };
 
     const selectHotspot = (hotspot) => {
