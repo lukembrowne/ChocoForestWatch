@@ -333,14 +333,18 @@ export default {
         features: new GeoJSON().readFeatures(hotspotsGeoJSON)
       });
 
+      // Add debug logging
+      console.log('Selected hotspot:', selectedHotspot.value);
+
       // Create vector layers
       hotspotLayers.value = {
         before: new VectorLayer({
           source: beforeSource,
           style: (feature) => {
-            return selectedHotspot.value && 
-                   feature.get('id') === selectedHotspot.value.properties.id ? 
-                   selectedStyle : normalStyle;
+            const featureId = feature.get('id'); // Get ID from properties
+            const isSelected = selectedHotspot.value && 
+                              selectedHotspot.value.properties.id === featureId;
+            return isSelected ? selectedStyle : normalStyle;
           },
           title: 'hotspots-before',
           id: 'hotspots-before',
@@ -349,9 +353,10 @@ export default {
         after: new VectorLayer({
           source: afterSource,
           style: (feature) => {
-            return selectedHotspot.value && 
-                   feature.get('id') === selectedHotspot.value.properties.id ? 
-                   selectedStyle : normalStyle;
+            const featureId = feature.get('id'); // Get ID from properties
+            const isSelected = selectedHotspot.value && 
+                              selectedHotspot.value.properties.id === featureId;
+            return isSelected ? selectedStyle : normalStyle;
           },
           title: 'hotspots-after',
           id: 'hotspots-after',
@@ -368,6 +373,7 @@ export default {
     };
 
     const selectHotspot = (hotspot) => {
+      console.log('Selecting hotspot:', hotspot);
       selectedHotspot.value = hotspot;
 
       // Refresh the layer styles to highlight the selected hotspot
@@ -376,14 +382,11 @@ export default {
         hotspotLayers.value.after.changed();
       }
 
-      // Fit maps to selected hotspot extent
-      const extent = new GeoJSON().readFeature(hotspot, {
-        featureProjection: beforeMapInstance.value.getView().getProjection()
-      }).getGeometry().getExtent();
-      
+      // Re-enable the fit to extent code
+      const extent = new GeoJSON().readFeature(hotspot).getGeometry().getExtent();
       beforeMapInstance.value.getView().fit(extent, { 
         padding: [50, 50, 50, 50],
-        duration: 1000 // Smooth animation
+        duration: 1000
       });
     };
 
