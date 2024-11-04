@@ -20,6 +20,7 @@
         <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
         <LandCoverAnalysis v-if="showLandCoverAnalysis" />
         <DeforestationAnalysis v-if="showDeforestationAnalysis" />
+        <HotspotVerification v-if="showHotspotVerification" />
         <!-- Dont show map date slider when AOI is being created -->
         <BasemapDateSlider v-if="!showAOICard"/>
       </q-page>
@@ -39,6 +40,7 @@ import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
 import BasemapDateSlider from 'components/BasemapDateSlider.vue'
 import LandCoverAnalysis from 'components/analysis/LandCoverAnalysis.vue'
 import DeforestationAnalysis from 'components/analysis/DeforestationAnalysis.vue'
+import HotspotVerification from 'components/analysis/HotspotVerification.vue'
 
 
 export default {
@@ -49,7 +51,8 @@ export default {
     AOIFloatingCard,
     BasemapDateSlider,
     LandCoverAnalysis,
-    DeforestationAnalysis
+    DeforestationAnalysis,
+    HotspotVerification
   },
   setup() {
     const $q = useQuasar()
@@ -61,11 +64,13 @@ export default {
     const showTrainingAndPolygonManager = ref(false)
     const showLandCoverAnalysis = ref(false)
     const showDeforestationAnalysis = ref(false)
+    const showHotspotVerification = ref(false)
     const sections = [
       { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
       { name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager, tooltip: 'Train Model' },
       { name: 'Land Cover', icon: 'analytics', component: LandCoverAnalysis, tooltip: 'Predict and analyze land cover' },
-      { name: 'Deforestation', icon: 'forest', component: DeforestationAnalysis, tooltip: 'Analyze deforestation' }
+      { name: 'Deforestation', icon: 'forest', component: DeforestationAnalysis, tooltip: 'Analyze deforestation' },
+      { name: 'Verify Hotspots', icon: 'fact_check', component: HotspotVerification, tooltip: 'Verify deforestation hotspots' }
     ]
 
     const sidebarWidth = computed(() => isExpanded.value ? 300 : 60)
@@ -129,6 +134,12 @@ export default {
         showDeforestationAnalysis.value = true
       } else {
         showDeforestationAnalysis.value = false
+      }
+
+      if (section.name === 'Verify Hotspots') {
+        showHotspotVerification.value = true
+      } else {
+        showHotspotVerification.value = false
       }
     }
 
@@ -206,7 +217,8 @@ export default {
       handleSectionClick,
       handleAOISaved,
       showLandCoverAnalysis,
-      showDeforestationAnalysis
+      showDeforestationAnalysis,
+      showHotspotVerification
     }
   }
 }
