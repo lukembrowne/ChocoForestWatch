@@ -22,13 +22,27 @@
               <q-item
                 v-for="(hotspot, index) in hotspots"
                 :key="index"
-                :class="{ 'bg-grey-2': selectedHotspot === hotspot }"
+                :class="{
+                  'selected-hotspot': selectedHotspot === hotspot
+                }"
                 clickable
                 v-ripple
                 @click="selectHotspot(hotspot)"
               >
                 <q-item-section>
-                  <q-item-label>Hotspot #{{ index + 1 }}</q-item-label>
+                  <q-item-label>
+                    <span :class="{ 'text-weight-bold': selectedHotspot === hotspot }">
+                      Hotspot #{{ index + 1 }}
+                    </span>
+                    <!-- Add a visual indicator for selected hotspot -->
+                    <q-icon
+                      v-if="selectedHotspot === hotspot"
+                      name="location_on"
+                      color="yellow-8"
+                      size="sm"
+                      class="q-ml-sm"
+                    />
+                  </q-item-label>
                   <q-item-label caption>
                     Area: {{ hotspot.properties.area_ha.toFixed(2) }} ha
                   </q-item-label>
@@ -269,6 +283,7 @@ export default {
 
           // Fit to AOI extent
           const extent = beforeAOISource.getExtent();
+          console.log('Fitting to AOI extent:', extent);
           beforeMapInstance.value.getView().fit(extent, { padding: [50, 50, 50, 50] });
         }
 
@@ -303,24 +318,18 @@ export default {
         features: hotspots.value
       };
 
-      // Create styles
+      // Update styles to only show outlines
       const normalStyle = new Style({
-        fill: new Fill({
-          color: 'rgba(255, 68, 68, 0.2)'
-        }),
         stroke: new Stroke({
           color: '#FF4444',
-          width: 2
+          width: 1
         })
       });
 
       const selectedStyle = new Style({
-        fill: new Fill({
-          color: 'rgba(255, 255, 0, 0.3)'
-        }),
         stroke: new Stroke({
           color: '#FFFF00',
-          width: 3
+          width: 1,
         })
       });
 
@@ -328,13 +337,10 @@ export default {
       const beforeSource = new VectorSource({
         features: new GeoJSON().readFeatures(hotspotsGeoJSON)
       });
-
+ 
       const afterSource = new VectorSource({
         features: new GeoJSON().readFeatures(hotspotsGeoJSON)
       });
-
-      // Add debug logging
-      console.log('Selected hotspot:', selectedHotspot.value);
 
       // Create vector layers
       hotspotLayers.value = {
@@ -376,18 +382,17 @@ export default {
       console.log('Selecting hotspot:', hotspot);
       selectedHotspot.value = hotspot;
 
-      // Refresh the layer styles to highlight the selected hotspot
+      // Refresh the layer styles
       if (hotspotLayers.value.before) {
         hotspotLayers.value.before.changed();
         hotspotLayers.value.after.changed();
       }
 
-      // Re-enable the fit to extent code
+      // Fit to extent with closer zoom
       const extent = new GeoJSON().readFeature(hotspot).getGeometry().getExtent();
-      beforeMapInstance.value.getView().fit(extent, { 
-        padding: [50, 50, 50, 50],
-        duration: 1000
-      });
+      console.log('Fitting to extent:', extent);
+      
+      beforeMapInstance.value.getView().fit(extent, { padding: [50, 50, 50, 50] });
     };
 
     const verifyHotspot = async (hotspot, status) => {
@@ -489,5 +494,25 @@ export default {
   border-radius: 4px;
   font-weight: bold;
   z-index: 1;
+}
+
+.selected-hotspot {
+  background: #FFF9C4 !important;  // Light yellow background
+  border-left: 4px solid #FBC02D;  // Yellow accent border
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: #FFF59D !important;
+  }
+}
+
+// Optional: Add hover effect for non-selected items
+.q-item {
+  border-left: 4px solid transparent;
+  
+  &:hover:not(.selected-hotspot) {
+    background: #f5f5f5 !important;
+    border-left-color: #e0e0e0;
+  }
 }
 </style> 
