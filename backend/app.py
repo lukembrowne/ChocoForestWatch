@@ -1954,7 +1954,7 @@ def get_deforestation_hotspots(prediction_id):
             
             # Convert to GeoJSON features with properties
             hotspots = []
-            for geom, value in shapes:
+            for idx, (geom, value) in enumerate(shapes):
                 if value == 1:  # Only process deforested areas
                     polygon = shape(geom)
                     area_ha = polygon.area * pixel_area_ha
@@ -1962,11 +1962,14 @@ def get_deforestation_hotspots(prediction_id):
                     if area_ha >= min_area_ha:
                         feature = {
                             "type": "Feature",
+                            "id": f"{prediction_id}_{idx}",  # Add unique ID
                             "geometry": mapping(polygon),
                             "properties": {
+                                "id": f"{prediction_id}_{idx}",  # Also add ID to properties
                                 "area_ha": round(area_ha, 2),
                                 "perimeter_m": round(polygon.length, 2),
-                                "compactness": round(4 * math.pi * polygon.area / (polygon.length ** 2), 3)
+                                "compactness": round(4 * math.pi * polygon.area / (polygon.length ** 2), 3),
+                                "verification_status": None  # Add verification status field
                             }
                         }
                         hotspots.append(feature)
@@ -1980,7 +1983,8 @@ def get_deforestation_hotspots(prediction_id):
                 "metadata": {
                     "total_hotspots": len(hotspots),
                     "min_area_ha": min_area_ha,
-                    "total_area_ha": sum(h["properties"]["area_ha"] for h in hotspots)
+                    "total_area_ha": sum(h["properties"]["area_ha"] for h in hotspots),
+                    "prediction_id": prediction_id
                 }
             })
             
