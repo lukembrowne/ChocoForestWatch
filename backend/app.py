@@ -1988,13 +1988,14 @@ def get_deforestation_hotspots(prediction_id):
         prediction = Prediction.query.get_or_404(prediction_id)
 
         min_area_ha = float(request.args.get('min_area_ha', 1.0))  # Default 1 hectare
-        
+
         # Check if hotspots already exist for this prediction
         existing_hotspots = DeforestationHotspot.query.filter_by(prediction_id=prediction_id).all()
         
         features_list = []
         
         if existing_hotspots:
+
             # Convert existing hotspots to GeoJSON
             for hotspot in existing_hotspots:
                 feature = {
@@ -2039,42 +2040,41 @@ def get_deforestation_hotspots(prediction_id):
                         area_ha = float(polygon.area * pixel_area_ha)
                         perimeter_m = float(polygon.length)
                         
-                        if area_ha >= min_area_ha:
-                            # Calculate centroid
-                            centroid = polygon.centroid
-                            # Calculate edge density
-                            edge_density = float(perimeter_m / (area_ha * 10000))  # m/m²
-                            compactness = float(4 * math.pi * polygon.area / (perimeter_m ** 2))  # Convert to float
-                            # Store geometry as GeoJSON
-                            geojson_geometry = mapping(polygon)
-                            
-                            # Create database record
-                            hotspot = DeforestationHotspot(
-                                prediction_id=prediction_id,
-                                geometry=geojson_geometry,
-                                area_ha=area_ha,
-                                perimeter_m=perimeter_m,
-                                compactness=compactness,
-                                edge_density=edge_density,
-                                centroid_lon=float(centroid.x),
-                                centroid_lat=float(centroid.y)
-                            )
-                            db.session.add(hotspot)
-                            
-                            # Create GeoJSON feature
-                            feature = {
-                                "type": "Feature",
-                                "id": str(hotspot.id),
-                                "geometry": geojson_geometry,
-                                "properties": {
-                                    "area_ha": round(area_ha, 2),
-                                    "perimeter_m": round(perimeter_m, 2),
-                                    "compactness": round(hotspot.compactness, 3),
-                                    "edge_density": round(edge_density, 3),
-                                    "verification_status": None
-                                }
+                        # Calculate centroid
+                        centroid = polygon.centroid
+                        # Calculate edge density
+                        edge_density = float(perimeter_m / (area_ha * 10000))  # m/m²
+                        compactness = float(4 * math.pi * polygon.area / (perimeter_m ** 2))  # Convert to float
+                        # Store geometry as GeoJSON
+                        geojson_geometry = mapping(polygon)
+                        
+                        # Create database record
+                        hotspot = DeforestationHotspot(
+                            prediction_id=prediction_id,
+                            geometry=geojson_geometry,
+                            area_ha=area_ha,
+                            perimeter_m=perimeter_m,
+                            compactness=compactness,
+                            edge_density=edge_density,
+                            centroid_lon=float(centroid.x),
+                            centroid_lat=float(centroid.y)
+                        )
+                        db.session.add(hotspot)
+                        
+                        # Create GeoJSON feature
+                        feature = {
+                            "type": "Feature",
+                            "id": str(hotspot.id),
+                            "geometry": geojson_geometry,
+                            "properties": {
+                                "area_ha": round(area_ha, 2),
+                                "perimeter_m": round(perimeter_m, 2),
+                                "compactness": round(hotspot.compactness, 3),
+                                "edge_density": round(edge_density, 3),
+                                "verification_status": None
                             }
-                            features_list.append(feature)
+                        }
+                        features_list.append(feature)
                 
                 db.session.commit()
 
@@ -2082,6 +2082,9 @@ def get_deforestation_hotspots(prediction_id):
                 for idx, feature in enumerate(features_list):
                     feature["id"] = str(hotspot.id)
                     feature["properties"]["id"] = str(hotspot.id)
+        
+        # Filter hotspots by minimum area
+        features_list = [f for f in features_list if f["properties"]["area_ha"] >= min_area_ha]
         
         # Sort features by area
         features_list.sort(key=lambda x: x["properties"]["area_ha"], reverse=True)

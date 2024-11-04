@@ -15,6 +15,31 @@
             @update:model-value="loadHotspots"
           />
 
+          <!-- Add minimum area control -->
+          <q-input
+            v-model.number="minAreaHa"
+            type="number"
+            label="Minimum Area (ha)"
+            class="q-mb-md"
+            :rules="[
+              val => val >= 0 || 'Area must be positive',
+              val => val <= 1000 || 'Area must be less than 1000 ha'
+            ]"
+          >
+            <template v-slot:append>
+              <q-btn
+                flat
+                round
+                dense
+                icon="refresh"
+                @click="loadHotspots"
+                :disable="!selectedDeforestationMap"
+              >
+                <q-tooltip>Refresh hotspots</q-tooltip>
+              </q-btn>
+            </template>
+          </q-input>
+
           <!-- Hotspots List -->
           <q-scroll-area v-if="hotspots.length" style="height: calc(100vh - 250px)">
             <q-list separator>
@@ -148,6 +173,7 @@ export default {
     const hotspots = ref([]);
     const selectedHotspot = ref(null);
     const hotspotLayers = ref({ before: null, after: null });
+    const minAreaHa = ref(10); // Default 10 ha
 
     // Initialize the comparison maps
     const initializeMaps = () => {
@@ -233,7 +259,7 @@ export default {
         // Load hotspots
         const response = await api.getDeforestationHotspots(
           selectedDeforestationMap.value.id,
-          50.0 // minimum area in hectares
+          minAreaHa.value
         );
         hotspots.value = response.features;
 
@@ -528,7 +554,8 @@ export default {
       selectedHotspot,
       loadHotspots,
       selectHotspot,
-      verifyHotspot
+      verifyHotspot,
+      minAreaHa,
     };
   }
 };
