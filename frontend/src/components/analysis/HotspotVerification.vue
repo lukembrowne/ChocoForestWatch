@@ -5,7 +5,6 @@
       <q-card class="hotspot-list-card">
         <q-card-section>
           <div class="text-subtitle1 q-mb-sm">Deforestation Hotspots</div>
-          
           <!-- Deforestation Map Selection -->
           <q-select
             v-model="selectedDeforestationMap"
@@ -449,17 +448,80 @@ export default {
       }
     };
 
+    const setupKeyboardShortcuts = () => {
+      const handleKeyPress = (event) => {
+        // Only process if we have hotspots
+        if (!hotspots.value.length) return;
+
+        switch (event.key) {
+          case 'ArrowUp':
+            event.preventDefault();
+            navigateHotspots('up');
+            break;
+          case 'ArrowDown':
+            event.preventDefault();
+            navigateHotspots('down');
+            break;
+          case '1':
+            if (selectedHotspot.value) {
+              verifyHotspot(selectedHotspot.value, 'verified');
+            }
+            break;
+          case '2':
+            if (selectedHotspot.value) {
+              verifyHotspot(selectedHotspot.value, 'unsure');
+            }
+            break;
+          case '3':
+            if (selectedHotspot.value) {
+              verifyHotspot(selectedHotspot.value, 'rejected');
+            }
+            break;
+        }
+      };
+
+      // Add keyboard listener
+      window.addEventListener('keydown', handleKeyPress);
+
+      // Return cleanup function
+      return () => {
+        window.removeEventListener('keydown', handleKeyPress);
+      };
+    };
+
+    const navigateHotspots = (direction) => {
+      if (!hotspots.value.length) return;
+
+      const currentIndex = selectedHotspot.value 
+        ? hotspots.value.findIndex(h => h === selectedHotspot.value)
+        : -1;
+
+      let newIndex;
+      if (direction === 'up') {
+        newIndex = currentIndex <= 0 ? hotspots.value.length - 1 : currentIndex - 1;
+      } else {
+        newIndex = currentIndex >= hotspots.value.length - 1 ? 0 : currentIndex + 1;
+      }
+
+      selectHotspot(hotspots.value[newIndex]);
+    };
+
     onMounted(async () => {
       console.log('Component mounted');
       await loadDeforestationMaps();
       setTimeout(() => {
         initializeMaps();
       }, 100);
-    });
-
-    onUnmounted(() => {
-      if (beforeMapInstance.value) beforeMapInstance.value.setTarget(null);
-      if (afterMapInstance.value) afterMapInstance.value.setTarget(null);
+      
+      // Setup keyboard shortcuts
+      const cleanup = setupKeyboardShortcuts();
+      
+      // Clean up keyboard shortcuts on unmount
+      onUnmounted(() => {
+        cleanup();
+        if (beforeMapInstance.value) beforeMapInstance.value.setTarget(null);
+        if (afterMapInstance.value) afterMapInstance.value.setTarget(null);
+      });
     });
 
     return {
