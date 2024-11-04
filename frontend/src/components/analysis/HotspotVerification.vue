@@ -250,48 +250,39 @@ export default {
         }
       });
 
-      // Add imagery layers for before and after dates
-    //   const beforeLayer = new TileLayer({
-    //     source: mapStore.createPlanetaryComputerSource(deforestationMap.start_date),
-    //     name: 'beforeImagery',
-    //     zIndex: 1
-    //   });
+      // Create Planet basemap layers for before and after dates
+      const beforeLayer = mapStore.createPlanetBasemap(deforestationMap.summary_statistics.prediction1_date);
+      const afterLayer = mapStore.createPlanetBasemap(deforestationMap.summary_statistics.prediction2_date);
 
-    //   const afterLayer = new TileLayer({
-    //     source: mapStore.createPlanetaryComputerSource(deforestationMap.end_date),
-    //     name: 'afterImagery',
-    //     zIndex: 1
-    //   });
+      if (beforeLayer && afterLayer) {
+        beforeMapInstance.value.addLayer(beforeLayer);
+        afterMapInstance.value.addLayer(afterLayer);
 
-    const beforeLayer = new TileLayer({
-        source: new OSM(),
-          name: 'baseMap',
-          title: 'OpenStreetMap',
-          visible: true,
-          id: 'osm',
-          zIndex: 0
+        // Update labels to show dates
+        const beforeLabel = document.querySelector('.map-container:first-child .map-label');
+        const afterLabel = document.querySelector('.map-container:last-child .map-label');
+        
+        if (beforeLabel && afterLabel) {
+          beforeLabel.textContent = `Before (${deforestationMap.summary_statistics.prediction1_date})`;
+          afterLabel.textContent = `After (${deforestationMap.summary_statistics.prediction2_date})`;
+        }
+
+        // If we have an AOI, fit to it
+        // if (projectStore.currentProject?.aoi) {
+        //   const aoi = new GeoJSON().readFeature(projectStore.currentProject.aoi, {
+        //     featureProjection: beforeMapInstance.value.getView().getProjection()
+        //   });
+        //   const extent = aoi.getGeometry().getExtent();
+        //   beforeMapInstance.value.getView().fit(extent, { padding: [50, 50, 50, 50] });
+        // }
+      } else {
+        console.error('Failed to create Planet basemap layers');
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to load Planet imagery',
+          icon: 'error'
         });
-
-      const afterLayer = new TileLayer({
-        source: new OSM(),
-          name: 'baseMap',
-          title: 'OpenStreetMap',
-          visible: true,
-          id: 'osm',
-          zIndex: 0
-        });
-
-      beforeMapInstance.value.addLayer(beforeLayer);
-      afterMapInstance.value.addLayer(afterLayer);
-
-      // If we have an AOI, fit to it
-    //   if (projectStore.currentProject?.aoi) {
-    //     const aoi = new GeoJSON().readFeature(projectStore.currentProject.aoi, {
-    //       featureProjection: beforeMapInstance.value.getView().getProjection()
-    //     });
-    //     const extent = aoi.getGeometry().getExtent();
-    //     beforeMapInstance.value.getView().fit(extent, { padding: [50, 50, 50, 50] });
-    //   }
+      }
     };
 
     const selectHotspot = (hotspot) => {

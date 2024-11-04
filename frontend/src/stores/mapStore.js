@@ -269,53 +269,65 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
-  const updateBasemap = (date) => {
-    isLoading.value = true;
+  
+  // Function to create a Planet Basemap layer for a given date
+  const createPlanetBasemap = (date) => {
+    // Retrieve the Planet API key from the environment variables
     const apiKey = process.env.VUE_APP_PLANET_API_KEY;
+    // Check if the API key is defined
     if (!apiKey) {
+      // Log an error if the API key is not defined
       console.error('API key is not defined. Please check your .env file.');
-      return;
+      // Return null if the API key is not defined
+      return null;
     }
-
-    const newSource = new XYZ({
+  
+    // Create a new XYZ source for the Planet Basemap
+    const source = new XYZ({
       url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
     });
+  
+    // Return a new TileLayer for the Planet Basemap
+    return new TileLayer({
+      source: source,
+      title: `Planet Basemap ${date}`, // Set the layer title to include the date
+      type: 'base', // Set the layer type to 'base'
+      visible: true, // Make the layer visible by default
+      id: `planet-basemap`, // Set a unique ID for the layer
+      zIndex: 1 // Set the layer's z-index to 1
+    });
+  };
+  // Function to update the basemap layer with a new date
+  const updateBasemap = (date) => {
+    // Create a new Planet Basemap layer for the given date
+    const planetBasemap = createPlanetBasemap(date);
 
-    let planetBasemap = map.value.getLayers().getArray().find(layer => layer.get('id') === 'planet-basemap');
+    // Find the existing Planet Basemap layer by its ID
+    let existingBasemap = map.value.getLayers().getArray().find(layer => layer.get('id') === 'planet-basemap');
 
-    if (planetBasemap) {
-      // Update existing layer
+    // If an existing layer is found, update it with the new basemap
+    if (existingBasemap) {
       console.log("Updating existing planet basemap layer...");
-      planetBasemap.setSource(newSource);
-      planetBasemap.set('title', `Planet Basemap ${date}`);
+      existingBasemap.setSource(planetBasemap.getSource());
+      existingBasemap.set('title', `Planet Basemap ${date}`);
     } else {
-      // Create new layer if it doesn't exist
+      // If no existing layer is found, create a new one and insert it at a specific position
       console.log("Creating new planet basemap layer...");
-      planetBasemap = new TileLayer({
-        source: newSource,
-        title: `Planet Basemap ${date}`,
-        type: 'base',
-        visible: true,
-        id: 'planet-basemap',
-        zIndex: 1
-      });
-
-      // Need to insert at index 2 to make sure the new layer is above the OSM layer but below AOI and training polygons layer
       map.value.getLayers().insertAt(2, planetBasemap);
     }
 
-    // Update slider value
+    // Update the slider value to match the new basemap date
     const dateIndex = availableDates.value.findIndex(d => d === date);
     if (dateIndex !== -1) {
       updateSliderValue(dateIndex);
     }
 
+    // Update the selected basemap date in the store
     selectedBasemapDate.value = date;
-    isLoading.value = false;
-
     // Ensure the layer order is updated in the store
     updateLayers();
   };
+
 
 
   // Display predictions or deforesation maps
@@ -1156,6 +1168,7 @@ export const useMapStore = defineStore('map', () => {
     toggleDrawingMode,
     fitBounds,
     addGeoJSON,
+    createPlanetBasemap,
     // Getters
     getMap
   };
