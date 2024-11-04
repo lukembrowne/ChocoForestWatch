@@ -36,27 +36,16 @@
                     <span :class="{ 'text-weight-bold': selectedHotspot === hotspot }">
                       Hotspot #{{ index + 1 }}
                     </span>
-                    <!-- Add a visual indicator for selected hotspot -->
-                    <q-icon
-                      v-if="selectedHotspot === hotspot"
-                      name="location_on"
-                      color="yellow-8"
-                      size="sm"
-                      class="q-ml-sm"
-                    />
                   </q-item-label>
                   <q-item-label caption>
                     Area: {{ hotspot.properties.area_ha.toFixed(2) }} ha
                   </q-item-label>
                   <q-item-label caption>
-                    Edge Density: {{ hotspot.properties.edge_density.toFixed(3) }}
-                  </q-item-label>
-                  <q-item-label caption>
                     Status: 
                     <span :class="{
-                      'text-positive': hotspot.properties.verification_status === 'verified',
-                      'text-negative': hotspot.properties.verification_status === 'rejected',
-                      'text-warning': hotspot.properties.verification_status === 'unsure'
+                      'text-green': hotspot.properties.verification_status === 'verified',
+                      'text-blue-grey': hotspot.properties.verification_status === 'rejected',
+                      'text-amber': hotspot.properties.verification_status === 'unsure'
                     }">
                       {{ hotspot.properties.verification_status || 'Unverified' }}
                     </span>
@@ -70,7 +59,7 @@
                       flat
                       round
                       size="sm"
-                      color="positive"
+                      color="green"
                       icon="check_circle"
                       @click.stop="verifyHotspot(hotspot, 'verified')"
                     >
@@ -80,7 +69,7 @@
                       flat
                       round
                       size="sm"
-                      color="warning"
+                      color="amber"
                       icon="help"
                       @click.stop="verifyHotspot(hotspot, 'unsure')"
                     >
@@ -90,7 +79,7 @@
                       flat
                       round
                       size="sm"
-                      color="negative"
+                      color="blue-grey"
                       icon="cancel"
                       @click.stop="verifyHotspot(hotspot, 'rejected')"
                     >
@@ -318,51 +307,40 @@ export default {
     };
 
     const displayAllHotspots = () => {
-      // Remove existing hotspot layers if they exist
-      if (hotspotLayers.value.before) {
-        beforeMapInstance.value.removeLayer(hotspotLayers.value.before);
-        afterMapInstance.value.removeLayer(hotspotLayers.value.after);
-      }
+      if (!hotspots.value.length) return;
 
-      // Create GeoJSON FeatureCollection
       const hotspotsGeoJSON = {
         type: 'FeatureCollection',
         features: hotspots.value
       };
 
-      // Create styles based on verification status
       const getHotspotStyle = (feature) => {
-        const status = feature.get('verification_status');
         const isSelected = selectedHotspot.value && 
-                          selectedHotspot.value.properties.id === feature.get('id');
-        
-        let color, width;
-        
-        if (isSelected) {
-          color = '#FFFF00';  // Yellow for selected
-          width = 3;
-        } else {
-          switch(status) {
-            case 'verified':
-              color = '#4CAF50';  // Green for verified
-              break;
-            case 'rejected':
-              color = '#F44336';  // Red for rejected
-              break;
-            case 'unsure':
-              color = '#FFA726';  // Orange for unsure
-              break;
-            default:
-              color = '#FF4444';  // Default red
-          }
-          width = 2;
+                            feature.getId() === selectedHotspot.value.id;
+        let color;
+        let width = isSelected ? 1 : 0.5;
+
+        const status = feature.get('verification_status');
+
+        switch(status) {
+          case 'verified':
+            color = '#4CAF50';  // Green for verified
+            break;
+          case 'rejected':
+            color = '#607D8B';  // Blue-grey for rejected
+            break;
+          case 'unsure':
+            color = '#FFC107';  // Amber/yellow for unsure
+            break;
+          default:
+            color = '#9C27B0';  // Purple for no status
+            break;
         }
 
         return new Style({
           stroke: new Stroke({
             color: color,
             width: width,
-            lineDash: isSelected ? [10, 10] : undefined
           })
         });
       };
@@ -426,8 +404,25 @@ export default {
         // Update local state
         hotspot.properties.verification_status = status;
 
-        // Update the hotspot styling
+        // Force refresh of vector layers to update styles
         if (hotspotLayers.value.before) {
+          const beforeFeatures = hotspotLayers.value.before.getSource().getFeatures();
+          const afterFeatures = hotspotLayers.value.after.getSource().getFeatures();
+          
+          // Update the verification status on the feature
+          beforeFeatures.forEach(feature => {
+            if (feature.getId() === hotspot.properties.id) {
+              feature.set('verification_status', status);
+            }
+          });
+          
+          afterFeatures.forEach(feature => {
+            if (feature.getId() === hotspot.properties.id) {
+              feature.set('verification_status', status);
+            }
+          });
+
+          // Force style refresh
           hotspotLayers.value.before.changed();
           hotspotLayers.value.after.changed();
         }
@@ -593,35 +588,56 @@ export default {
 }
 
 .selected-hotspot {
-  background: #FFF9C4 !important;  // Light yellow background
-  border-left: 4px solid #FBC02D;  // Yellow accent border
-  transition: all 0.3s ease;
-  
-  &:hover {
-    background: #FFF59D !important;
-  }
+  background: rgba(156, 39, 176, 0.3) !important;  // Purple for unverified
+  border-left-width: 4px;
 }
 
-// Optional: Add hover effect for non-selected items
-.q-item {
-  border-left: 4px solid transparent;
-  
-  &:hover:not(.selected-hotspot) {
-    background: #f5f5f5 !important;
-    border-left-color: #e0e0e0;
-  }
-}
-
-// Add status-specific styling
 .verified-hotspot {
+  background: rgba(76, 175, 80, 0.15) !important;
   border-left-color: #4CAF50 !important;
+  
+  &.selected-hotspot {
+    background: rgba(76, 175, 80, 0.3) !important;
+  }
 }
 
 .rejected-hotspot {
-  border-left-color: #F44336 !important;
+  background: rgba(96, 125, 139, 0.15) !important;
+  border-left-color: #607D8B !important;
+  
+  &.selected-hotspot {
+    background: rgba(96, 125, 139, 0.3) !important;
+  }
 }
 
 .unsure-hotspot {
-  border-left-color: #FFA726 !important;
+  background: rgba(255, 193, 7, 0.15) !important;
+  border-left-color: #FFC107 !important;
+  
+  &.selected-hotspot {
+    background: rgba(255, 193, 7, 0.3) !important;
+  }
+}
+
+// Add hover effects for status rows
+.verified-hotspot:hover {
+  background: rgba(76, 175, 80, 0.15) !important;
+}
+
+.rejected-hotspot:hover {
+  background: rgba(96, 125, 139, 0.15) !important;
+}
+
+.unsure-hotspot:hover {
+  background: rgba(255, 193, 7, 0.15) !important;
+}
+
+.q-item {
+  border-left: 4px solid transparent;
+  transition: all 0.3s ease;
+  
+  &:hover:not(.selected-hotspot):not(.verified-hotspot):not(.rejected-hotspot):not(.unsure-hotspot) {
+    background: #f5f5f5 !important;
+  }
 }
 </style> 
