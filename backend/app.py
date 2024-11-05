@@ -21,7 +21,7 @@ from sklearn.metrics import accuracy_score, classification_report
 import joblib
 from sklearn.preprocessing import LabelEncoder
 import pdb
-from datetime import datetime
+from datetime import datetime, timedelta
 from rasterio.windows import Window
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
@@ -390,6 +390,8 @@ class DeforestationHotspot(db.Model):
     centroid_lat = db.Column(db.Float, nullable=False)
     verification_status = db.Column(db.String(20), nullable=True)  # 'verified', 'rejected', 'unsure'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    source = db.Column(db.String(20), nullable=False, default='ml')  # 'ml' or 'gfw'
+    confidence = db.Column(db.Integer, nullable=True)  # For GFW confidence levels
 
     prediction = db.relationship('Prediction', back_populates='hotspots')
 
@@ -1995,92 +1997,134 @@ def verify_hotspot(hotspot_id):
 def get_deforestation_hotspots(prediction_id):
     try:
         prediction = Prediction.query.get_or_404(prediction_id)
+        min_area_ha = float(request.args.get('min_area_ha', 1.0))
+        source = request.args.get('source', 'all')  # 'all', 'ml', or 'gfw'
 
-        min_area_ha = float(request.args.get('min_area_ha', 1.0))  # Default 1 hectare
-
-        # Check if hotspots already exist for this prediction
-        existing_hotspots = DeforestationHotspot.query.filter_by(prediction_id=prediction_id).all()
+        # Query existing hotspots with source filter
+        query = DeforestationHotspot.query.filter_by(prediction_id=prediction_id)
+        if source != 'all':
+            query = query.filter_by(source=source)
+        existing_hotspots = query.all()
         
         features_list = []
         
         if existing_hotspots:
-
             # Convert existing hotspots to GeoJSON
             for hotspot in existing_hotspots:
+                properties = {
+                    "id": str(hotspot.id),
+                    "area_ha": round(hotspot.area_ha, 2),
+                    "perimeter_m": round(hotspot.perimeter_m, 2),
+                    "compactness": round(hotspot.compactness, 3),
+                    "edge_density": round(hotspot.edge_density, 3),
+                    "verification_status": hotspot.verification_status,
+                    "source": hotspot.source
+                }
+                
+                if hotspot.source == 'gfw':
+                    properties["confidence"] = hotspot.confidence
+                
                 feature = {
                     "type": "Feature",
                     "id": str(hotspot.id),
                     "geometry": hotspot.geometry,
-                    "properties": {
+                    "properties": properties
+                }
+                features_list.append(feature)
+        else:
+            # Generate new hotspots if none exist
+            # First generate ML hotspots if requested
+            if source in ['all', 'ml']:
+                with rasterio.open(prediction.file_path) as src:
+                    # Read the deforestation raster (1 = deforestation, 0 = no deforestation, 255 = nodata)
+                    defor_data = src.read(1)
+                    
+                    # Create mask of deforested pixels
+                    defor_mask = defor_data == 1
+                    
+                    # Get pixel area in hectares
+                    pixel_area_ha = abs(src.transform[0] * src.transform[4]) / 10000
+
+                    # Get shapes of connected components
+                    shapes = features.shapes(
+                        defor_data, 
+                        mask=defor_mask,
+                        transform=src.transform
+                    )
+                    
+                    for idx, (geom, value) in enumerate(shapes):
+                        if value == 1:
+                            polygon = shape(geom)
+                            area_ha = float(polygon.area / 10000)
+                            perimeter_m = float(polygon.length)
+                            
+                            # Calculate centroid
+                            centroid = polygon.centroid
+                            # Calculate edge density
+                            edge_density = float(perimeter_m / (area_ha * 10000))  # m/m²
+                            compactness = float(4 * math.pi * polygon.area / (perimeter_m ** 2))  # Convert to float
+                            # Store geometry as GeoJSON
+                            geojson_geometry = mapping(polygon)
+                            
+                            # Create database record
+                            hotspot = DeforestationHotspot(
+                                prediction_id=prediction_id,
+                                geometry=geojson_geometry,
+                                area_ha=area_ha,
+                                perimeter_m=perimeter_m,
+                                compactness=compactness,
+                                edge_density=edge_density,
+                                centroid_lon=float(centroid.x),
+                                centroid_lat=float(centroid.y),
+                                source='ml'
+                            )
+                            db.session.add(hotspot)
+                            
+                            # Create GeoJSON feature
+                            feature = {
+                                "type": "Feature",
+                                "id": str(hotspot.id),
+                                "geometry": geojson_geometry,
+                                "properties": {
+                                    "area_ha": round(area_ha, 2),
+                                    "perimeter_m": round(perimeter_m, 2),
+                                    "compactness": round(hotspot.compactness, 3),
+                                    "edge_density": round(edge_density, 3),
+                                    "verification_status": None,
+                                    "source": "ml"
+                                }
+                            }
+                            features_list.append(feature)
+
+            # Then generate GFW hotspots if requested
+            if source in ['all', 'gfw']:
+                # Get project AOI
+                project = Project.query.get(prediction.project_id)
+                aoi_shape = shape(json.loads(db.session.scalar(project.aoi.ST_AsGeoJSON())))
+                
+                # Process GFW alerts
+                gfw_hotspots = process_gfw_alerts(prediction_id, aoi_shape, min_area_ha)
+                
+                # Add GFW hotspots to features list
+                for hotspot in gfw_hotspots:
+                    properties = {
                         "id": str(hotspot.id),
                         "area_ha": round(hotspot.area_ha, 2),
                         "perimeter_m": round(hotspot.perimeter_m, 2),
                         "compactness": round(hotspot.compactness, 3),
                         "edge_density": round(hotspot.edge_density, 3),
-                        "verification_status": hotspot.verification_status
+                        "verification_status": hotspot.verification_status,
+                        "source": 'gfw',
+                        "confidence": hotspot.confidence
                     }
-                }
-                features_list.append(feature)
-        else:
-            # Generate new hotspots from raster
-            with rasterio.open(prediction.file_path) as src:
-                # Read the deforestation raster (1 = deforestation, 0 = no deforestation, 255 = nodata)
-                defor_data = src.read(1)
-                
-                # Create mask of deforested pixels
-                defor_mask = defor_data == 1
-                
-                # Get pixel area in hectares
-                pixel_area_ha = abs(src.transform[0] * src.transform[4]) / 10000
-
-                # Get shapes of connected components
-                shapes = features.shapes(
-                    defor_data, 
-                    mask=defor_mask,
-                    transform=src.transform
-                )
-                
-                for idx, (geom, value) in enumerate(shapes):
-                    if value == 1:
-                        polygon = shape(geom)
-                        area_ha = float(polygon.area / 10000)
-                        perimeter_m = float(polygon.length)
-                        
-                        # Calculate centroid
-                        centroid = polygon.centroid
-                        # Calculate edge density
-                        edge_density = float(perimeter_m / (area_ha * 10000))  # m/m²
-                        compactness = float(4 * math.pi * polygon.area / (perimeter_m ** 2))  # Convert to float
-                        # Store geometry as GeoJSON
-                        geojson_geometry = mapping(polygon)
-                        
-                        # Create database record
-                        hotspot = DeforestationHotspot(
-                            prediction_id=prediction_id,
-                            geometry=geojson_geometry,
-                            area_ha=area_ha,
-                            perimeter_m=perimeter_m,
-                            compactness=compactness,
-                            edge_density=edge_density,
-                            centroid_lon=float(centroid.x),
-                            centroid_lat=float(centroid.y)
-                        )
-                        db.session.add(hotspot)
-                        
-                        # Create GeoJSON feature
-                        feature = {
-                            "type": "Feature",
-                            "id": str(hotspot.id),
-                            "geometry": geojson_geometry,
-                            "properties": {
-                                "area_ha": round(area_ha, 2),
-                                "perimeter_m": round(perimeter_m, 2),
-                                "compactness": round(hotspot.compactness, 3),
-                                "edge_density": round(edge_density, 3),
-                                "verification_status": None
-                            }
-                        }
-                        features_list.append(feature)
+                    
+                    feature = {
+                        "type": "Feature",
+                        "id": str(hotspot.id),
+                        "geometry": hotspot.geometry,
+                        "properties": properties
+                    }
+                    features_list.append(feature)
                 
                 db.session.commit()
 
@@ -2095,22 +2139,289 @@ def get_deforestation_hotspots(prediction_id):
         # Sort features by area
         features_list.sort(key=lambda x: x["properties"]["area_ha"], reverse=True)
         
+        # Calculate statistics by source
+        ml_hotspots = [f for f in features_list if f["properties"]["source"] == "ml"]
+        gfw_hotspots = [f for f in features_list if f["properties"]["source"] == "gfw"]
+        
+        metadata = {
+            "total_hotspots": len(features_list),
+            "min_area_ha": min_area_ha,
+            "total_area_ha": sum(f["properties"]["area_ha"] for f in features_list),
+            "prediction_id": prediction_id,
+            "by_source": {
+                "ml": {
+                    "count": len(ml_hotspots),
+                    "total_area_ha": sum(f["properties"]["area_ha"] for f in ml_hotspots)
+                },
+                "gfw": {
+                    "count": len(gfw_hotspots),
+                    "total_area_ha": sum(f["properties"]["area_ha"] for f in gfw_hotspots)
+                }
+            }
+        }
+        
         return jsonify({
             "type": "FeatureCollection",
             "features": features_list,
-            "metadata": {
-                "total_hotspots": len(features_list),
-                "min_area_ha": min_area_ha,
-                "total_area_ha": sum(f["properties"]["area_ha"] for f in features_list),
-                "prediction_id": prediction_id
-            }
+            "metadata": metadata
         })
             
     except Exception as e:
         db.session.rollback()
+        logger.error(f"Error in get_deforestation_hotspots: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+def download_and_merge_gfw_alerts():
+    """Downloads and merges GFW alert tiles, returns path to merged raster"""
+    
+    logger.info("Starting GFW alert download and merge process")
+    
+    # This is only for Ecuador
+    GFW_URLS = [
+        "https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=10N_080W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c",
+        "https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=00N_080W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c",
+        "https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=00N_090W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c",
+        "https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=10N_090W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c"
+    ]
+    
+    # Create directory for GFW data if it doesn't exist
+    gfw_data_dir = './data/gfw_alerts'
+    os.makedirs(gfw_data_dir, exist_ok=True)
+    
+    # Clean up old merged files
+    cleanup_old_merged_files(gfw_data_dir)
+    
+    # Download and save tiles
+    tile_paths = []
+    total_size = 0
+    for idx, url in enumerate(GFW_URLS):
+        try:
+            logger.info(f"Downloading GFW tile {idx} from {url}")
+            response = requests.get(url)
+            response.raise_for_status()
+            
+            size_mb = len(response.content) / (1024 * 1024)
+            total_size += size_mb
+            logger.info(f"Downloaded tile {idx}: {size_mb:.1f} MB")
+            
+            tile_path = os.path.join(gfw_data_dir, f'gfw_tile_{idx}.tif')
+            with open(tile_path, 'wb') as f:
+                f.write(response.content)
+            tile_paths.append(tile_path)
+            logger.info(f"Successfully saved GFW tile {idx} to {tile_path}")
+        except Exception as e:
+            logger.error(f"Error downloading GFW tile {idx}: {str(e)}")
+            raise
+    
+    logger.info(f"Total download size: {total_size:.1f} MB")
+    
+    # Merge tiles
+    try:
+        logger.info("Starting tile merge process")
+        # Open all rasters
+        raster_files = [rasterio.open(path) for path in tile_paths]
+        
+        # Merge them
+        merged, merged_transform = merge(raster_files)
+        logger.info(f"Merged raster shape: {merged.shape}")
+        
+        # Get metadata from first raster
+        out_meta = raster_files[0].meta.copy()
+        out_meta.update({
+            "height": merged.shape[1],
+            "width": merged.shape[2],
+            "transform": merged_transform
+        })
+        
+        # Save merged result
+        merged_path = os.path.join(gfw_data_dir, f'gfw_merged_{datetime.now().strftime("%Y%m%d")}.tif')
+        with rasterio.open(merged_path, 'w', **out_meta) as dest:
+            dest.write(merged)
+        
+        merged_size_mb = os.path.getsize(merged_path) / (1024 * 1024)
+        logger.info(f"Successfully saved merged file ({merged_size_mb:.1f} MB) to {merged_path}")
+        
+        # Close all raster files
+        for rf in raster_files:
+            rf.close()
+            
+        return merged_path
+        
+    except Exception as e:
+        logger.error(f"Error merging GFW tiles: {str(e)}")
+        raise
+    finally:
+        # Clean up individual tiles
+        for path in tile_paths:
+            try:
+                os.remove(path)
+                logger.debug(f"Cleaned up temporary tile: {path}")
+            except Exception as e:
+                logger.warning(f"Error removing temporary tile {path}: {str(e)}")
 
+def cleanup_old_merged_files(directory, keep_latest=True):
+    """Clean up old merged GFW alert files, optionally keeping the latest one"""
+    try:
+        merged_files = [f for f in os.listdir(directory) if f.startswith('gfw_merged_')]
+        merged_files.sort(reverse=True)  # Sort by date (newest first)
+        
+        # Keep the latest file if requested
+        if keep_latest and merged_files:
+            merged_files = merged_files[1:]
+        
+        # Delete old files
+        for file in merged_files:
+            file_path = os.path.join(directory, file)
+            try:
+                os.remove(file_path)
+                logger.info(f"Deleted old merged file: {file}")
+            except Exception as e:
+                logger.warning(f"Error deleting old merged file {file}: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error during cleanup of old merged files: {str(e)}")
+
+def should_update_merged_file(file_path, max_age_days=30):
+    """Check if merged file should be updated based on age"""
+    try:
+        if not os.path.exists(file_path):
+            return True
+            
+        file_date = datetime.strptime(os.path.basename(file_path).split('_')[2].split('.')[0], '%Y%m%d')
+        age = datetime.now() - file_date
+        
+        return age.days >= max_age_days
+    except Exception as e:
+        logger.warning(f"Error checking file age, will update: {str(e)}")
+        return True
+
+def decode_gfw_date(encoded_value):
+    """Decode GFW alert value into date and confidence"""
+    if encoded_value == 0:
+        return None, None
+        
+    # Convert to string for easier processing
+    encoded_str = str(encoded_value)
+    
+    # Get confidence level from first digit
+    confidence = int(encoded_str[0])
+    
+    # Get days since Dec 31, 2014
+    days = int(encoded_str[1:])
+    
+    # Calculate date
+    base_date = datetime(2014, 12, 31)
+    alert_date = base_date + timedelta(days=days)
+    
+    return alert_date, confidence
+
+def process_gfw_alerts(prediction_id, aoi_shape, min_area_ha=1.0):
+    """Process GFW alerts for a given prediction's time period"""
+    try:
+        logger.info(f"Starting GFW alert processing for prediction {prediction_id}")
+        
+        # Get prediction details
+        prediction = Prediction.query.get_or_404(prediction_id)
+        
+        # Get date range from prediction
+        start_date = datetime.strptime(prediction.summary_statistics['prediction1_date'], '%Y-%m')
+        end_date = datetime.strptime(prediction.summary_statistics['prediction2_date'], '%Y-%m')
+        logger.info(f"Processing alerts between {start_date} and {end_date}")
+        
+        # Get or download merged GFW raster
+        gfw_dir = './data/gfw_alerts'
+        merged_files = [f for f in os.listdir(gfw_dir) if f.startswith('gfw_merged_')]
+        
+        if not merged_files:
+            logger.info("No existing merged file found, downloading new data")
+            merged_path = download_and_merge_gfw_alerts()
+        else:
+            # Use most recent merged file
+            merged_path = os.path.join(gfw_dir, sorted(merged_files)[-1])
+            if should_update_merged_file(merged_path):
+                logger.info(f"Merged file {merged_path} is outdated, downloading new data")
+                merged_path = download_and_merge_gfw_alerts()
+            else:
+                logger.info(f"Using existing merged file: {merged_path}")
+        
+        # Process the raster
+        with rasterio.open(merged_path) as src:
+            logger.info("Clipping alerts to AOI")
+            clipped_data, clipped_transform = mask(src, [aoi_shape], crop=True)
+            logger.info(f"Clipped data shape: {clipped_data.shape}")
+            
+            # Create masks
+            alert_mask = np.zeros_like(clipped_data[0], dtype=bool)
+            confidence_data = np.zeros_like(clipped_data[0], dtype=np.uint8)
+            
+            logger.info("Processing alert dates and confidence values")
+            valid_alerts = 0
+            total_pixels = clipped_data[0].size
+            
+            # Process each pixel
+            for idx in np.ndindex(clipped_data[0].shape):
+                value = clipped_data[0][idx]
+                if value > 0:  # Skip nodata
+                    alert_date, confidence = decode_gfw_date(value)
+                    if alert_date and start_date <= alert_date <= end_date:
+                        alert_mask[idx] = True
+                        confidence_data[idx] = confidence
+                        valid_alerts += 1
+            
+            logger.info(f"Found {valid_alerts} valid alerts out of {total_pixels} pixels")
+            
+            # Get shapes of connected components
+            logger.info("Generating hotspot polygons")
+            shapes = features.shapes(
+                alert_mask.astype(np.uint8),
+                mask=alert_mask,
+                transform=clipped_transform
+            )
+            
+            features_list = []
+            hotspot_count = 0
+            total_area = 0
+            
+            for geom, value in shapes:
+                if value == 1:  # Alert area
+                    polygon = shape(geom)
+                    area_ha = polygon.area / 10000
+                    
+                    if area_ha >= min_area_ha:
+                        hotspot_count += 1
+                        total_area += area_ha
+                        
+                        # Create hotspot record
+                        hotspot = DeforestationHotspot(
+                            prediction_id=prediction_id,
+                            geometry=mapping(polygon),
+                            area_ha=float(area_ha),
+                            perimeter_m=float(polygon.length),
+                            compactness=float(4 * math.pi * polygon.area / (polygon.length ** 2)),
+                            edge_density=float(polygon.length / (area_ha * 10000)),
+                            centroid_lon=float(polygon.centroid.x),
+                            centroid_lat=float(polygon.centroid.y),
+                            source='gfw',
+                            confidence=int(np.mean(confidence_data[features.rasterize(
+                                [(geom, 1)],
+                                out_shape=alert_mask.shape,
+                                transform=clipped_transform
+                            ) == 1]))
+                        )
+                        
+                        db.session.add(hotspot)
+                        features_list.append(hotspot)
+            
+            logger.info(f"Created {hotspot_count} hotspots with total area of {total_area:.1f} ha")
+            
+            db.session.commit()
+            logger.info("Successfully saved hotspots to database")
+            
+            return features_list
+            
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error processing GFW alerts: {str(e)}")
+        raise
 
 
 if __name__ == '__main__':

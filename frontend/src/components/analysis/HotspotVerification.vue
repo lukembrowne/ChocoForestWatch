@@ -6,9 +6,25 @@
                 <q-card-section>
                     <div class="text-subtitle1 q-mb-sm">Deforestation Hotspots</div>
                     <!-- Deforestation Map Selection -->
-                    <q-select v-model="selectedDeforestationMap" :options="deforestationMaps"
-                        label="Select Deforestation Map" option-label="name" class="q-mb-md"
-                        @update:model-value="loadHotspots" />
+                    <div class="row q-col-gutter-md q-mb-md">
+                        <div class="col">
+                            <q-select 
+                                v-model="selectedDeforestationMap" 
+                                :options="deforestationMaps"
+                                label="Select Deforestation Map" 
+                                option-label="name" 
+                                @update:model-value="loadHotspots" 
+                            />
+                        </div>
+                        <div class="col">
+                            <q-select
+                                v-model="selectedSource"
+                                :options="sourceOptions"
+                                label="Alert Source"
+                                @update:model-value="loadHotspots"
+                            />
+                        </div>
+                    </div>
 
                     <!-- Move export buttons next to minimum area input -->
                     <div class="row items-center q-mb-md">
@@ -37,20 +53,37 @@
                         </div>
                     </div>
 
-                    <!-- Hotspots List -->
-                    <q-scroll-area ref="scrollArea" v-if="hotspots.length" style="height: calc(100vh - 250px)">
+                    <!-- Add this near the hotspots list -->
+                    <div v-if="loading" class="absolute-center">
+                        <q-spinner-dots color="primary" size="40" />
+                    </div>
+
+                    <!-- Update the scroll area to show when not loading and has hotspots -->
+                    <q-scroll-area 
+                        ref="scrollArea" 
+                        v-if="!loading && hotspots.length" 
+                        style="height: calc(100vh - 250px)"
+                    >
+                        <!-- Hotspots List -->
                         <q-list separator dense>
                             <q-item v-for="(hotspot, index) in hotspots" :key="index" :class="{
                                 'selected-hotspot': selectedHotspot === hotspot,
                                 'verified-hotspot': hotspot.properties.verification_status === 'verified',
                                 'rejected-hotspot': hotspot.properties.verification_status === 'rejected',
-                                'unsure-hotspot': hotspot.properties.verification_status === 'unsure'
+                                'unsure-hotspot': hotspot.properties.verification_status === 'unsure',
+                                'gfw-hotspot': hotspot.properties.source === 'gfw'
                             }" clickable v-ripple @click="selectHotspot(hotspot)">
                                 <q-item-section>
                                     <div class="row items-center no-wrap">
-                                        <div class="text-weight-medium"
-                                            :class="{ 'text-weight-bold': selectedHotspot === hotspot }">
+                                        <div class="text-weight-medium">
                                             #{{ index + 1 }}
+                                            <q-badge :color="hotspot.properties.source === 'gfw' ? 'purple' : 'primary'">
+                                                {{ hotspot.properties.source.toUpperCase() }}
+                                            </q-badge>
+                                            <!-- Show confidence for GFW alerts -->
+                                            <q-badge v-if="hotspot.properties.source === 'gfw'" :color="getConfidenceColor(hotspot.properties.confidence)">
+                                                {{ getConfidenceLabel(hotspot.properties.confidence) }}
+                                            </q-badge>
                                         </div>
                                         <div class="q-ml-sm">
                                             {{ hotspot.properties.area_ha.toFixed(1) }} ha
@@ -85,6 +118,11 @@
                             </q-item>
                         </q-list>
                     </q-scroll-area>
+
+                    <!-- Add a message when no hotspots are found -->
+                    <div v-if="!loading && !hotspots.length" class="text-center q-pa-md">
+                        No hotspots found matching the current criteria
+                    </div>
                 </q-card-section>
             </q-card>
         </div>
@@ -193,6 +231,25 @@
                         projectStore.aoiAreaHa.toFixed(1)
                     }} ha
                 </div>
+
+                <!-- Add source comparison section -->
+                <q-card-section>
+                    <div class="text-h6 q-mb-md">Source Comparison</div>
+                    <div class="row q-col-gutter-md">
+                        <div class="col-6" v-for="source in ['ml', 'gfw']" :key="source">
+                            <q-card class="stat-card">
+                                <q-card-section>
+                                    <div class="text-subtitle2">{{ source.toUpperCase() }} Alerts</div>
+                                    <div class="text-h6">{{ sourceStats[source].count }} hotspots</div>
+                                    <div class="text-subtitle1">{{ sourceStats[source].area.toFixed(1) }} ha</div>
+                                    <div class="text-caption">
+                                        {{ (sourceStats[source].area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI
+                                    </div>
+                                </q-card-section>
+                            </q-card>
+                        </div>
+                    </div>
+                </q-card-section>
             </q-card-section>
 
             <q-card-actions align="right">
@@ -250,6 +307,7 @@ export default {
         const projectStore = useProjectStore();
 
         // Refs for map elements
+        const loading = ref(false);
         const beforeMap = ref(null);
         const afterMap = ref(null);
         const beforeMapInstance = ref(null);
@@ -264,6 +322,13 @@ export default {
         const minAreaHa = ref(1); // Default 10 ha
 
         const showStats = ref(false);
+
+        const selectedSource = ref('all')
+        const sourceOptions = [
+            { label: 'All Sources', value: 'all' },
+            { label: 'ML Predictions', value: 'ml' },
+            { label: 'Global Forest Watch', value: 'gfw' }
+        ]
 
         // Computed properties for statistics
         const totalHotspots = computed(() => hotspots.value.length);
@@ -360,6 +425,40 @@ export default {
             }
         };
 
+        // Computed properties for source statistics
+        const sourceStats = computed(() => {
+            const stats = {
+                ml: { count: 0, area: 0 },
+                gfw: { count: 0, area: 0 }
+            }
+
+            hotspots.value.forEach(h => {
+                const source = h.properties.source
+                stats[source].count++
+                stats[source].area += h.properties.area_ha
+            })
+
+            return stats
+        })
+
+        const getConfidenceColor = (confidence) => {
+            switch (confidence) {
+                case 2: return 'orange' // low confidence
+                case 3: return 'green'  // high confidence
+                case 4: return 'purple' // multiple systems
+                default: return 'grey'
+            }
+        }
+
+        const getConfidenceLabel = (confidence) => {
+            switch (confidence) {
+                case 2: return 'Low'
+                case 3: return 'High'
+                case 4: return 'Multiple'
+                default: return 'Unknown'
+            }
+        }
+
         // Initialize the comparison maps
         const initializeMaps = () => {
             console.log('Initializing maps');
@@ -439,28 +538,33 @@ export default {
         };
 
         const loadHotspots = async () => {
-            if (!selectedDeforestationMap.value) return;
+            if (!selectedDeforestationMap.value) return
 
             try {
-                // Load hotspots
-                const response = await api.getDeforestationHotspots(
-                    selectedDeforestationMap.value.id,
-                    minAreaHa.value
-                );
-                hotspots.value = response.features;
-
+                loading.value = true
+                const response = await api.get(
+                    `/analysis/deforestation_hotspots/${selectedDeforestationMap.value.id}`, {
+                        params: {
+                            min_area_ha: minAreaHa.value,
+                            source: selectedSource.value
+                        }
+                    }
+                )
+                hotspots.value = response.data.features
                 // Update the before/after maps with appropriate imagery and all hotspots
                 updateComparisonMaps(selectedDeforestationMap.value);
                 displayAllHotspots();
             } catch (error) {
-                console.error('Error loading hotspots:', error);
+                console.error('Error loading hotspots:', error)
                 $q.notify({
                     color: 'negative',
                     message: 'Failed to load hotspots',
                     icon: 'error'
-                });
+                })
+            } finally {
+                loading.value = false
             }
-        };
+        }
 
         const updateComparisonMaps = async (deforestationMap) => {
             if (!beforeMapInstance.value || !afterMapInstance.value) return;
@@ -848,7 +952,13 @@ export default {
             chartData,
             chartOptions,
             statsWithPercentages,
-            projectStore
+            projectStore,
+            selectedSource,
+            sourceOptions,
+            sourceStats,
+            getConfidenceColor,
+            getConfidenceLabel,
+            loading
         };
     }
 };
@@ -936,6 +1046,18 @@ export default {
 
     &.selected-hotspot {
         background: rgba(255, 193, 7, 0.3) !important;
+    }
+}
+
+.gfw-hotspot {
+    border-left: 4px solid #9C27B0;
+    
+    &.selected-hotspot {
+        background: rgba(156, 39, 176, 0.3) !important;
+    }
+    
+    &:hover {
+        background: rgba(156, 39, 176, 0.15) !important;
     }
 }
 
