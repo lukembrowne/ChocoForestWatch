@@ -2331,6 +2331,8 @@ def decode_gfw_date(encoded_value):
     # Calculate date
     base_date = datetime(2014, 12, 31)
     alert_date = base_date + timedelta(days=days)
+
+    logger.info(f"Alert date: {alert_date} - str was: {encoded_str}")
     
     return alert_date, confidence
 

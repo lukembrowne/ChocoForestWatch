@@ -127,6 +127,31 @@
                 <div class="map-container">
                     <div ref="beforeMap" class="comparison-map"></div>
                     <div class="map-label">Before</div>
+                    <!-- Legend will be positioned over the map -->
+                    <div class="map-legend">
+                        <div class="legend-title">Alert Types</div>
+                        <div class="legend-item">
+                            <div class="legend-line ml-line"></div>
+                            <span>ML Prediction</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-line gfw-line"></div>
+                            <span>GFW Alert</span>
+                        </div>
+                        <div class="legend-title mt-2">Verification Status</div>
+                        <div class="legend-item">
+                            <div class="legend-line verified-line"></div>
+                            <span>Verified</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-line unsure-line"></div>
+                            <span>Unsure</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-line rejected-line"></div>
+                            <span>Rejected</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="map-container">
                     <div ref="afterMap" class="comparison-map"></div>
@@ -1318,5 +1343,66 @@ export default {
 .unsure-hotspot,
 .gfw-hotspot {
     display: none;
+}
+
+.map-legend {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: white;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    font-size: 12px;
+    z-index: 1000;
+    
+    .legend-title {
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+    
+    .mt-2 {
+        margin-top: 8px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin: 4px 0;
+        
+        .legend-line {
+            width: 20px;
+            height: 2px;
+            margin-right: 8px;
+        }
+        
+        .ml-line {
+            background: #1976D2;
+        }
+        
+        .gfw-line {
+            background: #9C27B0;
+            height: 0;
+            border-top: 2px dashed #9C27B0;
+        }
+        
+        .verified-line {
+            background: #4CAF50;
+        }
+        
+        .unsure-line {
+            background: #FFC107;
+        }
+        
+        .rejected-line {
+            background: #607D8B;
+        }
+    }
+}
+
+// Make sure the map container has position: relative
+.map-container {
+    position: relative;
+    // ... existing styles ...
 }
 </style>
