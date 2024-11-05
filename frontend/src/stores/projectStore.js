@@ -229,9 +229,5 @@ export const useProjectStore = defineStore('project', {
       return this.trainingDates.filter(date => !this.isDateExcluded(date))
     },
 
-    getDeforestationPercentage(areaHa) {
-      if (!this.aoiAreaHa) return 0;
-      return (areaHa / this.aoiAreaHa) * 100;
-    }
   }
 });

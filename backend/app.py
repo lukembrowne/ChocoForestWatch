@@ -496,7 +496,8 @@ def get_project(project_id):
         'name': project.name,
         'description': project.description,
         'aoi': None,
-        'classes': project.classes
+        'classes': project.classes,
+        'aoi_area_ha': project.aoi_area_ha
     }
     
     if project.aoi:
