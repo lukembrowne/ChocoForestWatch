@@ -228,8 +228,8 @@
           <div class="col-4">
             <q-card>
               <q-card-section>
-                <div style="height: 250px">
-                  <VuePie
+                <div style="height: 300px">
+                  <Bar
                     :data="chartData"
                     :options="chartOptions"
                   />
@@ -262,16 +262,31 @@ import { GeoJSON } from 'ol/format';
 import { Style, Fill, Stroke } from 'ol/style';
 import OSM from 'ol/source/OSM'
 import { fromLonLat, toLonLat } from 'ol/proj';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { Pie as VuePie } from 'vue-chartjs';
+import { 
+  Chart as ChartJS, 
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip, 
+  Legend 
+} from 'chart.js';
+import { Bar } from 'vue-chartjs';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 export default {
   name: 'HotspotVerification',
 
   components: {
-    VuePie
+    Bar
   },
 
   setup() {
@@ -340,25 +355,49 @@ export default {
 
     // Chart data
     const chartData = computed(() => ({
-      labels: statusBreakdown.value.map(s => s.name),
-      datasets: [
-        {
-          data: statusBreakdown.value.map(s => s.area),
-          backgroundColor: ['#4CAF50', '#FFC107', '#607D8B', '#9C27B0']
-        }
-      ]
+      labels: ['Total Area Deforested'],
+      datasets: statusBreakdown.value.map(status => ({
+        label: status.name,
+        data: [status.area],
+        backgroundColor: {
+          'Verified': '#4CAF50',
+          'Unsure': '#FFC107',
+          'Rejected': '#607D8B',
+          'Unverified': '#9C27B0'
+        }[status.name],
+      }))
     }));
 
     const chartOptions = {
       responsive: true,
       maintainAspectRatio: false,
+      scales: {
+        x: {
+          stacked: true,
+        },
+        y: {
+          stacked: true,
+          title: {
+            display: true,
+            text: 'Area (ha)'
+          }
+        }
+      },
       plugins: {
         legend: {
-          position: 'bottom'
+          position: 'top',
         },
         title: {
           display: true,
-          text: 'Area Distribution by Status'
+          text: 'Deforestation Area by Verification Status'
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const status = statusBreakdown.value[context.datasetIndex];
+              return `${status.name}: ${status.area.toFixed(1)} ha (${status.areaPercentage.toFixed(1)}%)`;
+            }
+          }
         }
       }
     };
