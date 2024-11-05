@@ -55,13 +55,15 @@
                         style="height: calc(100vh - 250px)">
                         <!-- Hotspots List -->
                         <q-list separator dense>
-                            <q-item v-for="(hotspot, index) in hotspots" :key="index" :class="{
-                                'selected-hotspot': selectedHotspot === hotspot,
-                                'verified-hotspot': hotspot.properties.verification_status === 'verified',
-                                'rejected-hotspot': hotspot.properties.verification_status === 'rejected',
-                                'unsure-hotspot': hotspot.properties.verification_status === 'unsure',
-                                'gfw-hotspot': hotspot.properties.source === 'gfw'
-                            }" clickable v-ripple @click="selectHotspot(hotspot)">
+                            <q-item v-for="(hotspot, index) in hotspots" :key="index" :class="[
+                                hotspot.properties.source === 'gfw' ? 'gfw-alert' : 'ml-alert',
+                                {
+                                    'selected-hotspot': selectedHotspot === hotspot,
+                                    'verified': hotspot.properties.verification_status === 'verified',
+                                    'rejected': hotspot.properties.verification_status === 'rejected',
+                                    'unsure': hotspot.properties.verification_status === 'unsure'
+                                }
+                            ]" clickable v-ripple @click="selectHotspot(hotspot)">
                                 <q-item-section>
                                     <div class="row items-center no-wrap">
                                         <div class="text-weight-medium">
@@ -72,7 +74,8 @@
                                             </q-badge>
                                             <!-- Show confidence for GFW alerts -->
                                             <q-badge v-if="hotspot.properties.source === 'gfw'"
-                                                :color="getConfidenceColor(hotspot.properties.confidence)">
+                                                :color="getConfidenceColor(hotspot.properties.confidence)"
+                                                class="q-ml-xs">
                                                 {{ getConfidenceLabel(hotspot.properties.confidence) }}
                                             </q-badge>
                                         </div>
@@ -162,7 +165,8 @@
                                     <div class="col-4">
                                         <div class="text-subtitle2">Total Area</div>
                                         <div class="text-h5">{{ sourceStats.ml.area.toFixed(1) }} ha</div>
-                                        <div class="text-caption">{{ (sourceStats.ml.area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI</div>
+                                        <div class="text-caption">{{ (sourceStats.ml.area / projectStore.aoiAreaHa *
+                                            100).toFixed(1) }}% of AOI</div>
                                     </div>
                                     <div class="col-4">
                                         <div class="text-subtitle2">Annual Rate</div>
@@ -186,7 +190,8 @@
                                     <div class="col-4">
                                         <div class="text-subtitle2">Total Area</div>
                                         <div class="text-h5">{{ sourceStats.gfw.area.toFixed(1) }} ha</div>
-                                        <div class="text-caption">{{ (sourceStats.gfw.area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI</div>
+                                        <div class="text-caption">{{ (sourceStats.gfw.area / projectStore.aoiAreaHa *
+                                            100).toFixed(1) }}% of AOI</div>
                                     </div>
                                     <div class="col-4">
                                         <div class="text-subtitle2">Annual Rate</div>
@@ -211,10 +216,14 @@
                                         <div :class="`text-${status.color}`">
                                             <div class="text-subtitle2">{{ status.name }}</div>
                                             <div class="text-h6">{{ status.count }} hotspots</div>
-                                            <div class="text-caption">{{ status.percentage.toFixed(1) }}% of ML hotspots</div>
+                                            <div class="text-caption">{{ status.percentage.toFixed(1) }}% of ML hotspots
+                                            </div>
                                             <div class="text-subtitle2 q-mt-sm">{{ status.area.toFixed(1) }} ha</div>
-                                            <div class="text-caption">{{ status.areaPercentageOfAOI.toFixed(1) }}% of AOI</div>
-                                            <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year</div>
+                                            <div class="text-caption">{{ status.areaPercentageOfAOI.toFixed(1) }}% of
+                                                AOI
+                                            </div>
+                                            <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -232,10 +241,15 @@
                                         <div :class="`text-${status.color}`">
                                             <div class="text-subtitle2">{{ status.name }}</div>
                                             <div class="text-h6">{{ status.count }} hotspots</div>
-                                            <div class="text-caption">{{ status.percentage.toFixed(1) }}% of GFW hotspots</div>
+                                            <div class="text-caption">{{ status.percentage.toFixed(1) }}% of GFW
+                                                hotspots
+                                            </div>
                                             <div class="text-subtitle2 q-mt-sm">{{ status.area.toFixed(1) }} ha</div>
-                                            <div class="text-caption">{{ status.areaPercentageOfAOI.toFixed(1) }}% of AOI</div>
-                                            <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year</div>
+                                            <div class="text-caption">{{ status.areaPercentageOfAOI.toFixed(1) }}% of
+                                                AOI
+                                            </div>
+                                            <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -360,10 +374,10 @@ export default {
             const statuses = ['verified', 'unsure', 'rejected', 'unverified'];
             const colors = ['green', 'amber', 'blue-grey', 'purple'];
             const displayNames = ['Verified', 'Unsure', 'Rejected', 'Unverified'];
-            
+
             const totalCount = sourceHotspots.length;
             const totalArea = sourceHotspots.reduce((sum, h) => sum + h.properties.area_ha, 0);
-            
+
             return statuses.map((status, index) => {
                 const hotspotsWithStatus = sourceHotspots.filter(h =>
                     status === 'unverified'
@@ -373,7 +387,7 @@ export default {
 
                 const count = hotspotsWithStatus.length;
                 const area = hotspotsWithStatus.reduce((sum, h) => sum + h.properties.area_ha, 0);
-                
+
                 // Calculate rate based on the time period
                 let rate = 0;
                 if (selectedDeforestationMap.value) {
@@ -463,7 +477,7 @@ export default {
                 const beforeDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction1_date);
                 const afterDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction2_date);
                 const yearsDiff = (afterDate - beforeDate) / (1000 * 60 * 60 * 24 * 365.25);
-                
+
                 stats.ml.rate = stats.ml.area / yearsDiff;
                 stats.gfw.rate = stats.gfw.area / yearsDiff;
             }
@@ -664,32 +678,62 @@ export default {
             };
 
             const getHotspotStyle = (feature) => {
-                const isSelected = selectedHotspot.value &&
-                    feature.getId() === selectedHotspot.value.id;
-                let color;
-                let width = isSelected ? 1 : 0.5;
+                const isSelected = selectedHotspot.value && selectedHotspot.value.id === feature.id;
+                const source = feature.getProperties().source;
+                const status = feature.getProperties().verification_status;
+                
+                // Base styles for ML and GFW
+                const sourceStyles = {
+                    ml: {
+                        strokeColor: '#1976D2',    // Blue
+                        strokeWidth: 2,
+                        lineDash: [],              // Solid line for ML
+                        fillColor: 'rgba(25, 118, 210, 0.1)'  // Light blue fill
+                    },
+                    gfw: {
+                        strokeColor: '#9C27B0',    // Purple
+                        strokeWidth: 2,
+                        lineDash: [5, 5],          // Dashed line for GFW
+                        fillColor: 'rgba(156, 39, 176, 0.1)'  // Light purple fill
+                    }
+                };
 
-                const status = feature.get('verification_status');
+                // Get base style for source
+                const style = sourceStyles[source];
 
-                switch (status) {
-                    case 'verified':
-                        color = '#4CAF50';  // Green for verified
-                        break;
-                    case 'rejected':
-                        color = '#607D8B';  // Blue-grey for rejected
-                        break;
-                    case 'unsure':
-                        color = '#FFC107';  // Amber/yellow for unsure
-                        break;
-                    default:
-                        color = '#9C27B0';  // Purple for no status
-                        break;
+                // Modify colors based on verification status
+                if (status) {
+                    switch (status) {
+                        case 'verified':
+                            style.strokeColor = '#4CAF50';  // Green
+                            style.fillColor = 'rgba(76, 175, 80, 0.1)';
+                            break;
+                        case 'rejected':
+                            style.strokeColor = '#607D8B';  // Grey
+                            style.fillColor = 'rgba(96, 125, 139, 0.1)';
+                            break;
+                        case 'unsure':
+                            style.strokeColor = '#FFC107';  // Amber
+                            style.fillColor = 'rgba(255, 193, 7, 0.1)';
+                            break;
+                    }
                 }
 
+                // Highlight selected hotspot
+                if (isSelected) {
+                    style.strokeWidth = 3;
+                    style.fillColor = style.fillColor.replace('0.1', '0.3');  // More opaque fill
+                }
+
+                // Return OpenLayers Style object
                 return new Style({
                     stroke: new Stroke({
-                        color: color,
-                        width: width,
+                        color: style.strokeColor,
+                        width: style.strokeWidth,
+                        lineDash: style.lineDash
+                    }),
+                    fill: new Fill({
+                        color: style.fillColor
                     })
                 });
             };
@@ -1178,21 +1222,101 @@ export default {
 
 .source-stats-card {
     background: #f8f9fa;
-    
+
     .text-h6 {
         color: rgba(0, 0, 0, 0.87);
     }
-    
+
     .text-subtitle2 {
         color: rgba(0, 0, 0, 0.6);
     }
-    
+
     &.ml-stats {
         border-left: 4px solid #1976D2;
     }
-    
+
     &.gfw-stats {
         border-left: 4px solid #9C27B0;
     }
+}
+
+// Base styles for all hotspots
+.q-item {
+    border-left: 4px solid transparent;
+    transition: all 0.2s ease;
+
+    &:hover {
+        background: rgba(0, 0, 0, 0.03);
+    }
+}
+
+// Source-specific styles
+.ml-alert {
+    background: rgba(25, 118, 210, 0.05);
+    border-left-color: #1976D2;
+
+    &.selected-hotspot {
+        background: rgba(25, 118, 210, 0.15) !important;
+    }
+}
+
+.gfw-alert {
+    background: rgba(156, 39, 176, 0.05);
+    border-left-color: #9C27B0;
+
+    &.selected-hotspot {
+        background: rgba(156, 39, 176, 0.15) !important;
+    }
+}
+
+// Verification status styles - applied on top of source styles
+.verified {
+    &::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background-color: #4CAF50;
+    }
+}
+
+.rejected {
+    &::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background-color: #607D8B;
+    }
+}
+
+.unsure {
+    &::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background-color: #FFC107;
+    }
+}
+
+// Badge styles
+.q-badge {
+    font-size: 0.7rem;
+    padding: 2px 4px;
+}
+
+// Remove old conflicting styles
+.verified-hotspot,
+.rejected-hotspot,
+.unsure-hotspot,
+.gfw-hotspot {
+    display: none;
 }
 </style>
