@@ -147,68 +147,97 @@
 
             <q-card-section class="q-pa-md">
                 <!-- Overview Section -->
-                <div class="text-h6 q-mb-md">Overview</div>
+                <div class="text-h6 q-mb-md">Overview by Source</div>
                 <div class="row q-col-gutter-md">
-                    <div class="col-4">
-                        <q-card class="stat-card">
+                    <!-- ML Alerts -->
+                    <div class="col-6">
+                        <q-card class="source-stats-card ml-stats">
                             <q-card-section>
-                                <div class="text-subtitle2">Total Hotspots</div>
-                                <div class="text-h5">{{ totalHotspots }}</div>
+                                <div class="text-h6 q-mb-md">ML Predictions</div>
+                                <div class="row q-col-gutter-md">
+                                    <div class="col-4">
+                                        <div class="text-subtitle2">Hotspots</div>
+                                        <div class="text-h5">{{ sourceStats.ml.count }}</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-subtitle2">Total Area</div>
+                                        <div class="text-h5">{{ sourceStats.ml.area.toFixed(1) }} ha</div>
+                                        <div class="text-caption">{{ (sourceStats.ml.area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-subtitle2">Annual Rate</div>
+                                        <div class="text-h5">{{ sourceStats.ml.rate.toFixed(1) }} ha/year</div>
+                                    </div>
+                                </div>
                             </q-card-section>
                         </q-card>
                     </div>
-                    <div class="col-4">
-                        <q-card class="stat-card">
+
+                    <!-- GFW Alerts -->
+                    <div class="col-6">
+                        <q-card class="source-stats-card gfw-stats">
                             <q-card-section>
-                                <div class="text-subtitle2">Total Area</div>
-                                <div class="text-h5">{{ totalHotspotArea.toFixed(1) }} ha</div>
-                                <div class="text-caption">{{ (totalHotspotArea / projectStore.aoiAreaHa *
-                                    100).toFixed(1)
-                                    }}% of AOI</div>
-                            </q-card-section>
-                        </q-card>
-                    </div>
-                    <div class="col-4">
-                        <q-card class="stat-card">
-                            <q-card-section>
-                                <div class="text-subtitle2">Annual Rate</div>
-                                <div class="text-h5">{{ annualRate.toFixed(1) }} ha/year</div>
+                                <div class="text-h6 q-mb-md">GFW Alerts</div>
+                                <div class="row q-col-gutter-md">
+                                    <div class="col-4">
+                                        <div class="text-subtitle2">Hotspots</div>
+                                        <div class="text-h5">{{ sourceStats.gfw.count }}</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-subtitle2">Total Area</div>
+                                        <div class="text-h5">{{ sourceStats.gfw.area.toFixed(1) }} ha</div>
+                                        <div class="text-caption">{{ (sourceStats.gfw.area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-subtitle2">Annual Rate</div>
+                                        <div class="text-h5">{{ sourceStats.gfw.rate.toFixed(1) }} ha/year</div>
+                                    </div>
+                                </div>
                             </q-card-section>
                         </q-card>
                     </div>
                 </div>
 
                 <!-- Status Breakdown Section -->
-                <div class="text-h6 q-mt-lg q-mb-md">Status Breakdown</div>
+                <div class="text-h6 q-mt-lg q-mb-md">Status Breakdown by Source</div>
                 <div class="row q-col-gutter-md">
-                    <div class="col-8">
-                        <q-card class="status-breakdown">
+                    <!-- ML Status Breakdown -->
+                    <div class="col-6">
+                        <q-card class="status-breakdown ml-stats">
                             <q-card-section>
+                                <div class="text-h6 q-mb-md">ML Predictions</div>
                                 <div class="row q-col-gutter-md">
-                                    <div v-for="status in statusBreakdown" :key="status.name" class="col-6">
+                                    <div v-for="status in mlStatusBreakdown" :key="status.name" class="col-6">
                                         <div :class="`text-${status.color}`">
                                             <div class="text-subtitle2">{{ status.name }}</div>
                                             <div class="text-h6">{{ status.count }} hotspots</div>
-                                            <div class="text-caption">{{ status.percentage.toFixed(1) }}% of total
-                                                hotspots
-                                            </div>
+                                            <div class="text-caption">{{ status.percentage.toFixed(1) }}% of ML hotspots</div>
                                             <div class="text-subtitle2 q-mt-sm">{{ status.area.toFixed(1) }} ha</div>
-                                            <div class="text-caption">{{ status.areaPercentageOfAOI.toFixed(1) }}% of
-                                                AOI
-                                            </div>
-                                            <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year
-                                            </div>
+                                            <div class="text-caption">{{ status.areaPercentageOfAOI.toFixed(1) }}% of AOI</div>
+                                            <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year</div>
                                         </div>
                                     </div>
                                 </div>
                             </q-card-section>
                         </q-card>
                     </div>
-                    <div class="col-4">
-                        <q-card>
+
+                    <!-- GFW Status Breakdown -->
+                    <div class="col-6">
+                        <q-card class="status-breakdown gfw-stats">
                             <q-card-section>
-                                <div style="height: 300px">
-                                    <Bar :data="chartData" :options="chartOptions" />
+                                <div class="text-h6 q-mb-md">GFW Alerts</div>
+                                <div class="row q-col-gutter-md">
+                                    <div v-for="status in gfwStatusBreakdown" :key="status.name" class="col-6">
+                                        <div :class="`text-${status.color}`">
+                                            <div class="text-subtitle2">{{ status.name }}</div>
+                                            <div class="text-h6">{{ status.count }} hotspots</div>
+                                            <div class="text-caption">{{ status.percentage.toFixed(1) }}% of GFW hotspots</div>
+                                            <div class="text-subtitle2 q-mt-sm">{{ status.area.toFixed(1) }} ha</div>
+                                            <div class="text-caption">{{ status.areaPercentageOfAOI.toFixed(1) }}% of AOI</div>
+                                            <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </q-card-section>
                         </q-card>
@@ -222,26 +251,6 @@
                         projectStore.aoiAreaHa.toFixed(1)
                     }} ha
                 </div>
-
-                <!-- Add source comparison section -->
-                <q-card-section>
-                    <div class="text-h6 q-mb-md">Source Comparison</div>
-                    <div class="row q-col-gutter-md">
-                        <div class="col-6" v-for="source in ['ml', 'gfw']" :key="source">
-                            <q-card class="stat-card">
-                                <q-card-section>
-                                    <div class="text-subtitle2">{{ source.toUpperCase() }} Alerts</div>
-                                    <div class="text-h6">{{ sourceStats[source].count }} hotspots</div>
-                                    <div class="text-subtitle1">{{ sourceStats[source].area.toFixed(1) }} ha</div>
-                                    <div class="text-caption">
-                                        {{ (sourceStats[source].area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of
-                                        AOI
-                                    </div>
-                                </q-card-section>
-                            </q-card>
-                        </div>
-                    </div>
-                </q-card-section>
             </q-card-section>
 
             <q-card-actions align="right">
@@ -290,7 +299,6 @@ export default {
     name: 'HotspotVerification',
 
     components: {
-        Bar
     },
 
     setup() {
@@ -323,29 +331,41 @@ export default {
         ]
 
         // Computed properties for statistics
-        const totalHotspots = computed(() => hotspots.value.length);
+        const totalHotspots = computed(() => ({
+            ml: sourceStats.value.ml.count,
+            gfw: sourceStats.value.gfw.count
+        }));
 
-        const totalHotspotArea = computed(() =>
-            hotspots.value.reduce((sum, h) => sum + h.properties.area_ha, 0)
-        );
+        const totalHotspotArea = computed(() => ({
+            ml: sourceStats.value.ml.area,
+            gfw: sourceStats.value.gfw.area
+        }));
 
-        const annualRate = computed(() => {
-            if (!selectedDeforestationMap.value) return 0;
-            const beforeDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction1_date);
-            console.log('beforeDate:', beforeDate);
-            const afterDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction2_date);
-            const yearsDiff = (afterDate - beforeDate) / (1000 * 60 * 60 * 24 * 365.25);
-            console.log('yearsDiff:', yearsDiff);
-            return totalHotspotArea.value / yearsDiff;
+        const annualRate = computed(() => ({
+            ml: sourceStats.value.ml.rate,
+            gfw: sourceStats.value.gfw.rate
+        }));
+
+        // Separate status breakdowns by source
+        const mlStatusBreakdown = computed(() => {
+            return calculateStatusBreakdown(hotspots.value.filter(h => h.properties.source === 'ml'));
         });
 
-        const statusBreakdown = computed(() => {
+        const gfwStatusBreakdown = computed(() => {
+            return calculateStatusBreakdown(hotspots.value.filter(h => h.properties.source === 'gfw'));
+        });
+
+        // Helper function to calculate status breakdown
+        const calculateStatusBreakdown = (sourceHotspots) => {
             const statuses = ['verified', 'unsure', 'rejected', 'unverified'];
             const colors = ['green', 'amber', 'blue-grey', 'purple'];
             const displayNames = ['Verified', 'Unsure', 'Rejected', 'Unverified'];
-
+            
+            const totalCount = sourceHotspots.length;
+            const totalArea = sourceHotspots.reduce((sum, h) => sum + h.properties.area_ha, 0);
+            
             return statuses.map((status, index) => {
-                const hotspotsWithStatus = hotspots.value.filter(h =>
+                const hotspotsWithStatus = sourceHotspots.filter(h =>
                     status === 'unverified'
                         ? !h.properties.verification_status
                         : h.properties.verification_status === status
@@ -353,20 +373,28 @@ export default {
 
                 const count = hotspotsWithStatus.length;
                 const area = hotspotsWithStatus.reduce((sum, h) => sum + h.properties.area_ha, 0);
-                const rate = annualRate.value * (area / totalHotspotArea.value);
+                
+                // Calculate rate based on the time period
+                let rate = 0;
+                if (selectedDeforestationMap.value) {
+                    const beforeDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction1_date);
+                    const afterDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction2_date);
+                    const yearsDiff = (afterDate - beforeDate) / (1000 * 60 * 60 * 24 * 365.25);
+                    rate = area / yearsDiff;
+                }
 
                 return {
                     name: displayNames[index],
                     color: colors[index],
                     count,
-                    percentage: (count / totalHotspots.value) * 100,
+                    percentage: totalCount ? (count / totalCount) * 100 : 0,
                     area,
-                    areaPercentage: (area / totalHotspotArea.value) * 100,
+                    areaPercentage: totalArea ? (area / totalArea) * 100 : 0,
                     areaPercentageOfAOI: (area / projectStore.aoiAreaHa) * 100,
                     rate
                 };
             });
-        });
+        };
 
         // Chart data
         const chartData = computed(() => ({
@@ -420,8 +448,8 @@ export default {
         // Computed properties for source statistics
         const sourceStats = computed(() => {
             const stats = {
-                ml: { count: 0, area: 0 },
-                gfw: { count: 0, area: 0 }
+                ml: { count: 0, area: 0, rate: 0 },
+                gfw: { count: 0, area: 0, rate: 0 }
             }
 
             hotspots.value.forEach(h => {
@@ -429,6 +457,16 @@ export default {
                 stats[source].count++
                 stats[source].area += h.properties.area_ha
             })
+
+            // Calculate rates for each source
+            if (selectedDeforestationMap.value) {
+                const beforeDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction1_date);
+                const afterDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction2_date);
+                const yearsDiff = (afterDate - beforeDate) / (1000 * 60 * 60 * 24 * 365.25);
+                
+                stats.ml.rate = stats.ml.area / yearsDiff;
+                stats.gfw.rate = stats.gfw.area / yearsDiff;
+            }
 
             return stats
         })
@@ -943,7 +981,8 @@ export default {
             totalHotspots,
             totalHotspotArea,
             annualRate,
-            statusBreakdown,
+            mlStatusBreakdown,
+            gfwStatusBreakdown,
             chartData,
             chartOptions,
             statsWithPercentages,
@@ -1135,5 +1174,25 @@ export default {
 
 .text-purple {
     color: #9C27B0;
+}
+
+.source-stats-card {
+    background: #f8f9fa;
+    
+    .text-h6 {
+        color: rgba(0, 0, 0, 0.87);
+    }
+    
+    .text-subtitle2 {
+        color: rgba(0, 0, 0, 0.6);
+    }
+    
+    &.ml-stats {
+        border-left: 4px solid #1976D2;
+    }
+    
+    &.gfw-stats {
+        border-left: 4px solid #9C27B0;
+    }
 }
 </style>
