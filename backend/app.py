@@ -180,6 +180,7 @@ class Project(db.Model):
     training_polygon_sets = db.relationship("TrainingPolygonSet", back_populates="project")
     trained_model = db.relationship("TrainedModel", back_populates="project")
     predictions = db.relationship('Prediction', back_populates='project')
+    aoi_area_ha = db.Column(db.Float)  # Area in hectares
 
     def to_dict(self):
         return {
@@ -187,10 +188,10 @@ class Project(db.Model):
             'name': self.name,
             'description': self.description,
             'classes': self.classes,
+            'aoi_area_ha': self.aoi_area_ha,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
-
 
 class TrainingPolygonSet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -510,6 +511,9 @@ def update_project(project_id):
     project = Project.query.get_or_404(project_id)
     data = request.json
     
+    if 'aoi' in data:
+        project.aoi = from_shape(shape(data['aoi']), srid=4326)
+        project.update_aoi_area()  # Update area when AOI changes
     if 'name' in data:
         project.name = data['name']
     if 'description' in data:
@@ -555,8 +559,8 @@ def set_project_aoi(project_id):
 
         ## If downloading the imagery in the background when the projetc AOI is created, use the code below
         # # Convert GeoJSON to shapely geometry
-        # geojson = data['aoi']
-        # shape = geometry.shape(geojson['geometry'])
+        geojson = data['aoi'] ## In web mercator projection
+        shape = geometry.shape(geojson['geometry'])
         # aoi_extent = data['aoi_extent']
         # basemap_dates = data['basemap_dates']
 
@@ -568,6 +572,9 @@ def set_project_aoi(project_id):
         
         # Create a PostGIS geometry from WKT
         project.aoi = from_shape(shape, srid=4326)  # Assuming WGS84 projection
+
+        project.aoi_area_ha = shape.area / 10000  # Convert square meters to hectares
+
         db.session.commit()
         return jsonify({'message': 'AOI updated successfully', 'aoi': db.session.scalar(project.aoi.ST_AsGeoJSON())}), 200
     except Exception as e:
@@ -1976,11 +1983,11 @@ def verify_hotspot(hotspot_id):
         return jsonify({"error": str(e)}), 500
 
 # Add this right after your route definition
-print("=== DEBUG ===")
-print("All registered routes:")
-for rule in app.url_map.iter_rules():
-    print(f"{rule.endpoint}: {rule.methods} {rule}")
-print("============")
+# print("=== DEBUG ===")
+# print("All registered routes:")
+# for rule in app.url_map.iter_rules():
+#     print(f"{rule.endpoint}: {rule.methods} {rule}")
+# print("============")
 
 @app.route('/api/analysis/deforestation_hotspots/<int:prediction_id>', methods=['GET'])
 def get_deforestation_hotspots(prediction_id):

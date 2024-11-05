@@ -22,7 +22,8 @@ export const useProjectStore = defineStore('project', {
     trainingPolygonSets: [],
   }),
   getters: {
-    projectClasses: (state) => state.currentProject?.classes || []
+    projectClasses: (state) => state.currentProject?.classes || [],
+    aoiAreaHa: (state) => state.currentProject?.aoi_area_ha || 0,
   },
   actions: {
     async fetchProjects() {
@@ -227,5 +228,10 @@ export const useProjectStore = defineStore('project', {
     includedTrainingDates() {
       return this.trainingDates.filter(date => !this.isDateExcluded(date))
     },
+
+    getDeforestationPercentage(areaHa) {
+      if (!this.aoiAreaHa) return 0;
+      return (areaHa / this.aoiAreaHa) * 100;
+    }
   }
 });

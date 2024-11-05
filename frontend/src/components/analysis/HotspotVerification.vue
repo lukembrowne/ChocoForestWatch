@@ -170,7 +170,7 @@
       <q-card-section class="bg-primary text-white">
         <div class="text-h6">Deforestation Statistics</div>
         <div class="text-caption" v-if="selectedDeforestationMap">
-          Analysis Period: {{ selectedDeforestationMap.before_date }} to {{ selectedDeforestationMap.after_date }}
+          Analysis Period: {{ selectedDeforestationMap.summary_statistics.prediction1_date  }} to {{ selectedDeforestationMap.summary_statistics.prediction2_date }}
         </div>
       </q-card-section>
 
@@ -190,7 +190,7 @@
             <q-card class="stat-card">
               <q-card-section>
                 <div class="text-subtitle2">Total Area</div>
-                <div class="text-h5">{{ totalArea.toFixed(1) }} ha</div>
+                <div class="text-h5">{{ totalHotspotArea.toFixed(1) }} ha</div>
               </q-card-section>
             </q-card>
           </div>
@@ -313,16 +313,18 @@ export default {
     // Computed properties for statistics
     const totalHotspots = computed(() => hotspots.value.length);
     
-    const totalArea = computed(() => 
+    const totalHotspotArea = computed(() => 
       hotspots.value.reduce((sum, h) => sum + h.properties.area_ha, 0)
     );
     
     const annualRate = computed(() => {
       if (!selectedDeforestationMap.value) return 0;
-      const beforeDate = new Date(selectedDeforestationMap.value.before_date);
-      const afterDate = new Date(selectedDeforestationMap.value.after_date);
+      const beforeDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction1_date);
+      console.log('beforeDate:', beforeDate);
+      const afterDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction2_date);
       const yearsDiff = (afterDate - beforeDate) / (1000 * 60 * 60 * 24 * 365.25);
-      return totalArea.value / yearsDiff;
+      console.log('yearsDiff:', yearsDiff);
+      return totalHotspotArea.value / yearsDiff;
     });
 
     const statusBreakdown = computed(() => {
@@ -339,7 +341,7 @@ export default {
         
         const count = hotspotsWithStatus.length;
         const area = hotspotsWithStatus.reduce((sum, h) => sum + h.properties.area_ha, 0);
-        const rate = annualRate.value * (area / totalArea.value);
+        const rate = annualRate.value * (area / totalHotspotArea.value);
         
         return {
           name: displayNames[index],
@@ -347,7 +349,7 @@ export default {
           count,
           percentage: (count / totalHotspots.value) * 100,
           area,
-          areaPercentage: (area / totalArea.value) * 100,
+          areaPercentage: (area / totalHotspotArea.value) * 100,
           rate
         };
       });
@@ -842,6 +844,14 @@ export default {
       }
     };
 
+    const statsWithPercentages = computed(() => ({
+      totalAreaPercentage: projectStore.getDeforestationPercentage(totalArea.value),
+      statusBreakdown: statusBreakdown.value.map(status => ({
+        ...status,
+        areaPercentageOfAOI: projectStore.getDeforestationPercentage(status.area)
+      }))
+    }));
+
     onMounted(async () => {
       console.log('Component mounted');
       await loadDeforestationMaps();
@@ -875,11 +885,12 @@ export default {
       scrollArea,
       showStats,
       totalHotspots,
-      totalArea,
+      totalHotspotArea,
       annualRate,
       statusBreakdown,
       chartData,
-      chartOptions
+      chartOptions,
+      statsWithPercentages
     };
   }
 };
