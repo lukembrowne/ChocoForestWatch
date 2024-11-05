@@ -60,6 +60,15 @@
               >
                 <q-tooltip>Export Verified Hotspots</q-tooltip>
               </q-btn>
+              <q-btn
+                flat
+                dense
+                color="info"
+                icon="analytics"
+                @click="showStats = true"
+              >
+                <q-tooltip>View Statistics</q-tooltip>
+              </q-btn>
             </div>
           </div>
 
@@ -153,10 +162,93 @@
       </div>
     </div>
   </div>
+
+  <!-- Add the statistics modal -->
+  <q-dialog v-model="showStats">
+    <q-card class="q-dialog-plugin" style="width: 900px; max-width: 90vw;">
+      <!-- Header -->
+      <q-card-section class="bg-primary text-white">
+        <div class="text-h6">Deforestation Statistics</div>
+        <div class="text-caption" v-if="selectedDeforestationMap">
+          Analysis Period: {{ selectedDeforestationMap.before_date }} to {{ selectedDeforestationMap.after_date }}
+        </div>
+      </q-card-section>
+
+      <q-card-section class="q-pa-md">
+        <!-- Overview Section -->
+        <div class="text-h6 q-mb-md">Overview</div>
+        <div class="row q-col-gutter-md">
+          <div class="col-4">
+            <q-card class="stat-card">
+              <q-card-section>
+                <div class="text-subtitle2">Total Hotspots</div>
+                <div class="text-h5">{{ totalHotspots }}</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-4">
+            <q-card class="stat-card">
+              <q-card-section>
+                <div class="text-subtitle2">Total Area</div>
+                <div class="text-h5">{{ totalArea.toFixed(1) }} ha</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-4">
+            <q-card class="stat-card">
+              <q-card-section>
+                <div class="text-subtitle2">Annual Rate</div>
+                <div class="text-h5">{{ annualRate.toFixed(1) }} ha/year</div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+
+        <!-- Status Breakdown Section -->
+        <div class="text-h6 q-mt-lg q-mb-md">Status Breakdown</div>
+        <div class="row q-col-gutter-md">
+          <div class="col-8">
+            <q-card class="status-breakdown">
+              <q-card-section>
+                <div class="row q-col-gutter-md">
+                  <div v-for="status in statusBreakdown" :key="status.name" class="col-6">
+                    <div :class="`text-${status.color}`">
+                      <div class="text-subtitle2">{{ status.name }}</div>
+                      <div class="text-h6">{{ status.count }} hotspots</div>
+                      <div class="text-caption">{{ status.percentage.toFixed(1) }}% of total</div>
+                      <div class="text-subtitle2 q-mt-sm">{{ status.area.toFixed(1) }} ha</div>
+                      <div class="text-caption">{{ status.areaPercentage.toFixed(1) }}% of total area</div>
+                      <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year</div>
+                    </div>
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-4">
+            <q-card>
+              <q-card-section>
+                <div style="height: 250px">
+                  <VuePie
+                    :data="chartData"
+                    :options="chartOptions"
+                  />
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+      </q-card-section>
+
+      <q-card-actions align="right">
+        <q-btn flat label="Close" color="primary" v-close-popup />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import { useMapStore } from 'src/stores/mapStore';
 import { useProjectStore } from 'src/stores/projectStore';
 import { useQuasar } from 'quasar';
@@ -170,11 +262,17 @@ import { GeoJSON } from 'ol/format';
 import { Style, Fill, Stroke } from 'ol/style';
 import OSM from 'ol/source/OSM'
 import { fromLonLat, toLonLat } from 'ol/proj';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Pie as VuePie } from 'vue-chartjs';
 
-
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default {
   name: 'HotspotVerification',
+
+  components: {
+    VuePie
+  },
 
   setup() {
     const $q = useQuasar();
@@ -194,6 +292,76 @@ export default {
     const selectedHotspot = ref(null);
     const hotspotLayers = ref({ before: null, after: null });
     const minAreaHa = ref(1); // Default 10 ha
+
+    const showStats = ref(false);
+
+    // Computed properties for statistics
+    const totalHotspots = computed(() => hotspots.value.length);
+    
+    const totalArea = computed(() => 
+      hotspots.value.reduce((sum, h) => sum + h.properties.area_ha, 0)
+    );
+    
+    const annualRate = computed(() => {
+      if (!selectedDeforestationMap.value) return 0;
+      const beforeDate = new Date(selectedDeforestationMap.value.before_date);
+      const afterDate = new Date(selectedDeforestationMap.value.after_date);
+      const yearsDiff = (afterDate - beforeDate) / (1000 * 60 * 60 * 24 * 365.25);
+      return totalArea.value / yearsDiff;
+    });
+
+    const statusBreakdown = computed(() => {
+      const statuses = ['verified', 'unsure', 'rejected', 'unverified'];
+      const colors = ['green', 'amber', 'blue-grey', 'purple'];
+      const displayNames = ['Verified', 'Unsure', 'Rejected', 'Unverified'];
+      
+      return statuses.map((status, index) => {
+        const hotspotsWithStatus = hotspots.value.filter(h => 
+          status === 'unverified' 
+            ? !h.properties.verification_status 
+            : h.properties.verification_status === status
+        );
+        
+        const count = hotspotsWithStatus.length;
+        const area = hotspotsWithStatus.reduce((sum, h) => sum + h.properties.area_ha, 0);
+        const rate = annualRate.value * (area / totalArea.value);
+        
+        return {
+          name: displayNames[index],
+          color: colors[index],
+          count,
+          percentage: (count / totalHotspots.value) * 100,
+          area,
+          areaPercentage: (area / totalArea.value) * 100,
+          rate
+        };
+      });
+    });
+
+    // Chart data
+    const chartData = computed(() => ({
+      labels: statusBreakdown.value.map(s => s.name),
+      datasets: [
+        {
+          data: statusBreakdown.value.map(s => s.area),
+          backgroundColor: ['#4CAF50', '#FFC107', '#607D8B', '#9C27B0']
+        }
+      ]
+    }));
+
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom'
+        },
+        title: {
+          display: true,
+          text: 'Area Distribution by Status'
+        }
+      }
+    };
 
     // Initialize the comparison maps
     const initializeMaps = () => {
@@ -666,6 +834,13 @@ export default {
       minAreaHa,
       exportHotspots,
       scrollArea,
+      showStats,
+      totalHotspots,
+      totalArea,
+      annualRate,
+      statusBreakdown,
+      chartData,
+      chartOptions
     };
   }
 };
@@ -795,5 +970,45 @@ export default {
   .q-btn {
     min-width: 135px;  // Make buttons equal width
   }
+}
+
+.stats-modal {
+  .stat-card {
+    height: 100%;
+    background: #f8f9fa;
+    
+    .text-subtitle2 {
+      color: rgba(0,0,0,0.7);
+    }
+  }
+  
+  .status-breakdown {
+    height: 100%;
+    
+    .text-subtitle2 {
+      font-weight: 500;
+    }
+    
+    .text-caption {
+      opacity: 0.7;
+    }
+  }
+}
+
+// Color classes for status
+.text-green {
+  color: #4CAF50;
+}
+
+.text-amber {
+  color: #FFC107;
+}
+
+.text-blue-grey {
+  color: #607D8B;
+}
+
+.text-purple {
+  color: #9C27B0;
 }
 </style> 
