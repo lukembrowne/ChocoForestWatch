@@ -196,7 +196,7 @@ export default {
     const hotspots = ref([]);
     const selectedHotspot = ref(null);
     const hotspotLayers = ref({ before: null, after: null });
-    const minAreaHa = ref(10); // Default 10 ha
+    const minAreaHa = ref(1); // Default 10 ha
 
     // Initialize the comparison maps
     const initializeMaps = () => {

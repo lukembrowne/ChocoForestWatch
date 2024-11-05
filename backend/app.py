@@ -2023,10 +2023,7 @@ def get_deforestation_hotspots(prediction_id):
                 
                 # Get pixel area in hectares
                 pixel_area_ha = abs(src.transform[0] * src.transform[4]) / 10000
-                
-                # Convert minimum area to pixels
-                min_pixels = int(min_area_ha / pixel_area_ha)
-                
+
                 # Get shapes of connected components
                 shapes = features.shapes(
                     defor_data, 
@@ -2037,7 +2034,7 @@ def get_deforestation_hotspots(prediction_id):
                 for idx, (geom, value) in enumerate(shapes):
                     if value == 1:
                         polygon = shape(geom)
-                        area_ha = float(polygon.area * pixel_area_ha)
+                        area_ha = float(polygon.area / 10000)
                         perimeter_m = float(polygon.length)
                         
                         # Calculate centroid
