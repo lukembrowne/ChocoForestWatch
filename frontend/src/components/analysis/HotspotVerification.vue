@@ -8,21 +8,13 @@
                     <!-- Deforestation Map Selection -->
                     <div class="row q-col-gutter-md q-mb-md">
                         <div class="col">
-                            <q-select 
-                                v-model="selectedDeforestationMap" 
-                                :options="deforestationMaps"
-                                label="Select Deforestation Map" 
-                                option-label="name" 
-                                @update:model-value="loadHotspots" 
-                            />
+                            <q-select v-model="selectedDeforestationMap" :options="deforestationMaps"
+                                label="Select Deforestation Map" option-label="name"
+                                @update:model-value="loadHotspots" />
                         </div>
                         <div class="col">
-                            <q-select
-                                v-model="selectedSource"
-                                :options="sourceOptions"
-                                label="Alert Source"
-                                @update:model-value="loadHotspots"
-                            />
+                            <q-select v-model="selectedSource" :options="sourceOptions" label="Alert Source"
+                                @update:model-value="loadHotspots" />
                         </div>
                     </div>
 
@@ -59,11 +51,8 @@
                     </div>
 
                     <!-- Update the scroll area to show when not loading and has hotspots -->
-                    <q-scroll-area 
-                        ref="scrollArea" 
-                        v-if="!loading && hotspots.length" 
-                        style="height: calc(100vh - 250px)"
-                    >
+                    <q-scroll-area ref="scrollArea" v-if="!loading && hotspots.length"
+                        style="height: calc(100vh - 250px)">
                         <!-- Hotspots List -->
                         <q-list separator dense>
                             <q-item v-for="(hotspot, index) in hotspots" :key="index" :class="{
@@ -77,11 +66,13 @@
                                     <div class="row items-center no-wrap">
                                         <div class="text-weight-medium">
                                             #{{ index + 1 }}
-                                            <q-badge :color="hotspot.properties.source === 'gfw' ? 'purple' : 'primary'">
+                                            <q-badge
+                                                :color="hotspot.properties.source === 'gfw' ? 'purple' : 'primary'">
                                                 {{ hotspot.properties.source.toUpperCase() }}
                                             </q-badge>
                                             <!-- Show confidence for GFW alerts -->
-                                            <q-badge v-if="hotspot.properties.source === 'gfw'" :color="getConfidenceColor(hotspot.properties.confidence)">
+                                            <q-badge v-if="hotspot.properties.source === 'gfw'"
+                                                :color="getConfidenceColor(hotspot.properties.confidence)">
                                                 {{ getConfidenceLabel(hotspot.properties.confidence) }}
                                             </q-badge>
                                         </div>
@@ -243,7 +234,8 @@
                                     <div class="text-h6">{{ sourceStats[source].count }} hotspots</div>
                                     <div class="text-subtitle1">{{ sourceStats[source].area.toFixed(1) }} ha</div>
                                     <div class="text-caption">
-                                        {{ (sourceStats[source].area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI
+                                        {{ (sourceStats[source].area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of
+                                        AOI
                                     </div>
                                 </q-card-section>
                             </q-card>
@@ -543,16 +535,20 @@ export default {
             try {
                 loading.value = true;
                 const response = await api.getDeforestationHotspots(
-                    selectedDeforestationMap.value.id, 
+                    selectedDeforestationMap.value.id,
                     minAreaHa.value,
                     selectedSource.value
                 );
                 hotspots.value = response.features;
-                
+
                 // Update map layers if needed
                 if (selectedHotspot.value) {
                     updateHotspotLayers(selectedHotspot.value);
                 }
+
+                // Update the before/after maps with appropriate imagery and all hotspots
+                updateComparisonMaps(selectedDeforestationMap.value);
+                displayAllHotspots();
             } catch (error) {
                 console.error('Error loading hotspots:', error);
                 $q.notify({
@@ -1050,11 +1046,11 @@ export default {
 
 .gfw-hotspot {
     border-left: 4px solid #9C27B0;
-    
+
     &.selected-hotspot {
         background: rgba(156, 39, 176, 0.3) !important;
     }
-    
+
     &:hover {
         background: rgba(156, 39, 176, 0.15) !important;
     }
