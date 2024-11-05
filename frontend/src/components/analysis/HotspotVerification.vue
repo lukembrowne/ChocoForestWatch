@@ -64,8 +64,8 @@
           </div>
 
           <!-- Hotspots List -->
-          <q-scroll-area v-if="hotspots.length" style="height: calc(100vh - 250px)">
-            <q-list separator>
+          <q-scroll-area ref="scrollArea" v-if="hotspots.length" style="height: calc(100vh - 250px)">
+            <q-list separator dense>
               <q-item
                 v-for="(hotspot, index) in hotspots"
                 :key="index"
@@ -80,27 +80,24 @@
                 @click="selectHotspot(hotspot)"
               >
                 <q-item-section>
-                  <q-item-label>
-                    <span :class="{ 'text-weight-bold': selectedHotspot === hotspot }">
-                      Hotspot #{{ index + 1 }}
-                    </span>
-                  </q-item-label>
-                  <q-item-label caption>
-                    Area: {{ hotspot.properties.area_ha.toFixed(2) }} ha
-                  </q-item-label>
-                  <q-item-label caption>
-                    Status: 
-                    <span :class="{
+                  <div class="row items-center no-wrap">
+                    <div class="text-weight-medium" :class="{ 'text-weight-bold': selectedHotspot === hotspot }">
+                      #{{ index + 1 }}
+                    </div>
+                    <div class="q-ml-sm">
+                      {{ hotspot.properties.area_ha.toFixed(1) }} ha
+                    </div>
+                    <div class="q-ml-auto" :class="{
                       'text-green': hotspot.properties.verification_status === 'verified',
                       'text-blue-grey': hotspot.properties.verification_status === 'rejected',
                       'text-amber': hotspot.properties.verification_status === 'unsure'
                     }">
                       {{ hotspot.properties.verification_status || 'Unverified' }}
-                    </span>
-                  </q-item-label>
+                    </div>
+                  </div>
                 </q-item-section>
-                
-                <!-- Verification Actions -->
+
+                <!-- Verification buttons -->
                 <q-item-section side>
                   <div class="row q-gutter-xs">
                     <q-btn
@@ -533,6 +530,8 @@ export default {
       };
     };
 
+    const scrollArea = ref(null);
+
     const navigateHotspots = (direction) => {
       if (!hotspots.value.length) return;
 
@@ -548,6 +547,14 @@ export default {
       }
 
       selectHotspot(hotspots.value[newIndex]);
+
+      // Scroll the selected item into view
+      nextTick(() => {
+        const element = scrollArea.value.$el.querySelector(`.q-item:nth-child(${newIndex + 1})`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
     };
 
     const exportHotspots = (type) => {
@@ -658,6 +665,7 @@ export default {
       verifyHotspot,
       minAreaHa,
       exportHotspots,
+      scrollArea,
     };
   }
 };
@@ -762,12 +770,23 @@ export default {
 }
 
 .q-item {
-  border-left: 4px solid transparent;
-  transition: all 0.3s ease;
-  
-  &:hover:not(.selected-hotspot):not(.verified-hotspot):not(.rejected-hotspot):not(.unsure-hotspot) {
-    background: #f5f5f5 !important;
-  }
+  min-height: 40px !important;  // Make items more compact
+  padding: 4px 16px;  // Reduce vertical padding
+}
+
+// Make the list denser
+.q-list {
+  padding: 0;
+}
+
+// Adjust text sizes
+.text-weight-medium {
+  font-size: 0.9rem;
+}
+
+// Status text
+.q-ml-auto {
+  font-size: 0.85rem;
 }
 
 .export-section {
