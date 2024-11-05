@@ -177,10 +177,11 @@ class Project(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     classes = db.Column(db.JSON)
-    training_polygon_sets = db.relationship("TrainingPolygonSet", back_populates="project")
-    trained_model = db.relationship("TrainedModel", back_populates="project")
-    predictions = db.relationship('Prediction', back_populates='project')
+    training_polygon_sets = db.relationship("TrainingPolygonSet", back_populates="project", cascade="all, delete-orphan")
+    trained_model = db.relationship("TrainedModel", back_populates="project", cascade="all, delete-orphan")
+    predictions = db.relationship('Prediction', back_populates='project', cascade="all, delete-orphan")
     aoi_area_ha = db.Column(db.Float)  # Area in hectares
+
 
     def to_dict(self):
         return {
@@ -375,7 +376,7 @@ class Prediction(db.Model):
 
     project = db.relationship('Project', back_populates='predictions')
     model = db.relationship('TrainedModel', back_populates='predictions')
-    hotspots = db.relationship('DeforestationHotspot', back_populates='prediction')
+    hotspots = db.relationship('DeforestationHotspot', back_populates='prediction', cascade="all, delete-orphan")
 
 class DeforestationHotspot(db.Model):
     id = db.Column(db.Integer, primary_key=True)
