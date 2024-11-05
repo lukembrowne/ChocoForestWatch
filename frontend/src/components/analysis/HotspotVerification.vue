@@ -538,33 +538,32 @@ export default {
         };
 
         const loadHotspots = async () => {
-            if (!selectedDeforestationMap.value) return
+            if (!selectedDeforestationMap.value) return;
 
             try {
-                loading.value = true
-                const response = await api.get(
-                    `/analysis/deforestation_hotspots/${selectedDeforestationMap.value.id}`, {
-                        params: {
-                            min_area_ha: minAreaHa.value,
-                            source: selectedSource.value
-                        }
-                    }
-                )
-                hotspots.value = response.data.features
-                // Update the before/after maps with appropriate imagery and all hotspots
-                updateComparisonMaps(selectedDeforestationMap.value);
-                displayAllHotspots();
+                loading.value = true;
+                const response = await api.getDeforestationHotspots(
+                    selectedDeforestationMap.value.id, 
+                    minAreaHa.value,
+                    selectedSource.value
+                );
+                hotspots.value = response.features;
+                
+                // Update map layers if needed
+                if (selectedHotspot.value) {
+                    updateHotspotLayers(selectedHotspot.value);
+                }
             } catch (error) {
-                console.error('Error loading hotspots:', error)
+                console.error('Error loading hotspots:', error);
                 $q.notify({
                     color: 'negative',
                     message: 'Failed to load hotspots',
                     icon: 'error'
-                })
+                });
             } finally {
-                loading.value = false
+                loading.value = false;
             }
-        }
+        };
 
         const updateComparisonMaps = async (deforestationMap) => {
             if (!beforeMapInstance.value || !afterMapInstance.value) return;

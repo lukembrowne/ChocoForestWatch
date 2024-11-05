@@ -187,11 +187,16 @@ export default {
     }
   },
 
-  async getDeforestationHotspots(predictionId, minAreaHa) {
+  async getDeforestationHotspots(predictionId, minAreaHa, source = 'all') {
     try {
       const response = await axios.get(
         `${API_URL}/analysis/deforestation_hotspots/${predictionId}`, 
-        { params: { min_area_ha: minAreaHa } }
+        { 
+          params: { 
+            min_area_ha: minAreaHa,
+            source: source 
+          } 
+        }
       );
       return response.data;
     } catch (error) {

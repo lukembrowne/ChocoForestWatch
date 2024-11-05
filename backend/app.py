@@ -2176,16 +2176,16 @@ def download_and_merge_gfw_alerts():
     
     logger.info("Starting GFW alert download and merge process")
     
-    # This is only for Ecuador
-    GFW_URLS = [
-        "https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=10N_080W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c",
-        "https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=00N_080W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c",
-        "https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=00N_090W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c",
-        "https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=10N_090W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c"
+    # This is only for Ecuador - store as tuples of (url, filename)
+    GFW_TILES = [
+        ("https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=10N_080W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c", "10N_080W.tif"),
+        ("https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=00N_080W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c", "00N_080W.tif"),
+        ("https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=00N_090W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c", "00N_090W.tif"),
+        ("https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=10N_090W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c", "10N_090W.tif")
     ]
     
     # Create directory for GFW data if it doesn't exist
-    gfw_data_dir = './data/gfw_alerts'
+    gfw_data_dir = './gfw_alerts'
     os.makedirs(gfw_data_dir, exist_ok=True)
     
     # Clean up old merged files
@@ -2194,57 +2194,77 @@ def download_and_merge_gfw_alerts():
     # Download and save tiles
     tile_paths = []
     total_size = 0
-    for idx, url in enumerate(GFW_URLS):
+    for url, filename in GFW_TILES:
         try:
-            logger.info(f"Downloading GFW tile {idx} from {url}")
-            response = requests.get(url)
+            logger.info(f"Downloading GFW tile {filename} from {url}")
+            response = requests.get(url, stream=True)  # Stream the response
             response.raise_for_status()
             
-            size_mb = len(response.content) / (1024 * 1024)
-            total_size += size_mb
-            logger.info(f"Downloaded tile {idx}: {size_mb:.1f} MB")
+            tile_path = os.path.join(gfw_data_dir, filename)
             
-            tile_path = os.path.join(gfw_data_dir, f'gfw_tile_{idx}.tif')
+            # Write in chunks to manage memory
             with open(tile_path, 'wb') as f:
-                f.write(response.content)
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            
+            size_mb = os.path.getsize(tile_path) / (1024 * 1024)
+            total_size += size_mb
             tile_paths.append(tile_path)
-            logger.info(f"Successfully saved GFW tile {idx} to {tile_path}")
+            logger.info(f"Successfully saved GFW tile {filename} ({size_mb:.1f} MB)")
+            
         except Exception as e:
-            logger.error(f"Error downloading GFW tile {idx}: {str(e)}")
+            logger.error(f"Error downloading GFW tile {filename}: {str(e)}")
             raise
     
     logger.info(f"Total download size: {total_size:.1f} MB")
     
-    # Merge tiles
+    # Merge tiles with memory management
     try:
         logger.info("Starting tile merge process")
-        # Open all rasters
-        raster_files = [rasterio.open(path) for path in tile_paths]
         
-        # Merge them
-        merged, merged_transform = merge(raster_files)
-        logger.info(f"Merged raster shape: {merged.shape}")
+        # Get metadata and bounds from all files first
+        src_files = [rasterio.open(path) for path in tile_paths]
+        
+        # Calculate overall bounds
+        dest_width = max(src.width for src in src_files)
+        dest_height = max(src.height for src in src_files)
         
         # Get metadata from first raster
-        out_meta = raster_files[0].meta.copy()
+        out_meta = src_files[0].meta.copy()
         out_meta.update({
-            "height": merged.shape[1],
-            "width": merged.shape[2],
-            "transform": merged_transform
+            "height": dest_height,
+            "width": dest_width,
+            "compress": 'lzw',  # Add compression
+            "tiled": True,      # Enable tiling
+            "blockxsize": 256,  # Set tile size
+            "blockysize": 256
         })
         
-        # Save merged result
+        # Close the source files temporarily
+        for src in src_files:
+            src.close()
+        
+        # Create the destination file
         merged_path = os.path.join(gfw_data_dir, f'gfw_merged_{datetime.now().strftime("%Y%m%d")}.tif')
+        
         with rasterio.open(merged_path, 'w', **out_meta) as dest:
-            dest.write(merged)
+            # Process each source file individually
+            for path in tile_paths:
+                with rasterio.open(path) as src:
+                    # Read and write in windows
+                    window_size = 1024
+                    for i in range(0, src.height, window_size):
+                        for j in range(0, src.width, window_size):
+                            window = Window(j, i, 
+                                         min(window_size, src.width - j),
+                                         min(window_size, src.height - i))
+                            data = src.read(1, window=window)
+                            dest.write(data, 1, window=window)
         
         merged_size_mb = os.path.getsize(merged_path) / (1024 * 1024)
         logger.info(f"Successfully saved merged file ({merged_size_mb:.1f} MB) to {merged_path}")
         
-        # Close all raster files
-        for rf in raster_files:
-            rf.close()
-            
         return merged_path
         
     except Exception as e:
@@ -2328,9 +2348,11 @@ def process_gfw_alerts(prediction_id, aoi_shape, min_area_ha=1.0):
         logger.info(f"Processing alerts between {start_date} and {end_date}")
         
         # Get or download merged GFW raster
-        gfw_dir = './data/gfw_alerts'
+        gfw_dir = './gfw_alerts'
+        if not os.path.exists(gfw_dir):
+            os.makedirs(gfw_dir)
+            
         merged_files = [f for f in os.listdir(gfw_dir) if f.startswith('gfw_merged_')]
-        
         if not merged_files:
             logger.info("No existing merged file found, downloading new data")
             merged_path = download_and_merge_gfw_alerts()
