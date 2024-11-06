@@ -618,10 +618,10 @@ export default {
                 );
                 hotspots.value = response.features;
 
-                // Update map layers if needed
-                if (selectedHotspot.value) {
-                    updateHotspotLayers(selectedHotspot.value);
-                }
+                // // Update map layers if needed
+                // if (selectedHotspot.value) {
+                //     updateHotspotLayers(selectedHotspot.value);
+                // }
 
                 // Update the before/after maps with appropriate imagery and all hotspots
                 updateComparisonMaps(selectedDeforestationMap.value);
@@ -713,13 +713,11 @@ export default {
                         strokeColor: '#1976D2',    // Blue
                         strokeWidth: 2,
                         lineDash: [],              // Solid line for ML
-                        fillColor: 'rgba(25, 118, 210, 0.1)'  // Light blue fill
                     },
                     gfw: {
                         strokeColor: '#9C27B0',    // Purple
                         strokeWidth: 2,
-                        lineDash: [5, 5],          // Dashed line for GFW
-                        fillColor: 'rgba(156, 39, 176, 0.1)'  // Light purple fill
+                        lineDash: [],          // Dashed line for GFW
                     }
                 };
 
@@ -731,23 +729,19 @@ export default {
                     switch (status) {
                         case 'verified':
                             style.strokeColor = '#4CAF50';  // Green
-                            style.fillColor = 'rgba(76, 175, 80, 0.1)';
                             break;
                         case 'rejected':
                             style.strokeColor = '#607D8B';  // Grey
-                            style.fillColor = 'rgba(96, 125, 139, 0.1)';
                             break;
                         case 'unsure':
                             style.strokeColor = '#FFC107';  // Amber
-                            style.fillColor = 'rgba(255, 193, 7, 0.1)';
                             break;
                     }
                 }
 
                 // Highlight selected hotspot
                 if (isSelected) {
-                    style.strokeWidth = 3;
-                    style.fillColor = style.fillColor.replace('0.1', '0.3');  // More opaque fill
+                    style.strokeWidth = 2;
                 }
 
                 // Return OpenLayers Style object
@@ -757,9 +751,6 @@ export default {
                         width: style.strokeWidth,
                         lineDash: style.lineDash
                     }),
-                    fill: new Fill({
-                        color: style.fillColor
-                    })
                 });
             };
 
@@ -956,10 +947,14 @@ export default {
                         after_date: selectedDeforestationMap.value.after_date,
                         total_hotspots: hotspotsToExport.length,
                         total_area_ha: hotspotsToExport.reduce((sum, h) => sum + h.properties.area_ha, 0),
+                        source_breakdown: {
+                            ml: hotspotsToExport.filter(h => h.properties.source === 'ml').length,
+                            gfw: hotspotsToExport.filter(h => h.properties.source === 'gfw').length
+                        },
                         min_area_ha: minAreaHa.value,
                         export_type: type,
                         export_timestamp: new Date().toISOString(),
-                        projection: 'EPSG:3857',  // Also add to metadata for clarity
+                        projection: 'EPSG:3857',
                         projection_name: 'Web Mercator'
                     },
                     features: hotspotsToExport.map(h => ({
@@ -968,7 +963,14 @@ export default {
                         properties: {
                             id: h.properties.id,
                             area_ha: h.properties.area_ha,
-                            verification_status: h.properties.verification_status
+                            verification_status: h.properties.verification_status || 'unverified',
+                            source: h.properties.source,  // Add source information
+                            confidence: h.properties.confidence || null,  // Add confidence for GFW alerts
+                            perimeter_m: h.properties.perimeter_m,
+                            compactness: h.properties.compactness,
+                            edge_density: h.properties.edge_density,
+                            centroid_lon: h.properties.centroid_lon,
+                            centroid_lat: h.properties.centroid_lat
                         }
                     }))
                 };

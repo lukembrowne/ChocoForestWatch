@@ -2103,7 +2103,7 @@ def get_deforestation_hotspots(prediction_id):
                 aoi_shape = shape(json.loads(db.session.scalar(project.aoi.ST_AsGeoJSON())))
                 
                 # Process GFW alerts
-                gfw_hotspots = process_gfw_alerts(prediction_id, aoi_shape, min_area_ha)
+                gfw_hotspots = process_gfw_alerts(prediction_id, aoi_shape)
                 
                 # Add GFW hotspots to features list
                 for hotspot in gfw_hotspots:
@@ -2336,7 +2336,7 @@ def decode_gfw_date(encoded_value):
     
     return alert_date, confidence
 
-def process_gfw_alerts(prediction_id, aoi_shape, min_area_ha=1.0):
+def process_gfw_alerts(prediction_id, aoi_shape):
     """Process GFW alerts for a given prediction's time period"""
     try:
         logger.info(f"Starting GFW alert processing for prediction {prediction_id}")
@@ -2435,27 +2435,26 @@ def process_gfw_alerts(prediction_id, aoi_shape, min_area_ha=1.0):
                             # Calculate area and other metrics in meters
                             area_ha = polygon_3857.area / 10000
                             
-                            if area_ha >= min_area_ha:
-                                # Create hotspot record using projected geometry
-                                hotspot = DeforestationHotspot(
-                                    prediction_id=prediction_id,
-                                    geometry=mapping(polygon_3857),  # Store in Web Mercator
-                                    area_ha=float(area_ha),
-                                    perimeter_m=float(polygon_3857.length),
-                                    compactness=float(4 * math.pi * polygon_3857.area / (polygon_3857.length ** 2)),
-                                    edge_density=float(polygon_3857.length / (area_ha * 10000)),
-                                    centroid_lon=float(polygon.centroid.x),  # Store centroids in lat/long for convenience
-                                    centroid_lat=float(polygon.centroid.y),
-                                    source='gfw',
-                                    confidence=int(np.mean(confidence_data[features.rasterize(
-                                        [(geom, 1)],
-                                        out_shape=alert_mask.shape,
-                                        transform=clipped_transform
-                                    ) == 1]))
-                                )
+                            # Create hotspot record using projected geometry
+                            hotspot = DeforestationHotspot(
+                                prediction_id=prediction_id,
+                                geometry=mapping(polygon_3857),  # Store in Web Mercator
+                                area_ha=float(area_ha),
+                                perimeter_m=float(polygon_3857.length),
+                                compactness=float(4 * math.pi * polygon_3857.area / (polygon_3857.length ** 2)),
+                                edge_density=float(polygon_3857.length / (area_ha * 10000)),
+                                centroid_lon=float(polygon.centroid.x),  # Store centroids in lat/long for convenience
+                                centroid_lat=float(polygon.centroid.y),
+                                source='gfw',
+                                confidence=int(np.mean(confidence_data[features.rasterize(
+                                    [(geom, 1)],
+                                    out_shape=alert_mask.shape,
+                                    transform=clipped_transform
+                                ) == 1]))
+                            )
                                 
-                                db.session.add(hotspot)
-                                features_list.append(hotspot)
+                            db.session.add(hotspot)
+                            features_list.append(hotspot)
                 
                 except Exception as e:
                     logger.error(f"Error processing tile {filename}: {str(e)}")
