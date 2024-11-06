@@ -14,7 +14,7 @@
                         </div>
                         <div class="col">
                             <q-select v-model="selectedSource" :options="sourceOptions" label="Alert Source"
-                                @update:model-value="loadHotspots" />
+                                @update:model-value="loadHotspots" option-value="value" option-label="label" />
                         </div>
                     </div>
 
@@ -362,7 +362,7 @@ export default {
 
         const showStats = ref(false);
 
-        const selectedSource = ref('all')
+        const selectedSource = ref({ label: 'All Sources', value: 'all' })
         const sourceOptions = [
             { label: 'All Sources', value: 'all' },
             { label: 'ML Predictions', value: 'ml' },
@@ -609,12 +609,16 @@ export default {
         const loadHotspots = async () => {
             if (!selectedDeforestationMap.value) return;
 
+            console.log('Loading hotspots for deforestation map:', selectedDeforestationMap.value);
+            console.log('Min area:', minAreaHa.value);
+            console.log('Source:', selectedSource.value.value);
+
             try {
                 loading.value = true;
                 const response = await api.getDeforestationHotspots(
                     selectedDeforestationMap.value.id,
                     minAreaHa.value,
-                    selectedSource.value
+                    selectedSource.value.value
                 );
                 hotspots.value = response.features;
 
@@ -703,20 +707,20 @@ export default {
             };
 
             const getHotspotStyle = (feature) => {
-                const isSelected = selectedHotspot.value && selectedHotspot.value.id === feature.id;
+                const isSelected = selectedHotspot.value && selectedHotspot.value.id === feature.getProperties().id;
                 const source = feature.getProperties().source;
                 const status = feature.getProperties().verification_status;
-                
+
                 // Base styles for ML and GFW
                 const sourceStyles = {
                     ml: {
                         strokeColor: '#1976D2',    // Blue
-                        strokeWidth: 2,
+                        strokeWidth: 1.5,
                         lineDash: [],              // Solid line for ML
                     },
                     gfw: {
                         strokeColor: '#9C27B0',    // Purple
-                        strokeWidth: 2,
+                        strokeWidth: 1.5,
                         lineDash: [],          // Dashed line for GFW
                     }
                 };
@@ -741,7 +745,9 @@ export default {
 
                 // Highlight selected hotspot
                 if (isSelected) {
-                    style.strokeWidth = 2;
+                    style.strokeWidth = 3;
+                    // style.strokeColor = '#FF5722';  // Orange
+                    style.lineDash = [10, 10];
                 }
 
                 // Return OpenLayers Style object
@@ -803,8 +809,10 @@ export default {
             const extent = new GeoJSON().readFeature(hotspot).getGeometry().getExtent();
             console.log('Fitting to extent:', extent);
 
-            beforeMapInstance.value.getView().fit(extent, { padding: [50, 50, 50, 50] });
-        };
+            beforeMapInstance.value.getView().fit(extent, { 
+                padding: [150, 150, 150, 150],
+                maxZoom: 17  // Prevent zooming in too close
+            });        };
 
         const verifyHotspot = async (hotspot, status) => {
             try {

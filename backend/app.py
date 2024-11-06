@@ -2135,6 +2135,10 @@ def get_deforestation_hotspots(prediction_id):
         
         # Filter hotspots by minimum area
         features_list = [f for f in features_list if f["properties"]["area_ha"] >= min_area_ha]
+
+        # Filter hotspots by source
+        if source != 'all':
+            features_list = [f for f in features_list if f["properties"]["source"] == source]
         
         # Sort features by area
         features_list.sort(key=lambda x: x["properties"]["area_ha"], reverse=True)
