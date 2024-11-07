@@ -34,3 +34,4 @@ qgis/CFW visualization .qgz
 qgis/Confirmed Deforestation Hotspots 2022-2024.gpkg
 qgis/Confirmed Deforestation Hotspots 2022-2024.gpkg-shm
 qgis/Confirmed Deforestation Hotspots 2022-2024.gpkg-wal
+.env

@@ -90,7 +90,7 @@ def create_app():
     app = Flask(__name__)
     
     # App configurations
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://cfwuser:1234d@localhost/cfwdb'
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
     app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'

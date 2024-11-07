@@ -1,0 +1,48 @@
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VUE_APP_PLANET_API_KEY=${VUE_APP_PLANET_API_KEY}
+    depends_on:
+      - backend
+
+  backend:
+    platform: linux/arm64/v8
+    build: ./backend
+    ports:
+      - "5000:5000"
+    command: /usr/local/bin/python -m flask run --host=0.0.0.0
+    environment:
+      - FLASK_APP=${FLASK_APP}
+      - FLASK_ENV=${FLASK_ENV}
+      - DATABASE_URL=${DATABASE_URL}
+      - VUE_APP_PLANET_API_KEY=${VUE_APP_PLANET_API_KEY}
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/data
+      - backend_uploads:/app/uploads
+      - backend_predictions:/app/predictions
+      - backend_models:/app/trained_models
+
+  db:
+    image: postgis/postgis:15-3.3
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./setup_database.sql:/docker-entrypoint-initdb.d/setup_database.sql
+
+volumes:
+  postgres_data:
+  backend_data:
+  backend_uploads:
+  backend_predictions:
+  backend_models:

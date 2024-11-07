@@ -1,67 +1,67 @@
 // services/api.js
 import axios from 'axios';
 
-const API_URL = 'http://127.0.0.1:5000/api';
-// const API_URL = 'http://localhost:5000/api';
-
+const baseURL = process.env.NODE_ENV === 'production' 
+  ? 'http://backend:5000'
+  : 'http://localhost:5000'
 
 export default {
 
   createProject(projectData) {
-    return axios.post(`${API_URL}/projects`, projectData);
+    return axios.post(`${baseURL}/projects`, projectData);
   },
 
   getProjects() {
-    return axios.get(`${API_URL}/projects`);
+    return axios.get(`${baseURL}/projects`);
   },
 
   getProject(id) {
-    return axios.get(`${API_URL}/projects/${id}`);
+    return axios.get(`${baseURL}/projects/${id}`);
   },
 
   updateProject(id, projectData) {
-    return axios.put(`${API_URL}/projects/${id}`, projectData);
+    return axios.put(`${baseURL}/projects/${id}`, projectData);
   },
 
   deleteProject(id) {
-    return axios.delete(`${API_URL}/projects/${id}`);
+    return axios.delete(`${baseURL}/projects/${id}`);
   },
 
   
   updateProjectClasses(projectId, classes) {
-    return axios.put(`${API_URL}/projects/${projectId}/classes`, { classes });
+    return axios.put(`${baseURL}/projects/${projectId}/classes`, { classes });
   },
   setProjectAOI(projectId, aoiGeojson, aoiExtent, basemapDates) {
-    return axios.post(`${API_URL}/projects/${projectId}/aoi`, { aoi: aoiGeojson, aoi_extent: aoiExtent, basemap_dates: basemapDates })
+    return axios.post(`${baseURL}/projects/${projectId}/aoi`, { aoi: aoiGeojson, aoi_extent: aoiExtent, basemap_dates: basemapDates })
   },
 
   getTrainingPolygons(projectId) {
-    return axios.get(`${API_URL}/training_polygons/${projectId}`);
+    return axios.get(`${baseURL}/training_polygons/${projectId}`);
   },
 
   getSpecificTrainingPolygons(projectId, setID) {
-    return axios.get(`${API_URL}/training_polygons/${projectId}/${setID}`);
+    return axios.get(`${baseURL}/training_polygons/${projectId}/${setID}`);
   },
   
   saveTrainingPolygons(data) {
-    return axios.post(`${API_URL}/training_polygons`, data);
+    return axios.post(`${baseURL}/training_polygons`, data);
   },
 
   updateTrainingPolygons(data) {
-    return axios.put(`${API_URL}/training_polygons/${data.project_id}/${data.id}`, data);
+    return axios.put(`${baseURL}/training_polygons/${data.project_id}/${data.id}`, data);
   },
   
   deleteTrainingSet(projectId, setId) {
-    return axios.delete(`${API_URL}/training_polygons/${projectId}/${setId}`);
+    return axios.delete(`${baseURL}/training_polygons/${projectId}/${setId}`);
   },
 
   updateTrainingSetExcluded(projectId, trainingSetId, excluded) {
-    return axios.put(`${API_URL}/projects/${projectId}/training-sets/${trainingSetId}/excluded`, { excluded })
+    return axios.put(`${baseURL}/projects/${projectId}/training-sets/${trainingSetId}/excluded`, { excluded })
   },
 
   async getTrainedModels(projectId) {
     try {
-      const response = await axios.get(`${API_URL}/trained_models/${projectId}`);
+      const response = await axios.get(`${baseURL}/trained_models/${projectId}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching trained models:', error);
@@ -70,7 +70,7 @@ export default {
   },
 
   getTrainingDataSummary(projectId) {
-    return axios.get(`${API_URL}/training_data_summary/${projectId}`);
+    return axios.get(`${baseURL}/training_data_summary/${projectId}`);
   },
 
 
@@ -78,7 +78,7 @@ export default {
   async trainModel(data) {
     console.log('Starting model training with data:', data);
     try {
-      const response = await axios.post(`${API_URL}/train_model`, data);
+      const response = await axios.post(`${baseURL}/train_model`, data);
       console.log('Model training response:', response.data);
       return response.data;
     } catch (error) {
@@ -103,7 +103,7 @@ export default {
 
   async fetchModelMetrics(projectID) {
     try {
-      const response = await axios.get(`${API_URL}/trained_models/${projectID}/metrics`);
+      const response = await axios.get(`${baseURL}/trained_models/${projectID}/metrics`);
       return response.data;
     } catch (error) {
       console.error('Error fetching model metrics:', error);
@@ -113,7 +113,7 @@ export default {
 
   async predictLandcover(data) {
     try {
-      const response = await axios.post(`${API_URL}/predict_landcover`, data);
+      const response = await axios.post(`${baseURL}/predict_landcover`, data);
       return response.data;
     } catch (error) {
       console.error('Error predicting landcover:', error);
@@ -124,7 +124,7 @@ export default {
 
   async getPredictions(projectId) {
     try {
-      const response = await axios.get(`${API_URL}/predictions/${projectId}`);
+      const response = await axios.get(`${baseURL}/predictions/${projectId}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching predictions:', error);
@@ -133,13 +133,13 @@ export default {
   },
 
   async getPrediction(predictionId) {
-    const response = await axios.get(`${API_URL}/prediction/${predictionId}`);
+    const response = await axios.get(`${baseURL}/prediction/${predictionId}`);
     return response.data;
   },
 
   async getSummaryStatistics(predictionId) {
     try {
-      const response = await axios.get(`${API_URL}/analysis/summary/${predictionId}`);
+      const response = await axios.get(`${baseURL}/analysis/summary/${predictionId}`);
       return response.data;
     } catch (error) {
       console.error('Error getting summary statistics:', error);
@@ -149,7 +149,7 @@ export default {
 
   async getDeforestationAnalysis(projectId) {
     try {
-      const response = await axios.get(`${API_URL}/analysis/deforestation/${projectId}`);
+      const response = await axios.get(`${baseURL}/analysis/deforestation/${projectId}`);
       return response.data;
     } catch (error) {
       console.error('Error getting deforestation analysis:', error);
@@ -159,7 +159,7 @@ export default {
 
   async getChangeAnalysis(data) {
     try {
-      const response = await axios.post(`${API_URL}/analysis/change/`, data);
+      const response = await axios.post(`${baseURL}/analysis/change/`, data);
       return response.data;
     } catch (error) {
       console.error('Error getting change analysis:', error);
@@ -169,7 +169,7 @@ export default {
 
   async renamePrediction(predictionId, newName) {
     try {
-      const response = await axios.put(`${API_URL}/predictions/${predictionId}/rename`, { new_name: newName });
+      const response = await axios.put(`${baseURL}/predictions/${predictionId}/rename`, { new_name: newName });
       return response.data;
     } catch (error) {
       console.error('Error renaming prediction:', error);
@@ -179,7 +179,7 @@ export default {
 
   async deletePrediction(predictionId) {
     try {
-      const response = await axios.delete(`${API_URL}/predictions/${predictionId}`);
+      const response = await axios.delete(`${baseURL}/predictions/${predictionId}`);
       return response.data;
     } catch (error) {
       console.error('Error deleting prediction:', error);
@@ -190,7 +190,7 @@ export default {
   async getDeforestationHotspots(predictionId, minAreaHa, source = 'all') {
     try {
       const response = await axios.get(
-        `${API_URL}/analysis/deforestation_hotspots/${predictionId}`, 
+        `${baseURL}/analysis/deforestation_hotspots/${predictionId}`, 
         { 
           params: { 
             min_area_ha: minAreaHa,
@@ -206,7 +206,7 @@ export default {
   },
 
   async verifyHotspot(hotspotId, status) {
-    const response = await axios.put(`${API_URL}/hotspots/${hotspotId}/verify`, {
+    const response = await axios.put(`${baseURL}/hotspots/${hotspotId}/verify`, {
         status: status
     });
     return response.data;
