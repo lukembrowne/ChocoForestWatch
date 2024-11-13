@@ -11,7 +11,9 @@ import axios from 'axios';
 // : `http://${window.location.hostname}:5000`;  // Production (server IP)
 
 
-const baseURL = 'http://localhost:5000/api'  // Development
+// const baseURL = 'http://localhost:5000/api'  // Development
+
+const baseURL = `http://${window.location.hostname}:5000/api`;
 
 
 export default {
