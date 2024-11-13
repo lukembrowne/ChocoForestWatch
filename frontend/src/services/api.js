@@ -1,9 +1,18 @@
 // services/api.js
 import axios from 'axios';
 
-const baseURL = process.env.NODE_ENV === 'production' 
-  ? 'http://backend:5000'
-  : 'http://localhost:5000'
+// const baseURL = process.env.NODE_ENV === 'production' 
+//   ? 'http://backend:5000'
+//   : 'http://localhost:5000'
+
+  // Simple configuration that works both locally and on server
+// const baseURL = window.location.hostname === 'localhost' 
+// ? 'http://localhost:5000'  // Development
+// : `http://${window.location.hostname}:5000`;  // Production (server IP)
+
+
+const baseURL = 'http://localhost:5000/api'  // Development
+
 
 export default {
 

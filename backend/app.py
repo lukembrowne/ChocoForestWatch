@@ -433,6 +433,17 @@ def prediction_files(filename):
 def deforestation_files(filename):
     return send_from_directory('deforestation', filename)
 
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
+
+@app.route('/health')
+def health_check():
+    return jsonify({
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat()
+    })
 
 # Project routes
 @app.route('/api/projects', methods=['POST'])

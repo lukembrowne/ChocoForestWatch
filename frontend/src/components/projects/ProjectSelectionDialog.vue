@@ -4,7 +4,7 @@
       <q-card-section class="text-center q-pb-none">
         <div class="text-h5 q-mb-md">Welcome to Choco Forest Watch</div>
         <p class="text-body1">
-          Monitor and analyze forest cover changes using satellite imagery and machine learning.
+          !!!!Monitor and analyze forest cover changes using satellite imagery and machine learning.
         </p>
       </q-card-section>
 

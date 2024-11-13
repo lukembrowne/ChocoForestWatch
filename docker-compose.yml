@@ -2,11 +2,15 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3000:3000"
+      - "9000:9000"
     environment:
       - VUE_APP_PLANET_API_KEY=${VUE_APP_PLANET_API_KEY}
     depends_on:
       - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Prevents overwriting node_modules
+    command: quasar dev
 
   backend:
     platform: linux/arm64/v8
