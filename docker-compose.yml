@@ -17,10 +17,11 @@ services:
     build: ./backend
     ports:
       - "5000:5000"
-    command: /usr/local/bin/python -m flask run --host=0.0.0.0
+    command: /usr/local/bin/python -m flask run --host=0.0.0.0 --debug
     environment:
       - FLASK_APP=${FLASK_APP}
       - FLASK_ENV=${FLASK_ENV}
+      - FLASK_DEBUG=${FLASK_DEBUG}  # Enable Flask debug mode
       - DATABASE_URL=${DATABASE_URL}
       - VUE_APP_PLANET_API_KEY=${VUE_APP_PLANET_API_KEY}
     depends_on:
