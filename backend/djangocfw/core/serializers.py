@@ -1,16 +1,47 @@
 from rest_framework import serializers
 from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot
+from django.contrib.gis.geos import GEOSGeometry
 
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = '__all__'
+        extra_kwargs = {
+            'name': {'required': False},  # Make name not required for updates
+            'description': {'required': False},
+            'classes': {'required': False},
+            'aoi': {'required': False},
+            'aoi_area_ha': {'required': False}
+        }
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         if instance.aoi:
             data['aoi'] = instance.aoi.json if instance.aoi else None
         return data
+
+    def update(self, instance, validated_data):
+        # Handle AOI update specifically
+        if 'aoi' in validated_data:
+            if isinstance(validated_data['aoi'], dict):
+                # If AOI is provided as GeoJSON
+                instance.aoi = GEOSGeometry(str(validated_data['aoi']))
+            else:
+                # If AOI is provided as WKT or other format
+                instance.aoi = validated_data['aoi']
+            
+            # Calculate area if AOI is set
+            if instance.aoi:
+                # Area calculation in hectares
+                instance.aoi_area_ha = instance.aoi.area / 10000
+
+        # Update other fields
+        for attr, value in validated_data.items():
+            if attr != 'aoi':  # Skip AOI as we handled it above
+                setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
 
 class TrainingPolygonSetSerializer(serializers.ModelSerializer):
     class Meta:

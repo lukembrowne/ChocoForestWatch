@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.gis',
     'rest_framework',
     'corsheaders',
     'channels',
@@ -78,7 +79,11 @@ ROOT_URLCONF = 'djangocfw.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            os.path.join(BASE_DIR, 'templates'),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
+                        'venv/lib/python3.10/site-packages/django/contrib/gis/templates'),
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

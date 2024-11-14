@@ -2,12 +2,14 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
 from django.utils import timezone
+from django.contrib.gis.geos import GEOSGeometry
 from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot
 from .serializers import (ProjectSerializer, TrainingPolygonSetSerializer, 
                          TrainedModelSerializer, PredictionSerializer, 
                          DeforestationHotspotSerializer)
 from .services.model_training import ModelTrainingService
 from .services.prediction import PredictionService
+from loguru import logger
 
 @api_view(['GET'])
 def health_check(request):
@@ -19,6 +21,58 @@ def health_check(request):
 class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        try:
+            logger.debug(f"Update request data: {request.data}")
+
+            # Handle AOI update
+            if 'aoi' in request.data:
+                aoi_data = request.data['aoi']
+                aoi_extent = request.data.get('aoi_extent_lat_lon')
+                basemap_dates = request.data.get('basemap_dates')
+                
+                logger.debug(f"AOI data: {aoi_data}")
+                logger.debug(f"AOI extent: {aoi_extent}")
+                logger.debug(f"Basemap dates: {basemap_dates}")
+
+                try:
+                    # Convert the geometry data to GeoJSON format if it isn't already
+                    if isinstance(aoi_data, dict):
+                        geojson = {
+                            'type': 'Polygon',
+                            'coordinates': aoi_data['coordinates']
+                        } if aoi_data.get('type') == 'Polygon' else aoi_data
+                        instance.aoi = GEOSGeometry(str(geojson))
+                    else:
+                        instance.aoi = GEOSGeometry(aoi_data)
+                    
+                    if instance.aoi:
+                        instance.aoi_area_ha = instance.aoi.area / 10000
+                        logger.debug(f"Calculated area: {instance.aoi_area_ha} ha")
+                except Exception as e:
+                    logger.error(f"Error converting geometry: {str(e)}")
+                    logger.error(f"Geometry data was: {aoi_data}")
+                    return Response(
+                        {"error": f"Invalid geometry format: {str(e)}"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+
+            logger.info(f"Successfully updated project {instance.id}")
+            return Response(serializer.data)
+
+        except Exception as e:
+            logger.error(f"Error updating project: {str(e)}")
+            return Response(
+                {"error": f"Failed to update project: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

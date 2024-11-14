@@ -34,8 +34,10 @@ services:
       - ./backend/djangocfw:/app
       - ./data:/app/data
       - ./media:/app/media
+      - ./logs:/app/logs
     ports:
       - "8000:8000"
+      - "5678:5678"
     environment:
       - POSTGRES_DB=cfwdb
       - POSTGRES_USER=cfwuser
@@ -43,16 +45,13 @@ services:
       - DB_HOST=db
       - DB_PORT=5432
       - PLANET_API_KEY=${PLANET_API_KEY}
-      - DJANGO_SUPERUSER_USERNAME=admin
-      - DJANGO_SUPERUSER_PASSWORD=admin
-      - DJANGO_SUPERUSER_EMAIL=admin@example.com
+    command: python -m debugpy --listen 0.0.0.0:5678 --wait-for-client manage.py runserver 0.0.0.0:8000
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     restart: on-failure:3
-    entrypoint: ["/app/entrypoint.sh"]
 
   frontend:
     build: ./frontend

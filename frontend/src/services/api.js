@@ -29,7 +29,12 @@ export default {
         return api.put(`/projects/${id}/`, data);
     },
     
-    setProjectAOI(id, data) {
+    setProjectAOI(id, aoiGeojson, aoiExtentLatLon, availableDates) {
+        const data = {
+            aoi: aoiGeojson.geometry,
+            aoi_extent_lat_lon: aoiExtentLatLon,
+            basemap_dates: availableDates
+        };
         return api.put(`/projects/${id}/`, data);
     },
     
@@ -38,7 +43,7 @@ export default {
     },
 
     // Training set endpoints
-    getTrainingSets(projectId) {
+    getTrainingPolygons(projectId) {
         return api.get('/training-sets/', { params: { project_id: projectId } });
     },
     
@@ -46,7 +51,7 @@ export default {
         return api.post('/training-sets/', data);
     },
     
-    updateTrainingSet(id, data) {
+    updateTrainingPolygons(id, data) {
         return api.put(`/training-sets/${id}/`, data);
     },
     
