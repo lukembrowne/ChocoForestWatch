@@ -22,8 +22,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . .
 
+# Make scripts executable
+RUN chmod +x entrypoint.sh
+RUN chmod +x wait_for_db.py
+
 # Expose port
 EXPOSE 8000
 
-# Command to run the application
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"] 
+# Use entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"] 
