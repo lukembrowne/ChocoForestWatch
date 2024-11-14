@@ -13,6 +13,8 @@ import tempfile
 from django.conf import settings
 import requests
 from requests.auth import HTTPBasicAuth
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 class PredictionService:
     def __init__(self, model_id, project_id):
@@ -20,6 +22,7 @@ class PredictionService:
         self.project_id = project_id
         self.PLANET_API_KEY = settings.PLANET_API_KEY
         self.QUAD_DOWNLOAD_DIR = './data/planet_quads'
+        self.channel_layer = get_channel_layer()
         
     def load_model(self):
         """Load the trained model and its metadata"""
@@ -180,3 +183,50 @@ class PredictionService:
     get_mosaic_id = ModelTrainingService.get_mosaic_id
     get_quad_info = ModelTrainingService.get_quad_info
     download_and_process_quads = ModelTrainingService.download_and_process_quads
+
+    def send_progress_update(self, progress, message):
+        """Send progress update through WebSocket"""
+        async_to_sync(self.channel_layer.group_send)(
+            f"project_{self.project_id}",
+            {
+                'type': 'prediction_update',
+                'progress': progress,
+                'message': message
+            }
+        )
+
+    def generate_prediction(self, aoi_shape, basemap_date, prediction_name):
+        """Generate a new prediction"""
+        try:
+            self.send_progress_update(0, "Starting prediction...")
+            
+            # Load model and get quads
+            self.send_progress_update(10, "Loading model...")
+            model = self.load_model()
+            
+            self.send_progress_update(20, "Getting Planet quads...")
+            quads = self.get_planet_quads(aoi_shape, basemap_date)
+            
+            # Generate prediction
+            self.send_progress_update(50, "Generating prediction...")
+            prediction_file = self.predict_landcover_aoi(
+                model, quads, aoi_shape, basemap_date
+            )
+            
+            # Save prediction record
+            self.send_progress_update(90, "Saving prediction...")
+            prediction = self.save_prediction(
+                prediction_file, prediction_name, basemap_date
+            )
+            
+            # Calculate statistics
+            self.send_progress_update(95, "Calculating statistics...")
+            self.calculate_summary_statistics(prediction)
+            
+            self.send_progress_update(100, "Prediction complete")
+            return prediction
+            
+        except Exception as e:
+            self.send_progress_update(100, f"Error: {str(e)}")
+            logger.error(f"Error in prediction generation: {str(e)}")
+            raise

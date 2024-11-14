@@ -86,7 +86,7 @@ class TrainedModelViewSet(viewsets.ModelViewSet):
 
             service = ModelTrainingService(project_id)
             model, metrics = service.train_model(
-                model_name, 
+                model_name,
                 model_description,
                 training_set_ids,
                 model_params

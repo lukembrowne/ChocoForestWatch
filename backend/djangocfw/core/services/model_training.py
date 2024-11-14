@@ -16,33 +16,54 @@ from ..models import TrainedModel, TrainingPolygonSet, Project
 from django.conf import settings
 import requests
 from requests.auth import HTTPBasicAuth
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 class ModelTrainingService:
     def __init__(self, project_id):
         self.project_id = project_id
         self.PLANET_API_KEY = settings.PLANET_API_KEY
         self.QUAD_DOWNLOAD_DIR = './data/planet_quads'
+        self.channel_layer = get_channel_layer()
         
+    def send_progress_update(self, progress, message):
+        """Send progress update through WebSocket"""
+        async_to_sync(self.channel_layer.group_send)(
+            f"project_{self.project_id}",
+            {
+                'type': 'training_update',
+                'progress': progress,
+                'message': message
+            }
+        )
+
     def train_model(self, model_name, model_description, training_set_ids, model_params):
         """Main method to handle the model training process"""
         try:
+            self.send_progress_update(0, "Starting model training...")
+            
             # Get training data
+            self.send_progress_update(10, "Preparing training data...")
             X, y, feature_ids, dates, all_class_names = self.prepare_training_data(training_set_ids)
             
             # Train model and get metrics
+            self.send_progress_update(50, "Training model...")
             model, metrics, encoders = self.train_xgboost_model(
                 X, y, feature_ids, dates, all_class_names, model_params
             )
             
             # Save the model
+            self.send_progress_update(90, "Saving model...")
             saved_model = self.save_model(
                 model, model_name, model_description, metrics, 
                 model_params, encoders, training_set_ids, len(X)
             )
             
+            self.send_progress_update(100, "Model training complete")
             return saved_model, metrics
             
         except Exception as e:
+            self.send_progress_update(100, f"Error: {str(e)}")
             logger.error(f"Error in model training: {str(e)}")
             raise
 
