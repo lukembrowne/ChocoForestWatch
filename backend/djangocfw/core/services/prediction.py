@@ -15,6 +15,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from .model_training import ModelTrainingService
 
 class PredictionService:
     def __init__(self, model_id, project_id):
@@ -230,3 +231,23 @@ class PredictionService:
             self.send_progress_update(100, f"Error: {str(e)}")
             logger.error(f"Error in prediction generation: {str(e)}")
             raise
+
+    def save_prediction(self, prediction_data, name, basemap_date):
+        """Save prediction to storage and create record"""
+        from django.core.files.base import ContentFile
+        
+        prediction = Prediction.objects.create(
+            project_id=self.project_id,
+            model_id=self.model_id,
+            type='land_cover',
+            name=name,
+            basemap_date=basemap_date
+        )
+        
+        # Save the prediction file
+        prediction.file.save(
+            f"prediction_{uuid.uuid4().hex}.tif",
+            ContentFile(prediction_data)
+        )
+        
+        return prediction

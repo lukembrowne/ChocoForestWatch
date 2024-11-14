@@ -18,6 +18,8 @@ import requests
 from requests.auth import HTTPBasicAuth
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from django.core.files.base import ContentFile
+import io
 
 class ModelTrainingService:
     def __init__(self, project_id):
@@ -198,18 +200,11 @@ class ModelTrainingService:
     def save_model(self, model, name, description, metrics, model_params, 
                   encoders, training_set_ids, num_samples):
         """Save trained model and its metadata"""
-        # Create directory if it doesn't exist
-        model_dir = './trained_models'
-        os.makedirs(model_dir, exist_ok=True)
+        # Save model to bytes buffer
+        buffer = io.BytesIO()
+        joblib.dump(model, buffer)
         
-        # Generate unique filename
-        file_name = f"{name}_{uuid.uuid4().hex}.joblib"
-        file_path = os.path.join(model_dir, file_name)
-        
-        # Save model file
-        joblib.dump(model, file_path)
-        
-        # Create or update model record
+        # Create model record
         model_record = TrainedModel.objects.create(
             name=name,
             description=description,
@@ -221,12 +216,18 @@ class ModelTrainingService:
             class_metrics=metrics['class_metrics'],
             class_names=metrics['class_names'],
             confusion_matrix=metrics['confusion_matrix'],
-            file_path=file_path,
             model_parameters=model_params,
             date_encoder=encoders['date_encoder'],
             month_encoder=encoders['month_encoder'],
             label_encoder=encoders['label_encoder'],
             all_class_names=self.get_all_class_names()
+        )
+        
+        # Save the model file
+        buffer.seek(0)
+        model_record.file.save(
+            f"{name}_{uuid.uuid4().hex}.joblib",
+            ContentFile(buffer.read())
         )
         
         return model_record

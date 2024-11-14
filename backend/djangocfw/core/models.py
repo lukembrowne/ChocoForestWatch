@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.gis.db import models as gis_models
 from django.utils import timezone
+from .storage import ModelStorage, PredictionStorage
 
 class Project(models.Model):
     name = models.CharField(max_length=100)
@@ -39,7 +40,7 @@ class TrainedModel(models.Model):
     accuracy = models.FloatField(null=True)
     class_metrics = models.JSONField(null=True)
     confusion_matrix = models.JSONField(null=True)
-    file_path = models.CharField(max_length=255)
+    file = models.FileField(storage=ModelStorage(), max_length=255)
     model_parameters = models.JSONField(null=True)
     class_names = models.JSONField(null=True)
     date_encoder = models.BinaryField(null=True)
@@ -50,18 +51,30 @@ class TrainedModel(models.Model):
     def __str__(self):
         return f"{self.name} - {self.project.name}"
 
+    def delete(self, *args, **kwargs):
+        # Delete the file when the model is deleted
+        if self.file:
+            self.file.delete()
+        super().delete(*args, **kwargs)
+
 class Prediction(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='predictions')
     model = models.ForeignKey(TrainedModel, on_delete=models.CASCADE, related_name='predictions')
     type = models.CharField(max_length=20)
     name = models.CharField(max_length=100)
-    file_path = models.CharField(max_length=255)
+    file = models.FileField(storage=PredictionStorage(), max_length=255)
     basemap_date = models.CharField(max_length=7, null=True)
     created_at = models.DateTimeField(default=timezone.now)
     summary_statistics = models.JSONField(null=True)
 
     def __str__(self):
         return f"{self.name} - {self.project.name}"
+
+    def delete(self, *args, **kwargs):
+        # Delete the file when the prediction is deleted
+        if self.file:
+            self.file.delete()
+        super().delete(*args, **kwargs)
 
 class DeforestationHotspot(models.Model):
     prediction = models.ForeignKey(Prediction, on_delete=models.CASCADE, related_name='hotspots')

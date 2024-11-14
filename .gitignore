@@ -38,3 +38,4 @@ backend/djangocfw/__pycache__/*
 backend/djangocfw/core/services/__pycache__/*
 backend/djangocfw/djangocfw/__pycache__/*
 backend/djangocfw/djangocfw/__pycache__/settings.cpython-312.pyc
+backend/djangocfw/djangocfw/__pycache__/urls.cpython-312.pyc

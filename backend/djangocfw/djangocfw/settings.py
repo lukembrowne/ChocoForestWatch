@@ -160,3 +160,30 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+# Media files configuration
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Storage paths configuration
+MODEL_FILES_ROOT = os.path.join(MEDIA_ROOT, 'models')
+MODEL_FILES_URL = MEDIA_URL + 'models/'
+
+PREDICTION_FILES_ROOT = os.path.join(MEDIA_ROOT, 'predictions')
+PREDICTION_FILES_URL = MEDIA_URL + 'predictions/'
+
+PLANET_QUADS_ROOT = os.path.join(MEDIA_ROOT, 'planet_quads')
+PLANET_QUADS_URL = MEDIA_URL + 'planet_quads/'
+
+# Create directories if they don't exist
+for directory in [MODEL_FILES_ROOT, PREDICTION_FILES_ROOT, PLANET_QUADS_ROOT]:
+    os.makedirs(directory, exist_ok=True)
+
+# File upload settings
+FILE_UPLOAD_HANDLERS = [
+    'django.core.files.uploadhandler.MemoryFileUploadHandler',
+    'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+]
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
+FILE_UPLOAD_PERMISSIONS = 0o644
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755
