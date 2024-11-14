@@ -10,6 +10,99 @@ const api = axios.create({
     },
 });
 
+// API functions
+export default {
+    // Project endpoints
+    getProjects() {
+        return api.get('/projects/');
+    },
+    
+    createProject(data) {
+        return api.post('/projects/', data);
+    },
+    
+    getProject(id) {
+        return api.get(`/projects/${id}/`);
+    },
+    
+    updateProject(id, data) {
+        return api.put(`/projects/${id}/`, data);
+    },
+    
+    setProjectAOI(id, data) {
+        return api.put(`/projects/${id}/`, data);
+    },
+    
+    deleteProject(id) {
+        return api.delete(`/projects/${id}/`);
+    },
+
+    // Training set endpoints
+    getTrainingSets(projectId) {
+        return api.get('/training-sets/', { params: { project_id: projectId } });
+    },
+    
+    saveTrainingPolygons(data) {
+        return api.post('/training-sets/', data);
+    },
+    
+    updateTrainingSet(id, data) {
+        return api.put(`/training-sets/${id}/`, data);
+    },
+    
+    setTrainingSetExcluded(id, excluded) {
+        return api.put(`/training-sets/${id}/excluded/`, { excluded });
+    },
+
+    // Model endpoints
+    getModels(projectId) {
+        return api.get('/trained-models/', { params: { project_id: projectId } });
+    },
+    
+    trainModel(data) {
+        return api.post('/trained-models/train/', data);
+    },
+    
+    deleteModel(id) {
+        return api.delete(`/trained-models/${id}/`);
+    },
+
+    // Prediction endpoints
+    getPredictions(projectId) {
+        return api.get('/predictions/', { params: { project_id: projectId } });
+    },
+    
+    generatePrediction(data) {
+        return api.post('/predictions/generate/', data);
+    },
+    
+    deletePrediction(id) {
+        return api.delete(`/predictions/${id}/`);
+    },
+
+    // Hotspot endpoints
+    getHotspots(predictionId) {
+        return api.get('/hotspots/', { params: { prediction_id: predictionId } });
+    },
+    
+    verifyHotspot(id, status) {
+        return api.put(`/hotspots/${id}/verify/`, { status });
+    },
+
+    // Analysis endpoints
+    analyzeChange(data) {
+        return api.post('/analysis/change/', data);
+    },
+
+    getDeforestationHotspots(predictionId, params) {
+        return api.get(`/analysis/deforestation_hotspots/${predictionId}/`, { params });
+    },
+
+    getSummaryStatistics(predictionId) {
+        return api.get(`/analysis/summary/${predictionId}/`);
+    }
+};
+
 // WebSocket connection function
 export const connectWebSocket = (projectId, onMessage) => {
     const ws = new WebSocket(`ws://localhost:8000/ws/progress/${projectId}/`);
@@ -21,45 +114,3 @@ export const connectWebSocket = (projectId, onMessage) => {
 
     return ws;
 };
-
-// API endpoints
-export const endpoints = {
-    // Project endpoints
-    projects: {
-        list: () => api.get('/projects/'),
-        create: (data) => api.post('/projects/', data),
-        get: (id) => api.get(`/projects/${id}/`),
-        update: (id, data) => api.put(`/projects/${id}/`, data),
-        delete: (id) => api.delete(`/projects/${id}/`),
-    },
-
-    // Training set endpoints
-    trainingSets: {
-        list: (projectId) => api.get('/training-sets/', { params: { project_id: projectId } }),
-        create: (data) => api.post('/training-sets/', data),
-        update: (id, data) => api.put(`/training-sets/${id}/`, data),
-        setExcluded: (id, excluded) => api.put(`/training-sets/${id}/excluded/`, { excluded }),
-    },
-
-    // Model endpoints
-    models: {
-        list: (projectId) => api.get('/trained-models/', { params: { project_id: projectId } }),
-        train: (data) => api.post('/trained-models/train/', data),
-        delete: (id) => api.delete(`/trained-models/${id}/`),
-    },
-
-    // Prediction endpoints
-    predictions: {
-        list: (projectId) => api.get('/predictions/', { params: { project_id: projectId } }),
-        generate: (data) => api.post('/predictions/generate/', data),
-        delete: (id) => api.delete(`/predictions/${id}/`),
-    },
-
-    // Hotspot endpoints
-    hotspots: {
-        list: (predictionId) => api.get(`/hotspots/`, { params: { prediction_id: predictionId } }),
-        verify: (id, status) => api.put(`/hotspots/${id}/verify/`, { status }),
-    },
-};
-
-export default api;
