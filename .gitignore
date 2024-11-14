@@ -35,3 +35,9 @@ qgis/Confirmed Deforestation Hotspots 2022-2024.gpkg
 qgis/Confirmed Deforestation Hotspots 2022-2024.gpkg-shm
 qgis/Confirmed Deforestation Hotspots 2022-2024.gpkg-wal
 .env
+backend/djangocfw/core/__pycache__/__init__.cpython-312.pyc
+backend/djangocfw/core/__pycache__/admin.cpython-312.pyc
+backend/djangocfw/core/__pycache__/apps.cpython-312.pyc
+backend/djangocfw/core/__pycache__/models.cpython-312.pyc
+backend/djangocfw/core/__pycache__/urls.cpython-312.pyc
+backend/djangocfw/core/__pycache__/views.cpython-312.pyc
