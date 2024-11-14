@@ -35,3 +35,4 @@ qgis/*
 backend/djangocfw/core/__pycache__/* 
 backend/djangocfw/core/migrations/__pycache__/*
 backend/djangocfw/__pycache__/*
+backend/djangocfw/core/services/__pycache__/*

@@ -6,6 +6,8 @@ from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, Defor
 from .serializers import (ProjectSerializer, TrainingPolygonSetSerializer, 
                          TrainedModelSerializer, PredictionSerializer, 
                          DeforestationHotspotSerializer)
+from .services.model_training import ModelTrainingService
+from .services.prediction import PredictionService
 
 @api_view(['GET'])
 def health_check(request):
@@ -72,6 +74,32 @@ class TrainedModelViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(project_id=project_id)
         return queryset
 
+    @action(detail=False, methods=['post'])
+    def train(self, request):
+        """Train a new model"""
+        try:
+            project_id = request.data.get('project_id')
+            model_name = request.data.get('model_name')
+            model_description = request.data.get('model_description', '')
+            training_set_ids = request.data.get('training_set_ids', [])
+            model_params = request.data.get('model_parameters', {})
+
+            service = ModelTrainingService(project_id)
+            model, metrics = service.train_model(
+                model_name, 
+                model_description,
+                training_set_ids,
+                model_params
+            )
+
+            return Response({
+                'model_id': model.id,
+                'metrics': metrics
+            })
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
+
 class PredictionViewSet(viewsets.ModelViewSet):
     queryset = Prediction.objects.all()
     serializer_class = PredictionSerializer
@@ -82,6 +110,32 @@ class PredictionViewSet(viewsets.ModelViewSet):
         if project_id is not None:
             queryset = queryset.filter(project_id=project_id)
         return queryset
+
+    @action(detail=False, methods=['post'])
+    def generate(self, request):
+        """Generate a new prediction"""
+        try:
+            model_id = request.data.get('model_id')
+            project_id = request.data.get('project_id')
+            aoi_shape = request.data.get('aoi_shape')
+            basemap_date = request.data.get('basemap_date')
+            prediction_name = request.data.get('name')
+
+            service = PredictionService(model_id, project_id)
+            prediction = service.generate_prediction(
+                aoi_shape,
+                basemap_date,
+                prediction_name
+            )
+
+            return Response({
+                'prediction_id': prediction.id,
+                'file_path': prediction.file_path,
+                'summary_statistics': prediction.summary_statistics
+            })
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
 
 class DeforestationHotspotViewSet(viewsets.ModelViewSet):
     queryset = DeforestationHotspot.objects.all()
