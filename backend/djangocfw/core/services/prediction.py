@@ -16,6 +16,7 @@ from requests.auth import HTTPBasicAuth
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .model_training import ModelTrainingService
+from ..exceptions import PredictionError, PlanetAPIError, InvalidInputError
 
 class PredictionService:
     def __init__(self, model_id, project_id):
@@ -228,9 +229,8 @@ class PredictionService:
             return prediction
             
         except Exception as e:
-            self.send_progress_update(100, f"Error: {str(e)}")
-            logger.error(f"Error in prediction generation: {str(e)}")
-            raise
+            logger.exception("Error generating prediction")
+            raise PredictionError(detail=str(e))
 
     def save_prediction(self, prediction_data, name, basemap_date):
         """Save prediction to storage and create record"""

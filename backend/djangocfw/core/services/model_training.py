@@ -20,6 +20,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.core.files.base import ContentFile
 import io
+from ..exceptions import ModelTrainingError, PlanetAPIError, InvalidInputError
 
 class ModelTrainingService:
     def __init__(self, project_id):
@@ -65,9 +66,8 @@ class ModelTrainingService:
             return saved_model, metrics
             
         except Exception as e:
-            self.send_progress_update(100, f"Error: {str(e)}")
-            logger.error(f"Error in model training: {str(e)}")
-            raise
+            logger.exception("Error in model training")
+            raise ModelTrainingError(detail=str(e))
 
     def prepare_training_data(self, training_set_ids):
         """Prepare training data from training sets"""
