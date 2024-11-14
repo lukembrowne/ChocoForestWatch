@@ -1,58 +1,52 @@
+version: '3.8'
+
 services:
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_DB: cfwdb
+      POSTGRES_USER: cfwuser
+      POSTGRES_PASSWORD: 1234
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: 
+      context: ./backend/djangocfw
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend/djangocfw:/app
+      - ./data:/app/data
+      - ./media:/app/media
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_NAME=cfwdb
+      - DB_USER=cfwuser
+      - DB_PASSWORD=1234
+      - DB_HOST=db
+      - DB_PORT=5432
+      - PLANET_API_KEY=${PLANET_API_KEY}
+    depends_on:
+      - db
+      - redis
+
   frontend:
     build: ./frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     ports:
       - "9000:9000"
     environment:
-      - VUE_APP_PLANET_API_KEY=${VUE_APP_PLANET_API_KEY}
-    depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules  # Prevents overwriting node_modules
-    command: quasar dev
-
-  backend:
-    build: ./backend
-    ports:
-      - "5000:5000"
-    command: /usr/local/bin/python -m flask run --host=0.0.0.0 --debug
-    environment:
-      - FLASK_APP=${FLASK_APP}
-      - FLASK_ENV=${FLASK_ENV}
-      - FLASK_DEBUG=${FLASK_DEBUG}  # Enable Flask debug mode
-      - DATABASE_URL=${DATABASE_URL}
-      - VUE_APP_PLANET_API_KEY=${VUE_APP_PLANET_API_KEY}
-    depends_on:
-      db:
-        condition: service_healthy  # Wait for db to be healthy
-    volumes:
-      - ./backend:/app
-      - backend_data:/app/data
-      - backend_uploads:/app/uploads
-      - backend_predictions:/app/predictions
-      - backend_models:/app/trained_models
-
-  db:
-    image: postgis/postgis:15-3.3
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./setup_database.sql:/docker-entrypoint-initdb.d/setup_database.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - VITE_API_URL=http://localhost:8000/api
 
 volumes:
   postgres_data:
-  backend_data:
-  backend_uploads:
-  backend_predictions:
-  backend_models:

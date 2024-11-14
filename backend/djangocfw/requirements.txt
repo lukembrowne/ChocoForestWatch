@@ -1,0 +1,16 @@
+Django>=5.1.3
+djangorestframework
+django-cors-headers
+django-channels
+channels-redis
+psycopg2-binary
+python-dotenv
+rasterio
+numpy
+xgboost
+scikit-learn
+joblib
+shapely
+loguru
+requests
+daphne 
