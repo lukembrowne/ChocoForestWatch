@@ -37,3 +37,4 @@ backend/djangocfw/core/migrations/__pycache__/*
 backend/djangocfw/__pycache__/*
 backend/djangocfw/core/services/__pycache__/*
 backend/djangocfw/djangocfw/__pycache__/*
+backend/djangocfw/djangocfw/__pycache__/settings.cpython-312.pyc
