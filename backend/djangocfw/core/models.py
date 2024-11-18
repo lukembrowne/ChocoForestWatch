@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.gis.db import models as gis_models
 from django.utils import timezone
 from .storage import ModelStorage, PredictionStorage
+from django.db.models import JSONField
+from django.contrib.postgres.fields import ArrayField
 
 class Project(models.Model):
     name = models.CharField(max_length=100)
@@ -29,32 +31,26 @@ class TrainingPolygonSet(models.Model):
         return f"{self.name} - {self.project.name}"
 
 class TrainedModel(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='trained_model')
-    created_at = models.DateTimeField(default=timezone.now)
+    project = models.ForeignKey('Project', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    training_set_ids = models.JSONField()
-    training_periods = models.JSONField(null=True)
+    training_set_ids = ArrayField(models.IntegerField())
+    training_periods = models.IntegerField(null=True)
     num_training_samples = models.IntegerField(null=True)
-    accuracy = models.FloatField(null=True)
-    class_metrics = models.JSONField(null=True)
-    confusion_matrix = models.JSONField(null=True)
-    file = models.FileField(storage=ModelStorage(), max_length=255, null=True)
-    model_parameters = models.JSONField(null=True)
-    class_names = models.JSONField(null=True)
-    date_encoder = models.BinaryField(null=True)
-    month_encoder = models.BinaryField(null=True)
-    label_encoder = models.BinaryField(null=True)
-    all_class_names = models.JSONField(null=True)
+    model_file = models.CharField(max_length=255, blank=True)
+    model_parameters = JSONField(default=dict)
+    metrics = JSONField(default=dict)
+    encoders = JSONField(default=dict)
 
     def __str__(self):
         return f"{self.name} - {self.project.name}"
 
     def delete(self, *args, **kwargs):
         # Delete the file when the model is deleted
-        if self.file:
-            self.file.delete()
+        if self.model_file:
+            self.model_file.delete()
         super().delete(*args, **kwargs)
 
 class Prediction(models.Model):

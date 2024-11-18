@@ -22,6 +22,9 @@ from django.core.files.base import ContentFile
 import io
 from ..exceptions import ModelTrainingError, PlanetAPIError, InvalidInputError
 from pyproj import Transformer
+import pickle
+import base64
+from pathlib import Path
 
 class ModelTrainingService:
     def __init__(self, project_id):
@@ -205,40 +208,64 @@ class ModelTrainingService:
         
         return model, metrics, encoders
 
-    def save_model(self, model, name, description, metrics, model_params, 
-                  encoders, training_set_ids, num_samples):
-        """Save trained model and its metadata"""
-        # Save model to bytes buffer
-        buffer = io.BytesIO()
-        joblib.dump(model, buffer)
-        
-        # Create model record
-        model_record = TrainedModel.objects.create(
-            name=name,
-            description=description,
-            project_id=self.project_id,
-            training_set_ids=training_set_ids,
-            training_periods=list(set(ts.basemap_date for ts in TrainingPolygonSet.objects.filter(id__in=training_set_ids))),
-            num_training_samples=num_samples,
-            accuracy=metrics['accuracy'],
-            class_metrics=metrics['class_metrics'],
-            class_names=metrics['class_names'],
-            confusion_matrix=metrics['confusion_matrix'],
-            model_parameters=model_params,
-            date_encoder=encoders['date_encoder'],
-            month_encoder=encoders['month_encoder'],
-            label_encoder=encoders['label_encoder'],
-            all_class_names=self.get_all_class_names()
-        )
-        
-        # Save the model file
-        buffer.seek(0)
-        model_record.file.save(
-            f"{name}_{uuid.uuid4().hex}.joblib",
-            ContentFile(buffer.read())
-        )
-        
-        return model_record
+    def save_model(self, model, model_name, model_description, metrics, model_params, encoders, training_set_ids, num_samples):
+        """Save the trained model and its metadata"""
+        try:
+            # Serialize the encoders
+            serialized_encoders = {
+                name: base64.b64encode(pickle.dumps(encoder)).decode('utf-8')
+                for name, encoder in encoders.items()
+            }
+
+            # Create model record
+            model_record = TrainedModel.objects.create(
+                name=model_name,
+                description=model_description,
+                project_id=self.project_id,
+                training_set_ids=training_set_ids,
+                training_periods=len(training_set_ids),
+                num_training_samples=num_samples,
+                model_parameters=model_params,
+                metrics=metrics,
+                encoders=serialized_encoders
+            )
+
+            # Create models directory if it doesn't exist
+            models_dir = Path('models')
+            models_dir.mkdir(exist_ok=True)
+
+            # Save the model file
+            model_path = f'models/{model_record.id}_model.pkl'
+            with open(model_path, 'wb') as f:
+                pickle.dump(model, f)
+
+            model_record.model_file = model_path
+            model_record.save()
+
+            return model_record
+
+        except Exception as e:
+            logger.exception("Error saving model")
+            raise ModelTrainingError(f"Failed to save model: {str(e)}")
+
+    def load_model(self, model_record):
+        """Load a trained model and its encoders"""
+        try:
+            # Load the model file
+            with open(model_record.model_file, 'rb') as f:
+                model = pickle.load(f)
+
+            # Deserialize the encoders
+            encoders = {
+                name: pickle.loads(base64.b64decode(encoder_str.encode('utf-8')))
+                for name, encoder_str in model_record.encoders.items()
+            }
+
+            return model, encoders
+
+        except Exception as e:
+            logger.exception("Error loading model")
+            raise ModelTrainingError(f"Failed to load model: {str(e)}")
 
     def get_all_class_names(self):
         """Get all class names from project"""
