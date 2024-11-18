@@ -103,10 +103,19 @@ class TrainingPolygonSetViewSet(viewsets.ModelViewSet):
     serializer_class = TrainingPolygonSetSerializer
 
     def get_queryset(self):
+        """
+        Optionally restricts the returned training sets by filtering against
+        project_id and set_id query parameters in the URL.
+        """
         queryset = TrainingPolygonSet.objects.all()
         project_id = self.request.query_params.get('project_id', None)
+        set_id = self.request.query_params.get('id', None)
+
         if project_id is not None:
             queryset = queryset.filter(project_id=project_id)
+        if set_id is not None:
+            queryset = queryset.filter(id=set_id)
+
         return queryset
 
     @action(detail=True, methods=['put'])

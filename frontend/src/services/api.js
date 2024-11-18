@@ -47,6 +47,15 @@ export default {
         return api.get('/training-sets/', { params: { project_id: projectId } });
     },
     
+    getSpecificTrainingPolygons(projectId, setId) {
+        return api.get('/training-sets/', { 
+            params: { 
+                project_id: projectId,
+                id: setId 
+            }
+        });
+    },
+    
     saveTrainingPolygons(data) {
         return api.post('/training-sets/', data);
     },
