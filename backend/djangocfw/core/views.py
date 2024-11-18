@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
 from django.utils import timezone
 from django.contrib.gis.geos import GEOSGeometry
+from django.core.exceptions import ValidationError
 from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot
 from .serializers import (ProjectSerializer, TrainingPolygonSetSerializer, 
                          TrainedModelSerializer, PredictionSerializer, 
@@ -105,7 +106,7 @@ class TrainingPolygonSetViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Optionally restricts the returned training sets by filtering against
-        project_id and set_id query parameters in the URL.
+        project_id query parameter in the URL.
         """
         queryset = TrainingPolygonSet.objects.all()
         project_id = self.request.query_params.get('project_id', None)
@@ -117,6 +118,35 @@ class TrainingPolygonSetViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(id=set_id)
 
         return queryset
+
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            logger.debug(f"Updating training set {instance.id} with data: {request.data}")
+
+            # Update feature count if polygons are provided
+            if 'polygons' in request.data:
+                request.data['feature_count'] = len(request.data['polygons'].get('features', []))
+
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+
+            logger.info(f"Successfully updated training set {instance.id}")
+            return Response(serializer.data)
+
+        except ValidationError as e:
+            logger.error(f"Validation error updating training set: {str(e)}")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.error(f"Error updating training set: {str(e)}")
+            return Response(
+                {"error": f"Failed to update training set: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @action(detail=True, methods=['put'])
     def excluded(self, request, pk=None):

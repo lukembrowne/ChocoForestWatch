@@ -960,40 +960,43 @@ export const useMapStore = defineStore('map', () => {
     const projectStore = useProjectStore();
     const polygons = getDrawnPolygonsGeoJSON();
     try {
-      // First, check if a training set for this date already exists
-      const response = await api.getTrainingPolygons(projectStore.currentProject.id);
-      const existingSet = response.data.find(set => set.basemap_date === date);
+        console.log("Saving current training polygons for date:", date, polygons);
+        // First, check if a training set for this date already exists
+        const response = await api.getTrainingPolygons(projectStore.currentProject.id);
+        const existingSet = response.data.find(set => set.basemap_date === date);
 
-      if (existingSet) {
-        // Update existing training set
-        await api.updateTrainingPolygons({
-          project_id: projectStore.currentProject.id,
-          id: existingSet.id,
-          basemap_date: date,
-          polygons: polygons,
-          name: `Training_Set_${date}`
-        });
-        console.log("Training set updated successfully for date:", date);
-      } else {
-        // Create new training set
-        await api.saveTrainingPolygons({
-          project_id: projectStore.currentProject.id,
-          basemap_date: date,
-          polygons: polygons,
-          name: `Training_Set_${date}`
-        });
-        console.log("Training set created successfully for date:", date);
-      }
-      hasUnsavedChanges.value = false;
+        if (existingSet) {
+            console.log("Updating existing training set for date:", date);
+            // Update existing training set - Pass id and data separately
+            await api.updateTrainingPolygons(
+                existingSet.id,  // Pass the ID separately
+                {
+                    project_id: projectStore.currentProject.id,
+                    basemap_date: date,
+                    polygons: polygons,
+                    name: `Training_Set_${date}`
+                }
+            );
+            console.log("Training set updated successfully for date:", date);
+        } else {
+            console.log("Creating new training set for date:", date);
+            // Create new training set
+            await api.saveTrainingPolygons({
+                project_id: projectStore.currentProject.id,
+                basemap_date: date,
+                polygons: polygons,
+                name: `Training_Set_${date}`
+            });
+            console.log("Training set created successfully for date:", date);
+        }
+        hasUnsavedChanges.value = false;
 
-      // Re-fetch training dates to update the UI
-      await projectStore.fetchTrainingDates();
-
+        // Re-fetch training dates to update the UI
+        await projectStore.fetchTrainingDates();
 
     } catch (error) {
-      console.error('Error saving training polygons:', error);
-      // Handle error (e.g., show notification to user)
-      throw error; // Rethrow the error so it can be caught in the component
+        console.error('Error saving training polygons:', error);
+        throw error;
     }
   };
 
