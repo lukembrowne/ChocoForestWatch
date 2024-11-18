@@ -210,7 +210,7 @@ class ModelTrainingService:
         return model, metrics, encoders
 
     def save_model(self, model, model_name, model_description, metrics, model_params, encoders, training_set_ids, num_samples):
-        """Save the trained model and its metadata"""
+        """Save or update the trained model and its metadata"""
         try:
             # Serialize the encoders
             serialized_encoders = {
@@ -218,18 +218,38 @@ class ModelTrainingService:
                 for name, encoder in encoders.items()
             }
 
-            # Create model record
-            model_record = TrainedModel.objects.create(
-                name=model_name,
-                description=model_description,
-                project_id=self.project_id,
-                training_set_ids=training_set_ids,
-                training_periods=len(training_set_ids),
-                num_training_samples=num_samples,
-                model_parameters=model_params,
-                metrics=metrics,
-                encoders=serialized_encoders
-            )
+            # Get the project instance
+            project = Project.objects.get(id=self.project_id)
+
+            # Check for existing model for this project
+            try:
+                model_record = TrainedModel.objects.get(project=project)
+                logger.info(f"Updating existing model for project {self.project_id}")
+                
+                # Update existing model record
+                model_record.name = model_name
+                model_record.description = model_description
+                model_record.training_set_ids = training_set_ids
+                model_record.training_periods = len(training_set_ids)
+                model_record.num_training_samples = num_samples
+                model_record.model_parameters = model_params
+                model_record.metrics = metrics
+                model_record.encoders = serialized_encoders
+                
+            except TrainedModel.DoesNotExist:
+                logger.info(f"Creating new model for project {self.project_id}")
+                # Create new model record
+                model_record = TrainedModel.objects.create(
+                    name=model_name,
+                    description=model_description,
+                    project=project,
+                    training_set_ids=training_set_ids,
+                    training_periods=len(training_set_ids),
+                    num_training_samples=num_samples,
+                    model_parameters=model_params,
+                    metrics=metrics,
+                    encoders=serialized_encoders
+                )
 
             # Use ModelStorage to save the file
             storage = ModelStorage()
@@ -237,12 +257,17 @@ class ModelTrainingService:
             # Serialize model to bytes
             model_bytes = pickle.dumps(model)
             
-            # Save using storage
-            filename = f"{model_record.id}_model.pkl"
+            # If updating, delete old model file if it exists
+            if model_record.model_file and storage.exists(model_record.model_file):
+                storage.delete(model_record.model_file)
+            
+            # Save new model file with timestamp
+            timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"{model_record.id}_model_{timestamp}.pkl"
             model_file = ContentFile(model_bytes)
             saved_path = storage.save(filename, model_file)
             
-            # Update model record with the saved path
+            # Update model record with the new path
             model_record.model_file = saved_path
             model_record.save()
 

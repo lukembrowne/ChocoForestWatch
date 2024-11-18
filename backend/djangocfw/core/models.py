@@ -33,7 +33,7 @@ class TrainingPolygonSet(models.Model):
 class TrainedModel(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    project = models.ForeignKey('Project', on_delete=models.CASCADE)
+    project = models.OneToOneField('Project', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     training_set_ids = ArrayField(models.IntegerField())
