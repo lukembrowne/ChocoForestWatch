@@ -281,16 +281,16 @@ export default {
 
     async function fetchTrainingDataSummary() {
       try {
-        const response = await apiService.getTrainingDataSummary(projectStore.currentProject.id)
-        trainingDataSummary.value = response.data
-        console.log("Training data summary: ", trainingDataSummary.value)
+        const response = await apiService.getTrainingDataSummary(projectStore.currentProject.id);
+        trainingDataSummary.value = response.data;
+        console.log("Training data summary: ", trainingDataSummary.value);
       } catch (error) {
-        console.error('Error fetching training data summary:', error)
+        console.error('Error fetching training data summary:', error);
         $q.notify({
           color: 'negative',
-          message: 'Failed to fetch training data summary',
+          message: error.response?.data?.error || 'Failed to fetch training data summary',
           icon: 'error'
-        })
+        });
       }
     }
 

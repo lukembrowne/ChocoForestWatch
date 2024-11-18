@@ -68,6 +68,11 @@ export default {
         return api.put(`/training-sets/${id}/excluded/`, { excluded });
     },
 
+
+    getTrainingDataSummary(projectId) {
+        return api.get(`/training-sets/summary/`, { params: { project_id: projectId } });
+    },
+
     // Model endpoints
     getModels(projectId) {
         return api.get('/trained-models/', { params: { project_id: projectId } });
@@ -114,7 +119,8 @@ export default {
 
     getSummaryStatistics(predictionId) {
         return api.get(`/analysis/summary/${predictionId}/`);
-    }
+    },
+
 };
 
 // WebSocket connection function

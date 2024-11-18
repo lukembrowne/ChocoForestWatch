@@ -11,6 +11,7 @@ from .serializers import (ProjectSerializer, TrainingPolygonSetSerializer,
 from .services.model_training import ModelTrainingService
 from .services.prediction import PredictionService
 from loguru import logger
+import json
 
 @api_view(['GET'])
 def health_check(request):
@@ -155,6 +156,69 @@ class TrainingPolygonSetViewSet(viewsets.ModelViewSet):
         training_set.excluded = excluded
         training_set.save()
         return Response({'message': 'Training set excluded status updated successfully'})
+
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        """Get summary statistics for training data"""
+        try:
+            project_id = request.query_params.get('project_id')
+            if not project_id:
+                return Response({"error": "Project ID is required"}, status=400)
+
+            training_sets = TrainingPolygonSet.objects.filter(
+                project_id=project_id,
+                excluded=False,
+                feature_count__gt=0
+            )
+            
+            summary = {
+                'totalSets': training_sets.count(),
+                'classStats': {},
+                'trainingSetDates': []
+            }
+
+            # Get project and class names
+            project = Project.objects.get(id=project_id)
+            class_names = [cls['name'] for cls in project.classes]
+
+            # Initialize class statistics
+            for class_name in class_names:
+                summary['classStats'][class_name] = {
+                    'featureCount': 0,
+                    'totalAreaHa': 0
+                }
+
+            # Process each training set
+            for training_set in training_sets:
+                summary['trainingSetDates'].append(training_set.basemap_date)
+                
+                # Process features in the training set
+                for feature in training_set.polygons.get('features', []):
+                    class_name = feature['properties']['classLabel']
+                    summary['classStats'][class_name]['featureCount'] += 1
+
+                    # Calculate area in hectares
+                    geom = GEOSGeometry(json.dumps(feature['geometry']))
+                    area_ha = geom.area / 10000  # Convert to hectares
+                    summary['classStats'][class_name]['totalAreaHa'] += area_ha
+
+            # Round area values
+            for class_stats in summary['classStats'].values():
+                class_stats['totalAreaHa'] = round(class_stats['totalAreaHa'], 2)
+
+            return Response(summary)
+
+        except Project.DoesNotExist:
+            return Response(
+                {"error": "Project not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error generating training data summary: {str(e)}")
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class TrainedModelViewSet(viewsets.ModelViewSet):
     queryset = TrainedModel.objects.all()
