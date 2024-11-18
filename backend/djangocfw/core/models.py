@@ -93,4 +93,20 @@ class DeforestationHotspot(models.Model):
     def __str__(self):
         return f"Hotspot {self.id} - {self.prediction.name}"
 
+class ModelTrainingTask(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('running', 'Running'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed')
+    ]
+    
+    task_id = models.UUIDField(primary_key=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    progress = models.FloatField(default=0)
+    message = models.CharField(max_length=255, blank=True)
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
 # Add the rest of the models...

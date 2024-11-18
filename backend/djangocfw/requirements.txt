@@ -14,3 +14,5 @@ shapely
 loguru
 requests
 daphne 
+debugpy==1.5.1
+pyproj==3.6.1

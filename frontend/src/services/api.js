@@ -86,6 +86,10 @@ export default {
         return api.delete(`/trained-models/${id}/`);
     },
 
+    getModelTrainingProgress(taskId) {
+        return api.get(`/trained-models/training-progress/${taskId}/`);
+    },
+
     // Prediction endpoints
     getPredictions(projectId) {
         return api.get('/predictions/', { params: { project_id: projectId } });
@@ -123,14 +127,3 @@ export default {
 
 };
 
-// WebSocket connection function
-export const connectWebSocket = (projectId, onMessage) => {
-    const ws = new WebSocket(`ws://localhost:8000/ws/progress/${projectId}/`);
-    
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        onMessage(data);
-    };
-
-    return ws;
-};

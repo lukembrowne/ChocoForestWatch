@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view, action
 from django.utils import timezone
 from django.contrib.gis.geos import GEOSGeometry
 from django.core.exceptions import ValidationError
-from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot
+from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot, ModelTrainingTask
 from .serializers import (ProjectSerializer, TrainingPolygonSetSerializer, 
                          TrainedModelSerializer, PredictionSerializer, 
                          DeforestationHotspotSerializer)
@@ -242,7 +242,7 @@ class TrainedModelViewSet(viewsets.ModelViewSet):
             model_params = request.data.get('model_parameters', {})
 
             service = ModelTrainingService(project_id)
-            model, metrics = service.train_model(
+            model, metrics, task_id = service.train_model(
                 model_name,
                 model_description,
                 training_set_ids,
@@ -251,11 +251,28 @@ class TrainedModelViewSet(viewsets.ModelViewSet):
 
             return Response({
                 'model_id': model.id,
-                'metrics': metrics
+                'metrics': metrics,
+                'taskId': task_id
             })
 
         except Exception as e:
             return Response({'error': str(e)}, status=400)
+
+    @action(detail=False, methods=['get'])
+    def training_progress(self, request, task_id=None):
+        """Get training progress for a specific task"""
+        try:
+            task = ModelTrainingTask.objects.get(task_id=task_id)
+            return Response({
+                'status': task.status,
+                'progress': task.progress,
+                'message': task.message,
+                'error': task.error
+            })
+        except ModelTrainingTask.DoesNotExist:
+            return Response({
+                'error': 'Training task not found'
+            }, status=404)
 
 class PredictionViewSet(viewsets.ModelViewSet):
     queryset = Prediction.objects.all()

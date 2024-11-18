@@ -161,7 +161,6 @@ import apiService from 'src/services/api'
 import { GeoJSON } from 'ol/format'
 import { transformExtent } from 'ol/proj'
 import TrainingProgress from 'components/models/TrainingProgress.vue'
-import { io } from 'socket.io-client'
 import { getBasemapDateOptions } from 'src/utils/dateUtils';
 
 
@@ -195,7 +194,6 @@ export default {
     const trainingProgress = ref(0)
     const trainingProgressMessage = ref('')
     const trainingError = ref('')
-    const socket = io('http://127.0.0.1:5000')
     const splitMethod = ref('feature')  // Default to feature-based split
     const trainTestSplit = ref(0.2)
 
@@ -214,7 +212,6 @@ export default {
     onMounted(async () => {
       await fetchTrainingDataSummary()
       await checkExistingModel()
-      initializeSocket()
     })
 
     async function checkExistingModel() {
@@ -255,30 +252,6 @@ export default {
       }
     }
 
-    function initializeSocket() {
-      socket.on('training_update', (data) => {
-        if (data.projectId === projectStore.currentProject.id) {
-          trainingProgress.value = data.progress
-          trainingProgressMessage.value = data.message
-          if (data.error) {
-            trainingError.value = data.error
-            isTraining.value = false
-            $q.notify({
-              type: 'negative',
-              message: 'Error occurred during training.'
-            })
-          }
-          if (data.message === "Training complete") {
-            isTraining.value = false
-            $q.notify({
-              type: 'positive',
-              message: 'Training completed successfully!'
-            })
-          }
-        }
-      })
-    }
-
     async function fetchTrainingDataSummary() {
       try {
         const response = await apiService.getTrainingDataSummary(projectStore.currentProject.id);
@@ -307,38 +280,69 @@ export default {
         const extent = geometry.getExtent()
         const extentLatLon = transformExtent(extent, 'EPSG:3857', 'EPSG:4326')
 
+        // Get training set IDs for dates that have training data and aren't excluded
+        const trainingSetIds = projectStore.trainingPolygonSets
+          .filter(set => !projectStore.isDateExcluded(set.basemap_date))
+          .filter(set => set.feature_count > 0)
+          .map(set => set.id)
+
+        if (trainingSetIds.length === 0) {
+          throw new Error('No training data available. Please create training data first.')
+        }
+
         const response = await apiService.trainModel({
-          projectId: projectStore.currentProject.id,
-          aoiShape: geojsonString,
-          aoiExtent: extent,
-          aoiExtentLatLon: extentLatLon,
-          basemapDates: basemapOptions.value
-            .map(option => option.value)
-            .filter(date => !projectStore.isDateExcluded(date)) // Exclude excluded dates
-            .filter(date => projectStore.hasTrainingData(date)), // Exclude dates with no training data
-          modelName: modelName.value,
-          modelDescription: modelDescription.value,
-          trainTestSplit: trainTestSplit.value,
-          splitMethod: splitMethod.value,
+          project_id: projectStore.currentProject.id,
+          aoi_shape: geojsonString,
+          aoi_extent: extent,
+          aoi_extent_lat_lon: extentLatLon,
+          training_set_ids: trainingSetIds,
+          model_name: modelName.value,
+          model_description: modelDescription.value,
+          train_test_split: trainTestSplit.value,
+          split_method: splitMethod.value,
           ...options.value
         })
 
         console.log('Model training initiated:', response)
 
-        onDialogOK(response)
-        $q.notify({
-          color: 'positive',
-          message: `Model ${existingModel.value ? 'updated' : 'training initiated'} successfully`,
-          icon: 'check'
-        })
+        // Start polling for training progress
+        const pollInterval = setInterval(async () => {
+          try {
+            const progressResponse = await apiService.getModelTrainingProgress(response.taskId)
+            trainingProgress.value = progressResponse.progress
+            trainingProgressMessage.value = progressResponse.message
+            
+            if (progressResponse.error) {
+              trainingError.value = progressResponse.error
+              isTraining.value = false
+              clearInterval(pollInterval)
+              $q.notify({
+                type: 'negative',
+                message: 'Error occurred during training.'
+              })
+            }
+            
+            if (progressResponse.status === 'completed') {
+              isTraining.value = false
+              clearInterval(pollInterval)
+              onDialogOK(response)
+              $q.notify({
+                type: 'positive',
+                message: `Model ${existingModel.value ? 'updated' : 'trained'} successfully!`
+              })
+            }
+          } catch (error) {
+            console.error('Error polling training progress:', error)
+            clearInterval(pollInterval)
+          }
+        }, 2000) // Poll every 2 seconds
+
       } catch (error) {
         console.error('Error training model:', error)
-        setTimeout(() => {
-          isTraining.value = false
-        }, 5000)
+        isTraining.value = false
         $q.notify({
           color: 'negative',
-          message: `Failed to ${existingModel.value ? 'update' : 'initiate training for'} model`,
+          message: error.message || `Failed to ${existingModel.value ? 'update' : 'initiate training for'} model`,
           icon: 'error'
         })
       }

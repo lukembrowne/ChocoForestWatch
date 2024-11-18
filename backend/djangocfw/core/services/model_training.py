@@ -12,7 +12,7 @@ import uuid
 from django.utils import timezone
 from loguru import logger
 import math
-from ..models import TrainedModel, TrainingPolygonSet, Project
+from ..models import TrainedModel, TrainingPolygonSet, Project, ModelTrainingTask
 from django.conf import settings
 import requests
 from requests.auth import HTTPBasicAuth
@@ -21,52 +21,60 @@ from asgiref.sync import async_to_sync
 from django.core.files.base import ContentFile
 import io
 from ..exceptions import ModelTrainingError, PlanetAPIError, InvalidInputError
+from pyproj import Transformer
 
 class ModelTrainingService:
     def __init__(self, project_id):
         self.project_id = project_id
         self.PLANET_API_KEY = settings.PLANET_API_KEY
         self.QUAD_DOWNLOAD_DIR = './data/planet_quads'
-        self.channel_layer = get_channel_layer()
+        self.task_id = str(uuid.uuid4())
         
-    def send_progress_update(self, progress, message):
-        """Send progress update through WebSocket"""
-        async_to_sync(self.channel_layer.group_send)(
-            f"project_{self.project_id}",
-            {
-                'type': 'training_update',
+    def update_progress(self, progress, message, status='running', error=''):
+        """Update training progress in database"""
+        ModelTrainingTask.objects.update_or_create(
+            task_id=self.task_id,
+            defaults={
                 'progress': progress,
-                'message': message
+                'message': message,
+                'status': status,
+                'error': error
             }
         )
 
     def train_model(self, model_name, model_description, training_set_ids, model_params):
         """Main method to handle the model training process"""
         try:
-            self.send_progress_update(0, "Starting model training...")
+            self.update_progress(0, "Starting model training...")
             
             # Get training data
-            self.send_progress_update(10, "Preparing training data...")
+            self.update_progress(10, "Preparing training data...")
             X, y, feature_ids, dates, all_class_names = self.prepare_training_data(training_set_ids)
             
             # Train model and get metrics
-            self.send_progress_update(50, "Training model...")
+            self.update_progress(50, "Training model...")
             model, metrics, encoders = self.train_xgboost_model(
                 X, y, feature_ids, dates, all_class_names, model_params
             )
             
             # Save the model
-            self.send_progress_update(90, "Saving model...")
+            self.update_progress(90, "Saving model...")
             saved_model = self.save_model(
                 model, model_name, model_description, metrics, 
                 model_params, encoders, training_set_ids, len(X)
             )
             
-            self.send_progress_update(100, "Model training complete")
-            return saved_model, metrics
+            self.update_progress(100, "Model training complete", status='completed')
+            return saved_model, metrics, self.task_id
             
         except Exception as e:
             logger.exception("Error in model training")
+            self.update_progress(
+                progress=0,
+                message="Training failed",
+                status='failed',
+                error=str(e)
+            )
             raise ModelTrainingError(detail=str(e))
 
     def prepare_training_data(self, training_set_ids):
@@ -259,23 +267,46 @@ class ModelTrainingService:
 
     def get_mosaic_id(self, mosaic_name):
         """Get mosaic ID from Planet API"""
-        url = "https://api.planet.com/basemaps/v1/mosaics"
-        params = {"name__is": mosaic_name}
-        response = requests.get(
-            url, 
-            auth=HTTPBasicAuth(self.PLANET_API_KEY, ''), 
-            params=params
-        )
-        response.raise_for_status()
-        mosaics = response.json().get('mosaics', [])
-        if not mosaics:
-            raise ValueError(f"No mosaic found with name: {mosaic_name}")
-        return mosaics[0]['id']
+        try:
+            url = "https://api.planet.com/basemaps/v1/mosaics"
+            params = {"name__is": mosaic_name}
+            response = requests.get(
+                url, 
+                auth=HTTPBasicAuth(self.PLANET_API_KEY, ''), 
+                params=params
+            )
+            
+            # Check if API key is valid
+            if response.status_code == 401:
+                raise PlanetAPIError("Invalid Planet API key. Please check your configuration.")
+            
+            response.raise_for_status()
+            mosaics = response.json().get('mosaics', [])
+            
+            if not mosaics:
+                raise PlanetAPIError(f"No mosaic found with name: {mosaic_name}")
+            
+            return mosaics[0]['id']
+            
+        except requests.exceptions.RequestException as e:
+            raise PlanetAPIError(f"Error accessing Planet API: {str(e)}")
 
     def get_quad_info(self, mosaic_id, bbox):
         """Get quad information for a given mosaic and bounding box"""
+        # Create transformer from Web Mercator to WGS84
+        transformer = Transformer.from_crs("EPSG:3857", "EPSG:4326")
+        
+        # Extract coordinates
         minx, miny, maxx, maxy = bbox
-        bbox_comma = f"{minx},{miny},{maxx},{maxy}"
+        
+        # Transform coordinates
+        # Note: transform() returns (lat, lon) so we need to swap them for (lon, lat)
+        lat_min, lon_min = transformer.transform(minx, miny)
+        lat_max, lon_max = transformer.transform(maxx, maxy)
+        
+        # Create bbox string in lon,lat format (WGS84)
+        # Planet API expects: west,south,east,north
+        bbox_comma = f"{lon_min},{lat_min},{lon_max},{lat_max}"
 
         url = f"https://api.planet.com/basemaps/v1/mosaics/{mosaic_id}/quads"
         params = {

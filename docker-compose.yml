@@ -1,10 +1,8 @@
 services:
   db:
     image: postgis/postgis:15-3.3
-    environment:
-      - POSTGRES_DB=cfwdb
-      - POSTGRES_USER=cfwuser
-      - POSTGRES_PASSWORD=1234
+    env_file:
+      - ./.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -38,13 +36,9 @@ services:
     ports:
       - "8000:8000"
       - "5678:5678"
-    environment:
-      - POSTGRES_DB=cfwdb
-      - POSTGRES_USER=cfwuser
-      - POSTGRES_PASSWORD=1234
-      - DB_HOST=db
-      - DB_PORT=5432
-      - PLANET_API_KEY=${PLANET_API_KEY}
+      - "3000:3000"
+    env_file:
+      - ./.env
     command: python -m debugpy --listen 0.0.0.0:5678 --wait-for-client manage.py runserver 0.0.0.0:8000
     depends_on:
       db:
@@ -60,8 +54,8 @@ services:
       - /app/node_modules
     ports:
       - "9000:9000"
-    environment:
-      - VITE_API_URL=http://localhost:8000/api
+    env_file:
+      - ./.env
 
 volumes:
   postgres_data:
