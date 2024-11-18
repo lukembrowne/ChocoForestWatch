@@ -39,4 +39,16 @@ class PlanetQuadStorage(FileSystemStorage):
         """
         Returns a path for storing quads by year and month
         """
-        return os.path.join(str(year), str(month).zfill(2)) 
+        return os.path.join(str(year), str(month).zfill(2))
+
+    def exists(self, name):
+        """
+        Check if a file exists in storage
+        """
+        return super().exists(name)
+
+    def path(self, name):
+        """
+        Returns the full filesystem path for the file
+        """
+        return super().path(name) 

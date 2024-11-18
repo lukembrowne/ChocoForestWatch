@@ -185,15 +185,18 @@ CHANNEL_LAYERS = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Base directory for all data storage
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+
 # Storage paths configuration
-MODEL_FILES_ROOT = os.path.join(MEDIA_ROOT, 'models')
-MODEL_FILES_URL = MEDIA_URL + 'models/'
+MODEL_FILES_ROOT = os.path.join(DATA_DIR, 'models')
+MODEL_FILES_URL = '/data/models/'
 
-PREDICTION_FILES_ROOT = os.path.join(MEDIA_ROOT, 'predictions')
-PREDICTION_FILES_URL = MEDIA_URL + 'predictions/'
+PREDICTION_FILES_ROOT = os.path.join(DATA_DIR, 'predictions')
+PREDICTION_FILES_URL = '/data/predictions/'
 
-PLANET_QUADS_ROOT = os.path.join(MEDIA_ROOT, 'planet_quads')
-PLANET_QUADS_URL = MEDIA_URL + 'planet_quads/'
+PLANET_QUADS_ROOT = os.path.join(DATA_DIR, 'planet_quads')
+PLANET_QUADS_URL = '/data/planet_quads/'
 
 # Create directories if they don't exist
 for directory in [MODEL_FILES_ROOT, PREDICTION_FILES_ROOT, PLANET_QUADS_ROOT]:
@@ -256,3 +259,13 @@ LOGGING = {
 # Create logs directory
 import os
 os.makedirs('logs', exist_ok=True)
+
+# Add these settings if they don't exist
+import os
+
+# Model files storage settings
+MODEL_FILES_ROOT = os.path.join(DATA_DIR, 'models')
+MODEL_FILES_URL = '/data/models/'
+
+# Create the directory if it doesn't exist
+os.makedirs(MODEL_FILES_ROOT, exist_ok=True)

@@ -1,3 +1,4 @@
+version: '3.8'
 services:
   db:
     image: postgis/postgis:15-3.3
@@ -30,7 +31,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./backend/djangocfw:/app
-      - ./data:/app/data
+      - planet_data:/app/djangocfw/data/planet_quads
       - ./media:/app/media
       - ./logs:/app/logs
     ports:
@@ -59,3 +60,4 @@ services:
 
 volumes:
   postgres_data:
+  planet_data:

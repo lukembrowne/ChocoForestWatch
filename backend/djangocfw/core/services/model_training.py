@@ -25,6 +25,7 @@ from pyproj import Transformer
 import pickle
 import base64
 from pathlib import Path
+from ..storage import ModelStorage, PlanetQuadStorage
 
 class ModelTrainingService:
     def __init__(self, project_id):
@@ -230,16 +231,19 @@ class ModelTrainingService:
                 encoders=serialized_encoders
             )
 
-            # Create models directory if it doesn't exist
-            models_dir = Path('models')
-            models_dir.mkdir(exist_ok=True)
-
-            # Save the model file
-            model_path = f'models/{model_record.id}_model.pkl'
-            with open(model_path, 'wb') as f:
-                pickle.dump(model, f)
-
-            model_record.model_file = model_path
+            # Use ModelStorage to save the file
+            storage = ModelStorage()
+            
+            # Serialize model to bytes
+            model_bytes = pickle.dumps(model)
+            
+            # Save using storage
+            filename = f"{model_record.id}_model.pkl"
+            model_file = ContentFile(model_bytes)
+            saved_path = storage.save(filename, model_file)
+            
+            # Update model record with the saved path
+            model_record.model_file = saved_path
             model_record.save()
 
             return model_record
@@ -251,8 +255,9 @@ class ModelTrainingService:
     def load_model(self, model_record):
         """Load a trained model and its encoders"""
         try:
-            # Load the model file
-            with open(model_record.model_file, 'rb') as f:
+            # Load the model file using storage
+            storage = ModelStorage()
+            with storage.open(model_record.model_file, 'rb') as f:
                 model = pickle.load(f)
 
             # Deserialize the encoders
@@ -351,27 +356,43 @@ class ModelTrainingService:
 
     def download_and_process_quads(self, quads, year, month):
         """Download and process Planet quads"""
+        storage = PlanetQuadStorage()
         processed_quads = []
+
         for quad in quads:
             quad_id = quad['id']
             download_url = quad['_links']['download']
             
-            quad_dir = os.path.join(self.QUAD_DOWNLOAD_DIR, year, month)
-            os.makedirs(quad_dir, exist_ok=True)
+            # Get year/month specific path from storage
+            relative_path = storage.get_year_month_path(year, month)
+            filename = f"{quad_id}_{year}_{month}.tif"
+            full_path = os.path.join(relative_path, filename)
             
-            local_filename = os.path.join(quad_dir, f"{quad_id}_{year}_{month}.tif")
-            
-            if not os.path.exists(local_filename):
-                response = requests.get(
-                    download_url, 
-                    auth=HTTPBasicAuth(self.PLANET_API_KEY, ''), 
-                    stream=True
-                )
-                response.raise_for_status()
-                
-                with open(local_filename, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
+            # Check if file already exists
+            if storage.exists(full_path):
+                logger.info(f"Quad {quad_id} already exists at {full_path}, skipping download")
+                local_filename = storage.path(full_path)
+            else:
+                logger.info(f"Downloading quad {quad_id} for {year}-{month}")
+                try:
+                    # Download the quad
+                    response = requests.get(
+                        download_url, 
+                        auth=HTTPBasicAuth(self.PLANET_API_KEY, ''), 
+                        stream=True
+                    )
+                    response.raise_for_status()
+                    
+                    # Save using storage
+                    quad_file = ContentFile(response.content)
+                    saved_path = storage.save(full_path, quad_file)
+                    local_filename = storage.path(saved_path)
+                    
+                    logger.success(f"Successfully downloaded quad {quad_id} to {local_filename}")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to download quad {quad_id}: {str(e)}")
+                    continue
             
             processed_quads.append({
                 'id': quad_id,
