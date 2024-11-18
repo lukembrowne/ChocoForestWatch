@@ -40,7 +40,6 @@ trained_models/
 
 # IDE
 .idea/
-.vscode/
 *.swp
 *.swo
 # Node
