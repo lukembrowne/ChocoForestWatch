@@ -74,7 +74,7 @@ export default {
     },
 
     // Model endpoints
-    getModels(projectId) {
+    getTrainedModels(projectId) {
         return api.get('/trained-models/', { params: { project_id: projectId } });
     },
     
