@@ -919,8 +919,8 @@ export const useMapStore = defineStore('map', () => {
       const trainingSet = response.data.find(set => set.basemap_date === date);
       if (trainingSet) {
         const polygons = await api.getSpecificTrainingPolygons(projectStore.currentProject.id, trainingSet.id);
-        console.log("polygons within MapStore:", polygons.data)
-        loadPolygons(polygons.data);
+        console.log("polygons within MapStore:", polygons.data[0].polygons)
+        loadPolygons(polygons.data[0].polygons);
       } else {
         clearDrawnPolygons();
       }
