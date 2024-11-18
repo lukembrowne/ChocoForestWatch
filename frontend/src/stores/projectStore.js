@@ -186,7 +186,7 @@ export const useProjectStore = defineStore('project', {
         
         if (trainingSet) {
           // Update the excluded status
-          const response = await api.updateTrainingSetExcluded(this.currentProject.id, trainingSet.id, shouldExclude)
+          const response = await api.setTrainingSetExcluded(trainingSet.id, shouldExclude)
           if (response.status === 200) {
             // Update the local state
             trainingSet.excluded = shouldExclude
@@ -194,19 +194,8 @@ export const useProjectStore = defineStore('project', {
             throw new Error('Failed to update training set excluded status')
           }
         } else {
-          // If no training set exists, create a new one with the excluded status
-          const response = await api.createTrainingSet(this.currentProject.id, {
-            basemap_date: date,
-            excluded: shouldExclude,
-            name: `Training_Set_${date}`,
-            polygons: { type: "FeatureCollection", features: [] },
-            feature_count: 0
-          })
-          if (response.status === 201) {
-            this.trainingPolygonSets.push(response.data)
-          } else {
-            throw new Error('Failed to create new training set')
-          }
+
+          throw new Error('No training set found for date to update')
         }
       } catch (error) {
         console.error('Error updating excluded status:', error)
