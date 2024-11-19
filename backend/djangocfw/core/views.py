@@ -236,7 +236,7 @@ class TrainedModelViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def train(self, request):
-        """Train a new model"""
+        """Train a new model and generate predictions"""
         try:
             project_id = request.data.get('project_id')
             model_name = request.data.get('model_name')
@@ -257,7 +257,7 @@ class TrainedModelViewSet(viewsets.ModelViewSet):
             # Store the service instance
             self._active_services[str(task_id)] = service
             
-            # Start training process asynchronously
+            # Start training process asynchronously - predictions will be generated after training
             service.start_training_async(
                 model_name,
                 model_description,
@@ -265,10 +265,9 @@ class TrainedModelViewSet(viewsets.ModelViewSet):
                 model_params
             )
 
-            # Return task ID immediately
             return Response({
                 'taskId': str(task_id),
-                'message': 'Training started'
+                'message': 'Training and prediction generation started'
             })
 
         except Exception as e:

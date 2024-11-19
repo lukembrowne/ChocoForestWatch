@@ -28,7 +28,9 @@ from pathlib import Path
 from ..storage import ModelStorage, PlanetQuadStorage
 from uuid import uuid4
 import asyncio
-import threading
+import threading# 
+from .planet_utils import PlanetUtils
+from .prediction import PredictionService
 
 class ModelTrainingService:
     def __init__(self, project_id):
@@ -86,7 +88,7 @@ class ModelTrainingService:
         self._cancel_flag = True
 
     def train_model(self, model_name, model_description, training_set_ids, model_params):
-        """Main method to handle the model training process"""
+        """Train the model and generate predictions"""
         try:
             # Check cancellation at major steps
             if self._cancel_flag:
@@ -120,7 +122,26 @@ class ModelTrainingService:
                 model_params, encoders, training_set_ids, len(X)
             )
             
-            self.update_progress(100, "Model training complete", status='completed')
+            self.update_progress(80, "Model training complete")
+            
+            # Generate predictions for all dates
+            if self._cancel_flag:
+                self.update_progress(0, "Training cancelled", status='cancelled')
+                return None, None
+
+            # Get dates from training_set_ids
+            training_sets = TrainingPolygonSet.objects.filter(
+                id__in=training_set_ids
+            )
+            basemap_dates = [set.basemap_date for set in training_sets]
+            
+            self.generate_predictions_after_training(saved_model.id, basemap_dates)
+            
+            self.update_progress(95, "Predictions complete")
+            
+            # Calculate and save final metrics
+            self.update_progress(100, "Training and predictions complete")
+            
             return saved_model, metrics
             
         except Exception as e:
@@ -310,12 +331,14 @@ class ModelTrainingService:
             model_bytes = pickle.dumps(model)
             
             # If updating, delete old model file if it exists
-            if model_record.model_file and storage.exists(model_record.model_file):
-                storage.delete(model_record.model_file)
+            if model_record.model_file and storage.exists(model_record.model_file.name):
+                storage.delete(model_record.model_file.name)
             
-            # Save new model file with timestamp
+            # Save new model file with timestamp - REMOVE the leading slash
             timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"{model_record.id}_model_{timestamp}.pkl"
+            filename = f"model_{model_record.id}_{timestamp}.pkl"  # Remove the leading '/'
+            
+            # Save the file
             model_file = ContentFile(model_bytes)
             saved_path = storage.save(filename, model_file)
             
@@ -361,120 +384,43 @@ class ModelTrainingService:
         
         # Get project AOI
         project = Project.objects.get(id=self.project_id)
-        aoi_bounds = project.aoi.extent  # Get bounds of AOI
+        aoi_bounds = project.aoi.extent
         
-        # Find mosaic ID
-        mosaic_id = self.get_mosaic_id(mosaic_name)
-        
-        # Get quad info
-        quads = self.get_quad_info(mosaic_id, aoi_bounds)
-        
-        # Download and process quads
-        processed_quads = self.download_and_process_quads(quads, year, month)
+        mosaic_id = PlanetUtils.get_mosaic_id(mosaic_name)
+        quads = PlanetUtils.get_quad_info(mosaic_id, aoi_bounds)
+        processed_quads = PlanetUtils.download_and_process_quads(quads, year, month, PlanetQuadStorage())
         
         return processed_quads
 
-    def get_mosaic_id(self, mosaic_name):
-        """Get mosaic ID from Planet API"""
+    def generate_predictions_after_training(self, model_id, basemap_dates):
+        """Generate predictions for all basemap dates after training completes"""
         try:
-            url = "https://api.planet.com/basemaps/v1/mosaics"
-            params = {"name__is": mosaic_name}
-            response = requests.get(
-                url, 
-                auth=HTTPBasicAuth(self.PLANET_API_KEY, ''), 
-                params=params
-            )
-            
-            # Check if API key is valid
-            if response.status_code == 401:
-                raise PlanetAPIError("Invalid Planet API key. Please check your configuration.")
-            
-            response.raise_for_status()
-            mosaics = response.json().get('mosaics', [])
-            
-            if not mosaics:
-                raise PlanetAPIError(f"No mosaic found with name: {mosaic_name}")
-            
-            return mosaics[0]['id']
-            
-        except requests.exceptions.RequestException as e:
-            raise PlanetAPIError(f"Error accessing Planet API: {str(e)}")
+            project = Project.objects.get(id=self.project_id)
+            prediction_service = PredictionService(model_id, self.project_id)
 
-    def get_quad_info(self, mosaic_id, bbox):
-        """Get quad information for a given mosaic and bounding box"""
-        # Create transformer from Web Mercator to WGS84
-        transformer = Transformer.from_crs("EPSG:3857", "EPSG:4326")
-        
-        # Extract coordinates
-        minx, miny, maxx, maxy = bbox
-        
-        # Transform coordinates
-        # Note: transform() returns (lat, lon) so we need to swap them for (lon, lat)
-        lat_min, lon_min = transformer.transform(minx, miny)
-        lat_max, lon_max = transformer.transform(maxx, maxy)
-        
-        # Create bbox string in lon,lat format (WGS84)
-        # Planet API expects: west,south,east,north
-        bbox_comma = f"{lon_min},{lat_min},{lon_max},{lat_max}"
+            # Convert GeoDjango geometry to GeoJSON dict
+            aoi_geojson = {
+                'type': 'Polygon',
+                'coordinates': [[[coord[0], coord[1]] for coord in project.aoi.coords[0]]]
+            }
 
-        url = f"https://api.planet.com/basemaps/v1/mosaics/{mosaic_id}/quads"
-        params = {
-            "bbox": bbox_comma,
-            "minimal": "true"
-        }
-
-        response = requests.get(
-            url, 
-            auth=HTTPBasicAuth(self.PLANET_API_KEY, ''), 
-            params=params
-        )
-        response.raise_for_status()
-        return response.json().get('items', [])
-
-    def download_and_process_quads(self, quads, year, month):
-        """Download and process Planet quads"""
-        storage = PlanetQuadStorage()
-        processed_quads = []
-
-        for quad in quads:
-            quad_id = quad['id']
-            download_url = quad['_links']['download']
+            self.update_progress(85, "Generating predictions...")
             
-            # Get year/month specific path from storage
-            relative_path = storage.get_year_month_path(year, month)
-            filename = f"{quad_id}_{year}_{month}.tif"
-            full_path = os.path.join(relative_path, filename)
-            
-            # Check if file already exists
-            if storage.exists(full_path):
-                logger.info(f"Quad {quad_id} already exists at {full_path}, skipping download")
-                local_filename = storage.path(full_path)
-            else:
-                logger.info(f"Downloading quad {quad_id} for {year}-{month}")
-                try:
-                    # Download the quad
-                    response = requests.get(
-                        download_url, 
-                        auth=HTTPBasicAuth(self.PLANET_API_KEY, ''), 
-                        stream=True
-                    )
-                    response.raise_for_status()
-                    
-                    # Save using storage
-                    quad_file = ContentFile(response.content)
-                    saved_path = storage.save(full_path, quad_file)
-                    local_filename = storage.path(saved_path)
-                    
-                    logger.success(f"Successfully downloaded quad {quad_id} to {local_filename}")
-                    
-                except Exception as e:
-                    logger.error(f"Failed to download quad {quad_id}: {str(e)}")
-                    continue
-            
-            processed_quads.append({
-                'id': quad_id,
-                'filename': local_filename,
-                'bbox': quad['bbox']
-            })
-        
-        return processed_quads
+            # Generate prediction for each date
+            for i, date in enumerate(basemap_dates):
+                progress = 85 + (10 * (i + 1) / len(basemap_dates))
+                self.update_progress(
+                    progress, 
+                    f"Generating prediction for {date}"
+                )
+                
+                prediction_name = f"Prediction_{date}"
+                prediction_service.generate_prediction(
+                    aoi_geojson,  # Pass the properly formatted GeoJSON dict
+                    date,
+                    prediction_name
+                )
+
+        except Exception as e:
+            logger.error(f"Error generating predictions: {str(e)}")
+            raise

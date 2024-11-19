@@ -15,8 +15,12 @@ import requests
 from requests.auth import HTTPBasicAuth
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from .model_training import ModelTrainingService
-from ..exceptions import PredictionError, PlanetAPIError, InvalidInputError
+from .planet_utils import PlanetUtils
+from ..exceptions import PredictionError
+import pickle
+import base64
+from ..storage import PlanetQuadStorage
+from django.core.files.base import ContentFile
 
 class PredictionService:
     def __init__(self, model_id, project_id):
@@ -28,101 +32,148 @@ class PredictionService:
         
     def load_model(self):
         """Load the trained model and its metadata"""
-        model_record = TrainedModel.objects.get(id=self.model_id)
-        model = joblib.load(model_record.file_path)
-        model.date_encoder = model_record.date_encoder
-        model.month_encoder = model_record.month_encoder
-        model.label_encoder = model_record.label_encoder
-        return model, model_record
+        try:
+            model_record = TrainedModel.objects.get(id=self.model_id)
+            model = joblib.load(model_record.model_file)
+            
+            # Deserialize the encoders from the JSON field
+            encoders = {
+                name: pickle.loads(base64.b64decode(encoder_str.encode('utf-8')))
+                for name, encoder_str in model_record.encoders.items()
+            }
+            
+            # Assign encoders to model
+            model.date_encoder = encoders['date_encoder']
+            model.month_encoder = encoders['month_encoder']
+            model.label_encoder = encoders['label_encoder']
+            
+            return model, model_record
+            
+        except Exception as e:
+            logger.error(f"Error loading model: {str(e)}")
+            raise PredictionError(detail=f"Failed to load model: {str(e)}")
 
     def predict_landcover_aoi(self, model, model_record, quads, aoi_shape, basemap_date):
         """Generate prediction for the AOI"""
         predicted_rasters = []
         temp_files = []
         
-        # Get encoders
-        date_encoder = model_record.date_encoder
-        month_encoder = model_record.month_encoder
-        
-        # Encode date and month
-        year, month = basemap_date.split('-')
-        encoded_date = date_encoder.transform([year])[0]
-        encoded_month = month_encoder.transform([int(month)])[0]
-        
-        for quad in quads:
-            with rasterio.open(quad['filename']) as src:
-                # Read data
-                data = src.read([1, 2, 3, 4])
-                meta = src.meta.copy()
-                meta.update(count=1)
+        try:
+            # Get encoders from the model object
+            date_encoder = model.date_encoder
+            month_encoder = model.month_encoder
+            
+            # Encode date and month
+            year, month = basemap_date.split('-')
+            encoded_date = date_encoder.transform([year])[0]
+            encoded_month = month_encoder.transform([int(month)])[0]
+            
+            for quad in quads:
+                with rasterio.open(quad['filename']) as src:
+                    # Read data
+                    data = src.read([1, 2, 3, 4])
+                    meta = src.meta.copy()
+                    meta.update(count=1)
+                    
+                    # Reshape for prediction
+                    reshaped_data = data.reshape(4, -1).T
+                    
+                    # Add date and month features
+                    date_column = np.full((reshaped_data.shape[0], 1), encoded_date)
+                    month_column = np.full((reshaped_data.shape[0], 1), encoded_month)
+                    prediction_data = np.hstack((reshaped_data, date_column, month_column))
+                    
+                    # Make prediction
+                    predictions = model.predict(prediction_data)
+                    prediction_map = predictions.reshape(data.shape[1], data.shape[2])
+                    
+                    # Save to temporary file
+                    temp_filename = f'temp_prediction_{uuid.uuid4().hex}.tif'
+                    with rasterio.open(temp_filename, 'w', **meta) as tmp:
+                        tmp.write(prediction_map.astype(rasterio.uint8), 1)
+                    
+                    predicted_rasters.append(rasterio.open(temp_filename))
+                    temp_files.append(temp_filename)
+            
+            # Merge predictions
+            mosaic, out_transform = merge(predicted_rasters)
+            
+            # Apply sieve filter if specified
+            sieve_size = model_record.model_parameters.get('sieve_size', 0)
+            if sieve_size > 0:
+                from rasterio.features import sieve
+                sieved_mosaic = sieve(mosaic[0], size=sieve_size)
+                mosaic = np.expand_dims(sieved_mosaic, 0)
+            
+            # Create output file
+            output_dir = './predictions'
+            os.makedirs(output_dir, exist_ok=True)
+            output_file = os.path.join(output_dir, f"landcover_prediction_{uuid.uuid4().hex}.tif")
+            
+            # Write final prediction with proper metadata
+            merged_meta = predicted_rasters[0].meta.copy()
+            merged_meta.update({
+                "height": mosaic.shape[1],
+                "width": mosaic.shape[2],
+                "transform": out_transform,
+                "compress": 'lzw',
+                "nodata": 255
+            })
+            
+            # Create a temporary raster with the merged data
+            temp_merged = f'temp_merged_{uuid.uuid4().hex}.tif'
+            with rasterio.open(temp_merged, 'w', **merged_meta) as tmp:
+                tmp.write(mosaic)
+            
+            # Now clip to AOI using the temporary merged file
+            with rasterio.open(temp_merged) as src:
+                # Convert GeoJSON to list of geometries for mask
+                geom = [shape(aoi_shape)]
                 
-                # Reshape for prediction
-                reshaped_data = data.reshape(4, -1).T
+                # Perform the clipping
+                clipped_data, clipped_transform = mask(
+                    src,
+                    geom,
+                    crop=True,
+                    nodata=255
+                )
                 
-                # Add date and month features
-                date_column = np.full((reshaped_data.shape[0], 1), encoded_date)
-                month_column = np.full((reshaped_data.shape[0], 1), encoded_month)
-                prediction_data = np.hstack((reshaped_data, date_column, month_column))
+                # Update metadata for clipped output
+                out_meta = src.meta.copy()
+                out_meta.update({
+                    "height": clipped_data.shape[1],
+                    "width": clipped_data.shape[2],
+                    "transform": clipped_transform
+                })
                 
-                # Make prediction
-                predictions = model.predict(prediction_data)
-                prediction_map = predictions.reshape(data.shape[1], data.shape[2])
-                
-                # Save to temporary file
-                temp_filename = f'temp_prediction_{uuid.uuid4().hex}.tif'
-                with rasterio.open(temp_filename, 'w', **meta) as tmp:
-                    tmp.write(prediction_map.astype(rasterio.uint8), 1)
-                
-                predicted_rasters.append(rasterio.open(temp_filename))
-                temp_files.append(temp_filename)
-        
-        # Merge predictions
-        mosaic, out_transform = merge(predicted_rasters)
-        
-        # Apply sieve filter if specified
-        sieve_size = model_record.model_parameters.get('sieve_size', 0)
-        if sieve_size > 0:
-            from rasterio.features import sieve
-            sieved_mosaic = sieve(mosaic[0], size=sieve_size)
-            mosaic = np.expand_dims(sieved_mosaic, 0)
-        
-        # Create output file
-        output_dir = './predictions'
-        os.makedirs(output_dir, exist_ok=True)
-        output_file = os.path.join(output_dir, f"landcover_prediction_{uuid.uuid4().hex}.tif")
-        
-        # Write final prediction
-        merged_meta = predicted_rasters[0].meta.copy()
-        merged_meta.update({
-            "height": mosaic.shape[1],
-            "width": mosaic.shape[2],
-            "transform": out_transform,
-            "compress": 'lzw',
-            "nodata": 255
-        })
-        
-        # Clip to AOI
-        with rasterio.open(output_file, 'w', **merged_meta) as dest:
-            clipped_data, clipped_transform = mask(
-                mosaic, 
-                shapes=[aoi_shape], 
-                crop=True,
-                nodata=255
-            )
-            dest.write(clipped_data)
-        
-        # Cleanup
-        for raster in predicted_rasters:
-            raster.close()
-        for temp_file in temp_files:
-            os.remove(temp_file)
-        
-        return output_file
+                # Write final clipped output
+                with rasterio.open(output_file, 'w', **out_meta) as dest:
+                    dest.write(clipped_data)
+            
+            # Cleanup
+            for raster in predicted_rasters:
+                raster.close()
+            for temp_file in temp_files:
+                os.remove(temp_file)
+            os.remove(temp_merged)
+            
+            return output_file
+            
+        except Exception as e:
+            logger.error(f"Error in predict_landcover_aoi: {str(e)}")
+            # Clean up temp files if there's an error
+            for temp_file in temp_files:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+            for raster in predicted_rasters:
+                if not raster.closed:
+                    raster.close()
+            raise PredictionError(f"Failed to generate prediction: {str(e)}")
 
     def calculate_summary_statistics(self, prediction):
         """Calculate and save summary statistics"""
         try:
-            with rasterio.open(prediction.file_path) as src:
+            with rasterio.open(prediction.file.path) as src:
                 raster_data = src.read(1)
                 pixel_area_ha = abs(src.transform[0] * src.transform[4]) / 10000
                 
@@ -133,9 +184,14 @@ class PredictionService:
                 valid_pixels = raster_data[raster_data != 255]
                 total_area = float(valid_pixels.size * pixel_area_ha)
                 
-                # Get class names
+                # Get class names from the model's encoders
                 model_record = TrainedModel.objects.get(id=prediction.model_id)
-                class_names = {i: name for i, name in enumerate(model_record.all_class_names)}
+                
+                # Deserialize the label encoder from the encoders field
+                label_encoder = pickle.loads(
+                    base64.b64decode(model_record.encoders['label_encoder'].encode('utf-8'))
+                )
+                class_names = {i: name for i, name in enumerate(label_encoder.classes_)}
                 
                 # Calculate statistics
                 class_stats = {}
@@ -168,23 +224,24 @@ class PredictionService:
         mosaic_name = f"planet_medres_normalized_analytic_{year}-{month}_mosaic"
         
         # Get mosaic ID
-        mosaic_id = self.get_mosaic_id(mosaic_name)
+        mosaic_id = PlanetUtils.get_mosaic_id(mosaic_name)
         
-        # Get bounds from AOI shape
-        bounds = shape(aoi_shape).bounds
+        # Convert GeoJSON to shapely shape and get bounds
+        geom = shape(aoi_shape)
+        bounds = geom.bounds
         
         # Get quad info
-        quads = self.get_quad_info(mosaic_id, bounds)
+        quads = PlanetUtils.get_quad_info(mosaic_id, bounds)
         
         # Download and process quads
-        processed_quads = self.download_and_process_quads(quads, year, month)
+        processed_quads = PlanetUtils.download_and_process_quads(
+            quads, 
+            year, 
+            month, 
+            PlanetQuadStorage()
+        )
         
         return processed_quads
-
-    # Add the same Planet API methods as in ModelTrainingService
-    get_mosaic_id = ModelTrainingService.get_mosaic_id
-    get_quad_info = ModelTrainingService.get_quad_info
-    download_and_process_quads = ModelTrainingService.download_and_process_quads
 
     def send_progress_update(self, progress, message):
         """Send progress update through WebSocket"""
@@ -204,7 +261,7 @@ class PredictionService:
             
             # Load model and get quads
             self.send_progress_update(10, "Loading model...")
-            model = self.load_model()
+            model, model_record = self.load_model()
             
             self.send_progress_update(20, "Getting Planet quads...")
             quads = self.get_planet_quads(aoi_shape, basemap_date)
@@ -212,13 +269,19 @@ class PredictionService:
             # Generate prediction
             self.send_progress_update(50, "Generating prediction...")
             prediction_file = self.predict_landcover_aoi(
-                model, quads, aoi_shape, basemap_date
+                model, 
+                model_record, 
+                quads, 
+                aoi_shape,  # Pass the GeoJSON directly
+                basemap_date
             )
             
             # Save prediction record
             self.send_progress_update(90, "Saving prediction...")
             prediction = self.save_prediction(
-                prediction_file, prediction_name, basemap_date
+                prediction_file, 
+                prediction_name, 
+                basemap_date
             )
             
             # Calculate statistics
@@ -229,25 +292,38 @@ class PredictionService:
             return prediction
             
         except Exception as e:
-            logger.exception("Error generating prediction")
+            logger.error("Error generating prediction")
+            logger.exception(e)
             raise PredictionError(detail=str(e))
 
-    def save_prediction(self, prediction_data, name, basemap_date):
+    def save_prediction(self, prediction_file, name, basemap_date):
         """Save prediction to storage and create record"""
-        from django.core.files.base import ContentFile
-        
-        prediction = Prediction.objects.create(
-            project_id=self.project_id,
-            model_id=self.model_id,
-            type='land_cover',
-            name=name,
-            basemap_date=basemap_date
-        )
-        
-        # Save the prediction file
-        prediction.file.save(
-            f"prediction_{uuid.uuid4().hex}.tif",
-            ContentFile(prediction_data)
-        )
-        
-        return prediction
+        try:
+            # Open the prediction file
+            with open(prediction_file, 'rb') as f:
+                file_content = f.read()
+
+            prediction = Prediction.objects.create(
+                project_id=self.project_id,
+                model_id=self.model_id,
+                type='land_cover',
+                name=name,
+                basemap_date=basemap_date
+            )
+            
+            # Save the prediction file
+            prediction.file.save(
+                f"prediction_{uuid.uuid4().hex}.tif",
+                ContentFile(file_content)
+            )
+            
+            # Delete the temporary file
+            os.remove(prediction_file)
+            
+            return prediction
+            
+        except Exception as e:
+            logger.error(f"Error saving prediction: {str(e)}")
+            if os.path.exists(prediction_file):
+                os.remove(prediction_file)
+            raise PredictionError(f"Failed to save prediction: {str(e)}")

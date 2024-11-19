@@ -39,7 +39,12 @@ class TrainedModel(models.Model):
     training_set_ids = ArrayField(models.IntegerField())
     training_periods = models.IntegerField(null=True)
     num_training_samples = models.IntegerField(null=True)
-    model_file = models.CharField(max_length=255, blank=True)
+    model_file = models.FileField(
+        upload_to='models',
+        storage=ModelStorage(),
+        null=True,
+        blank=True
+    )
     model_parameters = JSONField(default=dict)
     metrics = JSONField(default=dict)
     encoders = JSONField(default=dict)

@@ -1,17 +1,19 @@
 from django.core.files.storage import FileSystemStorage
-from django.conf import settings
 import os
+from django.conf import settings
 
 class ModelStorage(FileSystemStorage):
     def __init__(self):
-        super().__init__(location=settings.MODEL_FILES_ROOT, base_url=settings.MODEL_FILES_URL)
+        # Create base directory for models
+        base_dir = './data/models'
+        os.makedirs(base_dir, exist_ok=True)
+        super().__init__(location=base_dir)
 
     def get_valid_name(self, name):
         """
-        Returns a filename that's suitable for use with the underlying storage system.
+        Return a filename that's allowed by the storage system.
         """
-        name = super().get_valid_name(name)
-        return f"model_{name}"
+        return name
 
 class PredictionStorage(FileSystemStorage):
     def __init__(self):
