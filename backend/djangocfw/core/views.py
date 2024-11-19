@@ -403,6 +403,7 @@ def get_model_metrics(request, project_id):
             status=status.HTTP_404_NOT_FOUND
         )
     except Exception as e:
+        logger.error(f"Error getting model metrics: {str(e)}")
         return Response(
             {'error': 'Server error occurred', 'details': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR

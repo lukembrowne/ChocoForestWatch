@@ -51,8 +51,7 @@
 
       <q-card-section v-if="trainingDataSummary">
         <div class="text-subtitle1">Basemap dates with training data:</div>
-        <q-chip v-for="date in basemapOptions" :key="date"
-          :color="getChipColor(date['value'])"
+        <q-chip v-for="date in basemapOptions" :key="date" :color="getChipColor(date['value'])"
           :text-color="getChipTextColor(date['value'])">
           {{ date['label'] }}
         </q-chip>
@@ -132,10 +131,9 @@
             </div>
             <div class="col-12 col-md-6">
               <p>Sieve Filter Size:</p>
-              <q-slider v-model="options.sieve_size" :min="0" :max="100" :step="5" label label-always
-                color="primary" />
-              <p class="text-caption">Minimum size of connected pixel groups to keep in the final prediction. 
-                Higher values create a more generalized map by removing small isolated patches. 
+              <q-slider v-model="options.sieve_size" :min="0" :max="100" :step="5" label label-always color="primary" />
+              <p class="text-caption">Minimum size of connected pixel groups to keep in the final prediction.
+                Higher values create a more generalized map by removing small isolated patches.
                 Set to 0 to disable filtering.</p>
             </div>
           </div>
@@ -211,6 +209,20 @@ export default {
     const pollInterval = ref(null);
     const trainingTaskId = ref(null);
 
+
+    // Clean up on component unmount
+    onUnmounted(() => {
+      if (pollInterval.value) {
+        clearInterval(pollInterval.value);
+      }
+    });
+
+    onMounted(async () => {
+      await fetchTrainingDataSummary()
+      await checkExistingModel()
+    })
+
+
     const startProgressPolling = async (taskId) => {
       if (!taskId) {
         console.error('No taskId provided for polling');
@@ -222,23 +234,23 @@ export default {
       if (pollInterval.value) {
         clearInterval(pollInterval.value);
       }
-      
+
       // Start polling every 1 seconds
       pollInterval.value = setInterval(async () => {
         try {
           console.log('Polling progress for task:', taskId);
           const response = await apiService.getModelTrainingProgress(taskId);
           const progress = response.data;
-          
+
           isTraining.value = true;
           trainingProgress.value = progress.progress;
           trainingProgressMessage.value = progress.message;
-          
+
           if (progress.error) {
             trainingError.value = progress.error;
             clearInterval(pollInterval.value);
           }
-          
+
           if (progress.status === 'completed' || progress.status === 'failed') {
             clearInterval(pollInterval.value);
             if (progress.status === 'completed') {
@@ -285,28 +297,20 @@ export default {
       }
     };
 
-    // Clean up on component unmount
-    onUnmounted(() => {
-      if (pollInterval.value) {
-        clearInterval(pollInterval.value);
-      }
-    });
-
-    onMounted(async () => {
-      await fetchTrainingDataSummary()
-      await checkExistingModel()
-    })
 
     async function checkExistingModel() {
       try {
         const response = await apiService.getTrainedModels(projectStore.currentProject.id)
-        if (response.length > 0) {
-          existingModel.value = response[0]
+        console.log('Existing models from checkExistingModel:', response.data)
+        if (response.data.length > 0) {
+          console.log('Setting existing model:', response.data[0])
+          existingModel.value = response.data[0]
           modelName.value = existingModel.value.name
           modelDescription.value = existingModel.value.description
 
           // Populate model parameters from existing model
           if (existingModel.value.model_parameters) {
+            console.log('Existing model parameters:', existingModel.value.model_parameters)
             const params = existingModel.value.model_parameters
             options.value = {
               n_estimators: params.n_estimators ? params.n_estimators : 'NA',
@@ -327,7 +331,7 @@ export default {
               trainTestSplit.value = params.train_test_split
             }
           }
-          
+
           console.log('Loaded existing model parameters:', options.value)
         }
       } catch (error) {
@@ -383,7 +387,7 @@ export default {
           model_description: modelDescription.value,
           train_test_split: trainTestSplit.value,
           split_method: splitMethod.value,
-          model_parameters: {...options.value}
+          model_parameters: { ...options.value }
         })
 
         console.log('Model training initiated:', response)
@@ -401,69 +405,69 @@ export default {
     }
 
     function generateDefaultModelName() {
-        const today = new Date()
-        const dateString = today.toISOString().split('T')[0]
-        const timeString = today.toTimeString().split(' ')[0].replace(/:/g, '-')
-        return `Model_${dateString}_${timeString}`
+      const today = new Date()
+      const dateString = today.toISOString().split('T')[0]
+      const timeString = today.toTimeString().split(' ')[0].replace(/:/g, '-')
+      return `Model_${dateString}_${timeString}`
+    }
+
+    const totalArea = computed(() => {
+      if (!trainingDataSummary.value) return 0
+      return Object.values(trainingDataSummary.value.classStats).reduce((sum, stats) => sum + stats.totalAreaHa, 0)
+    })
+
+    const getClassColor = (className) => {
+      const classObj = projectStore.currentProject?.classes.find(cls => cls.name === className)
+      const col = classObj ? classObj.color : '#000000'
+      return col
+    }
+
+    const getChipColor = (date) => {
+      if (projectStore.isDateExcluded(date)) {
+        return 'negative'
       }
 
-      const totalArea = computed(() => {
-        if (!trainingDataSummary.value) return 0
-        return Object.values(trainingDataSummary.value.classStats).reduce((sum, stats) => sum + stats.totalAreaHa, 0)
-      })
+      if (projectStore.hasTrainingData(date)) {
+        return 'primary'
+      }
+      return 'grey-4'
+    }
 
-      const getClassColor = (className) => {
-        const classObj = projectStore.currentProject?.classes.find(cls => cls.name === className)
-        const col = classObj ? classObj.color : '#000000'
-        return col
+    const getChipTextColor = (date) => {
+      if (projectStore.isDateExcluded(date)) {
+        return 'white'
       }
 
-      const getChipColor = (date) => {
-        if (projectStore.isDateExcluded(date)) {
-          return 'negative'
-        }
-
-        if(projectStore.hasTrainingData(date)){
-          return 'primary'
-        }
-        return 'grey-4'
+      if (projectStore.hasTrainingData(date)) {
+        return 'white'
       }
+      return 'black'
+    }
 
-      const getChipTextColor = (date) => {
-        if (projectStore.isDateExcluded(date)) {
-          return 'white'
-        }
-
-        if(projectStore.hasTrainingData(date)){
-          return 'white'
-        }
-        return 'black'
-      }
-
-      return {
-        dialogRef,
-        onDialogHide,
-        modelName,
-        modelDescription,
-        trainModel,
-        isTraining,
-        trainingProgress,
-        trainingProgressMessage,
-        trainingError,
-        trainingDataSummary,
-        availableDates,
-        trainingSetsPerDate,
-        options,
-        splitMethod,
-        trainTestSplit,
-        existingModel,
-        basemapOptions,
-        totalArea,
-        getClassColor,
-        getChipColor,
-        getChipTextColor,
-        handleCancel,
-      }
+    return {
+      dialogRef,
+      onDialogHide,
+      modelName,
+      modelDescription,
+      trainModel,
+      isTraining,
+      trainingProgress,
+      trainingProgressMessage,
+      trainingError,
+      trainingDataSummary,
+      availableDates,
+      trainingSetsPerDate,
+      options,
+      splitMethod,
+      trainTestSplit,
+      existingModel,
+      basemapOptions,
+      totalArea,
+      getClassColor,
+      getChipColor,
+      getChipTextColor,
+      handleCancel,
     }
   }
+}
 </script>w
