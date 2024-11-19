@@ -150,11 +150,11 @@
   </q-dialog>
 
   <training-progress :show="isTraining" :progress="trainingProgress" :progressMessage="trainingProgressMessage"
-    :error="trainingError" />
+    :error="trainingError" @cancel="handleCancel" />
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDialogPluginComponent, useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import apiService from 'src/services/api'
@@ -208,6 +208,89 @@ export default {
       sieve_size: 10
     })
 
+    const pollInterval = ref(null);
+    const trainingTaskId = ref(null);
+
+    const startProgressPolling = async (taskId) => {
+      if (!taskId) {
+        console.error('No taskId provided for polling');
+        return;
+      }
+
+      trainingTaskId.value = taskId;
+      // Clear any existing interval
+      if (pollInterval.value) {
+        clearInterval(pollInterval.value);
+      }
+      
+      // Start polling every 1 seconds
+      pollInterval.value = setInterval(async () => {
+        try {
+          console.log('Polling progress for task:', taskId);
+          const response = await apiService.getModelTrainingProgress(taskId);
+          const progress = response.data;
+          
+          isTraining.value = true;
+          trainingProgress.value = progress.progress;
+          trainingProgressMessage.value = progress.message;
+          
+          if (progress.error) {
+            trainingError.value = progress.error;
+            clearInterval(pollInterval.value);
+          }
+          
+          if (progress.status === 'completed' || progress.status === 'failed') {
+            clearInterval(pollInterval.value);
+            if (progress.status === 'completed') {
+              isTraining.value = false;
+              $q.notify({
+                type: 'positive',
+                message: 'Model training completed successfully'
+              });
+              dialogRef.value.hide();
+            } else {
+              trainingError.value = progress.message || 'Training failed';
+              $q.notify({
+                type: 'negative',
+                message: 'Model training failed'
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Error polling progress:', err);
+          trainingError.value = 'Error checking training progress';
+          clearInterval(pollInterval.value);
+        }
+      }, 1000);
+    };
+
+    const handleCancel = async () => {
+      try {
+        if (trainingTaskId.value) {  // Use the stored taskId
+          await apiService.cancelModelTraining(trainingTaskId.value);
+          clearInterval(pollInterval.value);
+          isTraining.value = false;
+          trainingError.value = 'Training cancelled by user';
+          $q.notify({
+            type: 'warning',
+            message: 'Model training cancelled'
+          });
+        }
+      } catch (err) {
+        console.error('Error canceling training:', err);
+        $q.notify({
+          type: 'negative',
+          message: 'Error canceling training'
+        });
+      }
+    };
+
+    // Clean up on component unmount
+    onUnmounted(() => {
+      if (pollInterval.value) {
+        clearInterval(pollInterval.value);
+      }
+    });
 
     onMounted(async () => {
       await fetchTrainingDataSummary()
@@ -304,38 +387,7 @@ export default {
         })
 
         console.log('Model training initiated:', response)
-
-        // Start polling for training progress
-        const pollInterval = setInterval(async () => {
-          try {
-            const progressResponse = await apiService.getModelTrainingProgress(response.taskId)
-            trainingProgress.value = progressResponse.progress
-            trainingProgressMessage.value = progressResponse.message
-            
-            if (progressResponse.error) {
-              trainingError.value = progressResponse.error
-              isTraining.value = false
-              clearInterval(pollInterval)
-              $q.notify({
-                type: 'negative',
-                message: 'Error occurred during training.'
-              })
-            }
-            
-            if (progressResponse.status === 'completed') {
-              isTraining.value = false
-              clearInterval(pollInterval)
-              onDialogOK(response)
-              $q.notify({
-                type: 'positive',
-                message: `Model ${existingModel.value ? 'updated' : 'trained'} successfully!`
-              })
-            }
-          } catch (error) {
-            console.error('Error polling training progress:', error)
-            clearInterval(pollInterval)
-          }
-        }, 2000) // Poll every 2 seconds
+        startProgressPolling(response.data.taskId)
 
       } catch (error) {
         console.error('Error training model:', error)
@@ -410,6 +462,7 @@ export default {
         getClassColor,
         getChipColor,
         getChipTextColor,
+        handleCancel,
       }
     }
   }

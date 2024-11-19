@@ -26,13 +26,17 @@ import pickle
 import base64
 from pathlib import Path
 from ..storage import ModelStorage, PlanetQuadStorage
+from uuid import uuid4
+import asyncio
+import threading
 
 class ModelTrainingService:
     def __init__(self, project_id):
         self.project_id = project_id
         self.PLANET_API_KEY = settings.PLANET_API_KEY
         self.QUAD_DOWNLOAD_DIR = './data/planet_quads'
-        self.task_id = str(uuid.uuid4())
+        self.task_id = None
+        self._cancel_flag = False  # Add cancellation flag
         
     def update_progress(self, progress, message, status='running', error=''):
         """Update training progress in database"""
@@ -46,21 +50,69 @@ class ModelTrainingService:
             }
         )
 
+    def create_training_task(self):
+        """Create a new training task and return its ID"""
+        self.task_id = uuid4()
+        ModelTrainingTask.objects.create(
+            task_id=self.task_id,
+            status='pending',
+            progress=0,
+            message='Initializing training...'
+        )
+        return self.task_id
+
+    def start_training_async(self, model_name, model_description, training_set_ids, model_params):
+        """Start the training process in a separate thread"""
+        def train_thread():
+            try:
+                self.train_model(model_name, model_description, training_set_ids, model_params)
+            except Exception as e:
+                logger.exception("Error in training thread")
+                self.update_progress(
+                    progress=0,
+                    message="Training failed",
+                    status='failed',
+                    error=str(e)
+                )
+
+        thread = threading.Thread(
+            target=train_thread,
+            daemon=True
+        )
+        thread.start()
+
+    def cancel_training(self):
+        """Set the cancel flag to stop training"""
+        self._cancel_flag = True
+
     def train_model(self, model_name, model_description, training_set_ids, model_params):
         """Main method to handle the model training process"""
         try:
+            # Check cancellation at major steps
+            if self._cancel_flag:
+                self.update_progress(0, "Training cancelled", status='cancelled')
+                return None, None
+
             self.update_progress(0, "Starting model training...")
             
             # Get training data
             self.update_progress(10, "Preparing training data...")
             X, y, feature_ids, dates, all_class_names = self.prepare_training_data(training_set_ids)
             
+            if self._cancel_flag:
+                self.update_progress(0, "Training cancelled", status='cancelled')
+                return None, None
+
             # Train model and get metrics
             self.update_progress(50, "Training model...")
             model, metrics, encoders = self.train_xgboost_model(
                 X, y, feature_ids, dates, all_class_names, model_params
             )
             
+            if self._cancel_flag:
+                self.update_progress(0, "Training cancelled", status='cancelled')
+                return None, None
+
             # Save the model
             self.update_progress(90, "Saving model...")
             saved_model = self.save_model(
@@ -69,7 +121,7 @@ class ModelTrainingService:
             )
             
             self.update_progress(100, "Model training complete", status='completed')
-            return saved_model, metrics, self.task_id
+            return saved_model, metrics
             
         except Exception as e:
             logger.exception("Error in model training")

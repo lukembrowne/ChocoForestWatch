@@ -87,7 +87,7 @@ export default {
     },
 
     getModelTrainingProgress(taskId) {
-        return api.get(`/trained-models/training-progress/${taskId}/`);
+        return api.get(`/trained-models/training_progress/${taskId}/`);
     },
 
     // Prediction endpoints
@@ -128,6 +128,10 @@ export default {
     // Model metrics endpoint
     getModelMetrics(projectId) {
         return api.get(`/trained_models/${projectId}/metrics/`);
+    },
+
+    cancelModelTraining(taskId) {
+        return api.post(`/trained-models/training_progress/${taskId}/cancel/`);
     },
 
 };

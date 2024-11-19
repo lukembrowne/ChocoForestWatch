@@ -224,6 +224,9 @@ class TrainedModelViewSet(viewsets.ModelViewSet):
     queryset = TrainedModel.objects.all()
     serializer_class = TrainedModelSerializer
 
+    # Store active training services
+    _active_services = {}
+
     def get_queryset(self):
         queryset = TrainedModel.objects.all()
         project_id = self.request.query_params.get('project_id', None)
@@ -247,27 +250,35 @@ class TrainedModelViewSet(viewsets.ModelViewSet):
                     'error': 'Missing required parameters'
                 }, status=400)
 
+            # Create service and training task
             service = ModelTrainingService(project_id)
-            model, metrics, task_id = service.train_model(
+            task_id = service.create_training_task()
+            
+            # Store the service instance
+            self._active_services[str(task_id)] = service
+            
+            # Start training process asynchronously
+            service.start_training_async(
                 model_name,
                 model_description,
                 training_set_ids,
                 model_params
             )
 
+            # Return task ID immediately
             return Response({
-                'model_id': model.id,
-                'metrics': metrics,
-                'taskId': task_id
+                'taskId': str(task_id),
+                'message': 'Training started'
             })
 
         except Exception as e:
             return Response({'error': str(e)}, status=400)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='training_progress/(?P<task_id>[^/.]+)')
     def training_progress(self, request, task_id=None):
         """Get training progress for a specific task"""
         try:
+            logger.debug(f"Getting training progress for task {task_id}")
             task = ModelTrainingTask.objects.get(task_id=task_id)
             return Response({
                 'status': task.status,
@@ -279,6 +290,36 @@ class TrainedModelViewSet(viewsets.ModelViewSet):
             return Response({
                 'error': 'Training task not found'
             }, status=404)
+
+    @action(detail=False, methods=['post'], url_path='training_progress/(?P<task_id>[^/.]+)/cancel')
+    def cancel_training(self, request, task_id=None):
+        """Cancel a training task"""
+        try:
+            task = ModelTrainingTask.objects.get(task_id=task_id)
+            
+            # Get the service instance and cancel training
+            service = self._active_services.get(str(task_id))
+            if service:
+                service.cancel_training()
+                # Clean up the service reference
+                del self._active_services[str(task_id)]
+            
+            task.status = 'cancelled'
+            task.message = 'Training cancelled by user'
+            task.save()
+            
+            return Response({
+                'status': 'cancelled',
+                'message': 'Training cancelled successfully'
+            })
+        except ModelTrainingTask.DoesNotExist:
+            return Response({
+                'error': 'Training task not found'
+            }, status=404)
+        except Exception as e:
+            return Response({
+                'error': f'Error cancelling training: {str(e)}'
+            }, status=500)
 
 class PredictionViewSet(viewsets.ModelViewSet):
     queryset = Prediction.objects.all()

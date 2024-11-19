@@ -4,11 +4,19 @@
       <q-card-section class="row items-center">
         <div class="text-h6">Training and Prediction in Progress</div>
         <q-space />
+        <q-btn
+          icon="close"
+          flat
+          round
+          dense
+          @click="handleCancel"
+          :disable="progress >= 100"
+        />
       </q-card-section>
 
       <q-card-section class="q-pt-none">
         <q-linear-progress
-          :value="progress"
+          :value="progress / 100"
           color="primary"
           class="q-mt-md"
         />
@@ -23,7 +31,7 @@
 </template>
 
 <script>
-import { defineComponent, computed} from 'vue';
+import { defineComponent, computed } from 'vue';
 
 export default defineComponent({
   name: 'TrainingProgress',
@@ -33,14 +41,20 @@ export default defineComponent({
     progressMessage: String,
     error: String,
   },
+  emits: ['update:show', 'cancel'],
   setup(props, { emit }) {
     const dialogModel = computed({
       get: () => props.show,
       set: (value) => emit('update:show', value)
     });
 
+    const handleCancel = () => {
+      emit('cancel');
+    };
+
     return {
       dialogModel,
+      handleCancel
     };
   }
 });
