@@ -148,7 +148,7 @@
   </q-dialog>
 
   <training-progress :show="isTraining" :progress="trainingProgress" :progressMessage="trainingProgressMessage"
-    :error="trainingError" @cancel="handleCancel" />
+    :error="trainingError" @cancel="handleCancel" @complete="handleTrainingComplete" />
 </template>
 
 <script>
@@ -223,6 +223,26 @@ export default {
     })
 
 
+    const handleTrainingComplete = () => {
+      // Clear the polling interval
+      if (pollInterval.value) {
+        clearInterval(pollInterval.value);
+      }
+      
+      // Reset training state
+      isTraining.value = false;
+      trainingProgress.value = 0;
+      trainingProgressMessage.value = '';
+      trainingError.value = '';
+      trainingTaskId.value = null;
+      
+      // Close the dialog
+      dialogRef.value.hide();
+      
+      // Optionally refresh the model list or other data
+      // You might want to emit an event or call a store action here
+    };
+
     const startProgressPolling = async (taskId) => {
       if (!taskId) {
         console.error('No taskId provided for polling');
@@ -230,12 +250,10 @@ export default {
       }
 
       trainingTaskId.value = taskId;
-      // Clear any existing interval
       if (pollInterval.value) {
         clearInterval(pollInterval.value);
       }
 
-      // Start polling every 1 seconds
       pollInterval.value = setInterval(async () => {
         try {
           console.log('Polling progress for task:', taskId);
@@ -254,12 +272,9 @@ export default {
           if (progress.status === 'completed' || progress.status === 'failed') {
             clearInterval(pollInterval.value);
             if (progress.status === 'completed') {
-              isTraining.value = false;
-              $q.notify({
-                type: 'positive',
-                message: 'Model training completed successfully'
-              });
-              dialogRef.value.hide();
+              trainingProgress.value = 100;  // Ensure progress is 100%
+              trainingProgressMessage.value = 'Training completed successfully';
+              // Dialog will auto-close via TrainingProgress component
             } else {
               trainingError.value = progress.message || 'Training failed';
               $q.notify({
@@ -467,7 +482,8 @@ export default {
       getChipColor,
       getChipTextColor,
       handleCancel,
+      handleTrainingComplete,
     }
   }
 }
-</script>w
+</script>

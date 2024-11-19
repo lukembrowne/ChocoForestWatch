@@ -102,7 +102,10 @@ export default {
     // Function to fetch predictions from the API
     const fetchPredictions = async () => {
       try {
-        predictions.value = await api.getPredictions(projectStore.currentProject.id);
+        let response = await api.getPredictions(projectStore.currentProject.id);
+
+        predictions.value = response.data;
+        console.log("Predictions fetched:", predictions.value);
 
         // Filter predictions to only include those of type "land_cover"
         predictions.value = predictions.value.filter(p => p.type === "land_cover");

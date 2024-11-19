@@ -26,12 +26,16 @@
       <q-card-section v-if="error" class="text-negative">
         {{ error }}
       </q-card-section>
+
+      <q-card-section v-if="progress >= 100" class="text-center">
+        <q-btn color="primary" label="Close" @click="closeDialog" />
+      </q-card-section>
     </q-card>
   </q-dialog>
 </template>
 
 <script>
-import { defineComponent, computed } from 'vue';
+import { defineComponent, computed, watch } from 'vue';
 
 export default defineComponent({
   name: 'TrainingProgress',
@@ -41,7 +45,7 @@ export default defineComponent({
     progressMessage: String,
     error: String,
   },
-  emits: ['update:show', 'cancel'],
+  emits: ['update:show', 'cancel', 'complete'],
   setup(props, { emit }) {
     const dialogModel = computed({
       get: () => props.show,
@@ -52,9 +56,23 @@ export default defineComponent({
       emit('cancel');
     };
 
+    const closeDialog = () => {
+      dialogModel.value = false;
+      emit('complete');
+    };
+
+    watch(() => props.progress, (newProgress) => {
+      if (newProgress >= 100) {
+        setTimeout(() => {
+          closeDialog();
+        }, 2000);
+      }
+    });
+
     return {
       dialogModel,
-      handleCancel
+      handleCancel,
+      closeDialog
     };
   }
 });
