@@ -208,12 +208,11 @@ export default {
       console.log("Fetching models")
 
       try {
-        // Make the function async
-        const response = await api.fetchModelMetrics(projectStore.currentProject.id)
-        metrics.value = response
-        console.log("Fetched model metrics:", metrics.value)
+        const response = await api.getModelMetrics(projectStore.currentProject.id);
+        metrics.value = response.data;
+        console.log("Fetched model metrics:", metrics.value);
       } catch (error) {
-        console.error("Error fetching model metrics:", error)
+        console.error("Error fetching model metrics:", error);
       }
     })
 

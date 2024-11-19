@@ -34,7 +34,7 @@ static/
 
 # Data and model files
 data/
-models/
+
 predictions/
 trained_models/
 

@@ -125,5 +125,10 @@ export default {
         return api.get(`/analysis/summary/${predictionId}/`);
     },
 
+    // Model metrics endpoint
+    getModelMetrics(projectId) {
+        return api.get(`/trained_models/${projectId}/metrics/`);
+    },
+
 };
 

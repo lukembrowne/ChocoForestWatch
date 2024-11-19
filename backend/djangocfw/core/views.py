@@ -240,6 +240,12 @@ class TrainedModelViewSet(viewsets.ModelViewSet):
             model_description = request.data.get('model_description', '')
             training_set_ids = request.data.get('training_set_ids', [])
             model_params = request.data.get('model_parameters', {})
+            
+            # Validate required parameters
+            if not all([project_id, model_name, training_set_ids]):
+                return Response({
+                    'error': 'Missing required parameters'
+                }, status=400)
 
             service = ModelTrainingService(project_id)
             model, metrics, task_id = service.train_model(
@@ -326,3 +332,37 @@ class DeforestationHotspotViewSet(viewsets.ModelViewSet):
         hotspot.verification_status = status
         hotspot.save()
         return Response({"message": "Hotspot verification updated"})
+
+@api_view(['GET'])
+def get_model_metrics(request, project_id):
+    """
+    Retrieve metrics for the most recent trained model of a project
+    """
+    try:
+        # Get the latest model for the project
+        model = TrainedModel.objects.filter(project_id=project_id).latest('created_at')
+        
+        # Convert model data to dictionary format
+        metrics = {
+            'created_at': model.created_at.isoformat(),
+            'updated_at': model.updated_at.isoformat() if model.updated_at else None,
+            'accuracy': model.metrics.get('accuracy'),
+            'class_metrics': model.metrics.get('class_metrics', {}),
+            'confusion_matrix': model.metrics.get('confusion_matrix', []),
+            'class_names': model.metrics.get('class_names', []),
+            'classes_in_training': model.metrics.get('classes_in_training', []),
+            'model_parameters': model.model_parameters
+        }
+        
+        return Response(metrics)
+        
+    except TrainedModel.DoesNotExist:
+        return Response(
+            {'error': 'No model found for this project'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': 'Server error occurred', 'details': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

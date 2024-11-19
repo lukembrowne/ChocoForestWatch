@@ -226,14 +226,14 @@ export default {
           if (existingModel.value.model_parameters) {
             const params = existingModel.value.model_parameters
             options.value = {
-              n_estimators: params.n_estimators || 100,
-              max_depth: params.max_depth || 3,
-              learning_rate: params.learning_rate || 0.1,
-              min_child_weight: params.min_child_weight || 1,
-              gamma: params.gamma || 0,
-              subsample: params.subsample || 0.8,
-              colsample_bytree: params.colsample_bytree || 0.8,
-              sieve_size: params.sieve_size || 10
+              n_estimators: params.n_estimators ? params.n_estimators : 'NA',
+              max_depth: params.max_depth ? params.max_depth : 'NA',
+              learning_rate: params.learning_rate ? params.learning_rate : 'NA',
+              min_child_weight: params.min_child_weight ? params.min_child_weight : 'NA',
+              gamma: params.gamma ? params.gamma : 'NA',
+              subsample: params.subsample ? params.subsample : 'NA',
+              colsample_bytree: params.colsample_bytree ? params.colsample_bytree : 'NA',
+              sieve_size: params.sieve_size ? params.sieve_size : 'NA'
             }
 
             // Set split method and train/test split if they exist
@@ -300,7 +300,7 @@ export default {
           model_description: modelDescription.value,
           train_test_split: trainTestSplit.value,
           split_method: splitMethod.value,
-          ...options.value
+          model_parameters: {...options.value}
         })
 
         console.log('Model training initiated:', response)
