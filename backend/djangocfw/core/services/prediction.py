@@ -255,9 +255,20 @@ class PredictionService:
         )
 
     def generate_prediction(self, aoi_shape, basemap_date, prediction_name):
-        """Generate a new prediction"""
+        """Generate a new prediction or update existing one"""
         try:
             self.send_progress_update(0, "Starting prediction...")
+            
+            # Check for existing prediction for this date
+            try:
+                existing_prediction = Prediction.objects.get(
+                    project_id=self.project_id,
+                    model_id=self.model_id,
+                    basemap_date=basemap_date
+                )
+                self.send_progress_update(5, "Found existing prediction, will update...")
+            except Prediction.DoesNotExist:
+                existing_prediction = None
             
             # Load model and get quads
             self.send_progress_update(10, "Loading model...")
@@ -272,16 +283,17 @@ class PredictionService:
                 model, 
                 model_record, 
                 quads, 
-                aoi_shape,  # Pass the GeoJSON directly
+                aoi_shape,
                 basemap_date
             )
             
-            # Save prediction record
+            # Save or update prediction record
             self.send_progress_update(90, "Saving prediction...")
             prediction = self.save_prediction(
                 prediction_file, 
                 prediction_name, 
-                basemap_date
+                basemap_date,
+                existing_prediction
             )
             
             # Calculate statistics
@@ -296,26 +308,52 @@ class PredictionService:
             logger.exception(e)
             raise PredictionError(detail=str(e))
 
-    def save_prediction(self, prediction_file, name, basemap_date):
-        """Save prediction to storage and create record"""
+    def save_prediction(self, prediction_file, name, basemap_date, existing_prediction=None):
+        """Save prediction to storage and create/update record"""
         try:
             # Open the prediction file
             with open(prediction_file, 'rb') as f:
                 file_content = f.read()
 
-            prediction = Prediction.objects.create(
-                project_id=self.project_id,
-                model_id=self.model_id,
-                type='land_cover',
-                name=name,
-                basemap_date=basemap_date
-            )
-            
-            # Save the prediction file
-            prediction.file.save(
-                f"prediction_{uuid.uuid4().hex}.tif",
-                ContentFile(file_content)
-            )
+            if existing_prediction:
+                # Delete old file if it exists
+                if existing_prediction.file:
+                    # Get the storage instance
+                    storage = existing_prediction.file.storage
+                    # Delete the old file
+                    if storage.exists(existing_prediction.file.name):
+                        storage.delete(existing_prediction.file.name)
+                
+                # Update existing record
+                prediction = existing_prediction
+                prediction.name = name
+                prediction.type = 'land_cover'  # Ensure type is set
+                
+                # Save new file
+                prediction.file.save(
+                    f"prediction_{uuid.uuid4().hex}.tif",
+                    ContentFile(file_content),
+                    save=False  # Don't save the model yet
+                )
+                
+                # Save all changes
+                prediction.save()
+                
+            else:
+                # Create new record
+                prediction = Prediction.objects.create(
+                    project_id=self.project_id,
+                    model_id=self.model_id,
+                    type='land_cover',
+                    name=name,
+                    basemap_date=basemap_date
+                )
+                
+                # Save the prediction file
+                prediction.file.save(
+                    f"prediction_{uuid.uuid4().hex}.tif",
+                    ContentFile(file_content)
+                )
             
             # Delete the temporary file
             os.remove(prediction_file)
