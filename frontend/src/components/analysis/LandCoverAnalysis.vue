@@ -164,8 +164,14 @@ export default {
       try {
         // Format the date for the layer title
         const date_title = formatDate(prediction.basemap_date);
-
-        await mapStore.displayPrediction(prediction.file_path, `prediction-${prediction.id}-${Date.now()}`, `Land Cover - ${date_title}`, 'prediction');
+        console.log("loadPredictionOnMap prediction:", prediction);
+        await mapStore.displayPrediction(
+          prediction.file,
+          `prediction-${prediction.id}-${Date.now()}`,
+          `Land Cover - ${date_title}`,
+          'prediction'
+        );
+        
         $q.notify({
           color: 'positive',
           message: `Loaded land cover map for: ${date_title}`,
@@ -189,7 +195,7 @@ export default {
     // Function to show a prediction and its analysis
     const showPrediction = async (date) => {
       await displayOnMap(date);
-      await showAnalysis(date);
+     // await showAnalysis(date);
     };
 
     return {

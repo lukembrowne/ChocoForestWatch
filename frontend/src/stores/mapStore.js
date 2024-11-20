@@ -343,8 +343,8 @@ export const useMapStore = defineStore('map', () => {
   const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'prediction') => {
     console.log(`Displaying ${mode}:`, predictionFilePath);
     try {
-      const url = `http://127.0.0.1:5000/${predictionFilePath}`;
-      const tiff = await fromUrl(url);
+      // Use the predictionFilePath directly since it's now a complete URL
+      const tiff = await fromUrl(predictionFilePath);
       const image = await tiff.getImage();
       const width = image.getWidth();
       const height = image.getHeight();

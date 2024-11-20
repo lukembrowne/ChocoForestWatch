@@ -288,7 +288,7 @@ export default {
           trainingError.value = 'Error checking training progress';
           clearInterval(pollInterval.value);
         }
-      }, 1000);
+      }, 2000);
     };
 
     const handleCancel = async () => {

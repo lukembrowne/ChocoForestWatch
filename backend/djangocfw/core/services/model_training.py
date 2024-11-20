@@ -31,6 +31,8 @@ import asyncio
 import threading# 
 from .planet_utils import PlanetUtils
 from .prediction import PredictionService
+import concurrent.futures
+from functools import partial
 
 class ModelTrainingService:
     def __init__(self, project_id):
@@ -406,21 +408,48 @@ class ModelTrainingService:
 
             self.update_progress(85, "Generating predictions...")
             
-            # Generate prediction for each date
-            for i, date in enumerate(basemap_dates):
-                progress = 85 + (10 * (i + 1) / len(basemap_dates))
-                self.update_progress(
-                    progress, 
-                    f"Generating prediction for {date}"
-                )
+            # Create a partial function with fixed arguments
+            generate_prediction_for_date = partial(
+                self._generate_single_prediction,
+                prediction_service=prediction_service,
+                aoi_geojson=aoi_geojson
+            )
+            
+            # Use ThreadPoolExecutor to parallelize predictions
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                # Submit all prediction tasks
+                future_to_date = {
+                    executor.submit(generate_prediction_for_date, date): date 
+                    for date in basemap_dates
+                }
                 
-                prediction_name = f"Prediction_{date}"
-                prediction_service.generate_prediction(
-                    aoi_geojson,  # Pass the properly formatted GeoJSON dict
-                    date,
-                    prediction_name
-                )
+                # Process completed predictions
+                for i, future in enumerate(concurrent.futures.as_completed(future_to_date)):
+                    date = future_to_date[future]
+                    progress = 85 + (10 * (i + 1) / len(basemap_dates))
+                    try:
+                        future.result()  # This will raise any exceptions that occurred
+                        self.update_progress(
+                            progress, 
+                            f"Completed prediction for {date}"
+                        )
+                    except Exception as e:
+                        logger.error(f"Error predicting for date {date}: {str(e)}")
+                        raise
 
         except Exception as e:
             logger.error(f"Error generating predictions: {str(e)}")
+            raise
+
+    def _generate_single_prediction(self, date, prediction_service, aoi_geojson):
+        """Helper method to generate prediction for a single date"""
+        try:
+            prediction_name = f"Prediction_{date}"
+            return prediction_service.generate_prediction(
+                aoi_geojson,
+                date,
+                prediction_name
+            )
+        except Exception as e:
+            logger.error(f"Error generating prediction for {date}: {str(e)}")
             raise

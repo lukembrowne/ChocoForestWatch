@@ -12,6 +12,8 @@ from .services.model_training import ModelTrainingService
 from .services.prediction import PredictionService
 from loguru import logger
 import json
+from django.conf import settings
+from django.http import JsonResponse
 
 @api_view(['GET'])
 def health_check(request):
@@ -356,6 +358,24 @@ class PredictionViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             return Response({'error': str(e)}, status=400)
+
+    def get_predictions(self, request, project_id):
+        predictions = Prediction.objects.filter(project_id=project_id)
+        predictions_data = []
+        
+        for prediction in predictions:
+            # Use PREDICTION_FILES_URL instead of media URL
+            file_url = settings.PREDICTION_FILES_URL + prediction.file.name if prediction.file else None
+            
+            prediction_data = {
+                'id': prediction.id,
+                'basemap_date': prediction.basemap_date,
+                'type': prediction.type,
+                'file': request.build_absolute_uri(file_url) if file_url else None,
+            }
+            predictions_data.append(prediction_data)
+        
+        return JsonResponse({'data': predictions_data})
 
 class DeforestationHotspotViewSet(viewsets.ModelViewSet):
     queryset = DeforestationHotspot.objects.all()
