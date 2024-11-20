@@ -14,5 +14,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('health/', views.health_check, name='health_check'),
     path('trained_models/<int:project_id>/metrics/', views.get_model_metrics, name='model-metrics'),
-    path('analysis/change/', views.change_analysis, name='change-analysis')
+    path('analysis/change/', views.change_analysis, name='change-analysis'),
+    path('analysis/deforestation_hotspots/<int:prediction_id>/', views.deforestation_hotspots, name='deforestation-hotspots'),
 ]

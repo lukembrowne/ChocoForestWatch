@@ -117,8 +117,13 @@ export default {
         return api.post('/analysis/change/', data);
     },
 
-    getDeforestationHotspots(predictionId, params) {
-        return api.get(`/analysis/deforestation_hotspots/${predictionId}/`, { params });
+    getDeforestationHotspots(predictionId, minAreaHa) {
+        return api.get(`/analysis/deforestation_hotspots/${predictionId}/`, { 
+            params: { 
+                min_area_ha: minAreaHa,
+                source: 'all'
+            } 
+        });
     },
 
     getSummaryStatistics(predictionId) {

@@ -14,7 +14,7 @@ from loguru import logger
 import json
 from django.conf import settings
 from django.http import JsonResponse
-from .services.deforestation import analyze_change
+from .services.deforestation import analyze_change, get_deforestation_hotspots
 
 @api_view(['GET'])
 def health_check(request):
@@ -459,5 +459,17 @@ def change_analysis(request):
             aoi_shape=data['aoi_shape']
         )
         return Response(results)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
+
+@api_view(['GET'])
+def deforestation_hotspots(request, prediction_id):
+    """Get deforestation hotspots for a prediction"""
+    try:
+        min_area_ha = float(request.query_params.get('min_area_ha', 1.0))
+        source = request.query_params.get('source', 'all')
+        
+        result = get_deforestation_hotspots(prediction_id, min_area_ha, source)
+        return Response(result)
     except Exception as e:
         return Response({'error': str(e)}, status=400)

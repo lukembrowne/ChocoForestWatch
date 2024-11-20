@@ -246,18 +246,18 @@ export default {
       try {
         const response = await api.getDeforestationHotspots(
           selectedDeforestationMap.value.id,
-          minHotspotArea.value
+          Number(minHotspotArea.value)
         );
         
-        console.log('Deforestation hotspots:', response);
+        console.log('Deforestation hotspots:', response.data);
         
-        hotspots.value = response.features;
-        hotspotMetadata.value = response.metadata;
+        hotspots.value = response.data.features;
+        hotspotMetadata.value = response.data.metadata;
         
         // Add hotspots to map
         mapStore.addGeoJSON(
           `hotspots-${selectedDeforestationMap.value.id}`,
-          response,
+          response.data,
           {
             style: {
               color: '#FF4444',

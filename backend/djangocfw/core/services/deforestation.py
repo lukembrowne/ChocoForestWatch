@@ -9,11 +9,15 @@ import os
 from datetime import datetime
 from rasterio.features import sieve
 import json
-
-from core.models import Prediction, TrainedModel, Project
+from rasterio import features
+from shapely.geometry import shape, mapping
+import math
+from core.models import Prediction, TrainedModel, Project, DeforestationHotspot
 from django.conf import settings
 from core.storage import PredictionStorage
 from django.core.files.base import ContentFile
+from django.shortcuts import get_object_or_404
+from loguru import logger
 
 def analyze_change(prediction1_id, prediction2_id, aoi_shape):
     """
@@ -238,3 +242,160 @@ def analyze_change(prediction1_id, prediction2_id, aoi_shape):
             os.remove(temp_tif)
             
         return results 
+
+def get_deforestation_hotspots(prediction_id, min_area_ha=1.0, source='all'):
+    """Get or generate deforestation hotspots for a prediction"""
+    try:
+        prediction = get_object_or_404(Prediction, id=prediction_id)
+        
+        # Query existing hotspots with source filter
+        hotspots = DeforestationHotspot.objects.filter(prediction=prediction)
+        if source != 'all':
+            hotspots = hotspots.filter(source=source)
+        
+        features_list = []
+        
+        if hotspots.exists():
+            # Convert existing hotspots to GeoJSON
+            for hotspot in hotspots:
+                properties = {
+                    "id": str(hotspot.id),
+                    "area_ha": round(hotspot.area_ha, 2),
+                    "perimeter_m": round(hotspot.perimeter_m, 2),
+                    "compactness": round(hotspot.compactness, 3),
+                    "edge_density": round(hotspot.edge_density, 3),
+                    "verification_status": hotspot.verification_status,
+                    "source": hotspot.source
+                }
+                
+                if hotspot.source == 'gfw':
+                    properties["confidence"] = hotspot.confidence
+                
+                feature = {
+                    "type": "Feature",
+                    "id": str(hotspot.id),
+                    "geometry": hotspot.geometry,
+                    "properties": properties
+                }
+                features_list.append(feature)
+        else:
+            # Generate new hotspots if none exist
+            if source in ['all', 'ml']:
+                # Get the file path from the FileField
+                file_path = prediction.file.path if prediction.file else None
+                if not file_path:
+                    raise ValueError("Prediction file not found")
+
+                with rasterio.open(file_path) as src:
+                    defor_data = src.read(1)
+                    defor_mask = defor_data == 1
+                    pixel_area_ha = abs(src.transform[0] * src.transform[4]) / 10000
+
+                    shapes = features.shapes(
+                        defor_data, 
+                        mask=defor_mask,
+                        transform=src.transform
+                    )
+                    
+                    for geom, value in shapes:
+                        if value == 1:
+                            polygon = shape(geom)
+                            area_ha = float(polygon.area / 10000)
+                            perimeter_m = float(polygon.length)
+                            
+                            centroid = polygon.centroid
+                            edge_density = float(perimeter_m / (area_ha * 10000))
+                            compactness = float(4 * math.pi * polygon.area / (perimeter_m ** 2))
+                            geojson_geometry = mapping(polygon)
+                            
+                            # Create database record
+                            hotspot = DeforestationHotspot.objects.create(
+                                prediction=prediction,
+                                geometry=geojson_geometry,
+                                area_ha=area_ha,
+                                perimeter_m=perimeter_m,
+                                compactness=compactness,
+                                edge_density=edge_density,
+                                centroid_lon=float(centroid.x),
+                                centroid_lat=float(centroid.y),
+                                source='ml'
+                            )
+                            
+                            feature = {
+                                "type": "Feature",
+                                "id": str(hotspot.id),
+                                "geometry": geojson_geometry,
+                                "properties": {
+                                    "area_ha": round(area_ha, 2),
+                                    "perimeter_m": round(perimeter_m, 2),
+                                    "compactness": round(compactness, 3),
+                                    "edge_density": round(edge_density, 3),
+                                    "verification_status": None,
+                                    "source": "ml"
+                                }
+                            }
+                            features_list.append(feature)
+
+            if source in ['all', 'gfw']:
+                # Get project AOI
+                project = prediction.project
+                aoi_shape = shape(project.aoi.json)
+                
+                # Process GFW alerts
+                gfw_hotspots = process_gfw_alerts(prediction_id, aoi_shape)
+                
+                # Add GFW hotspots to features list
+                for hotspot in gfw_hotspots:
+                    feature = {
+                        "type": "Feature",
+                        "id": str(hotspot.id),
+                        "geometry": hotspot.geometry,
+                        "properties": {
+                            "id": str(hotspot.id),
+                            "area_ha": round(hotspot.area_ha, 2),
+                            "perimeter_m": round(hotspot.perimeter_m, 2),
+                            "compactness": round(hotspot.compactness, 3),
+                            "edge_density": round(hotspot.edge_density, 3),
+                            "verification_status": hotspot.verification_status,
+                            "source": 'gfw',
+                            "confidence": hotspot.confidence
+                        }
+                    }
+                    features_list.append(feature)
+
+        # Filter hotspots by minimum area
+        features_list = [f for f in features_list if f["properties"]["area_ha"] >= min_area_ha]
+        
+        # Sort features by area
+        features_list.sort(key=lambda x: x["properties"]["area_ha"], reverse=True)
+        
+        # Calculate statistics by source
+        ml_hotspots = [f for f in features_list if f["properties"]["source"] == "ml"]
+        gfw_hotspots = [f for f in features_list if f["properties"]["source"] == "gfw"]
+        
+        metadata = {
+            "total_hotspots": len(features_list),
+            "min_area_ha": min_area_ha,
+            "total_area_ha": sum(f["properties"]["area_ha"] for f in features_list),
+            "prediction_id": prediction_id,
+            "by_source": {
+                "ml": {
+                    "count": len(ml_hotspots),
+                    "total_area_ha": sum(f["properties"]["area_ha"] for f in ml_hotspots)
+                },
+                "gfw": {
+                    "count": len(gfw_hotspots),
+                    "total_area_ha": sum(f["properties"]["area_ha"] for f in gfw_hotspots)
+                }
+            }
+        }
+        
+        return {
+            "type": "FeatureCollection",
+            "features": features_list,
+            "metadata": metadata
+        }
+            
+    except Exception as e:
+        logger.error(f"Error in get_deforestation_hotspots: {str(e)}")
+        raise
