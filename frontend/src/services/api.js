@@ -122,7 +122,7 @@ export default {
     },
 
     getSummaryStatistics(predictionId) {
-        return api.get(`/analysis/summary/${predictionId}/`);
+        return api.get(`/predictions/${predictionId}/summary/`);
     },
 
     // Model metrics endpoint

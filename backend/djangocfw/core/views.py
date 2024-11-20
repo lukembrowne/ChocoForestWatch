@@ -377,6 +377,23 @@ class PredictionViewSet(viewsets.ModelViewSet):
         
         return JsonResponse({'data': predictions_data})
 
+    @action(detail=True, methods=['GET'], url_path='summary')
+    def get_summary_statistics(self, request, pk=None):
+        """Get summary statistics for a prediction"""
+        try:
+            prediction = self.get_object()
+            if not prediction.summary_statistics:
+                return Response(
+                    {"error": "No summary statistics available for this prediction"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            return Response(prediction.summary_statistics)
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to get summary statistics: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 class DeforestationHotspotViewSet(viewsets.ModelViewSet):
     queryset = DeforestationHotspot.objects.all()
     serializer_class = DeforestationHotspotSerializer

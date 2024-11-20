@@ -133,8 +133,9 @@ export default {
       const prediction = predictions.value.find(p => p.basemap_date === date);
       if (prediction) {
         try {
-          const results = await api.getSummaryStatistics(prediction.id);
-          selectedAnalysis.value = { date, results };
+          const response = await api.getSummaryStatistics(prediction.id);
+          console.log("showAnalysis results:", response.data);
+          selectedAnalysis.value = { date, results: response.data };
         } catch (error) {
           console.error('Error fetching summary statistics:', error);
           $q.notify({
@@ -195,7 +196,7 @@ export default {
     // Function to show a prediction and its analysis
     const showPrediction = async (date) => {
       await displayOnMap(date);
-     // await showAnalysis(date);
+      await showAnalysis(date);
     };
 
     return {
