@@ -51,7 +51,7 @@
                     </div>
 
                     <!-- Update the scroll area to show when not loading and has hotspots -->
-                    <q-scroll-area ref="scrollArea" v-if="!loading && hotspots.length"
+                    <q-scroll-area ref="scrollArea" v-if="!loading && hotspots?.length"
                         style="height: calc(100vh - 250px)">
                         <!-- Hotspots List -->
                         <q-list separator dense>
@@ -114,8 +114,14 @@
                     </q-scroll-area>
 
                     <!-- Add a message when no hotspots are found -->
-                    <div v-if="!loading && !hotspots.length" class="text-center q-pa-md">
+                    <div v-else-if="!loading" class="text-center q-pa-md">
                         No hotspots found matching the current criteria
+                    </div>
+
+                    <!-- Add loading indicator -->
+                    <div v-else class="text-center q-pa-md">
+                        <q-spinner-dots color="primary" size="40" />
+                        Loading hotspots...
                     </div>
                 </q-card-section>
             </q-card>
@@ -345,29 +351,28 @@ export default {
         const mapStore = useMapStore();
         const projectStore = useProjectStore();
 
-        // Refs for map elements
+        // Initialize reactive variables
         const loading = ref(false);
         const beforeMap = ref(null);
         const afterMap = ref(null);
         const beforeMapInstance = ref(null);
         const afterMapInstance = ref(null);
 
-        // State
+        // State - Initialize with empty values
         const deforestationMaps = ref([]);
         const selectedDeforestationMap = ref(null);
-        const hotspots = ref([]);
+        const hotspots = ref([]);  // Initialize as empty array
         const selectedHotspot = ref(null);
         const hotspotLayers = ref({ before: null, after: null });
-        const minAreaHa = ref(1); // Default 10 ha
-
+        const minAreaHa = ref(1);
         const showStats = ref(false);
 
-        const selectedSource = ref({ label: 'All Sources', value: 'all' })
+        const selectedSource = ref({ label: 'All Sources', value: 'all' });
         const sourceOptions = [
             { label: 'All Sources', value: 'all' },
             { label: 'ML Predictions', value: 'ml' },
             { label: 'Global Forest Watch', value: 'gfw' }
-        ]
+        ];
 
         // Computed properties for statistics
         const totalHotspots = computed(() => ({
@@ -594,7 +599,7 @@ export default {
             try {
 
                 const response = await api.getPredictions(projectStore.currentProject.id);
-                deforestationMaps.value = response.filter(p => p.type === "deforestation");
+                deforestationMaps.value = response.data.filter(p => p.type === "deforestation");
                 deforestationMaps.value.sort((a, b) => new Date(b.end_date) - new Date(a.end_date));
             } catch (error) {
                 console.error('Error loading deforestation maps:', error);
@@ -620,7 +625,8 @@ export default {
                     minAreaHa.value,
                     selectedSource.value.value
                 );
-                hotspots.value = response.features;
+                console.log('response to getDeforestationHotspots:', response.data);
+                hotspots.value = response.data.features;
 
                 // // Update map layers if needed
                 // if (selectedHotspot.value) {
@@ -862,8 +868,8 @@ export default {
 
         const setupKeyboardShortcuts = () => {
             const handleKeyPress = (event) => {
-                // Only process if we have hotspots
-                if (!hotspots.value.length) return;
+                // Check if hotspots exists and has length property
+                if (!hotspots.value?.length) return;
 
                 switch (event.key) {
                     case 'ArrowUp':
@@ -904,7 +910,7 @@ export default {
         const scrollArea = ref(null);
 
         const navigateHotspots = (direction) => {
-            if (!hotspots.value.length) return;
+            if (!hotspots.value?.length) return;
 
             const currentIndex = selectedHotspot.value
                 ? hotspots.value.findIndex(h => h === selectedHotspot.value)
@@ -921,7 +927,7 @@ export default {
 
             // Scroll the selected item into view
             nextTick(() => {
-                const element = scrollArea.value.$el.querySelector(`.q-item:nth-child(${newIndex + 1})`);
+                const element = scrollArea.value?.$el.querySelector(`.q-item:nth-child(${newIndex + 1})`);
                 if (element) {
                     element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }
