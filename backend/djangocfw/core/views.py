@@ -14,6 +14,7 @@ from loguru import logger
 import json
 from django.conf import settings
 from django.http import JsonResponse
+from .services.deforestation import analyze_change
 
 @api_view(['GET'])
 def health_check(request):
@@ -444,3 +445,19 @@ def get_model_metrics(request, project_id):
             {'error': 'Server error occurred', 'details': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['POST'])
+def change_analysis(request):
+    """
+    Analyze change between two predictions
+    """
+    try:
+        data = request.data
+        results = analyze_change(
+            prediction1_id=data['prediction1_id'],
+            prediction2_id=data['prediction2_id'],
+            aoi_shape=data['aoi_shape']
+        )
+        return Response(results)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)

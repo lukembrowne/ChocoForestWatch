@@ -53,7 +53,7 @@
             <q-table :rows="deforestationStatisticsRows" :columns="deforestationStatisticsColumns" row-key="metric" dense flat
               :pagination="{ rowsPerPage: 0 }" />
             <div class="text-caption q-mt-sm">
-              Total Area Analyzed: {{ changeAnalysis.total_area_ha.toFixed(2) }} ha
+              Total Area Analyzed: {{ changeAnalysis?.total_area_ha?.toFixed(2) ?? '0.00' }} ha
             </div>
           </div>
         </q-scroll-area>
@@ -163,10 +163,25 @@ export default {
 
     const deforestationStatisticsRows = computed(() => {
       if (!changeAnalysis.value) return [];
+      
+      // Safely access values with default fallbacks
+      const deforestedArea = changeAnalysis.value.deforested_area_ha ?? 0;
+      const deforestationRate = changeAnalysis.value.deforestation_rate ?? 0;
+      const totalForestArea = changeAnalysis.value.total_forest_area_ha ?? 0;
+      
       return [
-        { metric: 'Deforested Area', value: `${changeAnalysis.value.deforested_area_ha.toFixed(2)} ha` },
-        { metric: 'Deforestation Rate', value: `${changeAnalysis.value.deforestation_rate.toFixed(2)}%` },
-        { metric: 'Total Forest Area (Start)', value: `${changeAnalysis.value.total_forest_area_ha.toFixed(2)} ha` },
+        { 
+          metric: 'Deforested Area', 
+          value: `${deforestedArea.toFixed(2)} ha` 
+        },
+        { 
+          metric: 'Deforestation Rate', 
+          value: `${deforestationRate.toFixed(2)}%` 
+        },
+        { 
+          metric: 'Total Forest Area (Start)', 
+          value: `${totalForestArea.toFixed(2)} ha` 
+        },
       ];
     });
 
@@ -181,27 +196,34 @@ export default {
       await fetchDeforestationMaps();
     });
 
+    // Function to fetch predictions from the API
     const fetchPredictions = async () => {
-        try {
-          predictions.value = await api.getPredictions(projectStore.currentProject.id);
-          // filter to type == "land_cover"
-          predictions.value = predictions.value.filter(p => p.type === "land_cover");
-          predictions.value.sort((a, b) => new Date(a.basemap_date) - new Date(b.basemap_date));
-        } catch (error) {
-          console.error('Error fetching predictions:', error);
-          $q.notify({
-            color: 'negative',
-            message: 'Failed to fetch predictions',
-            icon: 'error'
-          });
-        }
-      };
+      try {
+        let response = await api.getPredictions(projectStore.currentProject.id);
+
+        predictions.value = response.data;
+        console.log("Predictions fetched:", predictions.value);
+
+        // Filter predictions to only include those of type "land_cover"
+        predictions.value = predictions.value.filter(p => p.type === "land_cover");
+        // Sort predictions by date
+        predictions.value.sort((a, b) => new Date(a.basemap_date) - new Date(b.basemap_date));
+      } catch (error) {
+        console.error('Error fetching predictions:', error);
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to fetch predictions',
+          icon: 'error'
+        });
+      }
+    };
   
 
     const fetchDeforestationMaps = async () => {
       try {
-        deforestationMaps.value = await api.getPredictions(projectStore.currentProject.id);
-        // filter to type == "deforestation"
+        let response = await api.getPredictions(projectStore.currentProject.id);
+        deforestationMaps.value = response.data;
+
         deforestationMaps.value = deforestationMaps.value.filter(p => p.type === "deforestation");
         deforestationMaps.value.sort((a, b) => new Date(b.end_date) - new Date(a.end_date));
 
@@ -262,9 +284,9 @@ export default {
     
     const displayDeforestationMap = (map) => {
       console.log('Displaying deforestation map:', map);
-        if (map.file_path) {
+        if (map.file) {
           mapStore.displayPrediction(
-            map.file_path,
+            map.file,
             `deforestation-map-${map.id}-${Date.now()}`,
             map.name,
             'deforestation'
@@ -292,14 +314,6 @@ export default {
           return;
         }
   
-        if (startDate.value === endDate.value) {
-          $q.notify({
-            color: 'negative',
-            message: 'Start and end dates must be different.'
-          });
-          return;
-        }
-  
         try {
           const pred1 = predictions.value.find(p => p.basemap_date === startDate.value.value);
           const pred2 = predictions.value.find(p => p.basemap_date === endDate.value.value);
@@ -312,17 +326,18 @@ export default {
             return;
           }
 
-          const aoiShape = projectStore.currentProject.aoi
-  
+          // Parse AOI shape if it's a string
+          const aoiShape = typeof projectStore.currentProject.aoi === 'string' 
+            ? JSON.parse(projectStore.currentProject.aoi)
+            : projectStore.currentProject.aoi;
+
           const results = await api.getChangeAnalysis({
             prediction1_id: pred1.id,
             prediction2_id: pred2.id,
             aoi_shape: aoiShape
           });
 
-          // update changeAnalysis with results
           changeAnalysis.value = results;
-
           await fetchDeforestationMaps();
 
   

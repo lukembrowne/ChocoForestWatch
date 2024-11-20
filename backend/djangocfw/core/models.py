@@ -48,6 +48,8 @@ class TrainedModel(models.Model):
     model_parameters = JSONField(default=dict)
     metrics = JSONField(default=dict)
     encoders = JSONField(default=dict)
+    all_class_names = JSONField(default=dict)
+
 
     def __str__(self):
         return f"{self.name} - {self.project.name}"
@@ -63,7 +65,7 @@ class Prediction(models.Model):
     model = models.ForeignKey(TrainedModel, on_delete=models.CASCADE, related_name='predictions')
     type = models.CharField(max_length=20)
     name = models.CharField(max_length=100)
-    file = models.FileField(storage=PredictionStorage(), max_length=25, null=True)
+    file = models.FileField(storage=PredictionStorage(), max_length=255, null=True)
     basemap_date = models.CharField(max_length=7, null=True)
     created_at = models.DateTimeField(default=timezone.now)
     summary_statistics = models.JSONField(null=True)

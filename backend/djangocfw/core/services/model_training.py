@@ -109,8 +109,8 @@ class ModelTrainingService:
 
             # Train model and get metrics
             self.update_progress(50, "Training model...")
-            model, metrics, encoders = self.train_xgboost_model(
-                X, y, feature_ids, dates, all_class_names, model_params
+            model, metrics, encoders, all_class_names = self.train_xgboost_model(
+                X, y, feature_ids, dates, model_params
             )
             
             if self._cancel_flag:
@@ -121,7 +121,7 @@ class ModelTrainingService:
             self.update_progress(90, "Saving model...")
             saved_model = self.save_model(
                 model, model_name, model_description, metrics, 
-                model_params, encoders, training_set_ids, len(X)
+                model_params, encoders, training_set_ids, len(X), all_class_names
             )
             
             self.update_progress(80, "Model training complete")
@@ -233,11 +233,18 @@ class ModelTrainingService:
         
         return X, y, feature_ids
 
-    def train_xgboost_model(self, X, y, feature_ids, dates, all_class_names, model_params):
+    def train_xgboost_model(self, X, y, feature_ids, dates, model_params):
         """Train XGBoost model and calculate metrics"""
+        # Get all class names from project
+        project = Project.objects.get(id=self.project_id)
+        all_class_names = [cls['name'] for cls in project.classes]
+        
         # Create label encoder for classes
         le = LabelEncoder()
         y_encoded = le.fit_transform(y)
+        
+        # Get classes actually present in training data
+        classes_in_training = le.classes_.tolist()
         
         # Create date and month encoders
         date_encoder = LabelEncoder()
@@ -249,31 +256,73 @@ class ModelTrainingService:
         # Add encoded dates and months as features
         X = np.column_stack((X, encoded_dates, encoded_months))
         
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+        # Split data using feature-based split
+        unique_features, unique_indices = np.unique(feature_ids, return_index=True)
+        unique_classes = y[unique_indices]
+        
+        # Split features into train and test, stratified by class
+        train_features, test_features = train_test_split(
+            unique_features, 
+            test_size=0.2, 
+            random_state=42, 
+            stratify=unique_classes
+        )
+        
+        # Create masks for train and test sets
+        train_mask = np.isin(feature_ids, train_features)
+        test_mask = np.isin(feature_ids, test_features)
+        
+        # Split data using the masks
+        X_train, X_test = X[train_mask], X[test_mask]
+        y_train, y_test = y_encoded[train_mask], y_encoded[test_mask]
+        
+        # Adjust num_class parameter
+        model_params['num_class'] = len(classes_in_training)
         
         # Train model
         model = XGBClassifier(**model_params)
-        model.fit(X_train, y_train)
+        model.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=False)
         
         # Get predictions and metrics
         y_pred = model.predict(X_test)
         accuracy = accuracy_score(y_test, y_pred)
         precision, recall, f1, _ = precision_recall_fscore_support(y_test, y_pred, average=None)
-        conf_matrix = confusion_matrix(y_test, y_pred)
+        
+        # Create confusion matrix for training classes
+        conf_matrix_training = confusion_matrix(y_test, y_pred)
+        
+        # Create full-size confusion matrix including all possible classes
+        full_conf_matrix = np.zeros((len(all_class_names), len(all_class_names)), dtype=int)
+        for i, class_name in enumerate(classes_in_training):
+            for j, other_class in enumerate(classes_in_training):
+                full_index_i = all_class_names.index(class_name)
+                full_index_j = all_class_names.index(other_class)
+                full_conf_matrix[full_index_i, full_index_j] = conf_matrix_training[i, j]
+        
+        # Prepare class metrics for all classes
+        class_metrics = {}
+        for i, class_name in enumerate(all_class_names):
+            if class_name in classes_in_training:
+                index = classes_in_training.index(class_name)
+                class_metrics[class_name] = {
+                    'precision': float(precision[index]),
+                    'recall': float(recall[index]),
+                    'f1': float(f1[index])
+                }
+            else:
+                class_metrics[class_name] = {
+                    'precision': None,
+                    'recall': None,
+                    'f1': None
+                }
         
         # Prepare metrics
         metrics = {
             "accuracy": float(accuracy),
-            "class_metrics": {
-                class_name: {
-                    'precision': float(precision[i]),
-                    'recall': float(recall[i]),
-                    'f1': float(f1[i])
-                } for i, class_name in enumerate(le.classes_)
-            },
-            "confusion_matrix": conf_matrix.tolist(),
-            "class_names": le.classes_.tolist()
+            "class_metrics": class_metrics,
+            "confusion_matrix": full_conf_matrix.tolist(),
+            "class_names": all_class_names,
+            "classes_in_training": classes_in_training
         }
         
         encoders = {
@@ -282,9 +331,9 @@ class ModelTrainingService:
             'label_encoder': le
         }
         
-        return model, metrics, encoders
+        return model, metrics, encoders, all_class_names
 
-    def save_model(self, model, model_name, model_description, metrics, model_params, encoders, training_set_ids, num_samples):
+    def save_model(self, model, model_name, model_description, metrics, model_params, encoders, training_set_ids, num_samples, all_class_names):
         """Save or update the trained model and its metadata"""
         try:
             # Serialize the encoders
@@ -323,7 +372,8 @@ class ModelTrainingService:
                     num_training_samples=num_samples,
                     model_parameters=model_params,
                     metrics=metrics,
-                    encoders=serialized_encoders
+                    encoders=serialized_encoders,
+                    all_class_names=all_class_names
                 )
 
             # Use ModelStorage to save the file

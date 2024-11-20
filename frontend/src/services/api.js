@@ -134,5 +134,10 @@ export default {
         return api.post(`/trained-models/training_progress/${taskId}/cancel/`);
     },
 
+    // Change analysis endpoint
+    getChangeAnalysis(data) {
+        return api.post('/analysis/change/', data);
+    },
+
 };
 
