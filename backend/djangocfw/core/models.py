@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.gis.db import models as gis_models
 from django.utils import timezone
+from django.contrib.auth.models import User
 from .storage import ModelStorage, PredictionStorage
 from django.db.models import JSONField
 from django.contrib.postgres.fields import ArrayField
@@ -13,13 +14,23 @@ class Project(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     classes = models.JSONField(default=list)
     aoi_area_ha = models.FloatField(null=True)
+    owner = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='projects',
+        null=True
+    )
 
     def __str__(self):
         return self.name
 
 class TrainingPolygonSet(models.Model):
     name = models.CharField(max_length=100)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='training_polygon_sets')
+    project = models.ForeignKey(
+        Project, 
+        on_delete=models.CASCADE, 
+        related_name='training_polygon_sets'
+    )
     basemap_date = models.CharField(max_length=7)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
@@ -33,7 +44,11 @@ class TrainingPolygonSet(models.Model):
 class TrainedModel(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    project = models.OneToOneField('Project', on_delete=models.CASCADE)
+    project = models.ForeignKey(
+        Project, 
+        on_delete=models.CASCADE,
+        related_name='trained_models'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     training_set_ids = ArrayField(models.IntegerField())
@@ -61,8 +76,16 @@ class TrainedModel(models.Model):
         super().delete(*args, **kwargs)
 
 class Prediction(models.Model):
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='predictions')
-    model = models.ForeignKey(TrainedModel, on_delete=models.CASCADE, related_name='predictions')
+    project = models.ForeignKey(
+        Project, 
+        on_delete=models.CASCADE,
+        related_name='predictions'
+    )
+    model = models.ForeignKey(
+        TrainedModel, 
+        on_delete=models.CASCADE,
+        related_name='predictions'
+    )
     type = models.CharField(max_length=20)
     name = models.CharField(max_length=100)
     file = models.FileField(storage=PredictionStorage(), max_length=255, null=True)
@@ -80,7 +103,11 @@ class Prediction(models.Model):
         super().delete(*args, **kwargs)
 
 class DeforestationHotspot(models.Model):
-    prediction = models.ForeignKey(Prediction, on_delete=models.CASCADE, related_name='hotspots')
+    prediction = models.ForeignKey(
+        Prediction, 
+        on_delete=models.CASCADE,
+        related_name='hotspots'
+    )
     geometry = models.JSONField()
     area_ha = models.FloatField()
     perimeter_m = models.FloatField()

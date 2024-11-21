@@ -264,7 +264,8 @@ class PredictionService:
                 existing_prediction = Prediction.objects.get(
                     project_id=self.project_id,
                     model_id=self.model_id,
-                    basemap_date=basemap_date
+                    basemap_date=basemap_date,
+                    type='land_cover'
                 )
                 self.send_progress_update(5, "Found existing prediction, will update...")
             except Prediction.DoesNotExist:

@@ -15,6 +15,7 @@ import json
 from django.conf import settings
 from django.http import JsonResponse
 from .services.deforestation import analyze_change, get_deforestation_hotspots
+from rest_framework.permissions import IsAuthenticated
 
 @api_view(['GET'])
 def health_check(request):
@@ -24,8 +25,17 @@ def health_check(request):
     })
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    queryset = Project.objects.all()
+    permission_classes = [IsAuthenticated]
     serializer_class = ProjectSerializer
+    queryset = Project.objects.all()
+    
+    def get_queryset(self):
+        # Filter queryset to only return projects owned by the current user
+        return Project.objects.filter(owner=self.request.user)
+    
+    def perform_create(self, serializer):
+        # Automatically set the owner when creating a new project
+        serializer.save(owner=self.request.user)
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()

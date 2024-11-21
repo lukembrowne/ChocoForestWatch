@@ -466,7 +466,7 @@ class ModelTrainingService:
             )
             
             # Use ThreadPoolExecutor to parallelize predictions
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                 # Submit all prediction tasks
                 future_to_date = {
                     executor.submit(generate_prediction_for_date, date): date 
