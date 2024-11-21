@@ -1,32 +1,57 @@
 // services/api.js
 import axios from 'axios';
+import authService from './auth';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_URL = 'http://localhost:8000/api/';
 
-const api = axios.create({
+// Create axios instance with base configuration
+const apiClient = axios.create({
     baseURL: API_URL,
     headers: {
         'Content-Type': 'application/json',
-    },
+    }
 });
+
+// Add request interceptor to add auth token
+apiClient.interceptors.request.use(
+    (config) => {
+        const token = authService.getToken();
+        if (token) {
+            config.headers['Authorization'] = `Token ${token}`;
+        }
+        return config;
+    }
+);
+
+// Add response interceptor to handle auth errors
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            authService.logout();
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
 
 // API functions
 export default {
     // Project endpoints
     getProjects() {
-        return api.get('/projects/');
+        return apiClient.get('/projects/');
     },
     
     createProject(data) {
-        return api.post('/projects/', data);
+        return apiClient.post('/projects/', data);
     },
     
     getProject(id) {
-        return api.get(`/projects/${id}/`);
+        return apiClient.get(`/projects/${id}/`);
     },
     
     updateProject(id, data) {
-        return api.put(`/projects/${id}/`, data);
+        return apiClient.put(`/projects/${id}/`, data);
     },
     
     setProjectAOI(id, aoiGeojson, aoiExtentLatLon, availableDates) {
@@ -35,20 +60,20 @@ export default {
             aoi_extent_lat_lon: aoiExtentLatLon,
             basemap_dates: availableDates
         };
-        return api.put(`/projects/${id}/`, data);
+        return apiClient.put(`/projects/${id}/`, data);
     },
     
     deleteProject(id) {
-        return api.delete(`/projects/${id}/`);
+        return apiClient.delete(`/projects/${id}/`);
     },
 
     // Training set endpoints
     getTrainingPolygons(projectId) {
-        return api.get('/training-sets/', { params: { project_id: projectId } });
+        return apiClient.get('/training-sets/', { params: { project_id: projectId } });
     },
     
     getSpecificTrainingPolygons(projectId, setId) {
-        return api.get('/training-sets/', { 
+        return apiClient.get('/training-sets/', { 
             params: { 
                 project_id: projectId,
                 id: setId 
@@ -57,68 +82,68 @@ export default {
     },
     
     saveTrainingPolygons(data) {
-        return api.post('/training-sets/', data);
+        return apiClient.post('/training-sets/', data);
     },
     
     updateTrainingPolygons(id, data) {
-        return api.put(`/training-sets/${id}/`, data);
+        return apiClient.put(`/training-sets/${id}/`, data);
     },
     
     setTrainingSetExcluded(id, excluded) {
-        return api.put(`/training-sets/${id}/excluded/`, { excluded });
+        return apiClient.put(`/training-sets/${id}/excluded/`, { excluded });
     },
 
 
     getTrainingDataSummary(projectId) {
-        return api.get(`/training-sets/summary/`, { params: { project_id: projectId } });
+        return apiClient.get(`/training-sets/summary/`, { params: { project_id: projectId } });
     },
 
     // Model endpoints
     getTrainedModels(projectId) {
-        return api.get('/trained-models/', { params: { project_id: projectId } });
+        return apiClient.get('/trained-models/', { params: { project_id: projectId } });
     },
     
     trainModel(data) {
-        return api.post('/trained-models/train/', data);
+        return apiClient.post('/trained-models/train/', data);
     },
     
     deleteModel(id) {
-        return api.delete(`/trained-models/${id}/`);
+        return apiClient.delete(`/trained-models/${id}/`);
     },
 
     getModelTrainingProgress(taskId) {
-        return api.get(`/trained-models/training_progress/${taskId}/`);
+        return apiClient.get(`/trained-models/training_progress/${taskId}/`);
     },
 
     // Prediction endpoints
     getPredictions(projectId) {
-        return api.get('/predictions/', { params: { project_id: projectId } });
+        return apiClient.get('/predictions/', { params: { project_id: projectId } });
     },
     
     generatePrediction(data) {
-        return api.post('/predictions/generate/', data);
+        return apiClient.post('/predictions/generate/', data);
     },
     
     deletePrediction(id) {
-        return api.delete(`/predictions/${id}/`);
+        return apiClient.delete(`/predictions/${id}/`);
     },
 
     // Hotspot endpoints
     getHotspots(predictionId) {
-        return api.get('/hotspots/', { params: { prediction_id: predictionId } });
+        return apiClient.get('/hotspots/', { params: { prediction_id: predictionId } });
     },
     
     verifyHotspot(id, status) {
-        return api.put(`/hotspots/${id}/verify/`, { status });
+        return apiClient.put(`/hotspots/${id}/verify/`, { status });
     },
 
     // Analysis endpoints
     analyzeChange(data) {
-        return api.post('/analysis/change/', data);
+        return apiClient.post('/analysis/change/', data);
     },
 
     getDeforestationHotspots(predictionId, minAreaHa) {
-        return api.get(`/analysis/deforestation_hotspots/${predictionId}/`, { 
+        return apiClient.get(`/analysis/deforestation_hotspots/${predictionId}/`, { 
             params: { 
                 min_area_ha: minAreaHa,
                 source: 'all'
@@ -127,21 +152,21 @@ export default {
     },
 
     getSummaryStatistics(predictionId) {
-        return api.get(`/predictions/${predictionId}/summary/`);
+        return apiClient.get(`/predictions/${predictionId}/summary/`);
     },
 
     // Model metrics endpoint
     getModelMetrics(projectId) {
-        return api.get(`/trained_models/${projectId}/metrics/`);
+        return apiClient.get(`/trained_models/${projectId}/metrics/`);
     },
 
     cancelModelTraining(taskId) {
-        return api.post(`/trained-models/training_progress/${taskId}/cancel/`);
+        return apiClient.post(`/trained-models/training_progress/${taskId}/cancel/`);
     },
 
     // Change analysis endpoint
     getChangeAnalysis(data) {
-        return api.post('/analysis/change/', data);
+        return apiClient.post('/analysis/change/', data);
     },
 
 };

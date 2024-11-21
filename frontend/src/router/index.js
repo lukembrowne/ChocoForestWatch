@@ -1,12 +1,35 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import MainLayout from '../layouts/MainLayout.vue'  // Static import
-
+import authService from '../services/auth'
+import MainLayout from '../layouts/MainLayout.vue'
 
 const routes = [
   {
+    path: '/login',
+    name: 'LoginForm',
+    component: () => import('../components/auth/LoginForm.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/register',
+    name: 'RegisterForm',
+    component: () => import('../components/auth/RegisterForm.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
     path: '/',
-    component: MainLayout,  // Use the imported component directly
-
+    component: MainLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        redirect: '/projects'
+      },
+      {
+        path: 'projects',
+        name: 'Projects',
+        component: MainLayout
+      }
+    ]
   },
   {
     path: '/:catchAll(.*)*',
@@ -14,15 +37,26 @@ const routes = [
   },
 ];
 
-export default function (/* { store } */) {
-  const router = createRouter({
-    scrollBehavior: () => ({ left: 0, top: 0 }),
-    routes, 
-    history: createWebHistory()
-  })
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+});
 
-  return router
-}
+// Navigation guard
+router.beforeEach((to, from, next) => {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  const currentUser = authService.getCurrentUser();
+
+  if (requiresAuth && !currentUser) {
+    next('/login');
+  } else if (to.path === '/login' && currentUser) {
+    next('/projects');
+  } else {
+    next();
+  }
+});
+
+export default router
 
 // If you need to export routes separately, you can do so like this:
 export { routes }

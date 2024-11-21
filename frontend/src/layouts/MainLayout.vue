@@ -3,12 +3,42 @@
     <q-header elevated class="bg-primary text-white">
       <q-toolbar>
         <q-toolbar-title>Choco Forest Watch</q-toolbar-title>
+        
         <div class="row items-center no-wrap">
           <q-btn v-for="section in sections" :key="section.name" flat square :icon="section.icon" :label="section.name"
             @click="handleSectionClick(section)">
             <q-tooltip>{{ section.tooltip }}</q-tooltip>
           </q-btn>
         </div>
+
+        <q-btn-dropdown flat round icon="account_circle" class="q-ml-md" v-if="currentUser">
+          <q-list>
+            <q-item class="text-center q-py-md">
+              <q-item-section>
+                <q-avatar size="72px" color="primary" text-color="white">
+                  {{ currentUser.username.charAt(0).toUpperCase() }}
+                </q-avatar>
+                <div class="text-subtitle1 q-mt-md">{{ currentUser.username }}</div>
+              </q-item-section>
+            </q-item>
+
+            <q-separator />
+
+            <q-item clickable v-ripple @click="handleUserSettings">
+              <q-item-section avatar>
+                <q-icon name="settings" />
+              </q-item-section>
+              <q-item-section>Settings</q-item-section>
+            </q-item>
+
+            <q-item clickable v-ripple @click="handleLogout">
+              <q-item-section avatar>
+                <q-icon name="logout" />
+              </q-item-section>
+              <q-item-section>Logout</q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
       </q-toolbar>
     </q-header>
 
@@ -41,6 +71,8 @@ import BasemapDateSlider from 'components/BasemapDateSlider.vue'
 import LandCoverAnalysis from 'components/analysis/LandCoverAnalysis.vue'
 import DeforestationAnalysis from 'components/analysis/DeforestationAnalysis.vue'
 import HotspotVerification from 'components/analysis/HotspotVerification.vue'
+import { useRouter } from 'vue-router'
+import authService from '../services/auth'
 
 
 export default {
@@ -77,6 +109,9 @@ export default {
     const currentSectionComponent = computed(() =>
       sections.find(s => s.name === currentSection.value)?.component
     )
+
+    const router = useRouter()
+    const currentUser = computed(() => authService.getCurrentUser())
 
     onMounted(() => {
 
@@ -205,6 +240,31 @@ export default {
       }
     })
 
+    const handleUserSettings = () => {
+      $q.notify({
+        message: 'User settings coming soon!',
+        color: 'info',
+        icon: 'settings'
+      })
+    }
+
+    const handleLogout = () => {
+      $q.dialog({
+        title: 'Confirm Logout',
+        message: 'Are you sure you want to logout?',
+        cancel: true,
+        persistent: true
+      }).onOk(() => {
+        authService.logout()
+        router.push('/login')
+        $q.notify({
+          message: 'Successfully logged out',
+          color: 'positive',
+          icon: 'logout'
+        })
+      })
+    }
+
     return {
       currentSection,
       sections,
@@ -218,7 +278,10 @@ export default {
       handleAOISaved,
       showLandCoverAnalysis,
       showDeforestationAnalysis,
-      showHotspotVerification
+      showHotspotVerification,
+      currentUser,
+      handleUserSettings,
+      handleLogout
     }
   }
 }
@@ -247,5 +310,30 @@ export default {
 /* Ensure the page container allows for absolute positioning */
 .q-page-container {
   position: relative;
+}
+
+.q-btn-dropdown {
+  .q-list {
+    min-width: 200px;
+  }
+}
+
+/* Add smooth transitions for hover effects */
+.q-item {
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+}
+
+/* Make the avatar and username look better */
+.q-avatar {
+  font-size: 32px;
+  font-weight: bold;
+}
+
+.text-subtitle1 {
+  font-weight: 500;
 }
 </style>
