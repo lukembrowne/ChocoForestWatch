@@ -10,6 +10,12 @@ const routes = [
     meta: { requiresAuth: false }
   },
   {
+    path: '/reset-password/:uid/:token',
+    name: 'ResetPassword',
+    component: () => import('../components/auth/ResetPasswordForm.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
     path: '/',
     component: MainLayout,
     meta: { requiresAuth: true },
