@@ -1,14 +1,23 @@
 import { createApp } from 'vue'
-import { Quasar } from 'quasar'
-import quasarUserOptions from './quasar-user-options'
+import { Quasar, Dialog } from 'quasar'
 import App from './App.vue'
 import router from './router'
-import createStore from './stores'
+
+// Import Quasar css
+import '@quasar/extras/material-icons/material-icons.css'
+import 'quasar/dist/quasar.css'
 
 const app = createApp(App)
 
-app.use(Quasar, quasarUserOptions)
-app.use(router)
-app.use(createStore())
+app.use(Quasar, {
+  plugins: {
+    Dialog
+  },
+  config: {
+    // optional if you want to use
+    // Quasar's default settings
+  }
+})
 
+app.use(router)
 app.mount('#app')

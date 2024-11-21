@@ -5,6 +5,16 @@ from django.contrib.auth.models import User
 from .storage import ModelStorage, PredictionStorage
 from django.db.models import JSONField
 from django.contrib.postgres.fields import ArrayField
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+
+# Add this to ensure unique emails without migration
+@receiver(pre_save, sender=User)
+def ensure_unique_email(sender, instance, **kwargs):
+    email = instance.email.lower()  # Convert to lowercase
+    if User.objects.filter(email=email).exclude(id=instance.id).exists():
+        raise ValueError('Email already exists')
+    instance.email = email
 
 class Project(models.Model):
     name = models.CharField(max_length=100)

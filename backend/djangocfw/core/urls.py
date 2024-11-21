@@ -18,4 +18,6 @@ urlpatterns = [
     path('analysis/deforestation_hotspots/<int:prediction_id>/', views.deforestation_hotspots, name='deforestation-hotspots'),
     path('auth/register/', auth_views.register, name='register'),
     path('auth/login/', auth_views.login, name='login'),
+    path('auth/request-reset/', auth_views.request_password_reset, name='request-reset'),
+    path('auth/reset-password/<str:uidb64>/<str:token>/', auth_views.reset_password, name='reset-password'),
 ]
