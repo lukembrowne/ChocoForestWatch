@@ -173,15 +173,7 @@ export default {
 
 <style lang="scss" scoped>
 .training-and-polygon-manager {
-    position: absolute;
-    top: 0px; // Adjust this value to account for the header height
-    left: 0;
-    width: 350px;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    // Add max-height and overflow-y properties
-    max-height: 100vh;
+    height: calc(100vh - var(--app-header-height));
     overflow-y: auto;
 }
 

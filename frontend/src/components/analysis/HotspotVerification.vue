@@ -1085,10 +1085,8 @@ export default {
 
 <style lang="scss" scoped>
 .hotspot-list-container {
-    width: 400px;
-    height: calc(100vh - 50px);
+    height: calc(100vh - var(--app-header-height));
     overflow-y: auto;
-    z-index: 1;
 }
 
 .hotspot-list-card {

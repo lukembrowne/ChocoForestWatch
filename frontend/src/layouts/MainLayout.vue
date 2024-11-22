@@ -1,11 +1,13 @@
 <template>
   <q-layout view="hHh LpR fFf">
     <q-header elevated class="bg-primary text-white">
-      <q-toolbar>
-        <q-toolbar-title>Choco Forest Watch</q-toolbar-title>
+      <q-toolbar class="q-px-md">
+        <q-toolbar-title class="gt-xs">Choco Forest Watch</q-toolbar-title>
+        <q-toolbar-title class="lt-sm">CFW</q-toolbar-title>
         
         <div class="row items-center no-wrap">
-          <q-btn v-for="section in sections" :key="section.name" flat square :icon="section.icon" :label="section.name"
+          <q-btn v-for="section in sections" :key="section.name" flat square :icon="section.icon" :label="$q.screen.gt.xs ? section.name : ''"
+            class="q-px-sm"
             @click="handleSectionClick(section)">
             <q-tooltip>{{ section.tooltip }}</q-tooltip>
           </q-btn>
@@ -42,21 +44,23 @@
       </q-toolbar>
     </q-header>
 
-    <q-page-container>
+    <q-page-container class="q-pa-none">
       <q-page class="relative-position">
-        <div id="map" class="map-container" v-if="!showHotspotVerification"></div>
-        <custom-layer-switcher v-if="!showHotspotVerification" />
-        <AOIFloatingCard v-if="showAOICard" v-on:aoiSaved="handleAOISaved" />
-        <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
-        <LandCoverAnalysis v-if="showLandCoverAnalysis" />
-        <DeforestationAnalysis v-if="showDeforestationAnalysis" />
-        <HotspotVerification v-if="showHotspotVerification" />
-        <!-- Dont show map date slider when AOI is being created -->
-        <BasemapDateSlider v-if="!showAOICard & !showHotspotVerification"/>
-        <ProjectSelection 
-          v-if="showProjectSelection"
-          @project-selected="selectProject" 
-        />
+        <div class="z-layers">
+          <div id="map" class="map-container" :class="{ 'with-sidebar': showAnyPanel }"></div>
+          <div class="sidebar-container" v-if="showAnyPanel">
+            <ProjectSelection v-if="showProjectSelection" />
+            <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
+            <LandCoverAnalysis v-if="showLandCoverAnalysis" />
+            <DeforestationAnalysis v-if="showDeforestationAnalysis" />
+            <HotspotVerification v-if="showHotspotVerification" />
+          </div>
+          <AOIFloatingCard v-if="showAOICard" @aoiSaved="handleAOISaved" />
+          <div class="floating-elements">
+            <BasemapDateSlider v-if="!showAOICard && !showHotspotVerification" class="date-slider" />
+          </div>
+          <custom-layer-switcher v-if="!showHotspotVerification" />
+        </div>
       </q-page>
     </q-page-container>
   </q-layout>
@@ -118,6 +122,14 @@ export default {
 
     const router = useRouter()
     const currentUser = computed(() => authService.getCurrentUser())
+
+    const showAnyPanel = computed(() => 
+      showProjectSelection.value || 
+      showTrainingAndPolygonManager.value || 
+      showLandCoverAnalysis.value || 
+      showDeforestationAnalysis.value || 
+      showHotspotVerification.value
+    )
 
     onMounted(() => {
 
@@ -282,59 +294,69 @@ export default {
       handleUserSettings,
       handleLogout,
       showProjectSelection,
-      selectProject
+      selectProject,
+      showAnyPanel
     }
   }
 }
 </script>
 
-<style scoped>
+<style lang="scss">
+.z-layers {
+  .sidebar-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: var(--app-sidebar-width);
+    z-index: 1;
+    background: white;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    
+    @media (max-width: 600px) {
+      width: 100%;
+      height: 50vh;
+      bottom: 0;
+      top: auto;
+    }
+  }
+  
+  .floating-elements {
+    position: absolute;
+    bottom: 20px;
+    left: calc(var(--app-sidebar-width) + 20px);
+    right: 20px;
+    z-index: 2;
+    
+    @media (max-width: 600px) {
+      left: 20px;
+      bottom: 52vh;
+    }
+  }
+}
+
 .map-container {
   position: absolute;
   top: 0;
-  /* Adjust based on your header height */
-  left: 0px;
-  /* Width of the drawer */
+  left: 0;
   right: 0;
   bottom: 0;
+  width: 100%;
+  height: 100%;
+
+  &.with-sidebar {
+    @media (min-width: 601px) {
+      margin-left: var(--app-sidebar-width);
+      width: calc(100% - var(--app-sidebar-width));
+    }
+  }
 }
 
-/* Adjust when drawer is closed */
-.q-layout--prevent-focus .map-container {
-  left: 0;
-}
-
-.q-toolbar .q-btn {
-  margin-left: 8px;
-}
-
-/* Ensure the page container allows for absolute positioning */
 .q-page-container {
-  position: relative;
+  height: calc(100vh - 50px); // Adjust based on your header height
 }
 
-.q-btn-dropdown {
-  .q-list {
-    min-width: 200px;
-  }
-}
-
-/* Add smooth transitions for hover effects */
-.q-item {
-  transition: background-color 0.3s ease;
-
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-  }
-}
-
-/* Make the avatar and username look better */
-.q-avatar {
-  font-size: 32px;
-  font-weight: bold;
-}
-
-.text-subtitle1 {
-  font-weight: 500;
+.q-page {
+  height: 100%;
 }
 </style>

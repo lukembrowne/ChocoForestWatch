@@ -394,9 +394,7 @@ export default {
 
 <style lang="scss" scoped>
 .deforestation-analysis-container {
-  position: absolute;
-  height: calc(100vh - 60px - 100px);
-  width: 300px;
+  height: calc(100vh - var(--app-header-height));
   overflow-y: auto;
 }
 

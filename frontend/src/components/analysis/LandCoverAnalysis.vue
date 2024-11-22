@@ -216,10 +216,8 @@ export default {
 
 <style lang="scss" scoped>
 .land-cover-analysis-container {
-  position: absolute;
-  height: calc(100vh - 60px - 100px); /* 20px for additional padding */
-  width: 300px;
-  overflow-y: auto; /* Add scrolling if content exceeds the height */
+  height: calc(100vh - var(--app-header-height));
+  overflow-y: auto;
 }
 
 .analysis-card {

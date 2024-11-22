@@ -116,13 +116,29 @@ export default {
     })
 
     const columns = [
-      { name: 'name', required: true, label: 'Name', align: 'left', field: 'name', sortable: true },
-      { name: 'description', align: 'left', label: 'Description', field: 'description', sortable: true },
-      {
-        name: 'updated_at', align: 'left', label: 'Last Updated', field: 'updated_at', sortable: true,
-        format: (val) => date.formatDate(val, 'YYYY-MM-DD HH:mm')
+      { 
+        name: 'name', 
+        required: true, 
+        label: 'Name', 
+        align: 'left', 
+        field: 'name', 
+        sortable: true 
       },
-      { name: 'actions', align: 'center', label: 'Actions' }
+      { 
+        name: 'updated_at', 
+        align: 'left', 
+        label: 'Updated', 
+        field: 'updated_at', 
+        sortable: true,
+        format: (val) => date.formatDate(val, 'MM/DD/YY'),
+        style: 'width: 100px'
+      },
+      { 
+        name: 'actions', 
+        align: 'right', 
+        label: 'Actions',
+        style: 'width: 120px'
+      }
     ]
 
     onMounted(async () => {
@@ -304,9 +320,7 @@ export default {
 
 <style lang="scss" scoped>
 .project-selection-container {
-  position: absolute;
-  height: calc(100vh - 60px - 100px); /* Adjust based on your layout */
-  width: 300px;
+  height: calc(100vh - var(--app-header-height));
   overflow-y: auto;
 }
 
@@ -315,6 +329,8 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: auto;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .q-table {
