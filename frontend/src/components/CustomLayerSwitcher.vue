@@ -106,36 +106,61 @@
 .custom-layer-switcher {
   position: absolute;
   top: 10px;
-  right: 10px; // Changed from left to right
-  background-color: rgba(255, 255, 255, 0.9);
-  padding: 10px;
+  right: 10px;
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: 8px;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   z-index: 1000;
   max-width: 300px;
   max-height: 80vh;
   overflow-y: auto;
-}
-  
-  .layer-list {
-    max-height: 60vh;
-    overflow-y: auto;
+
+  .text-subtitle2 {
+    font-size: 0.775rem;
+    margin-bottom: 4px;
   }
 
   .layer-item {
-    border-bottom: 1px solid #e0e0e0;
-    padding-bottom: 4px;
-
-    &:last-child {
-        border-bottom: none;
+    font-size: 0.7125rem;
+    
+    .q-checkbox {
+      font-size: 0.7125rem;
     }
+    
+    .opacity-slider {
+      padding-left: 24px;
+    }
+  }
+
+  .q-btn {
+    padding: 4px;
+    
+    .q-icon {
+      font-size: 0.8rem;
+    }
+  }
 }
 
-  .opacity-slider {
-    padding-left: 28px; // Align with checkbox label
+.layer-list {
+  max-height: 60vh;
+}
+
+.layer-item {
+  border-bottom: 1px solid #e0e0e0;
+  padding: 4px 0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.opacity-slider {
+  padding: 4px 0;
 }
 
 .drag-handle {
   cursor: move;
+  font-size: 1.2rem;
 }
   </style>

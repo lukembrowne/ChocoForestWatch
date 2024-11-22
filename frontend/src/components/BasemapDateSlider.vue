@@ -81,12 +81,12 @@ export default {
         const formatDate = (date) => {
             const [year, month] = date.split('-');
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            return `${monthNames[parseInt(month) - 1]} ${year}`;
+            return `${monthNames[parseInt(month) - 1]} -  ${year}`;
         };
 
         const formatMonth = (date) => {
             const [, month] = date.split('-');
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthNames = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
             return monthNames[parseInt(month) - 1];
         };
 
@@ -146,9 +146,7 @@ export default {
 .basemap-date-slider {
     position: absolute;
     bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 75%;
+    width: 100%;
     background-color: rgba(255, 255, 255, 0.95);
     padding: 5px 20px 5px 20px;
     border-radius: 8px;
