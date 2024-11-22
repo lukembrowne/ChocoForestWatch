@@ -47,15 +47,21 @@
     <q-page-container class="q-pa-none">
       <q-page class="relative-position">
         <div class="z-layers">
-          <div id="map" class="map-container" :class="{ 'with-sidebar': showAnyPanel }"></div>
-          <div class="sidebar-container" v-if="showAnyPanel">
-            <ProjectSelection v-if="showProjectSelection" />
+          <div id="map" class="map-container" :class="{ 'with-sidebar': showAnyPanel || showAOICard }"></div>
+          <div class="sidebar-container" v-if="showAnyPanel || showAOICard">
+            <ProjectSelection 
+              v-if="showProjectSelection" 
+              @project-selected="selectProject"
+            />
+            <AOIFloatingCard 
+              v-if="showAOICard" 
+              @aoiSaved="handleAOISaved" 
+            />
             <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
             <LandCoverAnalysis v-if="showLandCoverAnalysis" />
             <DeforestationAnalysis v-if="showDeforestationAnalysis" />
             <HotspotVerification v-if="showHotspotVerification" />
           </div>
-          <AOIFloatingCard v-if="showAOICard" @aoiSaved="handleAOISaved" />
           <div class="floating-elements">
             <BasemapDateSlider v-if="!showAOICard && !showHotspotVerification" class="date-slider" />
           </div>
@@ -202,11 +208,11 @@ export default {
       // Clear existing AOIs
       mapStore.clearAOI()
 
-      console.log("Loading project")
+      console.log("Loading project", project)
       await projectStore.loadProject(project.id)
 
-      if (project.isNew !== undefined || !projectStore.currentProject.aoi) {
-        // Hide project selection when showing AOI card
+      if (project.isNew || !projectStore.currentProject.aoi) {
+        console.log("New project or no AOI, showing AOI card")
         showProjectSelection.value = false
         showAOICard.value = true
         currentSection.value = null
@@ -233,21 +239,34 @@ export default {
       }
     }
 
-    // NOT WORKING - not receving the emits
     const handleAOISaved = (eventData) => {
       console.log('AOI saved event received in MainLayout', eventData)
+      
+      // Hide AOI card
       showAOICard.value = false
-      handleSectionClick({ name: 'Train Model' })
+      
+      // Show training manager
+      showTrainingAndPolygonManager.value = true
+      currentSection.value = 'Train Model'
+      
+      // Set default basemap
+      mapStore.updateBasemap('2022-01')
+      
+      // Load training polygons for the current date
+      mapStore.loadTrainingPolygonsForDate('2022-01')
+      
       $q.notify({
-        message: 'AOI saved successfully. Entering training mode.',
+        message: 'AOI saved successfully. You can now start training your model.',
         color: 'positive',
-        icon: 'check'
+        icon: 'check',
+        timeout: 3000
       })
     }
 
     watch(() => projectStore.currentProject?.aoi, (newAOI) => {
       if (newAOI) {
         showAOICard.value = false
+        showTrainingAndPolygonManager.value = true
         currentSection.value = 'Train Model'
       }
     })

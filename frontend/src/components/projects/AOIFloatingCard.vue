@@ -1,23 +1,65 @@
 <template>
-    <q-card class="aoi-floating-card">
-        <q-card-section>
-            <div class="text-h6">Define Area of Interest</div>
-            <p>Please draw the Area of Interest (AOI) for your project on the map or upload a GeoJSON file or .zipped Shapefile.</p>
-            <p>Current AOI Size: {{ aoiSizeHa.toFixed(2) }} ha</p>
-            <p v-if="aoiSizeHa > maxAoiSizeHa">Warning: AOI size exceeds the maximum allowed ({{ maxAoiSizeHa }} ha)</p>
-        </q-card-section>
+  <div class="aoi-container">
+    <q-card class="aoi-card">
+      <q-card-section>
+        <div class="text-h6">Define Area of Interest</div>
+        <p class="text-body2">Please draw the Area of Interest (AOI) for your project on the map or upload a GeoJSON file or .zipped Shapefile.</p>
+        
+        <div class="text-subtitle2 q-mt-md">Current AOI Size</div>
+        <div class="text-body1">{{ aoiSizeHa.toFixed(2) }} ha</div>
+        <q-badge v-if="aoiSizeHa > maxAoiSizeHa" color="negative" class="q-mt-sm">
+          Warning: AOI size exceeds the maximum allowed ({{ maxAoiSizeHa }} ha)
+        </q-badge>
+      </q-card-section>
 
-        <q-card-actions align="center" class="q-gutter-md">
-            <q-btn label="Draw AOI" color="primary" icon="create" @click="startDrawingAOI" />
-            <q-btn label="Upload AOI file (.geojson, zipped shapefile)" color="secondary" icon="upload_file"
-                @click="triggerFileUpload" />
-            <q-btn label="Clear AOI" color="negative" icon="clear" @click="clearAOI"/>
-            <q-btn label="Save AOI" color="positive" icon="save" @click="saveAOI" :disable="!aoiDrawn" />
-        </q-card-actions>
+      <q-separator />
 
-        <input type="file" ref="fileInput" style="display: none" accept=".geojson,application/geo+json,.zip"
-            @change="handleFileUpload" />
+      <q-card-section>
+        <div class="text-subtitle2 q-mb-sm">Actions</div>
+        <div class="column q-gutter-y-sm">
+          <q-btn 
+            label="Draw AOI" 
+            color="primary" 
+            icon="create" 
+            @click="startDrawingAOI"
+            class="full-width" 
+          />
+          <q-btn 
+            label="Upload AOI file" 
+            color="secondary" 
+            icon="upload_file"
+            @click="triggerFileUpload"
+            class="full-width" 
+          >
+            <q-tooltip>Upload .geojson or zipped shapefile</q-tooltip>
+          </q-btn>
+          <q-btn 
+            label="Clear AOI" 
+            color="negative" 
+            icon="clear" 
+            @click="clearAOI"
+            class="full-width" 
+          />
+          <q-btn 
+            label="Save AOI" 
+            color="positive" 
+            icon="save" 
+            @click="saveAOI" 
+            :disable="!aoiDrawn"
+            class="full-width" 
+          />
+        </div>
+      </q-card-section>
+
+      <input 
+        type="file" 
+        ref="fileInput" 
+        style="display: none" 
+        accept=".geojson,application/geo+json,.zip"
+        @change="handleFileUpload" 
+      />
     </q-card>
+  </div>
 </template>
 
 <script>
@@ -284,17 +326,31 @@ export default {
 }
 </script>
 
-<style lang="scss">
-.aoi-floating-card {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 800px;
-    max-width: 90%;
-    z-index: 1000;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
-    background-color: white;
+<style lang="scss" scoped>
+.aoi-container {
+  height: calc(100vh - var(--app-header-height));
+  overflow-y: auto;
+}
+
+.aoi-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+  box-shadow: none;
+
+  .q-card__section {
+    padding: 16px;
+  }
+
+  p {
+    margin: 8px 0;
+  }
+}
+
+// Make buttons more compact but still readable
+.q-btn {
+  height: 36px;
+  font-size: 0.875rem;
 }
 </style>
