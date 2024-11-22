@@ -1,17 +1,17 @@
 <template>
-  <q-dialog ref="dialogRef" @hide="onDialogHide">
-    <q-card class="q-dialog-plugin" style="width: 50vw; max-width: 90vw;">
-      <q-card-section class="text-center q-pb-none">
-        <div class="text-h5 q-mb-md">Welcome to Choco Forest Watch</div>
-        <p class="text-body1">
-          Monitor and analyze forest cover changes using satellite imagery and machine learning.
-        </p>
-      </q-card-section>
-
+  <div class="project-selection-container">
+    <q-card class="project-card">
       <q-card-section>
-        <div class="text-h6">Load Existing Project</div>
-        <q-table :rows="projects" :columns="columns" row-key="id" :pagination="{ rowsPerPage: 5 }"
-          @row-click="onRowClick">
+        <div class="text-subtitle1 q-mb-sm">Existing Projects</div>
+        <q-table 
+          :rows="projects" 
+          :columns="columns" 
+          row-key="id" 
+          :pagination="{ rowsPerPage: 5 }"
+          @row-click="onRowClick"
+          dense
+          flat
+        >
           <template v-slot:body-cell-actions="props">
             <q-td :props="props">
               <q-btn flat round color="primary" icon="launch" @click.stop="onOk(props.row)">
@@ -31,68 +31,72 @@
       <q-separator />
 
       <q-card-section>
-        <div class="text-h6">Create New Project</div>
+        <div class="text-subtitle1 q-mb-sm">Create New Project</div>
         <q-form @submit.prevent="validateAndCreateProject">
-          <q-input dense rounded outlined v-model="newProject.name" label="Project Name" class="q-mb-md" />
-          <q-input dense rounded outlined v-model="newProject.description" label="Description" type="textarea"
-            class="q-mb-md" />
-
-          <!-- <div class="text-subtitle2 q-mb-sm">Define Land Cover Classes</div>
-          <div v-for="(classItem, index) in newProject.classes" :key="index" class="row q-mb-sm">
-            <q-input dense rounded outlined v-model="classItem.name" label="Class Name" class="col-6"
-              :rules="[val => !!val || 'Name is required']" />
-            <q-color v-model="classItem.color" class="col-4 q-ml-md" default-view="palette" :palette="[
-              '#019A9D', '#D9B801', '#E8045A', '#B2028A',
-              '#2A0449', '#019A9D']" />
-            <q-btn flat round color="negative" icon="remove" @click="removeClass(index)" class="col-1 q-ml-sm" />
-          </div>
-          <q-btn densed rounded outlined label="Add Class" icon="add" color="positive" @click="addClass"
-            class="q-mb-md" /> -->
-
-          <q-btn label="Create Project" type="submit" color="primary" class="q-mt-md full-width" rounded />
+          <q-input 
+            dense 
+            rounded 
+            outlined 
+            v-model="newProject.name" 
+            label="Project Name" 
+            class="q-mb-md" 
+          />
+          <q-input 
+            dense 
+            rounded 
+            outlined 
+            v-model="newProject.description" 
+            label="Description" 
+            type="textarea"
+            class="q-mb-md" 
+          />
+          <q-btn 
+            label="Create Project" 
+            type="submit" 
+            color="primary" 
+            class="q-mt-md full-width" 
+            rounded 
+          />
         </q-form>
       </q-card-section>
-
-
-      <q-dialog v-model="showRenameDialog">
-        <q-card style="min-width: 350px">
-          <q-card-section>
-            <div class="text-h6">Rename Project</div>
-          </q-card-section>
-
-          <q-card-section class="q-pt-none">
-            <q-input v-model="newProjectName" label="New Project Name" autofocus @keyup.enter="renameProject" />
-          </q-card-section>
-
-          <q-card-actions align="right" class="text-primary">
-            <q-btn flat label="Cancel" v-close-popup />
-            <q-btn flat label="Rename" @click="renameProject" v-close-popup />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
-
-
-
-      <q-card-actions align="right">
-        <q-btn flat label="Cancel" color="primary" v-close-popup />
-      </q-card-actions>
     </q-card>
-  </q-dialog>
+
+    <!-- Rename Dialog -->
+    <q-dialog v-model="showRenameDialog">
+      <q-card style="min-width: 350px">
+        <q-card-section>
+          <div class="text-h6">Rename Project</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-input 
+            v-model="newProjectName" 
+            label="New Project Name" 
+            autofocus 
+            @keyup.enter="renameProject" 
+          />
+        </q-card-section>
+
+        <q-card-actions align="right" class="text-primary">
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn flat label="Rename" @click="renameProject" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+  </div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue'
-import { useDialogPluginComponent, useQuasar } from 'quasar'
+import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { date } from 'quasar'
 
-
 export default {
-  name: 'ProjectSelectionDialog',
-  emits: [...useDialogPluginComponent.emits],
+  name: 'ProjectSelection',
+  emits: ['project-selected'],
 
-  setup() {
-    const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
+  setup(props, { emit }) {
     const $q = useQuasar()
     const projectStore = useProjectStore()
     const projects = ref([])
@@ -174,7 +178,26 @@ export default {
       try {
         console.log("Creating project...")
         const createdProject = await projectStore.createProject(newProject.value)
-        onDialogOK({ ...createdProject, isNew: true })
+        
+        emit('project-selected', { ...createdProject, isNew: true })
+        
+        newProject.value = {
+          name: '',
+          description: '',
+          classes: [
+            { name: 'Forest', color: '#00FF00' },
+            { name: 'Non-Forest', color: '#FFFF00' },
+            { name: 'Cloud', color: '#FFFFFF' },
+            { name: 'Shadow', color: '#808080' },
+            { name: 'Water', color: '#0000FF' }
+          ]
+        }
+
+        $q.notify({
+          message: 'Project created successfully. Please define your Area of Interest.',
+          color: 'positive',
+          icon: 'check'
+        })
       } catch (error) {
         console.error('Error creating project:', error)
         $q.notify({
@@ -194,7 +217,7 @@ export default {
     }
 
     const onRowClick = (evt, row) => {
-      onDialogOK(row)
+      onOk(row)
     }
 
     const openRenameDialog = (project) => {
@@ -257,16 +280,14 @@ export default {
       })
     }
 
+    const onOk = (project) => {
+      emit('project-selected', project)
+    }
+
     return {
-      dialogRef,
-      onDialogHide,
-      onOk: onDialogOK,
-      onCancel: onDialogCancel,
       projects,
       newProject,
-      createProject,
-      addClass,
-      removeClass,
+      onOk,
       columns,
       onRowClick,
       validateAndCreateProject,
@@ -280,3 +301,40 @@ export default {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+.project-selection-container {
+  position: absolute;
+  height: calc(100vh - 60px - 100px); /* Adjust based on your layout */
+  width: 300px;
+  overflow-y: auto;
+}
+
+.project-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.q-table {
+  background-color: transparent;
+}
+
+.project-item {
+  border-radius: 8px;
+  margin: 4px;
+  background-color: #f5f5f5;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+}
+
+.q-form {
+  .q-input {
+    margin-bottom: 8px;
+  }
+}
+</style>

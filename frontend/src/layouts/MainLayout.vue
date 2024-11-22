@@ -53,6 +53,10 @@
         <HotspotVerification v-if="showHotspotVerification" />
         <!-- Dont show map date slider when AOI is being created -->
         <BasemapDateSlider v-if="!showAOICard & !showHotspotVerification"/>
+        <ProjectSelection 
+          v-if="showProjectSelection"
+          @project-selected="selectProject" 
+        />
       </q-page>
     </q-page-container>
   </q-layout>
@@ -63,7 +67,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
-import ProjectSelectionDialog from 'components/projects/ProjectSelectionDialog.vue'
+import ProjectSelection from 'components/projects/ProjectSelectionDialog.vue'
 import TrainingAndPolygonManager from 'components/training/TrainingAndPolygonManager.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
@@ -84,7 +88,8 @@ export default {
     BasemapDateSlider,
     LandCoverAnalysis,
     DeforestationAnalysis,
-    HotspotVerification
+    HotspotVerification,
+    ProjectSelection
   },
   setup() {
     const $q = useQuasar()
@@ -97,6 +102,7 @@ export default {
     const showLandCoverAnalysis = ref(false)
     const showDeforestationAnalysis = ref(false)
     const showHotspotVerification = ref(false)
+    const showProjectSelection = ref(false)
     const sections = [
       { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
       { name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager, tooltip: 'Train Model' },
@@ -119,12 +125,9 @@ export default {
       // Initialize map
       mapStore.initMap('map')
       mapStore.initializeBasemapDates()
+      showProjectSelection.value = true
 
       // // Open project dialogue to have user select or create new project
-      openProjectDialog()
-
-
-      // // Load default project and map date to make things easier
       // console.log('Loading default project...')
       // mapStore.initMap('map')
       // currentSection.value = 'training'
@@ -148,8 +151,13 @@ export default {
       
       console.log("Clicked section: ", section)
       if (section.name === 'projects') {
-        openProjectDialog()
+        showProjectSelection.value = true
+        showTrainingAndPolygonManager.value = false
+        showLandCoverAnalysis.value = false
+        showDeforestationAnalysis.value = false
+        showHotspotVerification.value = false
       } else {
+        showProjectSelection.value = false
         currentSection.value = section.name
       }
 
@@ -178,16 +186,6 @@ export default {
       }
     }
 
-    const openProjectDialog = () => {
-      $q.dialog({
-        component: ProjectSelectionDialog
-      }).onOk((project) => {
-        selectProject(project)
-      })
-    }
-
-    // Remove the openModelTrainingDialog function from here
-
     const selectProject = async (project) => {
       // Clear existing AOIs
       mapStore.clearAOI()
@@ -196,12 +194,14 @@ export default {
       await projectStore.loadProject(project.id)
 
       if (project.isNew !== undefined || !projectStore.currentProject.aoi) {
+        // Hide project selection when showing AOI card
+        showProjectSelection.value = false
         showAOICard.value = true
         currentSection.value = null
       } else {
-
         // Clear AOI
         showAOICard.value = false
+        showProjectSelection.value = false
 
         // Set default basemap after loading a project
         mapStore.updateBasemap('2022-01')
@@ -271,7 +271,6 @@ export default {
       sidebarWidth,
       currentSectionComponent,
       currentProject,
-      openProjectDialog,
       showAOICard,
       showTrainingAndPolygonManager,
       handleSectionClick,
@@ -281,7 +280,9 @@ export default {
       showHotspotVerification,
       currentUser,
       handleUserSettings,
-      handleLogout
+      handleLogout,
+      showProjectSelection,
+      selectProject
     }
   }
 }
