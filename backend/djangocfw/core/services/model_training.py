@@ -235,7 +235,30 @@ class ModelTrainingService:
 
     def train_xgboost_model(self, X, y, feature_ids, dates, model_params):
         """Train XGBoost model and calculate metrics"""
-        # Get all class names from project
+        # First check minimum features per class
+        unique_features, unique_indices = np.unique(feature_ids, return_index=True)
+        unique_classes = y[unique_indices]
+        class_counts = {}
+        
+        for class_name in np.unique(y):
+            class_features = unique_features[unique_classes == class_name]
+            class_counts[class_name] = len(class_features)
+            if len(class_features) < 2:
+                raise ModelTrainingError(
+                    f"Class '{class_name}' has only {len(class_features)} features. "
+                    "Each class must have at least 2 features for train/test split."
+                )
+        
+        # Extract splitting params and remove them from model_params
+        split_params = {
+            'split_method': model_params['split_method'],
+            'train_test_split': model_params['train_test_split']
+        }
+        
+        # Remove sieve_size if present (not used by XGBoost)
+        # model_params.pop('sieve_size', None)
+        
+        # Get project and classes
         project = Project.objects.get(id=self.project_id)
         all_class_names = [cls['name'] for cls in project.classes]
         
@@ -243,7 +266,7 @@ class ModelTrainingService:
         le = LabelEncoder()
         y_encoded = le.fit_transform(y)
         
-        # Get classes actually present in training data
+        ## Get classes actually present in training data
         classes_in_training = le.classes_.tolist()
         
         # Create date and month encoders
@@ -256,30 +279,43 @@ class ModelTrainingService:
         # Add encoded dates and months as features
         X = np.column_stack((X, encoded_dates, encoded_months))
         
-        # Split data using feature-based split
-        unique_features, unique_indices = np.unique(feature_ids, return_index=True)
-        unique_classes = y[unique_indices]
+        # Split data based on method
+        if split_params['split_method'] == 'feature':
+            unique_features, unique_indices = np.unique(feature_ids, return_index=True)
+            unique_classes = y[unique_indices]
+            
+            train_features, test_features = train_test_split(
+                unique_features, 
+                test_size=split_params['train_test_split'], 
+                random_state=42, 
+                stratify=unique_classes
+            )
+            
+            train_mask = np.isin(feature_ids, train_features)
+            test_mask = np.isin(feature_ids, test_features)
+            
+            X_train, X_test = X[train_mask], X[test_mask]
+            y_train, y_test = y_encoded[train_mask], y_encoded[test_mask]
+        else:
+            # Pixel-based split
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y_encoded, 
+                test_size=split_params['train_test_split'], 
+                random_state=42
+            )
         
-        # Split features into train and test, stratified by class
-        train_features, test_features = train_test_split(
-            unique_features, 
-            test_size=0.2, 
-            random_state=42, 
-            stratify=unique_classes
-        )
+        # Only add num_class for multi-class problems (>2 classes)
+        if len(classes_in_training) > 2:
+            model_params['num_class'] = len(classes_in_training)
+            # For multi-class, we need to set objective
+            model_params['objective'] = 'multi:softmax'
+        else:
+            # For binary classification, remove num_class if present
+            model_params.pop('num_class', None)
+            # For binary classification, we can use binary:logistic
+            model_params['objective'] = 'binary:logistic'
         
-        # Create masks for train and test sets
-        train_mask = np.isin(feature_ids, train_features)
-        test_mask = np.isin(feature_ids, test_features)
-        
-        # Split data using the masks
-        X_train, X_test = X[train_mask], X[test_mask]
-        y_train, y_test = y_encoded[train_mask], y_encoded[test_mask]
-        
-        # Adjust num_class parameter
-        model_params['num_class'] = len(classes_in_training)
-        
-        # Train model
+        # Now create and train the model
         model = XGBClassifier(**model_params)
         model.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=False)
         

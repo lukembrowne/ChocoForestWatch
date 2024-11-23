@@ -1,16 +1,33 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide">
     <q-card class="q-dialog-plugin" style="width: 800px; max-width: 90vw;">
-      <q-card-section>
+      <q-card-section class="row items-center justify-between">
         <div class="text-h6">{{ existingModel ? 'Update' : 'Train' }} XGBoost Model</div>
+        <div class="row items-center q-gutter-sm">
+          <span v-if="!isValidConfiguration" class="text-negative text-caption">
+            {{ validationMessage }}
+          </span>
+          <div class="row q-gutter-sm">
+            <q-btn flat label="Cancel" color="primary" v-close-popup />
+            <q-btn 
+              :label="existingModel ? 'Update Model' : 'Train Model'" 
+              color="primary" 
+              @click="validateAndTrain"
+              :disable="!isValidConfiguration"
+            >
+              <q-tooltip v-if="!isValidConfiguration">
+                {{ validationMessage }}
+              </q-tooltip>
+            </q-btn>
+          </div>
+        </div>
       </q-card-section>
 
-      <q-card-section v-if="trainingDataSummary">
-        <div class="text-h6 q-mb-md">Training Data Summary</div>
-        <div class="row q-col-gutter-md q-mb-md">
+      <q-card-section v-if="trainingDataSummary" class="q-pa-sm">
+        <div class="row q-col-gutter-sm">
           <div class="col-12 col-md-6">
             <q-card class="bg-primary text-white">
-              <q-card-section>
+              <q-card-section class="q-pa-sm">
                 <div class="text-h6">{{ trainingDataSummary.totalSets }}</div>
                 <div class="text-subtitle2">Total Training Sets</div>
               </q-card-section>
@@ -18,48 +35,61 @@
           </div>
           <div class="col-12 col-md-6">
             <q-card class="bg-secondary text-white">
-              <q-card-section>
+              <q-card-section class="q-pa-sm">
                 <div class="text-h6">{{ totalArea.toFixed(2) }} ha</div>
                 <div class="text-subtitle2">Total Area</div>
               </q-card-section>
             </q-card>
           </div>
         </div>
-        <q-markup-table flat bordered>
+
+        <q-markup-table flat bordered dense class="q-mt-sm">
           <thead>
             <tr>
               <th class="text-left">Class</th>
               <th class="text-right">Features</th>
               <th class="text-right">Area (ha)</th>
-              <th class="text-right">Percentage</th>
+              <th class="text-right">%</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(stats, className) in trainingDataSummary.classStats" :key="className">
               <td class="text-left">
-                <q-chip :color="getClassColor(className)" text-color="black" square>
+                <q-chip dense :color="getClassColor(className)" text-color="black" square>
                   {{ className }}
                 </q-chip>
               </td>
               <td class="text-right">{{ stats.featureCount }}</td>
               <td class="text-right">{{ stats.totalAreaHa.toFixed(2) }}</td>
-              <td class="text-right">{{ ((stats.totalAreaHa / totalArea) * 100).toFixed(2) }}%</td>
+              <td class="text-right">{{ ((stats.totalAreaHa / totalArea) * 100).toFixed(1) }}%</td>
             </tr>
           </tbody>
         </q-markup-table>
-      </q-card-section>
 
-      <q-card-section v-if="trainingDataSummary">
-        <div class="text-subtitle1">Basemap dates with training data:</div>
-        <q-chip v-for="date in basemapOptions" :key="date" :color="getChipColor(date['value'])"
-          :text-color="getChipTextColor(date['value'])">
-          {{ date['label'] }}
-        </q-chip>
+        <div class="q-mt-sm">
+          <div class="text-caption">Training data dates:</div>
+          <div class="row q-gutter-xs">
+            <q-chip
+              v-for="date in basemapOptions"
+              :key="date['value']"
+              :color="getChipColor(date['value'])"
+              :text-color="getChipTextColor(date['value'])"
+              dense
+              size="sm"
+            >
+              {{ date['label'] }}
+            </q-chip>
+          </div>
+        </div>
       </q-card-section>
 
       <q-card-section>
-        <q-expansion-item expand-separator label="Tune Advanced Model Parameters"
-          caption="Click to customize model parameters">
+        <q-expansion-item
+          expand-separator
+          label="Model Parameters"
+          caption="Click to customize model parameters"
+          :default-opened="!isValidConfiguration"
+        >
           <div class="row q-col-gutter-md">
             <div class="col-12">
               <p>Choose split method:</p>
@@ -139,16 +169,17 @@
           </div>
         </q-expansion-item>
       </q-card-section>
-
-      <q-card-actions align="right">
-        <q-btn flat label="Cancel" color="primary" v-close-popup />
-        <q-btn :label="existingModel ? 'Update Model' : 'Train Model'" color="primary" @click="trainModel" />
-      </q-card-actions>
     </q-card>
   </q-dialog>
 
-  <training-progress :show="isTraining" :progress="trainingProgress" :progressMessage="trainingProgressMessage"
-    :error="trainingError" @cancel="handleCancel" @complete="handleTrainingComplete" />
+  <training-progress 
+    :show="isTraining" 
+    :progress="trainingProgress" 
+    :progressMessage="trainingProgressMessage"
+    :error="trainingError" 
+    @cancel="handleCancel" 
+    @complete="handleTrainingComplete" 
+  />
 </template>
 
 <script>
@@ -400,9 +431,11 @@ export default {
           training_set_ids: trainingSetIds,
           model_name: modelName.value,
           model_description: modelDescription.value,
-          train_test_split: trainTestSplit.value,
-          split_method: splitMethod.value,
-          model_parameters: { ...options.value }
+          model_parameters: { 
+            ...options.value, 
+            train_test_split: trainTestSplit.value, 
+            split_method: splitMethod.value 
+          }
         })
 
         console.log('Model training initiated:', response)
@@ -459,6 +492,144 @@ export default {
       return 'black'
     }
 
+    // Modify the hasMinimumFeaturesPerClass computed property
+    const hasMinimumFeaturesPerClass = computed(() => {
+      if (!trainingDataSummary.value?.classStats) return false;
+      
+      // Check if any class has exactly 1 feature (invalid)
+      for (const [className, stats] of Object.entries(trainingDataSummary.value.classStats)) {
+        if (stats.featureCount === 1) {
+          return false;
+        }
+      }
+      
+      // Check if we have at least two classes with features
+      const classesWithFeatures = Object.values(trainingDataSummary.value.classStats)
+        .filter(stats => stats.featureCount > 0)
+        .length;
+      
+      return classesWithFeatures >= 2;
+    });
+
+    // Modify the isValidConfiguration computed property
+    const isValidConfiguration = computed(() => {
+      // First check if we have minimum features per class
+      if (!hasMinimumFeaturesPerClass.value) {
+        return false;
+      }
+
+      // Check if any option is NA or NaN
+      for (const [key, value] of Object.entries(options.value)) {
+        if (value === 'NA' || value === null || isNaN(value)) {
+          return false;
+        }
+      }
+
+      // Check if we have training data
+      if (!trainingDataSummary.value?.totalSets) {
+        return false;
+      }
+
+      // Validate specific parameter ranges
+      return (
+        options.value.n_estimators >= 10 &&
+        options.value.max_depth >= 1 &&
+        options.value.learning_rate > 0 &&
+        options.value.min_child_weight >= 1 &&
+        options.value.gamma >= 0 &&
+        options.value.subsample > 0 &&
+        options.value.subsample <= 1 &&
+        options.value.colsample_bytree > 0 &&
+        options.value.colsample_bytree <= 1
+      );
+    });
+
+    // Modify the validateAndTrain method to give more specific error messages
+    const validateAndTrain = async () => {
+      if (!hasMinimumFeaturesPerClass.value) {
+        // Check which condition failed
+        const classesWithOneFeature = Object.entries(trainingDataSummary.value.classStats)
+          .filter(([_, stats]) => stats.featureCount === 1)
+          .map(([className]) => className);
+          
+        const classesWithFeatures = Object.values(trainingDataSummary.value.classStats)
+          .filter(stats => stats.featureCount > 0)
+          .length;
+        
+        if (classesWithOneFeature.length > 0) {
+          $q.notify({
+            type: 'negative',
+            message: `Classes with exactly 1 feature are not allowed`,
+            caption: `Please add at least one more feature to: ${classesWithOneFeature.join(', ')}`
+          });
+          return;
+        }
+        
+        if (classesWithFeatures < 2) {
+          $q.notify({
+            type: 'negative',
+            message: 'At least two classes must have training data',
+            caption: 'Please add features to at least one more class'
+          });
+          return;
+        }
+      }
+
+      if (!isValidConfiguration.value) {
+        $q.notify({
+          type: 'negative',
+          message: 'Please ensure all model parameters are valid before training'
+        });
+        return;
+      }
+
+      // Proceed with training
+      await trainModel();
+    };
+
+    const validationMessage = computed(() => {
+      // Check for minimum features per class
+      if (!trainingDataSummary.value?.classStats) {
+        return 'No training data available';
+      }
+
+      // Check for classes with exactly 1 feature
+      const classesWithOneFeature = Object.entries(trainingDataSummary.value.classStats)
+        .filter(([_, stats]) => stats.featureCount === 1)
+        .map(([className]) => className);
+      
+      if (classesWithOneFeature.length > 0) {
+        return `Classes with exactly 1 feature: ${classesWithOneFeature.join(', ')}. Add at least one more feature to these classes.`;
+      }
+
+      // Check if we have at least two classes with features
+      const classesWithFeatures = Object.values(trainingDataSummary.value.classStats)
+        .filter(stats => stats.featureCount > 0)
+        .length;
+      
+      if (classesWithFeatures < 2) {
+        return 'At least two classes must have training data';
+      }
+
+      // Check model parameters
+      for (const [key, value] of Object.entries(options.value)) {
+        if (value === 'NA' || value === null || isNaN(value)) {
+          return `Invalid value for ${key.replace(/_/g, ' ')}`;
+        }
+      }
+
+      // Validate parameter ranges
+      if (options.value.n_estimators < 10) return 'Number of estimators must be at least 10';
+      if (options.value.max_depth < 1) return 'Max depth must be at least 1';
+      if (options.value.learning_rate <= 0) return 'Learning rate must be greater than 0';
+      if (options.value.min_child_weight < 1) return 'Min child weight must be at least 1';
+      if (options.value.gamma < 0) return 'Gamma must be non-negative';
+      if (options.value.subsample <= 0 || options.value.subsample > 1) return 'Subsample must be between 0 and 1';
+      if (options.value.colsample_bytree <= 0 || options.value.colsample_bytree > 1) return 'Colsample bytree must be between 0 and 1';
+
+      return '';
+    });
+
     return {
       dialogRef,
       onDialogHide,
@@ -483,7 +654,43 @@ export default {
       getChipTextColor,
       handleCancel,
       handleTrainingComplete,
+      isValidConfiguration,
+      validateAndTrain,
+      validationMessage,
     }
   }
 }
 </script>
+
+<style scoped>
+.q-dialog-plugin {
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.q-card-section {
+  padding: 12px;
+}
+
+/* Make the table more compact */
+:deep(.q-table th), :deep(.q-table td) {
+  padding: 4px 8px;
+}
+
+/* Ensure chips are compact */
+:deep(.q-chip) {
+  min-height: 24px;
+  padding: 0 8px;
+}
+
+.text-negative {
+  color: var(--q-negative);
+}
+
+.validation-message {
+  font-size: 0.8rem;
+  max-width: 300px;
+  white-space: normal;
+}
+</style>

@@ -1,73 +1,134 @@
 <template>
-    <div class="drawing-controls q-pa-sm">
-      <div class="text-subtitle1 q-mb-sm">Drawing Controls</div>
-      <div class="row q-gutter-xs">
+  <div class="drawing-controls q-pa-sm">
+    <!-- Primary Drawing Controls -->
+    <div class="text-subtitle1 q-mb-sm">Drawing Controls</div>
+    <div class="row q-col-gutter-sm">
+      <!-- Main drawing mode toggle with keyboard shortcuts -->
+      <div class="col-12">
         <q-btn-toggle
           v-model="interactionMode"
           :options="[
-            { label: 'Draw', value: 'draw', icon: 'create' },
-            { label: 'Pan', value: 'pan', icon: 'pan_tool' },
-            { label: 'Zoom in', value: 'zoom_in', icon: 'zoom_in' },
-            { label: 'Zoom out', value: 'zoom_out', icon: 'zoom_out' }
+            { label: 'Draw (D)', value: 'draw', icon: 'create' },
+            { label: 'Pan (M)', value: 'pan', icon: 'pan_tool' },
+            { label: 'Zoom In (Z)', value: 'zoom_in', icon: 'zoom_in' },
+            { label: 'Zoom Out (X)', value: 'zoom_out', icon: 'zoom_out' }
           ]"
           @update:model-value="setInteractionMode"
+          spread
+          class="full-width"
           dense
-          size="sm"
-        />
-      </div>
-      <div class="row q-gutter-xs q-mt-sm">
-        <q-btn dense label="Undo" size="sm" icon="undo" @click="undoLastDraw" :disable="interactionMode !== 'draw'" />
-        <q-btn dense label="Save" size="sm" icon="save" @click="saveTrainingPolygons" />
-        <q-btn dense label="Clear" size="sm" icon="delete_sweep" @click="clearDrawnPolygons" />
-        <q-btn dense label="Delete Feature" size="sm" icon="delete" @click="deleteSelectedFeature"/>
-        <q-btn
-          dense
-          :label="isCurrentDateExcluded ? 'Include Date' : 'Exclude Date'"
-          size="sm"
-          :icon="isCurrentDateExcluded ? 'add_circle' : 'block'"
-          @click="toggleExcludeCurrentDate"
-        />
-        <q-btn dense label="Download Polygons" size="sm" icon="download" @click="downloadPolygons" />
-        <q-btn dense label="Load Polygons" size="sm" icon="upload_file" @click="triggerFileUpload" />
-        <q-btn
-          dense
-          :label="drawingMode === 'square' ? 'Square Mode' : 'Freehand Mode'"
-          size="sm"
-          :icon="drawingMode === 'square' ? 'crop_square' : 'gesture'"
-          @click="toggleDrawingMode"
-          :color="drawingMode === 'square' ? 'primary' : 'secondary'"
         />
       </div>
 
-      <input type="file" ref="fileInput" style="display: none" accept=".geojson" @change="loadPolygons" />
-
-      <div class="text-caption q-mt-sm">Polygon Size (m)</div>
-      <q-slider
-        v-model="polygonSize"
-        :min="10"
-        :max="500"
-        :step="10"
-        label
-        label-always
-        color="primary"
-        @update:model-value="updatePolygonSize"
-        dense
-      />
-
-      <div class="text-caption q-mt-sm">Select Class</div>
-      <div class="row q-gutter-xs">
-        <q-btn
-          v-for="className in projectClasses"
-          :key="className"
-          :label="className"
-          :color="selectedClass === className ? 'primary' : 'grey-4'"
-          :text-color="selectedClass === className ? 'white' : 'black'"
-          @click="setClassLabel(className)"
+      <!-- Drawing Configuration Section - More Compact -->
+      <div class="col-12">
+        <q-expansion-item
           dense
-          size="sm"
-        />
+          group="controls"
+          icon="brush"
+          label="Drawing Options"
+        >
+          <q-card class="compact-card">
+            <q-card-section class="q-pa-sm">
+              <!-- Drawing Mode Toggle -->
+              <div class="row items-center q-mb-sm">
+                <div class="col">
+                  <q-btn
+                    :label="drawingMode === 'square' ? 'Square Mode (F)' : 'Freehand Mode (F)'"
+                    :icon="drawingMode === 'square' ? 'crop_square' : 'gesture'"
+                    @click="toggleDrawingMode"
+                    :color="drawingMode === 'square' ? 'primary' : 'secondary'"
+                    class="full-width"
+                    dense
+                  />
+                </div>
+              </div>
+
+              <!-- Polygon Size Slider -->
+              <div class="text-caption q-mb-xs">Polygon Size (m)</div>
+              <q-slider
+                v-model="polygonSize"
+                :min="10"
+                :max="500"
+                :step="10"
+                label
+                label-always
+                color="primary"
+                @update:model-value="updatePolygonSize"
+                dense
+              />
+            </q-card-section>
+          </q-card>
+        </q-expansion-item>
+      </div>
+
+      <!-- Class Selection Section - Always Open -->
+      <div class="col-12">
+        <div class="text-subtitle2 q-mb-xs">Select Class</div>
+        <div class="row q-col-gutter-xs">
+          <div 
+            v-for="(className, index) in projectClasses"
+            :key="className"
+            class="col-6"
+          >
+            <q-btn
+              :label="`${className} (${index + 1})`"
+              :color="selectedClass === className ? 'primary' : 'grey-4'"
+              :text-color="selectedClass === className ? 'white' : 'black'"
+              @click="setClassLabel(className)"
+              class="full-width"
+              dense
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Polygon Management Section -->
+      <div class="col-12 q-mt-sm">
+        <q-expansion-item
+          dense
+          group="controls"
+          icon="settings"
+          label="Polygon Management"
+        >
+          <q-card>
+            <q-card-section class="q-pa-md">
+              <div class="row q-col-gutter-sm">
+                <div class="col-6">
+                  <q-btn class="full-width" label="Undo (Ctrl+Z)" icon="undo" @click="undoLastDraw" :disable="interactionMode !== 'draw'" />
+                </div>
+                <div class="col-6">
+                  <q-btn class="full-width" label="Save (Ctrl+S)" icon="save" @click="saveTrainingPolygons" />
+                </div>
+                <div class="col-6">
+                  <q-btn class="full-width" label="Clear" icon="delete_sweep" @click="clearDrawnPolygons" />
+                </div>
+                <div class="col-6">
+                  <q-btn class="full-width" label="Delete (Del)" icon="delete" @click="deleteSelectedFeature"/>
+                </div>
+                <div class="col-6">
+                  <q-btn class="full-width" label="Download" icon="download" @click="downloadPolygons" />
+                </div>
+                <div class="col-6">
+                  <q-btn class="full-width" label="Load" icon="upload_file" @click="triggerFileUpload" />
+                </div>
+                <!-- <div class="col-12">
+                  <q-btn
+                    class="full-width q-mt-sm"
+                    :label="isCurrentDateExcluded ? 'Include Date' : 'Exclude Date'"
+                    :icon="isCurrentDateExcluded ? 'add_circle' : 'block'"
+                    @click="toggleExcludeCurrentDate"
+                  />
+                </div> -->
+              </div>
+            </q-card-section>
+          </q-card>
+        </q-expansion-item>
       </div>
     </div>
+
+    <input type="file" ref="fileInput" style="display: none" accept=".geojson" @change="loadPolygons" />
+  </div>
 </template>
 
 <script>
@@ -355,7 +416,37 @@ export default {
 }
 
 .q-slider {
-  margin-top: 16px;
-  width: 75%;
+  width: 100%;
+}
+
+/* Add smooth transitions */
+.q-btn {
+  transition: all 0.3s ease;
+}
+
+/* Make expansion panels more compact */
+:deep(.q-expansion-item__content) {
+  padding: 0;
+}
+
+:deep(.q-card) {
+  box-shadow: none;
+}
+
+/* Make the compact cards more compact */
+.compact-card :deep(.q-card__section) {
+  padding: 8px;
+}
+
+/* Ensure class selection buttons are compact but readable */
+.text-subtitle2 {
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+/* Keep polygon management buttons larger */
+.q-expansion-item[label="Polygon Management"] :deep(.q-btn) {
+  padding: 8px 16px;
+  min-height: 36px;
 }
 </style>
