@@ -101,10 +101,15 @@ export default {
         })
 
         onUnmounted(() => {
-            if (drawInteraction && mapStore.map) {
+            console.log("AOIFloatingCard unmounting...")
+            if (drawInteraction) {
+                console.log("Removing draw interaction on unmount:", drawInteraction)
                 mapStore.map.removeInteraction(drawInteraction)
+                const remainingInteractions = mapStore.map.getInteractions().getArray();
+                console.log("Remaining interactions after unmount cleanup:", remainingInteractions)
             }
-            if (vectorLayer.value && mapStore.map) {
+            if (vectorLayer.value) {
+                console.log("Removing vector layer on unmount:", vectorLayer.value)
                 mapStore.map.removeLayer(vectorLayer.value)
             }
         })
@@ -198,11 +203,35 @@ export default {
 
             try {
                 console.log("About to save AOI to project...")
-                // Don't await this - it seems to interfere with event emission
+                // Remove drawing interaction if it exists
+                if (drawInteraction) {
+                    mapStore.map.getInteractions().remove(drawInteraction);
+                    // Verify it was removed
+                    const remainingInteractions = mapStore.map.getInteractions().getArray();
+                    
+                    // Double check and force remove if still present
+                    const stillExists = remainingInteractions.includes(drawInteraction);
+                    if (stillExists) {
+                        console.log("Draw interaction still exists, forcing removal...")
+                        remainingInteractions.forEach((interaction, index) => {
+                            if (interaction instanceof Draw) {
+                                mapStore.map.getInteractions().removeAt(index);
+                            }
+                        });
+                    }
+                    
+                    drawInteraction = null
+                }
+
+                // Remove the vector layer
+                if (vectorLayer.value) {
+                    mapStore.map.removeLayer(vectorLayer.value)
+                    vectorLayer.value = null
+                }
+
                 mapStore.setProjectAOI(geojson)
                 console.log("AOI saved to project successfully")
 
-                // Emit event immediately
                 const eventData = {
                     success: true,
                     area: aoiSizeHa.value,
