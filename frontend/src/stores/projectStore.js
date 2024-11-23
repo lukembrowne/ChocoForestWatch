@@ -74,6 +74,7 @@ export const useProjectStore = defineStore('project', {
         const mapStore = useMapStore();  // Access the mapStore
         mapStore.updateTrainingLayerStyle();
         if (this.currentProject['aoi'] && mapStore.mapInitialized) {
+          console.log("Displaying AOI within loadProject")
           mapStore.displayAOI(this.currentProject.aoi)
         }
 

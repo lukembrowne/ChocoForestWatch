@@ -80,7 +80,8 @@ import { getArea } from 'ol/sphere'
 
 export default {
     name: 'AOIFloatingCard',
-    emits: ['aoiSaved', 'clearAOI'], // Declare the emits
+    emits: ['aoi-saved', 'clearAOI'],
+    
     setup(props, { emit }) { 
         const projectStore = useProjectStore()
         const mapStore = useMapStore()
@@ -90,12 +91,10 @@ export default {
         const aoiDrawn = ref(false)
         const fileInput = ref(null)
         const aoiSizeHa = ref(0)
-        const maxAoiSizeHa = ref(10000) // Maximum AOI size in ha
-
-
-        let drawInteraction
-        let vectorLayer
-        let vectorSource
+        const maxAoiSizeHa = ref(10000)
+        const vectorSource = ref(null)
+        const vectorLayer = ref(null)
+        let drawInteraction = null
 
         onMounted(() => {
             initializeVectorLayer()
@@ -105,22 +104,22 @@ export default {
             if (drawInteraction && mapStore.map) {
                 mapStore.map.removeInteraction(drawInteraction)
             }
-            if (vectorLayer && mapStore.map) {
-                mapStore.map.removeLayer(vectorLayer)
+            if (vectorLayer.value && mapStore.map) {
+                mapStore.map.removeLayer(vectorLayer.value)
             }
         })
 
         const initializeVectorLayer = () => {
             console.log("Initializing vector layer in AOIFloatingCard")
 
-            if (vectorSource) {
-                vectorSource.clear()
+            if (vectorSource.value) {
+                vectorSource.value.clear()
                 return
             }
 
-            vectorSource = new VectorSource()
-            vectorLayer = new VectorLayer({
-                source: vectorSource,
+            vectorSource.value = new VectorSource()
+            vectorLayer.value = new VectorLayer({
+                source: vectorSource.value,
                 title: "Area of Interest",
                 visible: true,
                 id: 'area-of-interest',
@@ -135,42 +134,40 @@ export default {
                     })
                 }),
             })
-            mapStore.map.addLayer(vectorLayer)
+            mapStore.map.addLayer(vectorLayer.value)
         }
 
         const startDrawingAOI = () => {
             isDrawing.value = true
 
             // Clear existing features before starting a new draw
-            vectorSource.clear()
+            if (vectorSource.value) {
+                vectorSource.value.clear()
+            }
             aoiDrawn.value = false
 
             drawInteraction = new Draw({
-                source: vectorLayer.getSource(),
+                source: vectorLayer.value.getSource(),
                 type: 'Circle',
                 geometryFunction: createBox()
             })
 
             drawInteraction.on('drawend', (event) => {
                 const feature = event.feature;
-                const area = getArea(feature.getGeometry()) / 10000; // Convert to ha
+                const area = getArea(feature.getGeometry()) / 10000;
                 console.log("Area of AOI: ", area)
                 aoiSizeHa.value = area
                 if (area > maxAoiSizeHa.value) {
-                    vectorSource.clear()
+                    vectorSource.value.clear()
                     aoiDrawn.value = false;
                     $q.notify({
                         color: 'negative',
                         message: `Drawn AOI is too large. Maximum allowed area is ${maxAoiSizeHa.value} ha`,
                         icon: 'error'
                     });
-
                 } else {
-                    console.log("Drawing finished")
-                    console.log("Feature: ", feature)
                     isDrawing.value = false;
                     aoiDrawn.value = true;
-                    vectorSource.clear()
                 }
 
                 mapStore.map.removeInteraction(drawInteraction);
@@ -180,25 +177,39 @@ export default {
         }
 
         const clearAOI = () => {
-            vectorSource.clear()
+            vectorSource.value.clear()
             aoiDrawn.value = false
             emit('clearAOI')
         }
 
         const saveAOI = async () => {
-            if (!aoiDrawn.value) return
+            if (!aoiDrawn.value) {
+                console.log("No AOI drawn, returning early")
+                return
+            }
 
-            const feature = vectorLayer.getSource().getFeatures()[0]
+            const feature = vectorLayer.value.getSource().getFeatures()[0]
+            if (!feature) {
+                console.log("No feature found in vector source")
+                return
+            }
+
             const geojson = new GeoJSON().writeFeatureObject(feature)
 
             try {
-                // Note - imagery download is handled in the background by the backend
-                console.log("Saving AOI and downloading imagery in the background")
-                await mapStore.setProjectAOI(geojson)
+                console.log("About to save AOI to project...")
+                // Don't await this - it seems to interfere with event emission
+                mapStore.setProjectAOI(geojson)
+                console.log("AOI saved to project successfully")
 
-                 // Emit an event to signal that the AOI has been saved
-                 console.log("Emitting aoiSaved event")
-                 emit('aoiSaved')
+                // Emit event immediately
+                const eventData = {
+                    success: true,
+                    area: aoiSizeHa.value,
+                    timestamp: Date.now()
+                }
+                console.log('Emitting aoi-saved event with data:', eventData)
+                emit('aoi-saved', eventData)
 
                 $q.notify({
                     color: 'positive',
@@ -207,7 +218,7 @@ export default {
                 })
 
             } catch (error) {
-                console.error('Error saving AOI:', error)
+                console.error('Error in saveAOI:', error)
                 $q.notify({
                     color: 'negative',
                     message: 'Failed to save AOI',
@@ -280,12 +291,12 @@ export default {
 
             clearAOI();
             if (features.length > 0) {
-                vectorSource.addFeature(features[0]);
+                vectorSource.value.addFeature(features[0]);
 
                 // Add area to aoiSizeHa
                 aoiSizeHa.value = getArea(features[0].getGeometry()) / 10000;
 
-                const extent = vectorSource.getExtent();
+                const extent = vectorSource.value.getExtent();
                 mapStore.map.getView().fit(extent, { padding: [50, 50, 50, 50] });
 
                 if (aoiSizeHa.value > maxAoiSizeHa.value) {

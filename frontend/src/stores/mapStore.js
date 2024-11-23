@@ -209,6 +209,7 @@ export const useMapStore = defineStore('map', () => {
 
       const response = await api.setProjectAOI(projectStore.currentProject.id, aoiGeojson, aoiExtentLatLon, availableDates.value);
       projectStore.currentProject.aoi = response.data.aoi;
+      console.log("Project AOI set to: ", projectStore.currentProject.aoi)
       return response.data;
     } catch (error) {
       console.error('Error setting project AOI:', error);

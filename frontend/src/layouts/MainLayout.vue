@@ -55,7 +55,7 @@
             />
             <AOIFloatingCard 
               v-if="showAOICard" 
-              @aoiSaved="handleAOISaved" 
+              @aoi-saved="handleAOISaved"
             />
             <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
             <LandCoverAnalysis v-if="showLandCoverAnalysis" />
@@ -73,7 +73,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
@@ -87,6 +87,7 @@ import DeforestationAnalysis from 'components/analysis/DeforestationAnalysis.vue
 import HotspotVerification from 'components/analysis/HotspotVerification.vue'
 import { useRouter } from 'vue-router'
 import authService from '../services/auth'
+import { GeoJSON } from 'ol/format'
 
 
 export default {
@@ -239,37 +240,58 @@ export default {
       }
     }
 
-    const handleAOISaved = (eventData) => {
-      console.log('AOI saved event received in MainLayout', eventData)
-      
-      // Hide AOI card
-      showAOICard.value = false
-      
-      // Show training manager
-      showTrainingAndPolygonManager.value = true
-      currentSection.value = 'Train Model'
-      
-      // Set default basemap
-      mapStore.updateBasemap('2022-01')
-      
-      // Load training polygons for the current date
-      mapStore.loadTrainingPolygonsForDate('2022-01')
-      
-      $q.notify({
-        message: 'AOI saved successfully. You can now start training your model.',
-        color: 'positive',
-        icon: 'check',
-        timeout: 3000
-      })
-    }
 
-    watch(() => projectStore.currentProject?.aoi, (newAOI) => {
-      if (newAOI) {
+    const handleAOISaved = async (eventData) => {
+      console.log('AOI saved event received in MainLayout with data:', eventData)
+      
+      try {
+        // Hide AOI card first
         showAOICard.value = false
+        
+        // Wait a tick for UI update
+        await nextTick()
+        
+        // Show training manager
         showTrainingAndPolygonManager.value = true
         currentSection.value = 'Train Model'
+        
+        // Wait for project AOI to be available
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Set initial basemap date and zoom to AOI
+        const initialDate = '2022-01'
+        await Promise.all([
+          mapStore.updateBasemap(initialDate),
+          mapStore.loadTrainingPolygonsForDate(initialDate),
+          mapStore.displayAOI(projectStore.currentProject.aoi)
+        ])
+        
+        // Zoom to AOI extent
+        if (projectStore.currentProject?.aoi) {
+          const aoiFeature = new GeoJSON().readFeature(projectStore.currentProject.aoi)
+          const extent = aoiFeature.getGeometry().getExtent()
+          mapStore.map.getView().fit(extent, { 
+            padding: [50, 50, 50, 50],
+            duration: 1000
+          })
+        }
+        
+        $q.notify({
+          message: 'AOI saved successfully. You can now start training your model.',
+          color: 'positive',
+          icon: 'check',
+          timeout: 3000
+        })
+      } catch (error) {
+        console.error('Error in handleAOISaved:', error)
+        $q.notify({
+          message: 'Error transitioning to training mode',
+          color: 'negative',
+          icon: 'error'
+        })
       }
-    })
+    }
+
 
     const handleUserSettings = () => {
       $q.notify({
