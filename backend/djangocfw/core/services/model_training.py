@@ -520,7 +520,7 @@ class ModelTrainingService:
     def _generate_single_prediction(self, date, prediction_service, aoi_geojson):
         """Helper method to generate prediction for a single date"""
         try:
-            prediction_name = f"Prediction_{date}"
+            prediction_name = f"Landcover_{date}"
             return prediction_service.generate_prediction(
                 aoi_geojson,
                 date,

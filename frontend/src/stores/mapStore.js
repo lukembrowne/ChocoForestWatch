@@ -219,7 +219,7 @@ export const useMapStore = defineStore('map', () => {
     if (map.value) {
       const layersToRemove = map.value.getLayers().getArray().filter(layer => {
         const layerId = layer.get('id');
-        return layerId && layerId.startsWith('prediction-');
+        return layerId && layerId.startsWith('landcover-');
       });
       layersToRemove.forEach(layer => map.value.removeLayer(layer));
       updateLayers();
@@ -392,7 +392,7 @@ export const useMapStore = defineStore('map', () => {
 
 
   // Display predictions or deforesation maps
-  const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'prediction', mapId = null) => {
+  const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'landcover', mapId = null) => {
     console.log(`Displaying ${mode} on map:`, mapId);
     try {
       const tiff = await fromUrl(predictionFilePath);
@@ -412,7 +412,7 @@ export const useMapStore = defineStore('map', () => {
       let colorMapping;
       const noDataValue = 255;
 
-      if (mode === 'prediction') {
+      if (mode === 'landcover') {
         const project = projectStore.currentProject;
         colorMapping = project.classes.reduce((acc, cls) => {
           acc[cls.name] = cls.color;
@@ -438,7 +438,7 @@ export const useMapStore = defineStore('map', () => {
           continue;
         }
 
-        if (mode === 'prediction') {
+        if (mode === 'landcover') {
           color = colorMapping[projectStore.currentProject.classes[value].name];
         } else {
           color = colorMapping[value];

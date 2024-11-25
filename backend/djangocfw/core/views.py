@@ -468,6 +468,7 @@ def change_analysis(request):
             prediction2_id=data['prediction2_id'],
             aoi_shape=data['aoi_shape']
         )
+
         return Response(results)
     except Exception as e:
         return Response({'error': str(e)}, status=400)

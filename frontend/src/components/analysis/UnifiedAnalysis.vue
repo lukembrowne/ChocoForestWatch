@@ -814,8 +814,8 @@ export default {
             features: new GeoJSON().readFeatures(hotspotsGeoJSON)
           }),
           style: getHotspotStyle,
-          title: `hotspots-${mapId}`,
-          id: `hotspots-${mapId}`,
+          title: `Deforestation Alerts`,
+          id: `alerts`,
           zIndex: 2
         });
 
@@ -924,13 +924,13 @@ export default {
         });
 
         // Make sure we have a valid deforestation map from the results
-        if (!results.data?.id) {
+        if (!results.data?.deforestation_prediction_id) {
           throw new Error('Change analysis did not return a valid deforestation map ID');
         }
 
         // Store the deforestation map
         selectedDeforestationMap.value = {
-          id: results.data.id,
+          id: results.data.deforestation_prediction_id,
           name: `Deforestation ${startDate.value.label} to ${endDate.value.label}`,
           summary_statistics: {
             prediction1_date: startDate.value.value,
@@ -950,6 +950,9 @@ export default {
 
         // Display the hotspots on the maps
         await displayHotspots();
+
+        // Reload the existing analysis list
+        await loadInitialData();
 
         $q.notify({
           color: 'positive',
@@ -981,7 +984,7 @@ export default {
           mapLayers.forEach(layer => {
             const layerId = layer.get('id');
             // Only remove prediction and planet basemap layers
-            if (layerId?.includes('prediction-') || layerId === 'planet-basemap') {
+            if (layerId?.includes('landcover-') || layerId === 'planet-basemap') {
               mapStore.maps[mapId].removeLayer(layer);
             }
           });
@@ -997,9 +1000,9 @@ export default {
           console.log(`Adding land cover prediction for ${mapId}:`, prediction.name);
           await mapStore.displayPrediction(
             prediction.file,
-            `prediction-${prediction.id}`,
+            `landcover-${prediction.id}`,
             prediction.name,
-            'prediction',
+            'landcover',
             mapId
           );
 
@@ -1007,7 +1010,7 @@ export default {
           const layers = mapStore.maps[mapId].getLayers().getArray();
           layers.forEach(layer => {
             const layerId = layer.get('id');
-            if (layerId?.includes('prediction-')) {
+            if (layerId?.includes('landcover-')) {
               layer.setZIndex(3); // Prediction layer on top
             } else if (layerId === 'planet-basemap') {
               layer.setZIndex(1); // Basemap in middle
@@ -1080,9 +1083,9 @@ export default {
         if (pred1) {
           await mapStore.displayPrediction(
             pred1.file,
-            `prediction-${pred1.id}`,
+            `landcover-${pred1.id}`,
             pred1.name,
-            'prediction',
+            'landcover',
             'primary'
           );
         }
@@ -1090,21 +1093,21 @@ export default {
         if (pred2) {
           await mapStore.displayPrediction(
             pred2.file,
-            `prediction-${pred2.id}`,
+            `landcover-${pred2.id}`,
             pred2.name,
-            'prediction',
+            'landcover',
             'secondary'
           );
         }
 
         // Make prediction layers invisible by default
         mapStore.maps.primary.getLayers().forEach(layer => {
-          if (layer.get('id')?.includes('prediction-')) {
+          if (layer.get('id')?.includes('landcover-')) {
             layer.setVisible(false);
           }
         });
         mapStore.maps.secondary.getLayers().forEach(layer => {
-          if (layer.get('id')?.includes('prediction-')) {
+          if (layer.get('id')?.includes('landcover-')) {
             layer.setVisible(false);
           }
         });

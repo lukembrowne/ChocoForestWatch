@@ -244,6 +244,7 @@ def analyze_change(prediction1_id, prediction2_id, aoi_shape):
             deforestation_prediction.summary_statistics = results
             deforestation_prediction.save()
 
+        # Add deforestation prediction ID to results
         results["deforestation_prediction_id"] = deforestation_prediction.id
         
         # Clean up temporary file

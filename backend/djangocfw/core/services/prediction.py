@@ -332,7 +332,7 @@ class PredictionService:
                 
                 # Save new file
                 prediction.file.save(
-                    f"prediction_{uuid.uuid4().hex}.tif",
+                    f"landcover_{uuid.uuid4().hex}.tif",
                     ContentFile(file_content),
                     save=False  # Don't save the model yet
                 )
@@ -352,7 +352,7 @@ class PredictionService:
                 
                 # Save the prediction file
                 prediction.file.save(
-                    f"prediction_{uuid.uuid4().hex}.tif",
+                    f"landcover_{uuid.uuid4().hex}.tif",
                     ContentFile(file_content)
                 )
             

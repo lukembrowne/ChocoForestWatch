@@ -24,7 +24,7 @@ class PredictionStorage(FileSystemStorage):
         Returns a filename that's suitable for use with the underlying storage system.
         """
         name = super().get_valid_name(name)
-        return f"prediction_{name}"
+        return name
 
 class PlanetQuadStorage(FileSystemStorage):
     def __init__(self):
