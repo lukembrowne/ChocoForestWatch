@@ -47,8 +47,8 @@
     <q-page-container class="q-pa-none">
       <q-page class="relative-position">
         <div class="z-layers">
-          <div id="map" class="map-container" :class="{ 'with-sidebar': showAnyPanel || showAOICard }"></div>
-          <div class="sidebar-container" v-if="showAnyPanel || showAOICard">
+          <div id="map" class="map-container" :class="{ 'with-sidebar': showAnyPanel || showAOICard }" v-if="!showUnifiedAnalysis"></div>
+          <div class="sidebar-container" v-if="(showAnyPanel || showAOICard) && !showUnifiedAnalysis">
             <ProjectSelection 
               v-if="showProjectSelection" 
               @project-selected="selectProject"
@@ -58,14 +58,12 @@
               @aoi-saved="handleAOISaved"
             />
             <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
-            <LandCoverAnalysis v-if="showLandCoverAnalysis" />
-            <DeforestationAnalysis v-if="showDeforestationAnalysis" />
-            <HotspotVerification v-if="showHotspotVerification" />
           </div>
+          <UnifiedAnalysis v-if="showUnifiedAnalysis" />
           <div class="floating-elements">
-            <BasemapDateSlider v-if="!showAOICard && !showHotspotVerification" class="date-slider" />
+            <BasemapDateSlider v-if="!showAOICard && !showUnifiedAnalysis" class="date-slider" />
           </div>
-          <custom-layer-switcher v-if="!showHotspotVerification" />
+          <custom-layer-switcher v-if="!showUnifiedAnalysis" />
         </div>
       </q-page>
     </q-page-container>
@@ -85,6 +83,7 @@ import BasemapDateSlider from 'components/BasemapDateSlider.vue'
 import LandCoverAnalysis from 'components/analysis/LandCoverAnalysis.vue'
 import DeforestationAnalysis from 'components/analysis/DeforestationAnalysis.vue'
 import HotspotVerification from 'components/analysis/HotspotVerification.vue'
+import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
 import { useRouter } from 'vue-router'
 import authService from '../services/auth'
 import { GeoJSON } from 'ol/format'
@@ -97,10 +96,8 @@ export default {
     CustomLayerSwitcher,
     AOIFloatingCard,
     BasemapDateSlider,
-    LandCoverAnalysis,
-    DeforestationAnalysis,
-    HotspotVerification,
-    ProjectSelection
+    ProjectSelection,
+    UnifiedAnalysis
   },
   setup() {
     const $q = useQuasar()
@@ -114,9 +111,11 @@ export default {
     const showDeforestationAnalysis = ref(false)
     const showHotspotVerification = ref(false)
     const showProjectSelection = ref(false)
+    const showUnifiedAnalysis = ref(false)
     const sections = [
       { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
       { name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager, tooltip: 'Train Model' },
+      { name: 'Analysis', icon: 'analytics', component: UnifiedAnalysis, tooltip: 'Analyze and verify' },
       { name: 'Land Cover', icon: 'analytics', component: LandCoverAnalysis, tooltip: 'Predict and analyze land cover' },
       { name: 'Deforestation', icon: 'forest', component: DeforestationAnalysis, tooltip: 'Analyze deforestation' },
       { name: 'Verify Hotspots', icon: 'fact_check', component: HotspotVerification, tooltip: 'Verify deforestation hotspots' }
@@ -133,6 +132,7 @@ export default {
     const showAnyPanel = computed(() => 
       showProjectSelection.value || 
       showTrainingAndPolygonManager.value || 
+      showUnifiedAnalysis.value || 
       showLandCoverAnalysis.value || 
       showDeforestationAnalysis.value || 
       showHotspotVerification.value
@@ -164,44 +164,26 @@ export default {
     })
 
     const handleSectionClick = async (section) => {
-      // if (currentSection.value === 'Train Model') {
-      //   await promptSaveChanges();
-      // }
-      
-      console.log("Clicked section: ", section)
+      // Reset all show flags
+      showProjectSelection.value = false;
+      showTrainingAndPolygonManager.value = false;
+      showUnifiedAnalysis.value = false;
+      showLandCoverAnalysis.value = false;
+      showDeforestationAnalysis.value = false;
+      showHotspotVerification.value = false;
+
       if (section.name === 'projects') {
-        showProjectSelection.value = true
-        showTrainingAndPolygonManager.value = false
-        showLandCoverAnalysis.value = false
-        showDeforestationAnalysis.value = false
-        showHotspotVerification.value = false
-      } else {
-        showProjectSelection.value = false
-        currentSection.value = section.name
-      }
-
-      if (section.name === 'Train Model') {
-        showTrainingAndPolygonManager.value = true
-      } else {
-        showTrainingAndPolygonManager.value = false
-      }
-
-      if (section.name === 'Land Cover') {
-        showLandCoverAnalysis.value = true
-      } else {
-        showLandCoverAnalysis.value = false
-      }
-
-      if (section.name === 'Deforestation') {
-        showDeforestationAnalysis.value = true
-      } else {
-        showDeforestationAnalysis.value = false
-      }
-
-      if (section.name === 'Verify Hotspots') {
-        showHotspotVerification.value = true
-      } else {
-        showHotspotVerification.value = false
+        showProjectSelection.value = true;
+      } else if (section.name === 'Train Model') {
+        showTrainingAndPolygonManager.value = true;
+      } else if (section.name === 'Analysis') {
+        showUnifiedAnalysis.value = true;
+      } else if (section.name === 'Land Cover') {
+        showLandCoverAnalysis.value = true;
+      } else if (section.name === 'Deforestation') {
+        showDeforestationAnalysis.value = true;
+      } else if (section.name === 'Verify Hotspots') {
+        showHotspotVerification.value = true;
       }
     }
 
@@ -336,7 +318,8 @@ export default {
       handleLogout,
       showProjectSelection,
       selectProject,
-      showAnyPanel
+      showAnyPanel,
+      showUnifiedAnalysis
     }
   }
 }

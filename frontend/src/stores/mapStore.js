@@ -11,7 +11,7 @@ import { Style, Fill, Stroke } from 'ol/style'
 import XYZ from 'ol/source/XYZ';
 import { useProjectStore } from './projectStore';
 
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, nextTick } from 'vue';
 import { Draw, Modify, Select } from 'ol/interaction';
 import { DragPan, DragZoom } from 'ol/interaction';
 import { click } from 'ol/events/condition';
@@ -341,10 +341,9 @@ export const useMapStore = defineStore('map', () => {
 
 
   // Display predictions or deforesation maps
-  const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'prediction') => {
-    console.log(`Displaying ${mode}:`, predictionFilePath);
+  const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'prediction', mapId = null) => {
+    console.log(`Displaying ${mode} on map:`, mapId);
     try {
-      // Use the predictionFilePath directly since it's now a complete URL
       const tiff = await fromUrl(predictionFilePath);
       const image = await tiff.getImage();
       const width = image.getWidth();
@@ -352,17 +351,15 @@ export const useMapStore = defineStore('map', () => {
       const bbox = image.getBoundingBox();
 
       const rasterData = await image.readRasters();
-
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const context = canvas.getContext('2d');
-
       const imageData = context.createImageData(width, height);
       const data = imageData.data;
 
       let colorMapping;
-      const noDataValue = 255; // Assuming 255 is the 'no data' value
+      const noDataValue = 255;
 
       if (mode === 'prediction') {
         const project = projectStore.currentProject;
@@ -372,9 +369,9 @@ export const useMapStore = defineStore('map', () => {
         }, {});
       } else if (mode === 'deforestation') {
         colorMapping = {
-          0: '#00FF00',  // Green for no deforestation
-          1: '#FF0000',  // Red for deforestation
-          [noDataValue]: '#808080' // Grey for no data
+          0: '#00FF00',
+          1: '#FF0000',
+          [noDataValue]: '#808080'
         };
       }
 
@@ -383,11 +380,10 @@ export const useMapStore = defineStore('map', () => {
         let color;
 
         if (value === noDataValue) {
-          // Set transparent color for 'no data' pixels
           data[i * 4] = 0;
           data[i * 4 + 1] = 0;
           data[i * 4 + 2] = 0;
-          data[i * 4 + 3] = 0; // Fully transparent
+          data[i * 4 + 3] = 0;
           continue;
         }
 
@@ -419,9 +415,13 @@ export const useMapStore = defineStore('map', () => {
         opacity: 0.7
       });
 
-      // Insert at index 0 to make sure the new layer is above the AOI layer
-      // map.value.getLayers().insertAt(0, newLayer);
-      map.value.addLayer(newLayer);
+      // Handle layer addition based on map type
+      if (mapId && maps.value[mapId]) {
+        // Add to specific dual map
+        maps.value[mapId].addLayer(newLayer);
+      } else if (map.value) {
+        // Add to single map
+        map.value.addLayer(newLayer);
 
 
       // Get current number of layers
@@ -431,7 +431,7 @@ export const useMapStore = defineStore('map', () => {
       // This takes the last layer and moves it to the top
       // Need to do numLayers - 1 because of 0 based indexing
       reorderLayers(numLayers - 1, 0) // This also updates the layers
-
+      }
     } catch (error) {
       console.error(`Error displaying ${mode}:`, error);
       throw new Error(`Failed to display ${mode}: ` + error.message);
@@ -1118,6 +1118,122 @@ export const useMapStore = defineStore('map', () => {
   // Getters
   const getMap = computed(() => map.value);
 
+  // Add to existing state
+  const maps = ref({
+    primary: null,
+    secondary: null
+  });
+
+  // Add new methods
+  const initDualMaps = (primaryTarget, secondaryTarget) => {
+    console.log('Initializing dual maps');
+    console.log('Primary target:', primaryTarget);
+    console.log('Secondary target:', secondaryTarget);
+
+    nextTick(() => {
+      // Create maps
+      maps.value.primary = new Map({
+        target: primaryTarget,
+        layers: [
+          new TileLayer({
+            source: new OSM(),
+            name: 'baseMap',
+            title: 'OpenStreetMap',
+            visible: true,
+            id: 'osm',
+            zIndex: 0
+          })
+        ],
+        view: new View({
+          center: fromLonLat([-79.81822466589962, 0.460628082970743]),
+          zoom: 12
+        })
+      });
+
+      maps.value.secondary = new Map({
+        target: secondaryTarget,
+        layers: [
+          new TileLayer({
+            source: new OSM(),
+            name: 'baseMap',
+            title: 'OpenStreetMap',
+            visible: true,
+            id: 'osm',
+            zIndex: 0
+          })
+        ],
+        view: new View({
+          center: fromLonLat([-79.81822466589962, 0.460628082970743]),
+          zoom: 12
+        })
+      });
+
+      // Force a redraw
+      maps.value.primary.updateSize();
+      maps.value.secondary.updateSize();
+
+      // // Sync map movements
+      const primaryView = maps.value.primary.getView();
+      const secondaryView = maps.value.secondary.getView();
+
+      // // Sync center changes
+      primaryView.on('change:center', () => {
+        secondaryView.setCenter(primaryView.getCenter());
+      });
+      secondaryView.on('change:center', () => {
+        primaryView.setCenter(secondaryView.getCenter());
+      });
+
+      // Sync zoom changes
+      primaryView.on('change:resolution', () => {
+        secondaryView.setResolution(primaryView.getResolution());
+      });
+      secondaryView.on('change:resolution', () => {
+        primaryView.setResolution(secondaryView.getResolution());
+      });
+
+      // Sync rotation changes
+      primaryView.on('change:rotation', () => {
+        secondaryView.setRotation(primaryView.getRotation());
+      });
+      secondaryView.on('change:rotation', () => {
+        primaryView.setRotation(secondaryView.getRotation());
+      });
+    });
+  };
+
+  // Add methods for managing layers on dual maps
+  const addLayerToDualMaps = (layer, mapId) => {
+    if (mapId === 'primary') {
+      maps.value.primary.addLayer(layer);
+    } else if (mapId === 'secondary') {
+      maps.value.secondary.addLayer(layer);
+    } else {
+      // Add to both maps
+      maps.value.primary.addLayer(layer.clone());
+      maps.value.secondary.addLayer(layer.clone());
+    }
+    updateLayers();
+  };
+
+  const removeLayerFromDualMaps = (layerId, mapId) => {
+    if (mapId === 'primary') {
+      const layer = maps.value.primary.getLayers().getArray().find(l => l.get('id') === layerId);
+      if (layer) maps.value.primary.removeLayer(layer);
+    } else if (mapId === 'secondary') {
+      const layer = maps.value.secondary.getLayers().getArray().find(l => l.get('id') === layerId);
+      if (layer) maps.value.secondary.removeLayer(layer);
+    } else {
+      // Remove from both maps
+      ['primary', 'secondary'].forEach(id => {
+        const map = maps.value[id];
+        const layer = map.getLayers().getArray().find(l => l.get('id') === layerId);
+        if (layer) map.removeLayer(layer);
+      });
+    }
+    updateLayers();
+  };
+
   return {
     // State
     aoi,
@@ -1185,5 +1301,9 @@ export const useMapStore = defineStore('map', () => {
     createAOILayer,
     // Getters
     getMap,
+    maps,
+    initDualMaps,
+    addLayerToDualMaps,
+    removeLayerFromDualMaps,
   };
 });
