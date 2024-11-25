@@ -133,22 +133,59 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
-  const updateLayerOpacity = (layerId, opacity) => {
-    if (map.value) {
-      const layer = map.value.getLayers().getArray().find(layer => layer.get('id') === layerId);
+  const updateLayerOpacity = (layerId, opacity, mapId = null) => {
+    if (mapId && maps.value[mapId]) {
+      // Dual map mode
+      const layer = maps.value[mapId].getLayers().getArray().find(l => l.get('id') === layerId);
       if (layer) {
         layer.setOpacity(opacity);
-        // Update the layers array to reflect the new opacity
-        const layerIndex = layers.value.findIndex(l => l.id === layerId);
-        if (layerIndex !== -1) {
-          layers.value[layerIndex].opacity = opacity;
-        }
+      }
+    } else if (map.value) {
+      // Single map mode
+      const layer = map.value.getLayers().getArray().find(l => l.get('id') === layerId);
+      if (layer) {
+        layer.setOpacity(opacity);
       }
     }
+    updateLayers();
   };
 
   const updateLayers = () => {
-    if (map.value) {
+    if (maps.value.primary || maps.value.secondary) {
+      // Dual map mode
+      const allLayers = [];
+      
+      if (maps.value.primary) {
+        const primaryLayers = maps.value.primary.getLayers().getArray()
+          .map(layer => ({
+            id: layer.get('id'),
+            title: layer.get('title'),
+            zIndex: layer.getZIndex(),
+            visible: layer.getVisible(),
+            opacity: layer.getOpacity(),
+            showOpacity: false,
+            mapId: 'primary'
+          }));
+        allLayers.push(...primaryLayers);
+      }
+      
+      if (maps.value.secondary) {
+        const secondaryLayers = maps.value.secondary.getLayers().getArray()
+          .map(layer => ({
+            id: layer.get('id'),
+            title: layer.get('title'),
+            zIndex: layer.getZIndex(),
+            visible: layer.getVisible(),
+            opacity: layer.getOpacity(),
+            showOpacity: false,
+            mapId: 'secondary'
+          }));
+        allLayers.push(...secondaryLayers);
+      }
+      
+      layers.value = allLayers.sort((a, b) => b.zIndex - a.zIndex);
+    } else if (map.value) {
+      // Single map mode - existing behavior
       layers.value = map.value.getLayers().getArray()
         .map(layer => ({
           id: layer.get('id'),
@@ -156,21 +193,26 @@ export const useMapStore = defineStore('map', () => {
           zIndex: layer.getZIndex(),
           visible: layer.getVisible(),
           opacity: layer.getOpacity(),
-          showOpacity: false,
-          layer: layer
-        }))
-
+          showOpacity: false
+        }));
     }
   };
 
-  const removeLayer = (layerId) => {
-    if (map.value) {
-      const layerToRemove = map.value.getLayers().getArray().find(layer => layer.get('id') === layerId);
-      if (layerToRemove) {
-        map.value.removeLayer(layerToRemove);
-        updateLayers();
+  const removeLayer = (layerId, mapId = null) => {
+    if (mapId && maps.value[mapId]) {
+      // Dual map mode
+      const layer = maps.value[mapId].getLayers().getArray().find(l => l.get('id') === layerId);
+      if (layer) {
+        maps.value[mapId].removeLayer(layer);
+      }
+    } else if (map.value) {
+      // Single map mode
+      const layer = map.value.getLayers().getArray().find(l => l.get('id') === layerId);
+      if (layer) {
+        map.value.removeLayer(layer);
       }
     }
+    updateLayers();
   };
 
   const clearPredictionLayers = () => {
@@ -185,12 +227,21 @@ export const useMapStore = defineStore('map', () => {
   };
 
 
-  const toggleLayerVisibility = (layerId) => {
-    const layer = layers.value.find(l => l.id === layerId);
-    if (layer) {
-      layer.layer.setVisible(!layer.layer.getVisible());
-      updateLayers();
+  const toggleLayerVisibility = (layerId, mapId = null) => {
+    if (mapId && maps.value[mapId]) {
+      // Dual map mode
+      const layer = maps.value[mapId].getLayers().getArray().find(l => l.get('id') === layerId);
+      if (layer) {
+        layer.setVisible(!layer.getVisible());
+      }
+    } else if (map.value) {
+      // Single map mode
+      const layer = map.value.getLayers().getArray().find(l => l.get('id') === layerId);
+      if (layer) {
+        layer.setVisible(!layer.getVisible());
+      }
     }
+    updateLayers();
   };
 
   const setProjectAOI = async (aoiGeojson) => {
@@ -1025,22 +1076,27 @@ export const useMapStore = defineStore('map', () => {
     hasUnsavedChanges.value = true;
   };
 
-  const reorderLayers = (fromIndex, toIndex) => {
-    if (fromIndex === toIndex) return;
+  const reorderLayers = (fromIndex, toIndex, mapId = null) => {
+    if (mapId && maps.value[mapId]) {
+      // Dual map mode
+      const layerArray = maps.value[mapId].getLayers().getArray();
+      const [movedLayer] = layerArray.splice(fromIndex, 1);
+      layerArray.splice(toIndex, 0, movedLayer);
 
-    const layerArray = map.value.getLayers().getArray();
+      // Update z-index for all layers
+      layerArray.forEach((layer, index) => {
+        layer.setZIndex(layerArray.length - index);
+      });
+    } else if (map.value) {
+      // Single map mode - existing behavior
+      const layerArray = map.value.getLayers().getArray();
+      const [movedLayer] = layerArray.splice(fromIndex, 1);
+      layerArray.splice(toIndex, 0, movedLayer);
 
-    // console.log("layerArray within reorderLayers:", layerArray);
-
-    const [movedLayer] = layerArray.splice(fromIndex, 1);
-    layerArray.splice(toIndex, 0, movedLayer);
-
-    // Update z-index for all layers
-    layerArray.forEach((layer, index) => {
-      // console.log("Setting z-index for layer:", layer.get('id'), "to", layerArray.length - index);
-      layer.setZIndex(layerArray.length - index);
-    });
-
+      layerArray.forEach((layer, index) => {
+        layer.setZIndex(layerArray.length - index);
+      });
+    }
     updateLayers();
   };
 

@@ -115,10 +115,7 @@ export default {
     const sections = [
       { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
       { name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager, tooltip: 'Train Model' },
-      { name: 'Analysis', icon: 'analytics', component: UnifiedAnalysis, tooltip: 'Analyze and verify' },
-      { name: 'Land Cover', icon: 'analytics', component: LandCoverAnalysis, tooltip: 'Predict and analyze land cover' },
-      { name: 'Deforestation', icon: 'forest', component: DeforestationAnalysis, tooltip: 'Analyze deforestation' },
-      { name: 'Verify Hotspots', icon: 'fact_check', component: HotspotVerification, tooltip: 'Verify deforestation hotspots' }
+      { name: 'Analysis', icon: 'analytics', component: UnifiedAnalysis, tooltip: 'Analyze and verify' }
     ]
 
     const sidebarWidth = computed(() => isExpanded.value ? 300 : 60)

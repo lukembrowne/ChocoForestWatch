@@ -159,10 +159,12 @@
         <div class="map-container">
           <div ref="primaryMap" class="comparison-map"></div>
           <div class="map-label">{{ getPrimaryMapLabel }}</div>
+          <CustomLayerSwitcher mapId="primary" />
         </div>
         <div class="map-container">
           <div ref="secondaryMap" class="comparison-map"></div>
           <div class="map-label">{{ getSecondaryMapLabel }}</div>
+          <CustomLayerSwitcher mapId="secondary" />
         </div>
       </div>
     </div>
@@ -276,9 +278,13 @@ import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import { Style, Fill, Stroke } from 'ol/style';
 import { useRouter } from 'vue-router';
+import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue';
 
 export default {
   name: 'UnifiedAnalysis',
+  components: {
+    CustomLayerSwitcher
+  },
 
   setup() {
     const mapStore = useMapStore();
