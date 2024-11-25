@@ -382,25 +382,34 @@
         <div class="row q-col-gutter-md">
           <!-- Before -->
           <div class="col-6">
-            <q-card class="land-cover-stats">
+            <q-card class="land-cover-stats shadow-2">
               <q-card-section>
                 <div class="text-h6 q-mb-md">{{ formatDate(selectedDeforestationMap.summary_statistics.prediction1_date) }}</div>
                 <div class="row q-col-gutter-md">
                   <div class="col-6">
                     <div class="text-subtitle2">Forest</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.before_forest_percentage?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time1?.Forest?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time1_ha?.Forest?.toFixed(1) || 'NaN' }} ha</div>
                   </div>
                   <div class="col-6">
                     <div class="text-subtitle2">Non-Forest</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.before_nonforest_percentage?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time1?.['Non-Forest']?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time1_ha?.['Non-Forest']?.toFixed(1) || 'NaN' }} ha</div>
                   </div>
                   <div class="col-6">
                     <div class="text-subtitle2">Water</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.before_water_percentage?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time1?.Water?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time1_ha?.Water?.toFixed(1) || 'NaN' }} ha</div>
                   </div>
                   <div class="col-6">
                     <div class="text-subtitle2">Cloud</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.before_cloud_percentage?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time1?.Cloud?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time1_ha?.Cloud?.toFixed(1) || 'NaN' }} ha</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-subtitle2">Shadow</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time1?.Shadow?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time1_ha?.Shadow?.toFixed(1) || 'NaN' }} ha</div>
                   </div>
                 </div>
               </q-card-section>
@@ -409,25 +418,34 @@
 
           <!-- After -->
           <div class="col-6">
-            <q-card class="land-cover-stats">
+            <q-card class="land-cover-stats shadow-2">
               <q-card-section>
                 <div class="text-h6 q-mb-md">{{ formatDate(selectedDeforestationMap.summary_statistics.prediction2_date) }}</div>
                 <div class="row q-col-gutter-md">
                   <div class="col-6">
                     <div class="text-subtitle2">Forest</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.after_forest_percentage?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time2?.Forest?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time2_ha?.Forest?.toFixed(1) || 'NaN' }} ha</div>
                   </div>
                   <div class="col-6">
                     <div class="text-subtitle2">Non-Forest</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.after_nonforest_percentage?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time2?.['Non-Forest']?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time2_ha?.['Non-Forest']?.toFixed(1) || 'NaN' }} ha</div>
                   </div>
                   <div class="col-6">
                     <div class="text-subtitle2">Water</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.after_water_percentage?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time2?.Water?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time2_ha?.Water?.toFixed(1) || 'NaN' }} ha</div>
                   </div>
                   <div class="col-6">
                     <div class="text-subtitle2">Cloud</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.after_cloud_percentage?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time2?.Cloud?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time2_ha?.Cloud?.toFixed(1) || 'NaN' }} ha</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-subtitle2">Shadow</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time2?.Shadow?.toFixed(1) || 'NaN' }}%</div>
+                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time2_ha?.Shadow?.toFixed(1) || 'NaN' }} ha</div>
                   </div>
                 </div>
               </q-card-section>
@@ -1877,5 +1895,14 @@ export default {
   &.unsure {
     background: rgba(255, 193, 7, 0.1);
   }
+}
+
+.stats-dialog {
+  width: 90vw;
+  max-width: 1200px;
+}
+
+.land-cover-stats {
+  height: 100%;
 }
 </style> 
