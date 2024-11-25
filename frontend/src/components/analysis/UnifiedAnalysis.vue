@@ -261,17 +261,6 @@
     </div>
   </div>
 
-  <!-- Add after the q-tab-panels -->
-  <q-btn
-    v-if="activeTab !== 'verification'"
-    fab
-    color="primary"
-    icon="analytics"
-    class="stats-button"
-    @click="showStats = true"
-  >
-    <q-tooltip>View Statistics</q-tooltip>
-  </q-btn>
 
   <!-- Add at the end of the template, before closing div -->
   <q-dialog v-model="showStats">
@@ -401,18 +390,6 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
-
-  <!-- Add to template near the map controls -->
-  <q-btn
-    flat
-    round
-    size="sm"
-    icon="refresh"
-    class="map-refresh-button"
-    @click="refreshMaps"
-  >
-    <q-tooltip>Refresh Maps</q-tooltip>
-  </q-btn>
 </template>
 
 <script>
@@ -1414,13 +1391,6 @@ export default {
       });
     };
 
-    const refreshMaps = () => {
-      clearMapLayers();
-      if (selectedDeforestationMap.value) {
-        loadExistingAnalysis(selectedDeforestationMap.value);
-      }
-    };
-
     // Add these computed properties in setup()
     const getStatsTitle = computed(() => {
       if (!selectedDeforestationMap.value) return 'Analysis Statistics';
@@ -1605,7 +1575,6 @@ export default {
       scrollArea,
       navigateHotspots,
       setupKeyboardShortcuts,
-      refreshMaps,
       getStatsTitle,
       getStatsSubtitle,
       deforestationStats,
