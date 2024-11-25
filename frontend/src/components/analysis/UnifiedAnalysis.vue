@@ -3,10 +3,13 @@
     <!-- Left Panel - Analysis Controls -->
     <div class="analysis-controls-container">
       <q-card class="analysis-card">
-        <q-card-section>
+        <q-card-section class="analysis-header">
           <div class="text-h6">Deforestation Analysis</div>
-          
-          <!-- Existing Analyses Section - Moved to top -->
+        </q-card-section>
+
+        <!-- Wrap the scrollable content -->
+        <q-card-section class="analysis-content">
+          <!-- Existing Analyses Section -->
           <div class="section q-mb-md">
             <div class="text-subtitle2 q-mb-sm">Existing Analyses</div>
             <q-scroll-area style="height: 150px" v-if="deforestationMaps.length">
@@ -49,7 +52,7 @@
             </div>
           </div>
 
-          <!-- Date Selection Section -->
+          <!-- New Analysis Section -->
           <div class="section q-mb-md">
             <div class="text-subtitle2 q-mb-sm">New Analysis</div>
             <div class="row q-col-gutter-md">
@@ -77,16 +80,47 @@
             </div>
           </div>
 
-          <!-- Hotspots List (shows up after analysis selection) -->
+          <!-- Hotspots Section -->
           <div class="section" v-if="hotspots?.length">
-            <div class="text-subtitle2 q-mb-sm">
-              Detected Hotspots
-              <q-badge color="primary" class="q-ml-sm">
-                {{ hotspots.length }} hotspots
-              </q-badge>
+            <div class="row items-center justify-between q-mb-sm">
+              <div class="text-subtitle2">
+                Detected Hotspots
+                <q-badge color="primary" class="q-ml-sm">
+                  {{ hotspots.length }} hotspots
+                </q-badge>
+              </div>
+              <div class="row q-gutter-sm">
+                <q-btn 
+                  flat
+                  dense
+                  color="primary" 
+                  icon="analytics" 
+                  label="Statistics"
+                  @click="showStats = true"
+                />
+                <q-btn 
+                  flat
+                  dense
+                  color="primary" 
+                  icon="download" 
+                  label="Export"
+                  @click="exportHotspots('all')"
+                >
+                  <q-menu>
+                    <q-list dense style="min-width: 100px">
+                      <q-item clickable v-close-popup @click="exportHotspots('all')">
+                        <q-item-section>All Hotspots</q-item-section>
+                      </q-item>
+                      <q-item clickable v-close-popup @click="exportHotspots('verified')">
+                        <q-item-section>Verified Only</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                </q-btn>
+              </div>
             </div>
 
-            <!-- Add filtering controls -->
+            <!-- Filtering controls -->
             <div class="row q-col-gutter-sm q-mb-md">
               <div class="col-6">
                 <q-input
@@ -112,11 +146,8 @@
               </div>
             </div>
 
-            <!-- Existing hotspots list -->
-            <q-scroll-area 
-              ref="scrollArea"
-              style="height: calc(100vh - 450px)"
-            >
+            <!-- Hotspots list -->
+            <q-scroll-area ref="scrollArea" class="hotspots-scroll-area">
               <q-list separator dense>
                 <q-item 
                   v-for="(hotspot, index) in hotspots" 
@@ -253,63 +284,109 @@
       </q-card-section>
 
       <q-card-section class="q-pa-md">
-        <!-- Land Cover Stats -->
-        <template v-if="activeTab === 'landcover' && selectedPrediction">
-          <div class="row q-col-gutter-md">
-            <div v-for="(stat, className) in landCoverStats" :key="className" class="col-4">
-              <q-card class="stats-card" :style="{ borderLeft: `4px solid ${getClassColor(className)}` }">
-                <q-card-section>
-                  <div class="text-subtitle2">{{ className }}</div>
-                  <div class="text-h6">{{ stat.area.toFixed(1) }} ha</div>
-                  <div class="text-caption">{{ stat.percentage.toFixed(1) }}% of total area</div>
-                </q-card-section>
-              </q-card>
-            </div>
-          </div>
-        </template>
-
-        <!-- Deforestation Stats -->
-        <template v-if="activeTab === 'deforestation' && deforestationStats">
-          <div class="row q-col-gutter-md">
-            <div class="col-6">
-              <q-card class="stats-card" style="border-left: 4px solid #FF5252">
-                <q-card-section>
-                  <div class="text-subtitle2">Total Deforested Area</div>
-                  <div class="text-h6">{{ deforestationStats.deforested_area_ha.toFixed(1) }} ha</div>
-                  <div class="text-caption">
-                    {{ deforestationStats.deforestation_rate.toFixed(1) }}% of forest area
+        <!-- Overview Section -->
+        <div class="text-h6 q-mb-md">Overview by Source</div>
+        <div class="row q-col-gutter-md">
+          <!-- ML Alerts -->
+          <div class="col-6">
+            <q-card class="source-stats-card ml-stats">
+              <q-card-section>
+                <div class="text-h6 q-mb-md">ML Predictions</div>
+                <div class="row q-col-gutter-md">
+                  <div class="col-4">
+                    <div class="text-subtitle2">Hotspots</div>
+                    <div class="text-h5">{{ sourceStats.ml.count }}</div>
                   </div>
-                </q-card-section>
-              </q-card>
-            </div>
-            <div class="col-6">
-              <q-card class="stats-card" style="border-left: 4px solid #4CAF50">
-                <q-card-section>
-                  <div class="text-subtitle2">Forest Area</div>
-                  <div class="text-h6">{{ deforestationStats.total_forest_area_ha.toFixed(1) }} ha</div>
-                  <div class="text-caption">
-                    {{ (deforestationStats.total_forest_area_ha / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI
+                  <div class="col-4">
+                    <div class="text-subtitle2">Total Area</div>
+                    <div class="text-h5">{{ sourceStats.ml.area.toFixed(1) }} ha</div>
+                    <div class="text-caption">{{ (sourceStats.ml.area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI</div>
                   </div>
-                </q-card-section>
-              </q-card>
-            </div>
+                  <div class="col-4">
+                    <div class="text-subtitle2">Annual Rate</div>
+                    <div class="text-h5">{{ sourceStats.ml.rate.toFixed(1) }} ha/year</div>
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
           </div>
 
-          <!-- Annual Rate -->
-          <div class="row q-col-gutter-md q-mt-md">
-            <div class="col-12">
-              <q-card class="stats-card">
-                <q-card-section>
-                  <div class="text-subtitle2">Annual Deforestation Rate</div>
-                  <div class="text-h6">{{ deforestationStats.annual_rate_ha.toFixed(1) }} ha/year</div>
-                  <div class="text-caption">
-                    {{ deforestationStats.annual_rate_percentage.toFixed(1) }}% of forest area per year
+          <!-- GFW Alerts -->
+          <div class="col-6">
+            <q-card class="source-stats-card gfw-stats">
+              <q-card-section>
+                <div class="text-h6 q-mb-md">GFW Alerts</div>
+                <div class="row q-col-gutter-md">
+                  <div class="col-4">
+                    <div class="text-subtitle2">Hotspots</div>
+                    <div class="text-h5">{{ sourceStats.gfw.count }}</div>
                   </div>
-                </q-card-section>
-              </q-card>
-            </div>
+                  <div class="col-4">
+                    <div class="text-subtitle2">Total Area</div>
+                    <div class="text-h5">{{ sourceStats.gfw.area.toFixed(1) }} ha</div>
+                    <div class="text-caption">{{ (sourceStats.gfw.area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI</div>
+                  </div>
+                  <div class="col-4">
+                    <div class="text-subtitle2">Annual Rate</div>
+                    <div class="text-h5">{{ sourceStats.gfw.rate.toFixed(1) }} ha/year</div>
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
           </div>
-        </template>
+        </div>
+
+        <!-- Status Breakdown Section -->
+        <div class="text-h6 q-mt-lg q-mb-md">Status Breakdown by Source</div>
+        <div class="row q-col-gutter-md">
+          <!-- ML Status Breakdown -->
+          <div class="col-6">
+            <q-card class="status-breakdown ml-stats">
+              <q-card-section>
+                <div class="text-h6 q-mb-md">ML Predictions</div>
+                <div class="row q-col-gutter-md">
+                  <div v-for="status in mlStatusBreakdown" :key="status.name" class="col-6">
+                    <div :class="`text-${status.color}`">
+                      <div class="text-subtitle2">{{ status.name }}</div>
+                      <div class="text-h6">{{ status.count }} hotspots</div>
+                      <div class="text-caption">{{ status.percentage.toFixed(1) }}% of ML hotspots</div>
+                      <div class="text-subtitle2 q-mt-sm">{{ status.area.toFixed(1) }} ha</div>
+                      <div class="text-caption">{{ status.areaPercentageOfAOI.toFixed(1) }}% of AOI</div>
+                      <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year</div>
+                    </div>
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+
+          <!-- GFW Status Breakdown -->
+          <div class="col-6">
+            <q-card class="status-breakdown gfw-stats">
+              <q-card-section>
+                <div class="text-h6 q-mb-md">GFW Alerts</div>
+                <div class="row q-col-gutter-md">
+                  <div v-for="status in gfwStatusBreakdown" :key="status.name" class="col-6">
+                    <div :class="`text-${status.color}`">
+                      <div class="text-subtitle2">{{ status.name }}</div>
+                      <div class="text-h6">{{ status.count }} hotspots</div>
+                      <div class="text-caption">{{ status.percentage.toFixed(1) }}% of GFW hotspots</div>
+                      <div class="text-subtitle2 q-mt-sm">{{ status.area.toFixed(1) }} ha</div>
+                      <div class="text-caption">{{ status.areaPercentageOfAOI.toFixed(1) }}% of AOI</div>
+                      <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year</div>
+                    </div>
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+
+        <!-- Add AOI info -->
+        <div class="text-caption q-mt-md">
+          <q-icon name="info" size="xs" class="q-mr-xs" />
+          Area percentages are calculated relative to the total AOI area of {{ projectStore.aoiAreaHa.toFixed(1) }} ha
+        </div>
       </q-card-section>
 
       <q-card-actions align="right">
@@ -1181,6 +1258,96 @@ export default {
       }
     };
 
+    // Add to setup()
+    const exportHotspots = (type) => {
+      try {
+        let hotspotsToExport = [];
+        if (type === 'verified') {
+          hotspotsToExport = hotspots.value.filter(h =>
+            h.properties.verification_status === 'verified'
+          );
+        } else {
+          hotspotsToExport = hotspots.value;
+        }
+
+        // Create GeoJSON feature collection with metadata and CRS
+        const geojson = {
+          type: 'FeatureCollection',
+          crs: {
+            type: 'name',
+            properties: {
+              name: 'EPSG:3857'  // Web Mercator projection
+            }
+          },
+          metadata: {
+            prediction_id: selectedDeforestationMap.value.id,
+            prediction_name: selectedDeforestationMap.value.name,
+            before_date: selectedDeforestationMap.value.before_date,
+            after_date: selectedDeforestationMap.value.after_date,
+            total_hotspots: hotspotsToExport.length,
+            total_area_ha: hotspotsToExport.reduce((sum, h) => sum + h.properties.area_ha, 0),
+            source_breakdown: {
+              ml: hotspotsToExport.filter(h => h.properties.source === 'ml').length,
+              gfw: hotspotsToExport.filter(h => h.properties.source === 'gfw').length
+            },
+            min_area_ha: minAreaHa.value,
+            export_type: type,
+            export_timestamp: new Date().toISOString(),
+            projection: 'EPSG:3857',
+            projection_name: 'Web Mercator'
+          },
+          features: hotspotsToExport.map(h => ({
+            type: 'Feature',
+            geometry: h.geometry,
+            properties: {
+              id: h.properties.id,
+              area_ha: h.properties.area_ha,
+              verification_status: h.properties.verification_status || 'unverified',
+              source: h.properties.source,  // Add source information
+              confidence: h.properties.confidence || null,  // Add confidence for GFW alerts
+              perimeter_m: h.properties.perimeter_m,
+              compactness: h.properties.compactness,
+              edge_density: h.properties.edge_density,
+              centroid_lon: h.properties.centroid_lon,
+              centroid_lat: h.properties.centroid_lat
+            }
+          }))
+        };
+
+        // Create and trigger download
+        const blob = new Blob([JSON.stringify(geojson, null, 2)], {
+          type: 'application/json'
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+
+        // Generate filename with timestamp
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = `deforestation_hotspots_${type}_${timestamp}.geojson`;
+
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        // Show success notification
+        $q.notify({
+          color: 'positive',
+          message: `Successfully exported ${hotspotsToExport.length} hotspots`,
+          icon: 'check'
+        });
+      } catch (error) {
+        console.error('Error exporting hotspots:', error);
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to export hotspots',
+          icon: 'error'
+        });
+      }
+    };
+
     // Add debounced version for the min area input
     const debouncedUpdateFilters = debounce(updateHotspotFilters, 500);
 
@@ -1254,6 +1421,151 @@ export default {
       }
     };
 
+    // Add these computed properties in setup()
+    const getStatsTitle = computed(() => {
+      if (!selectedDeforestationMap.value) return 'Analysis Statistics';
+      return `Analysis Statistics: ${selectedDeforestationMap.value.name}`;
+    });
+
+    const getStatsSubtitle = computed(() => {
+      if (!selectedDeforestationMap.value) return '';
+      const stats = selectedDeforestationMap.value.summary_statistics;
+      return `Analysis Period: ${formatDateRange(stats.prediction1_date, stats.prediction2_date)}`;
+    });
+
+    const deforestationStats = computed(() => {
+      if (!selectedDeforestationMap.value?.summary_statistics) return null;
+      return {
+        deforested_area_ha: selectedDeforestationMap.value.summary_statistics.deforested_area_ha || 0,
+        deforestation_rate: selectedDeforestationMap.value.summary_statistics.deforestation_rate || 0,
+        total_forest_area_ha: selectedDeforestationMap.value.summary_statistics.total_forest_area_ha || 0,
+        annual_rate_ha: selectedDeforestationMap.value.summary_statistics.annual_rate_ha || 0,
+        annual_rate_percentage: selectedDeforestationMap.value.summary_statistics.annual_rate_percentage || 0
+      };
+    });
+
+    // Add these methods in setup()
+    const exportStats = () => {
+      if (!selectedDeforestationMap.value) return;
+
+      const stats = {
+        analysis_name: selectedDeforestationMap.value.name,
+        analysis_period: {
+          start_date: selectedDeforestationMap.value.summary_statistics.prediction1_date,
+          end_date: selectedDeforestationMap.value.summary_statistics.prediction2_date
+        },
+        deforestation_statistics: {
+          total_deforested_area_ha: deforestationStats.value.deforested_area_ha,
+          deforestation_rate_percent: deforestationStats.value.deforestation_rate,
+          total_forest_area_ha: deforestationStats.value.total_forest_area_ha,
+          annual_rate_ha: deforestationStats.value.annual_rate_ha,
+          annual_rate_percentage: deforestationStats.value.annual_rate_percentage
+        },
+        hotspots: {
+          total_count: hotspots.value.length,
+          by_source: {
+            ml: hotspots.value.filter(h => h.properties.source === 'ml').length,
+            gfw: hotspots.value.filter(h => h.properties.source === 'gfw').length
+          },
+          by_status: {
+            verified: hotspots.value.filter(h => h.properties.verification_status === 'verified').length,
+            rejected: hotspots.value.filter(h => h.properties.verification_status === 'rejected').length,
+            unsure: hotspots.value.filter(h => h.properties.verification_status === 'unsure').length,
+            unverified: hotspots.value.filter(h => !h.properties.verification_status).length
+          }
+        },
+        export_date: new Date().toISOString()
+      };
+
+      // Create and trigger download
+      const blob = new Blob([JSON.stringify(stats, null, 2)], {
+        type: 'application/json'
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `deforestation_analysis_stats_${selectedDeforestationMap.value.id}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    };
+
+    // Add these computed properties in setup() after other computed properties
+    const sourceStats = computed(() => {
+      const stats = {
+        ml: { count: 0, area: 0, rate: 0 },
+        gfw: { count: 0, area: 0, rate: 0 }
+      }
+
+      hotspots.value.forEach(h => {
+        const source = h.properties.source;
+        stats[source].count++;
+        stats[source].area += h.properties.area_ha;
+      });
+
+      // Calculate rates for each source
+      if (selectedDeforestationMap.value) {
+        const beforeDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction1_date);
+        const afterDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction2_date);
+        const yearsDiff = (afterDate - beforeDate) / (1000 * 60 * 60 * 24 * 365.25);
+
+        stats.ml.rate = stats.ml.area / yearsDiff;
+        stats.gfw.rate = stats.gfw.area / yearsDiff;
+      }
+
+      return stats;
+    });
+
+    const mlStatusBreakdown = computed(() => {
+      return calculateStatusBreakdown(hotspots.value.filter(h => h.properties.source === 'ml'));
+    });
+
+    const gfwStatusBreakdown = computed(() => {
+      return calculateStatusBreakdown(hotspots.value.filter(h => h.properties.source === 'gfw'));
+    });
+
+    // Add helper function for status breakdown calculations
+    const calculateStatusBreakdown = (sourceHotspots) => {
+      const statuses = ['verified', 'unsure', 'rejected', 'unverified'];
+      const colors = ['green', 'amber', 'blue-grey', 'purple'];
+      const displayNames = ['Verified', 'Unsure', 'Rejected', 'Unverified'];
+
+      const totalCount = sourceHotspots.length;
+      const totalArea = sourceHotspots.reduce((sum, h) => sum + h.properties.area_ha, 0);
+
+      return statuses.map((status, index) => {
+        const hotspotsWithStatus = sourceHotspots.filter(h =>
+          status === 'unverified'
+            ? !h.properties.verification_status
+            : h.properties.verification_status === status
+        );
+
+        const count = hotspotsWithStatus.length;
+        const area = hotspotsWithStatus.reduce((sum, h) => sum + h.properties.area_ha, 0);
+
+        // Calculate rate based on the time period
+        let rate = 0;
+        if (selectedDeforestationMap.value) {
+          const beforeDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction1_date);
+          const afterDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction2_date);
+          const yearsDiff = (afterDate - beforeDate) / (1000 * 60 * 60 * 24 * 365.25);
+          rate = area / yearsDiff;
+        }
+
+        return {
+          name: displayNames[index],
+          color: colors[index],
+          count,
+          percentage: totalCount ? (count / totalCount) * 100 : 0,
+          area,
+          areaPercentage: totalArea ? (area / totalArea) * 100 : 0,
+          areaPercentageOfAOI: (area / projectStore.aoiAreaHa) * 100,
+          rate
+        };
+      });
+    };
+
     return {
       // State
       activeTab,
@@ -1293,7 +1605,16 @@ export default {
       scrollArea,
       navigateHotspots,
       setupKeyboardShortcuts,
-      refreshMaps
+      refreshMaps,
+      getStatsTitle,
+      getStatsSubtitle,
+      deforestationStats,
+      exportStats,
+      projectStore,
+      sourceStats,
+      mlStatusBreakdown,
+      gfwStatusBreakdown,
+      exportHotspots
     };
   }
 };
@@ -1302,12 +1623,38 @@ export default {
 <style lang="scss" scoped>
 .analysis-controls-container {
   width: var(--app-sidebar-width);
-  height: calc(100vh - var(--app-header-height));
-  overflow-y: auto;
+  height: 100vh;
 }
 
 .analysis-card {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.analysis-header {
+  flex: 0 0 auto;
+  padding: 16px;
+}
+
+.analysis-content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 16px;
+  
+  > .section {
+    margin-bottom: 16px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.hotspots-scroll-area {
+  height: calc(100vh - 300px);
+  min-height: 200px;
+  max-height: 600px;
 }
 
 .comparison-container {
