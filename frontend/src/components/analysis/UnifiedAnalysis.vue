@@ -122,6 +122,7 @@
                   v-for="(hotspot, index) in hotspots" 
                   :key="index" 
                   :class="[
+                    'hotspot-item',
                     hotspot.properties.source === 'gfw' ? 'gfw-alert' : 'ml-alert',
                     {
                       'selected-hotspot': selectedHotspot === hotspot,
@@ -193,6 +194,32 @@
           <div ref="primaryMap" class="comparison-map"></div>
           <div class="map-label">{{ getPrimaryMapLabel }}</div>
           <CustomLayerSwitcher mapId="primary" />
+          
+          <!-- Add legend -->
+          <div class="map-legend">
+            <div class="legend-title">Alert Types</div>
+            <div class="legend-item">
+              <div class="legend-line ml-line"></div>
+              <span>ML Prediction</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-line gfw-line"></div>
+              <span>GFW Alert</span>
+            </div>
+            <div class="legend-title mt-2">Verification Status</div>
+            <div class="legend-item">
+              <div class="legend-line verified-line"></div>
+              <span>Verified</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-line unsure-line"></div>
+              <span>Unsure</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-line rejected-line"></div>
+              <span>Rejected</span>
+            </div>
+          </div>
         </div>
         <div class="map-container">
           <div ref="secondaryMap" class="comparison-map"></div>
@@ -297,6 +324,18 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <!-- Add to template near the map controls -->
+  <q-btn
+    flat
+    round
+    size="sm"
+    icon="refresh"
+    class="map-refresh-button"
+    @click="refreshMaps"
+  >
+    <q-tooltip>Refresh Maps</q-tooltip>
+  </q-btn>
 </template>
 
 <script>
@@ -450,20 +489,21 @@ export default {
     };
 
     const clearMapLayers = () => {
-      // Keep only base layers
-      const primaryLayers = mapStore.maps.primary.getLayers().getArray();
-      const secondaryLayers = mapStore.maps.secondary.getLayers().getArray();
-      
-      primaryLayers.forEach(layer => {
-        if (layer.get('id') !== 'osm') {
-          mapStore.maps.primary.removeLayer(layer);
-        }
-      });
-      
-      secondaryLayers.forEach(layer => {
-        if (layer.get('id') !== 'osm') {
-          mapStore.maps.secondary.removeLayer(layer);
-        }
+      ['primary', 'secondary'].forEach(mapId => {
+        const map = mapStore.maps[mapId];
+        if (!map) return;
+
+        // Get all layers except OSM
+        const layersToRemove = map.getLayers().getArray()
+          .filter(layer => layer.get('id') !== 'osm');
+        
+        // Remove each layer properly
+        layersToRemove.forEach(layer => {
+          map.removeLayer(layer);
+          if (layer.getSource()) {
+            layer.getSource().clear();
+          }
+        });
       });
     };
 
@@ -776,8 +816,18 @@ export default {
 
         // Force refresh of vector layers to update styles
         if (hotspotLayers.value.primary) {
-          hotspotLayers.value.primary.changed();
-          hotspotLayers.value.secondary.changed();
+          // Update the feature properties in both layers
+          ['primary', 'secondary'].forEach(mapId => {
+            const layer = hotspotLayers.value[mapId];
+            const features = layer.getSource().getFeatures();
+            const feature = features.find(f => 
+              f.getProperties().id === hotspot.properties.id
+            );
+            if (feature) {
+              feature.set('verification_status', status, true);
+            }
+            layer.changed(); // Force style refresh
+          });
         }
 
         $q.notify({
@@ -1197,6 +1247,13 @@ export default {
       });
     };
 
+    const refreshMaps = () => {
+      clearMapLayers();
+      if (selectedDeforestationMap.value) {
+        loadExistingAnalysis(selectedDeforestationMap.value);
+      }
+    };
+
     return {
       // State
       activeTab,
@@ -1235,7 +1292,8 @@ export default {
       debouncedUpdateFilters,
       scrollArea,
       navigateHotspots,
-      setupKeyboardShortcuts
+      setupKeyboardShortcuts,
+      refreshMaps
     };
   }
 };
@@ -1295,5 +1353,88 @@ export default {
 .selected-analysis {
   background: rgba(0, 0, 0, 0.05);
   border-left: 4px solid var(--q-primary);
+}
+
+.map-legend {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  font-size: 12px;
+  z-index: 1000;
+  
+  .legend-title {
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+  
+  .mt-2 {
+    margin-top: 8px;
+  }
+  
+  .legend-item {
+    display: flex;
+    align-items: center;
+    margin: 4px 0;
+    
+    .legend-line {
+      width: 20px;
+      height: 2px;
+      margin-right: 8px;
+    }
+    
+    .ml-line {
+      background: #1976D2;
+    }
+    
+    .gfw-line {
+      background: #9C27B0;
+    }
+    
+    .verified-line {
+      background: #4CAF50;
+    }
+    
+    .unsure-line {
+      background: #FFC107;
+    }
+    
+    .rejected-line {
+      background: #607D8B;
+    }
+  }
+}
+
+.hotspot-item {
+  border-left: 4px solid transparent;
+  transition: all 0.2s ease;
+
+  &.selected-hotspot {
+    background: rgba(0, 0, 0, 0.05);
+    border-left-color: var(--q-primary);
+  }
+
+  &.ml-alert {
+    border-left-color: #1976D2;
+  }
+
+  &.gfw-alert {
+    border-left-color: #9C27B0;
+  }
+
+  &.verified {
+    background: rgba(76, 175, 80, 0.1);
+  }
+
+  &.rejected {
+    background: rgba(96, 125, 139, 0.1);
+  }
+
+  &.unsure {
+    background: rgba(255, 193, 7, 0.1);
+  }
 }
 </style> 
