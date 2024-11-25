@@ -103,7 +103,7 @@
                   dense
                   color="primary" 
                   icon="download" 
-                  label="Export"
+                  label="Export Hotspots"
                   @click="exportHotspots('all')"
                 >
                   <q-menu>
@@ -375,6 +375,64 @@
         <div class="text-caption q-mt-md">
           <q-icon name="info" size="xs" class="q-mr-xs" />
           Area percentages are calculated relative to the total AOI area of {{ projectStore.aoiAreaHa.toFixed(1) }} ha
+        </div>
+
+        <!-- Add this section after the Overview Section in the stats dialog -->
+        <div class="text-h6 q-mt-lg q-mb-md">Land Cover Percentages</div>
+        <div class="row q-col-gutter-md">
+          <!-- Before -->
+          <div class="col-6">
+            <q-card class="land-cover-stats">
+              <q-card-section>
+                <div class="text-h6 q-mb-md">{{ formatDate(selectedDeforestationMap.summary_statistics.prediction1_date) }}</div>
+                <div class="row q-col-gutter-md">
+                  <div class="col-6">
+                    <div class="text-subtitle2">Forest</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.before_forest_percentage?.toFixed(1) || 'NaN' }}%</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-subtitle2">Non-Forest</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.before_nonforest_percentage?.toFixed(1) || 'NaN' }}%</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-subtitle2">Water</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.before_water_percentage?.toFixed(1) || 'NaN' }}%</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-subtitle2">Cloud</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.before_cloud_percentage?.toFixed(1) || 'NaN' }}%</div>
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
+
+          <!-- After -->
+          <div class="col-6">
+            <q-card class="land-cover-stats">
+              <q-card-section>
+                <div class="text-h6 q-mb-md">{{ formatDate(selectedDeforestationMap.summary_statistics.prediction2_date) }}</div>
+                <div class="row q-col-gutter-md">
+                  <div class="col-6">
+                    <div class="text-subtitle2">Forest</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.after_forest_percentage?.toFixed(1) || 'NaN' }}%</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-subtitle2">Non-Forest</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.after_nonforest_percentage?.toFixed(1) || 'NaN' }}%</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-subtitle2">Water</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.after_water_percentage?.toFixed(1) || 'NaN' }}%</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-subtitle2">Cloud</div>
+                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.after_cloud_percentage?.toFixed(1) || 'NaN' }}%</div>
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </div>
         </div>
       </q-card-section>
 
@@ -1418,47 +1476,108 @@ export default {
     const exportStats = () => {
       if (!selectedDeforestationMap.value) return;
 
-      const stats = {
-        analysis_name: selectedDeforestationMap.value.name,
-        analysis_period: {
-          start_date: selectedDeforestationMap.value.summary_statistics.prediction1_date,
-          end_date: selectedDeforestationMap.value.summary_statistics.prediction2_date
-        },
-        deforestation_statistics: {
-          total_deforested_area_ha: deforestationStats.value.deforested_area_ha,
-          deforestation_rate_percent: deforestationStats.value.deforestation_rate,
-          total_forest_area_ha: deforestationStats.value.total_forest_area_ha,
-          annual_rate_ha: deforestationStats.value.annual_rate_ha,
-          annual_rate_percentage: deforestationStats.value.annual_rate_percentage
-        },
-        hotspots: {
-          total_count: hotspots.value.length,
-          by_source: {
-            ml: hotspots.value.filter(h => h.properties.source === 'ml').length,
-            gfw: hotspots.value.filter(h => h.properties.source === 'gfw').length
-          },
-          by_status: {
-            verified: hotspots.value.filter(h => h.properties.verification_status === 'verified').length,
-            rejected: hotspots.value.filter(h => h.properties.verification_status === 'rejected').length,
-            unsure: hotspots.value.filter(h => h.properties.verification_status === 'unsure').length,
-            unverified: hotspots.value.filter(h => !h.properties.verification_status).length
-          }
-        },
-        export_date: new Date().toISOString()
-      };
+      try {
+        // Create CSV rows
+        const rows = [
+          // Header row
+          ['Analysis Name', selectedDeforestationMap.value.name],
+          ['Analysis Period', `${selectedDeforestationMap.value.summary_statistics.prediction1_date} to ${selectedDeforestationMap.value.summary_statistics.prediction2_date}`],
+          ['Total AOI Area (ha)', projectStore.aoiAreaHa.toFixed(1)],
+          [''],  // Empty row for spacing
+          
+          // Land Cover Stats
+          ['Land Cover Statistics'],
+          ['Date', 'Forest (%)', 'Non-Forest (%)', 'Water (%)', 'Cloud (%)'],
+          [
+            selectedDeforestationMap.value.summary_statistics.prediction1_date,
+            selectedDeforestationMap.value.summary_statistics.before_forest_percentage?.toFixed(1) || '0.0',
+            selectedDeforestationMap.value.summary_statistics.before_nonforest_percentage?.toFixed(1) || '0.0',
+            selectedDeforestationMap.value.summary_statistics.before_water_percentage?.toFixed(1) || '0.0',
+            selectedDeforestationMap.value.summary_statistics.before_cloud_percentage?.toFixed(1) || '0.0'
+          ],
+          [
+            selectedDeforestationMap.value.summary_statistics.prediction2_date,
+            selectedDeforestationMap.value.summary_statistics.after_forest_percentage?.toFixed(1) || '0.0',
+            selectedDeforestationMap.value.summary_statistics.after_nonforest_percentage?.toFixed(1) || '0.0',
+            selectedDeforestationMap.value.summary_statistics.after_water_percentage?.toFixed(1) || '0.0',
+            selectedDeforestationMap.value.summary_statistics.after_cloud_percentage?.toFixed(1) || '0.0'
+          ],
+          [''],  // Empty row for spacing
 
-      // Create and trigger download
-      const blob = new Blob([JSON.stringify(stats, null, 2)], {
-        type: 'application/json'
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `deforestation_analysis_stats_${selectedDeforestationMap.value.id}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+          // Deforestation Stats
+          ['Deforestation Statistics'],
+          ['Total Deforested Area (ha)', deforestationStats.value.deforested_area_ha.toFixed(1)],
+          ['Deforestation Rate (%)', deforestationStats.value.deforestation_rate.toFixed(1)],
+          ['Annual Rate (ha/year)', deforestationStats.value.annual_rate_ha.toFixed(1)],
+          ['Annual Rate (%/year)', deforestationStats.value.annual_rate_percentage.toFixed(1)],
+          [''],  // Empty row for spacing
+
+          // Hotspot Stats by Source
+          ['Hotspot Statistics by Source'],
+          ['Source', 'Count', 'Area (ha)', 'Annual Rate (ha/year)', '% of AOI'],
+          ['ML Predictions', 
+            sourceStats.value.ml.count,
+            sourceStats.value.ml.area.toFixed(1),
+            sourceStats.value.ml.rate.toFixed(1),
+            (sourceStats.value.ml.area / projectStore.aoiAreaHa * 100).toFixed(1)
+          ],
+          ['GFW Alerts',
+            sourceStats.value.gfw.count,
+            sourceStats.value.gfw.area.toFixed(1),
+            sourceStats.value.gfw.rate.toFixed(1),
+            (sourceStats.value.gfw.area / projectStore.aoiAreaHa * 100).toFixed(1)
+          ],
+          [''],  // Empty row for spacing
+
+          // Status Breakdown
+          ['Status Breakdown'],
+          ['Status', 'Count', 'Area (ha)', 'Annual Rate (ha/year)', '% of AOI'],
+          ...['Verified', 'Unsure', 'Rejected', 'Unverified'].map(status => {
+            const hotspotsWithStatus = hotspots.value.filter(h => 
+              status === 'Unverified' ? !h.properties.verification_status : h.properties.verification_status === status.toLowerCase()
+            );
+            const area = hotspotsWithStatus.reduce((sum, h) => sum + h.properties.area_ha, 0);
+            const yearsDiff = (new Date(selectedDeforestationMap.value.summary_statistics.prediction2_date) - 
+                              new Date(selectedDeforestationMap.value.summary_statistics.prediction1_date)) / 
+                              (1000 * 60 * 60 * 24 * 365.25);
+            const rate = area / yearsDiff;
+            return [
+              status,
+              hotspotsWithStatus.length,
+              area.toFixed(1),
+              rate.toFixed(1),
+              (area / projectStore.aoiAreaHa * 100).toFixed(1)
+            ];
+          })
+        ];
+
+        // Convert rows to CSV string
+        const csvContent = rows.map(row => row.join(',')).join('\n');
+
+        // Create and trigger download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `deforestation_analysis_stats_${selectedDeforestationMap.value.id}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        $q.notify({
+          color: 'positive',
+          message: 'Statistics exported successfully',
+          icon: 'check'
+        });
+      } catch (error) {
+        console.error('Error exporting statistics:', error);
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to export statistics',
+          icon: 'error'
+        });
+      }
     };
 
     // Add these computed properties in setup() after other computed properties
@@ -1536,6 +1655,11 @@ export default {
       });
     };
 
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      return date.formatDate(dateString, 'MMMM YYYY');
+    };
+
     return {
       // State
       activeTab,
@@ -1583,7 +1707,8 @@ export default {
       sourceStats,
       mlStatusBreakdown,
       gfwStatusBreakdown,
-      exportHotspots
+      exportHotspots,
+      formatDate
     };
   }
 };
