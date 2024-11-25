@@ -66,33 +66,14 @@
                 class="col"
               />
             </div>
-            <div class="row q-col-gutter-sm items-center q-mt-sm">
-              <div class="col-4">
-                <q-input
-                  v-model.number="minAreaHa"
-                  type="number"
-                  label="Min Area (ha)"
-                  dense
-                />
-              </div>
-              <div class="col-4">
-                <q-select
-                  v-model="selectedSource"
-                  :options="sourceOptions"
-                  label="Alert Source"
-                  dense
-                />
-              </div>
-              <div class="col-4">
-                <q-btn 
-                  label="Analyze" 
-                  color="primary" 
-                  class="full-width"
-                  @click="analyzeDeforestation"
-                  :disable="!startDate || !endDate"
-                  :loading="loading"
-                />
-              </div>
+            <div class="row justify-end q-mt-sm">
+              <q-btn 
+                label="Analyze" 
+                color="primary"
+                @click="analyzeDeforestation"
+                :disable="!startDate || !endDate"
+                :loading="loading"
+              />
             </div>
           </div>
 
@@ -104,7 +85,38 @@
                 {{ hotspots.length }} hotspots
               </q-badge>
             </div>
-            <q-scroll-area style="height: calc(100vh - 350px)">
+
+            <!-- Add filtering controls -->
+            <div class="row q-col-gutter-sm q-mb-md">
+              <div class="col-6">
+                <q-input
+                  v-model.number="minAreaHa"
+                  type="number"
+                  label="Min Area (ha)"
+                  dense
+                  @update:model-value="debouncedUpdateFilters"
+                >
+                  <template v-slot:append>
+                    <q-icon name="filter_alt" />
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-6">
+                <q-select
+                  v-model="selectedSource"
+                  :options="sourceOptions"
+                  label="Alert Source"
+                  dense
+                  @update:model-value="debouncedUpdateFilters"
+                />
+              </div>
+            </div>
+
+            <!-- Existing hotspots list -->
+            <q-scroll-area 
+              ref="scrollArea"
+              style="height: calc(100vh - 450px)"
+            >
               <q-list separator dense>
                 <q-item 
                   v-for="(hotspot, index) in hotspots" 
@@ -288,7 +300,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick, onUnmounted } from 'vue';
 import { useMapStore } from 'src/stores/mapStore';
 import { useProjectStore } from 'src/stores/projectStore';
 import { useQuasar } from 'quasar';
@@ -300,6 +312,7 @@ import VectorSource from 'ol/source/Vector';
 import { Style, Fill, Stroke } from 'ol/style';
 import { useRouter } from 'vue-router';
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue';
+import debounce from 'lodash/debounce';
 
 export default {
   name: 'UnifiedAnalysis',
@@ -382,8 +395,19 @@ export default {
         });
         return;
       }
+      
       mapStore.initDualMaps(primaryMap.value, secondaryMap.value);
       loadInitialData();
+
+      // Setup keyboard shortcuts
+      const cleanup = setupKeyboardShortcuts();
+
+      // Clean up on unmount
+      onUnmounted(() => {
+        cleanup();
+        if (mapStore.maps.primary) mapStore.maps.primary.setTarget(null);
+        if (mapStore.maps.secondary) mapStore.maps.secondary.setTarget(null);
+      });
     });
 
     // Methods
@@ -664,12 +688,6 @@ export default {
     const displayHotspots = () => {
       if (!hotspots.value?.length) return;
 
-      // Clear existing hotspot layers
-      if (hotspotLayers.value.primary) {
-        mapStore.removeLayerFromDualMaps('hotspots-primary', 'primary');
-        mapStore.removeLayerFromDualMaps('hotspots-secondary', 'secondary');
-      }
-
       const hotspotsGeoJSON = {
         type: 'FeatureCollection',
         features: hotspots.value
@@ -682,7 +700,7 @@ export default {
         const status = feature.getProperties().verification_status;
 
         const style = {
-          strokeColor: source === 'gfw' ? '#9C27B0' : '#1976D2',
+          strokeColor: source === 'gfw' ? '#9C27B0' : '#1976D2', // Purple for GFW, Blue for ML
           strokeWidth: isSelected ? 3 : 1.5,
           lineDash: isSelected ? [10, 10] : []
         };
@@ -690,13 +708,13 @@ export default {
         if (status) {
           switch (status) {
             case 'verified':
-              style.strokeColor = '#4CAF50';
+              style.strokeColor = '#4CAF50';  // Green
               break;
             case 'rejected':
-              style.strokeColor = '#607D8B';
+              style.strokeColor = '#607D8B';  // Grey
               break;
             case 'unsure':
-              style.strokeColor = '#FFC107';
+              style.strokeColor = '#FFC107';  // Amber
               break;
           }
         }
@@ -712,6 +730,11 @@ export default {
 
       // Create and add layers to both maps
       ['primary', 'secondary'].forEach(mapId => {
+        // Remove existing hotspot layer if it exists
+        if (hotspotLayers.value[mapId]) {
+          mapStore.maps[mapId].removeLayer(hotspotLayers.value[mapId]);
+        }
+
         const layer = new VectorLayer({
           source: new VectorSource({
             features: new GeoJSON().readFeatures(hotspotsGeoJSON)
@@ -723,21 +746,20 @@ export default {
         });
 
         hotspotLayers.value[mapId] = layer;
-        mapStore.addLayerToDualMaps(layer, mapId);
+        mapStore.maps[mapId].addLayer(layer);
       });
     };
 
     const selectHotspot = (hotspot) => {
       selectedHotspot.value = hotspot;
 
-      // Refresh layer styles
-      ['primary', 'secondary'].forEach(mapId => {
-        if (hotspotLayers.value[mapId]) {
-          hotspotLayers.value[mapId].changed();
-        }
-      });
+      // Refresh the layer styles
+      if (hotspotLayers.value.primary) {
+        hotspotLayers.value.primary.changed();
+        hotspotLayers.value.secondary.changed();
+      }
 
-      // Fit to hotspot extent
+      // Zoom to hotspot extent
       const extent = new GeoJSON().readFeature(hotspot).getGeometry().getExtent();
       mapStore.maps.primary.getView().fit(extent, {
         padding: [150, 150, 150, 150],
@@ -748,14 +770,15 @@ export default {
     const verifyHotspot = async (hotspot, status) => {
       try {
         await api.verifyHotspot(hotspot.properties.id, status);
+        
+        // Update local state
         hotspot.properties.verification_status = status;
 
-        // Update layer styles
-        ['primary', 'secondary'].forEach(mapId => {
-          if (hotspotLayers.value[mapId]) {
-            hotspotLayers.value[mapId].changed();
-          }
-        });
+        // Force refresh of vector layers to update styles
+        if (hotspotLayers.value.primary) {
+          hotspotLayers.value.primary.changed();
+          hotspotLayers.value.secondary.changed();
+        }
 
         $q.notify({
           color: 'positive',
@@ -1077,6 +1100,103 @@ export default {
       }
     };
 
+    // Add to setup()
+    const updateHotspotFilters = async () => {
+      if (!selectedDeforestationMap.value) return;
+      
+      try {
+        loading.value = true;
+        
+        // Load hotspots with new filters
+        const hotspotsResponse = await api.getDeforestationHotspots(
+          selectedDeforestationMap.value.id,
+          minAreaHa.value,
+          selectedSource.value.value
+        );
+        
+        hotspots.value = hotspotsResponse.data.features;
+
+        // Update map display
+        await displayHotspots();
+
+      } catch (error) {
+        console.error('Error updating hotspots:', error);
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to update hotspots',
+          icon: 'error'
+        });
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    // Add debounced version for the min area input
+    const debouncedUpdateFilters = debounce(updateHotspotFilters, 500);
+
+    // Add to setup()
+    const setupKeyboardShortcuts = () => {
+      const handleKeyPress = (event) => {
+        if (!hotspots.value?.length) return;
+
+        switch (event.key) {
+          case 'ArrowUp':
+            event.preventDefault();
+            navigateHotspots('up');
+            break;
+          case 'ArrowDown':
+            event.preventDefault();
+            navigateHotspots('down');
+            break;
+          case '1':
+            if (selectedHotspot.value) {
+              verifyHotspot(selectedHotspot.value, 'verified');
+            }
+            break;
+          case '2':
+            if (selectedHotspot.value) {
+              verifyHotspot(selectedHotspot.value, 'unsure');
+            }
+            break;
+          case '3':
+            if (selectedHotspot.value) {
+              verifyHotspot(selectedHotspot.value, 'rejected');
+            }
+            break;
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyPress);
+      return () => window.removeEventListener('keydown', handleKeyPress);
+    };
+
+    const scrollArea = ref(null);
+
+    const navigateHotspots = (direction) => {
+      if (!hotspots.value?.length) return;
+
+      const currentIndex = selectedHotspot.value
+        ? hotspots.value.findIndex(h => h === selectedHotspot.value)
+        : -1;
+
+      let newIndex;
+      if (direction === 'up') {
+        newIndex = currentIndex <= 0 ? hotspots.value.length - 1 : currentIndex - 1;
+      } else {
+        newIndex = currentIndex >= hotspots.value.length - 1 ? 0 : currentIndex + 1;
+      }
+
+      selectHotspot(hotspots.value[newIndex]);
+
+      // Scroll the selected item into view
+      nextTick(() => {
+        const element = scrollArea.value?.$el.querySelector(`.q-item:nth-child(${newIndex + 1})`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+    };
+
     return {
       // State
       activeTab,
@@ -1111,7 +1231,11 @@ export default {
       loadExistingAnalysis,
       formatDateRange,
       confirmDeleteAnalysis,
-      deleteAnalysis
+      deleteAnalysis,
+      debouncedUpdateFilters,
+      scrollArea,
+      navigateHotspots,
+      setupKeyboardShortcuts
     };
   }
 };
