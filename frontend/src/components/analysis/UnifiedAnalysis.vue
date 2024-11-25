@@ -4,151 +4,172 @@
     <div class="analysis-controls-container">
       <q-card class="analysis-card">
         <q-card-section>
-          <div class="text-h6">Analysis Tools</div>
+          <div class="text-h6">Deforestation Analysis</div>
           
-          <!-- Analysis Mode Tabs -->
-          <q-tabs
-            v-model="activeTab"
-            dense
-            class="text-grey"
-            active-color="primary"
-            indicator-color="primary"
-            align="justify"
-            narrow-indicator
-          >
-            <q-tab name="deforestation" label="Deforestation" icon="forest" />
-            <q-tab name="verification" label="Verify Hotspots" icon="fact_check" />
-          </q-tabs>
+          <!-- Existing Analyses Section - Moved to top -->
+          <div class="section q-mb-md">
+            <div class="text-subtitle2 q-mb-sm">Existing Analyses</div>
+            <q-scroll-area style="height: 150px" v-if="deforestationMaps.length">
+              <q-list separator dense>
+                <q-item 
+                  v-for="map in deforestationMaps" 
+                  :key="map.id"
+                  clickable
+                  v-ripple
+                  @click="loadExistingAnalysis(map)"
+                  :class="{'selected-analysis': selectedDeforestationMap?.id === map.id}"
+                >
+                  <q-item-section>
+                    <div class="row items-center justify-between">
+                      <div class="text-weight-medium">{{ map.name }}</div>
+                      <div class="text-caption">
+                        {{ formatDateRange(map.summary_statistics.prediction1_date, map.summary_statistics.prediction2_date) }}
+                      </div>
+                    </div>
+                  </q-item-section>
+                  
+                  <!-- Add delete button -->
+                  <q-item-section side>
+                    <q-btn
+                      flat
+                      round
+                      size="sm"
+                      color="negative"
+                      icon="delete"
+                      @click.stop="confirmDeleteAnalysis(map)"
+                    >
+                      <q-tooltip>Delete Analysis</q-tooltip>
+                    </q-btn>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-scroll-area>
+            <div v-else class="text-caption q-pa-md text-center">
+              No deforestation analyses available. Create a new analysis below.
+            </div>
+          </div>
 
-          <!-- Dynamic Content Based on Active Tab -->
-          <q-tab-panels v-model="activeTab" animated>
-            <!-- Deforestation Analysis Panel -->
-            <q-tab-panel name="deforestation">
-              <div class="text-subtitle1 q-mb-sm">Deforestation Analysis</div>
-              <div class="row q-col-gutter-md q-mb-md">
-                <q-select
-                  v-model="startDate"
-                  :options="predictionDates"
-                  label="Start Date"
-                  class="col"
-                />
-                <q-select
-                  v-model="endDate"
-                  :options="predictionDates"
-                  label="End Date"
-                  class="col"
-                />
-              </div>
-              <q-btn 
-                label="Analyze Deforestation" 
-                color="primary" 
-                class="q-mb-md"
-                @click="analyzeDeforestation"
-                :disable="!startDate || !endDate"
-              />
-            </q-tab-panel>
-
-            <!-- Hotspot Verification Panel -->
-            <q-tab-panel name="verification">
-              <div class="text-subtitle1 q-mb-sm">Hotspot Verification</div>
+          <!-- Date Selection Section -->
+          <div class="section q-mb-md">
+            <div class="text-subtitle2 q-mb-sm">New Analysis</div>
+            <div class="row q-col-gutter-md">
               <q-select
-                v-model="selectedDeforestationMap"
-                :options="deforestationMaps"
-                label="Select Deforestation Map"
-                option-label="name"
-                class="q-mb-md"
-                @update:model-value="loadHotspots"
+                v-model="startDate"
+                :options="predictionDates"
+                label="Start Date"
+                class="col"
               />
-              <div class="row q-col-gutter-md q-mb-md">
+              <q-select
+                v-model="endDate"
+                :options="predictionDates"
+                label="End Date"
+                class="col"
+              />
+            </div>
+            <div class="row q-col-gutter-sm items-center q-mt-sm">
+              <div class="col-4">
                 <q-input
                   v-model.number="minAreaHa"
                   type="number"
-                  label="Minimum Area (ha)"
-                  class="col"
+                  label="Min Area (ha)"
+                  dense
                 />
+              </div>
+              <div class="col-4">
                 <q-select
                   v-model="selectedSource"
                   :options="sourceOptions"
                   label="Alert Source"
-                  class="col"
+                  dense
                 />
               </div>
-              <q-scroll-area v-if="!loading && hotspots?.length" style="height: calc(100vh - 350px)">
-                <q-list separator dense>
-                  <q-item 
-                    v-for="(hotspot, index) in hotspots" 
-                    :key="index" 
-                    :class="[
-                      hotspot.properties.source === 'gfw' ? 'gfw-alert' : 'ml-alert',
-                      {
-                        'selected-hotspot': selectedHotspot === hotspot,
-                        'verified': hotspot.properties.verification_status === 'verified',
-                        'rejected': hotspot.properties.verification_status === 'rejected',
-                        'unsure': hotspot.properties.verification_status === 'unsure'
-                      }
-                    ]" 
-                    clickable 
-                    v-ripple 
-                    @click="selectHotspot(hotspot)"
-                  >
-                    <q-item-section>
-                      <div class="row items-center no-wrap">
-                        <div class="text-weight-medium">
-                          #{{ index + 1 }}
-                          <q-badge :color="hotspot.properties.source === 'gfw' ? 'purple' : 'primary'">
-                            {{ hotspot.properties.source.toUpperCase() }}
-                          </q-badge>
-                          <q-badge 
-                            v-if="hotspot.properties.source === 'gfw'"
-                            :color="getConfidenceColor(hotspot.properties.confidence)"
-                            class="q-ml-xs"
-                          >
-                            {{ getConfidenceLabel(hotspot.properties.confidence) }}
-                          </q-badge>
-                        </div>
-                        <div class="q-ml-sm">
-                          {{ hotspot.properties.area_ha.toFixed(1) }} ha
-                        </div>
-                        <div class="q-ml-auto" :class="{
-                          'text-green': hotspot.properties.verification_status === 'verified',
-                          'text-blue-grey': hotspot.properties.verification_status === 'rejected',
-                          'text-amber': hotspot.properties.verification_status === 'unsure'
-                        }">
-                          {{ hotspot.properties.verification_status || 'Unverified' }}
-                        </div>
-                      </div>
-                    </q-item-section>
-
-                    <q-item-section side>
-                      <div class="row q-gutter-xs">
-                        <q-btn flat round size="sm" color="green" icon="check_circle"
-                          @click.stop="verifyHotspot(hotspot, 'verified')">
-                          <q-tooltip>Verify Deforestation</q-tooltip>
-                        </q-btn>
-                        <q-btn flat round size="sm" color="amber" icon="help"
-                          @click.stop="verifyHotspot(hotspot, 'unsure')">
-                          <q-tooltip>Mark as Unsure</q-tooltip>
-                        </q-btn>
-                        <q-btn flat round size="sm" color="blue-grey" icon="cancel"
-                          @click.stop="verifyHotspot(hotspot, 'rejected')">
-                          <q-tooltip>Reject Alert</q-tooltip>
-                        </q-btn>
-                      </div>
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-              </q-scroll-area>
-
-              <div v-else-if="loading" class="text-center q-pa-md">
-                <q-spinner-dots color="primary" size="40" />
-                Loading hotspots...
+              <div class="col-4">
+                <q-btn 
+                  label="Analyze" 
+                  color="primary" 
+                  class="full-width"
+                  @click="analyzeDeforestation"
+                  :disable="!startDate || !endDate"
+                  :loading="loading"
+                />
               </div>
+            </div>
+          </div>
 
-              <div v-else class="text-center q-pa-md">
-                No hotspots found matching the current criteria
-              </div>
-            </q-tab-panel>
-          </q-tab-panels>
+          <!-- Hotspots List (shows up after analysis selection) -->
+          <div class="section" v-if="hotspots?.length">
+            <div class="text-subtitle2 q-mb-sm">
+              Detected Hotspots
+              <q-badge color="primary" class="q-ml-sm">
+                {{ hotspots.length }} hotspots
+              </q-badge>
+            </div>
+            <q-scroll-area style="height: calc(100vh - 350px)">
+              <q-list separator dense>
+                <q-item 
+                  v-for="(hotspot, index) in hotspots" 
+                  :key="index" 
+                  :class="[
+                    hotspot.properties.source === 'gfw' ? 'gfw-alert' : 'ml-alert',
+                    {
+                      'selected-hotspot': selectedHotspot === hotspot,
+                      'verified': hotspot.properties.verification_status === 'verified',
+                      'rejected': hotspot.properties.verification_status === 'rejected',
+                      'unsure': hotspot.properties.verification_status === 'unsure'
+                    }
+                  ]" 
+                  clickable 
+                  v-ripple 
+                  @click="selectHotspot(hotspot)"
+                >
+                  <q-item-section>
+                    <div class="row items-center no-wrap">
+                      <div class="text-weight-medium">
+                        #{{ index + 1 }}
+                        <q-badge :color="hotspot.properties.source === 'gfw' ? 'purple' : 'primary'">
+                          {{ hotspot.properties.source.toUpperCase() }}
+                        </q-badge>
+                        <q-badge 
+                          v-if="hotspot.properties.source === 'gfw'"
+                          :color="getConfidenceColor(hotspot.properties.confidence)"
+                          class="q-ml-xs"
+                        >
+                          {{ getConfidenceLabel(hotspot.properties.confidence) }}
+                        </q-badge>
+                      </div>
+                      <div class="q-ml-sm">
+                        {{ hotspot.properties.area_ha.toFixed(1) }} ha
+                      </div>
+                      <div class="q-ml-auto" :class="{
+                        'text-green': hotspot.properties.verification_status === 'verified',
+                        'text-blue-grey': hotspot.properties.verification_status === 'rejected',
+                        'text-amber': hotspot.properties.verification_status === 'unsure'
+                      }">
+                        {{ hotspot.properties.verification_status || 'Unverified' }}
+                      </div>
+                    </div>
+                  </q-item-section>
+
+                  <q-item-section side>
+                    <div class="row q-gutter-xs">
+                      <q-btn flat round size="sm" color="green" icon="check_circle"
+                        @click.stop="verifyHotspot(hotspot, 'verified')">
+                        <q-tooltip>Verify Deforestation</q-tooltip>
+                      </q-btn>
+                      <q-btn flat round size="sm" color="amber" icon="help"
+                        @click.stop="verifyHotspot(hotspot, 'unsure')">
+                        <q-tooltip>Mark as Unsure</q-tooltip>
+                      </q-btn>
+                      <q-btn flat round size="sm" color="blue-grey" icon="cancel"
+                        @click.stop="verifyHotspot(hotspot, 'rejected')">
+                        <q-tooltip>Reject Alert</q-tooltip>
+                      </q-btn>
+                    </div>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-scroll-area>
+          </div>
         </q-card-section>
       </q-card>
     </div>
@@ -784,30 +805,55 @@ export default {
           throw new Error('Could not find predictions for the selected dates.');
         }
 
-        // Parse AOI shape if it's a string
         const aoiShape = typeof projectStore.currentProject.aoi === 'string' 
           ? JSON.parse(projectStore.currentProject.aoi)
           : projectStore.currentProject.aoi;
 
+        // Run analysis and get results - this should create a new deforestation map
         const results = await api.getChangeAnalysis({
           prediction1_id: pred1.id,
           prediction2_id: pred2.id,
           aoi_shape: aoiShape
         });
 
-        // Update maps to show the deforestation results
-        await setupDeforestationMaps();
+        // Make sure we have a valid deforestation map from the results
+        if (!results.data?.id) {
+          throw new Error('Change analysis did not return a valid deforestation map ID');
+        }
+
+        // Store the deforestation map
+        selectedDeforestationMap.value = {
+          id: results.data.id,
+          name: `Deforestation ${startDate.value.label} to ${endDate.value.label}`,
+          summary_statistics: {
+            prediction1_date: startDate.value.value,
+            prediction2_date: endDate.value.value,
+            ...results.data.summary_statistics
+          }
+        };
+
+        // Load hotspots for this deforestation map
+        const hotspotsResponse = await api.getDeforestationHotspots(
+          selectedDeforestationMap.value.id,  // Use the deforestation map ID
+          minAreaHa.value,
+          selectedSource.value.value
+        );
+        
+        hotspots.value = hotspotsResponse.data.features;
+
+        // Display the hotspots on the maps
+        await displayHotspots();
 
         $q.notify({
           color: 'positive',
-          message: 'Deforestation analysis completed successfully.',
+          message: 'Analysis completed. Verify the detected hotspots.',
           icon: 'check'
         });
       } catch (error) {
         console.error('Error analyzing deforestation:', error);
         $q.notify({
           color: 'negative',
-          message: 'Failed to analyze deforestation',
+          message: 'Failed to analyze deforestation: ' + error.message,
           icon: 'error'
         });
       } finally {
@@ -888,6 +934,149 @@ export default {
       }
     });
 
+    const loadExistingAnalysis = async (map) => {
+      try {
+        loading.value = true;
+        selectedDeforestationMap.value = map;
+
+        // Load hotspots for the selected analysis
+        const hotspotsResponse = await api.getDeforestationHotspots(
+          map.id,
+          minAreaHa.value,
+          selectedSource.value.value
+        );
+        
+        hotspots.value = hotspotsResponse.data.features;
+
+        // Clear existing layers
+        clearMapLayers();
+
+        // Add AOI layer first
+        if (projectStore.currentProject?.aoi) {
+          const aoiGeojson = typeof projectStore.currentProject.aoi === 'string' 
+            ? JSON.parse(projectStore.currentProject.aoi) 
+            : projectStore.currentProject.aoi;
+          
+          const { layer: primaryAOILayer } = mapStore.createAOILayer(aoiGeojson);
+          const { layer: secondaryAOILayer } = mapStore.createAOILayer(aoiGeojson);
+          
+          mapStore.maps.primary.addLayer(primaryAOILayer);
+          mapStore.maps.secondary.addLayer(secondaryAOILayer);
+        }
+
+        // Add basemaps (visible by default)
+        const beforeBasemap = mapStore.createPlanetBasemap(map.summary_statistics.prediction1_date);
+        const afterBasemap = mapStore.createPlanetBasemap(map.summary_statistics.prediction2_date);
+        beforeBasemap.setOpacity(0.7);
+        afterBasemap.setOpacity(0.7);
+        mapStore.addLayerToDualMaps(beforeBasemap, 'primary');
+        mapStore.addLayerToDualMaps(afterBasemap, 'secondary');
+
+        // Find and add land cover predictions (not visible by default)
+        const pred1 = predictions.value.find(p => p.basemap_date === map.summary_statistics.prediction1_date);
+        const pred2 = predictions.value.find(p => p.basemap_date === map.summary_statistics.prediction2_date);
+
+        if (pred1) {
+          await mapStore.displayPrediction(
+            pred1.file,
+            `prediction-${pred1.id}`,
+            pred1.name,
+            'prediction',
+            'primary'
+          );
+        }
+
+        if (pred2) {
+          await mapStore.displayPrediction(
+            pred2.file,
+            `prediction-${pred2.id}`,
+            pred2.name,
+            'prediction',
+            'secondary'
+          );
+        }
+
+        // Make prediction layers invisible by default
+        mapStore.maps.primary.getLayers().forEach(layer => {
+          if (layer.get('id')?.includes('prediction-')) {
+            layer.setVisible(false);
+          }
+        });
+        mapStore.maps.secondary.getLayers().forEach(layer => {
+          if (layer.get('id')?.includes('prediction-')) {
+            layer.setVisible(false);
+          }
+        });
+
+        // Display hotspots on top
+        await displayHotspots();
+
+        // The layer switcher will automatically update when layers change
+        // No need to call updateLayers explicitly
+
+      } catch (error) {
+        console.error('Error loading existing analysis:', error);
+        $q.notify({
+          color: 'negative',
+          message: 'Failed to load analysis: ' + error.message,
+          icon: 'error'
+        });
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const formatDateRange = (startDate, endDate) => {
+      return `${date.formatDate(startDate, 'MMM YYYY')} - ${date.formatDate(endDate, 'MMM YYYY')}`;
+    };
+
+    const confirmDeleteAnalysis = (map) => {
+      $q.dialog({
+        title: 'Confirm Deletion',
+        message: `Are you sure you want to delete the analysis "${map.name}"?`,
+        cancel: true,
+        persistent: true
+      }).onOk(async () => {
+        try {
+          await deleteAnalysis(map);
+        } catch (error) {
+          console.error('Error deleting analysis:', error);
+          $q.notify({
+            color: 'negative',
+            message: 'Failed to delete analysis',
+            icon: 'error'
+          });
+        }
+      });
+    };
+
+    const deleteAnalysis = async (map) => {
+      try {
+        loading.value = true;
+        await api.deletePrediction(map.id);
+        
+        // Remove from local state
+        deforestationMaps.value = deforestationMaps.value.filter(m => m.id !== map.id);
+        
+        // Clear selection if this was the selected map
+        if (selectedDeforestationMap.value?.id === map.id) {
+          selectedDeforestationMap.value = null;
+          hotspots.value = [];
+          clearMapLayers();
+        }
+
+        $q.notify({
+          color: 'positive',
+          message: 'Analysis deleted successfully',
+          icon: 'check'
+        });
+      } catch (error) {
+        throw error;
+      } finally {
+        loading.value = false;
+      }
+    };
+
     return {
       // State
       activeTab,
@@ -918,7 +1107,11 @@ export default {
       getConfidenceLabel,
       predictionDates,
       analyzeDeforestation,
-      sourceOptions
+      sourceOptions,
+      loadExistingAnalysis,
+      formatDateRange,
+      confirmDeleteAnalysis,
+      deleteAnalysis
     };
   }
 };
@@ -973,5 +1166,10 @@ export default {
   border-radius: 4px;
   font-weight: bold;
   z-index: 1;
+}
+
+.selected-analysis {
+  background: rgba(0, 0, 0, 0.05);
+  border-left: 4px solid var(--q-primary);
 }
 </style> 
