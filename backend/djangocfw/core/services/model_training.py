@@ -234,22 +234,12 @@ class ModelTrainingService:
         return X, y, feature_ids
 
     def train_xgboost_model(self, X, y, feature_ids, dates, model_params):
-        """Train XGBoost model and calculate metrics"""
-        # First check minimum features per class
-        unique_features, unique_indices = np.unique(feature_ids, return_index=True)
-        unique_classes = y[unique_indices]
-        class_counts = {}
-        
-        for class_name in np.unique(y):
-            class_features = unique_features[unique_classes == class_name]
-            class_counts[class_name] = len(class_features)
-            if len(class_features) < 2:
-                raise ModelTrainingError(
-                    f"Class '{class_name}' has only {len(class_features)} features. "
-                    "Each class must have at least 2 features for train/test split."
-                )
-        
         # Extract splitting params and remove them from model_params
+        # split_params = {
+        #     'split_method': model_params.pop('split_method', 'feature'),
+        #     'train_test_split': model_params.pop('train_test_split', 0.2)
+        # }
+
         split_params = {
             'split_method': model_params['split_method'],
             'train_test_split': model_params['train_test_split']
