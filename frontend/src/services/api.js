@@ -128,11 +128,7 @@ export default {
         return apiClient.delete(`/predictions/${id}/`);
     },
 
-    // Hotspot endpoints
-    getHotspots(predictionId) {
-        return apiClient.get('/hotspots/', { params: { prediction_id: predictionId } });
-    },
-    
+
     verifyHotspot(id, status) {
         return apiClient.put(`/hotspots/${id}/verify/`, { status });
     },
@@ -142,11 +138,11 @@ export default {
         return apiClient.post('/analysis/change/', data);
     },
 
-    getDeforestationHotspots(predictionId, minAreaHa) {
+    getDeforestationHotspots(predictionId, minAreaHa, source) {
         return apiClient.get(`/analysis/deforestation_hotspots/${predictionId}/`, { 
             params: { 
                 min_area_ha: minAreaHa,
-                source: 'all'
+                source: source
             } 
         });
     },

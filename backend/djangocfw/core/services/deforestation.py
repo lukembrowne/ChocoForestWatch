@@ -18,6 +18,15 @@ from core.storage import PredictionStorage
 from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
 from loguru import logger
+from datetime import timedelta
+import requests
+from pyproj import Transformer
+from shapely.geometry import box
+from rasterio.mask import mask
+import numpy as np
+import os
+import tempfile
+from shapely.ops import transform
 
 def analyze_change(prediction1_id, prediction2_id, aoi_shape):
     """
@@ -256,6 +265,7 @@ def get_deforestation_hotspots(prediction_id, min_area_ha=1.0, source='all'):
         features_list = []
         
         if hotspots.exists():
+            logger.info(f"Found {hotspots.count()} existing hotspots for prediction {prediction_id}")
             # Convert existing hotspots to GeoJSON
             for hotspot in hotspots:
                 properties = {
@@ -280,7 +290,8 @@ def get_deforestation_hotspots(prediction_id, min_area_ha=1.0, source='all'):
                 features_list.append(feature)
         else:
             # Generate new hotspots if none exist
-            if source in ['all', 'ml']:
+            logger.info(f"Generating new hotspots for prediction {prediction_id} with source {source}")
+            if source in ['all', 'local']:
                 # Get the file path from the FileField
                 file_path = prediction.file.path if prediction.file else None
                 if not file_path:
@@ -308,7 +319,7 @@ def get_deforestation_hotspots(prediction_id, min_area_ha=1.0, source='all'):
                             compactness = float(4 * math.pi * polygon.area / (perimeter_m ** 2))
                             geojson_geometry = mapping(polygon)
                             
-                            # Create database record
+                           # Create database record
                             hotspot = DeforestationHotspot.objects.create(
                                 prediction=prediction,
                                 geometry=geojson_geometry,
@@ -318,7 +329,7 @@ def get_deforestation_hotspots(prediction_id, min_area_ha=1.0, source='all'):
                                 edge_density=edge_density,
                                 centroid_lon=float(centroid.x),
                                 centroid_lat=float(centroid.y),
-                                source='ml'
+                                source='local'
                             )
                             
                             feature = {
@@ -331,46 +342,63 @@ def get_deforestation_hotspots(prediction_id, min_area_ha=1.0, source='all'):
                                     "compactness": round(compactness, 3),
                                     "edge_density": round(edge_density, 3),
                                     "verification_status": None,
-                                    "source": "ml"
+                                    "source": "local"
                                 }
                             }
                             features_list.append(feature)
 
+            logger.info(f"Done with local alerts")
             if source in ['all', 'gfw']:
                 # Get project AOI
                 project = prediction.project
-                aoi_shape = shape(project.aoi.json)
-                
-                # Process GFW alerts
-                gfw_hotspots = process_gfw_alerts(prediction_id, aoi_shape)
-                
-                # Add GFW hotspots to features list
-                for hotspot in gfw_hotspots:
-                    feature = {
-                        "type": "Feature",
-                        "id": str(hotspot.id),
-                        "geometry": hotspot.geometry,
-                        "properties": {
+                try:
+                    # Handle different possible AOI formats
+                    if isinstance(project.aoi, str):
+                        aoi_geojson = json.loads(project.aoi)
+                    else:
+                        aoi_geojson = json.loads(project.aoi.json)
+                    
+                    aoi_shape = shape(aoi_geojson)
+                    
+                    # Process GFW alerts
+                    logger.info(f"Processing GFW alerts for prediction {prediction_id}")
+                    gfw_hotspots = process_gfw_alerts(prediction_id, aoi_shape)
+                    
+                    # Add GFW hotspots to features list
+                    for hotspot in gfw_hotspots:
+                        feature = {
+                            "type": "Feature",
                             "id": str(hotspot.id),
-                            "area_ha": round(hotspot.area_ha, 2),
-                            "perimeter_m": round(hotspot.perimeter_m, 2),
-                            "compactness": round(hotspot.compactness, 3),
-                            "edge_density": round(hotspot.edge_density, 3),
-                            "verification_status": hotspot.verification_status,
-                            "source": 'gfw',
-                            "confidence": hotspot.confidence
+                            "geometry": hotspot.geometry,
+                            "properties": {
+                                "id": str(hotspot.id),
+                                "area_ha": round(hotspot.area_ha, 2),
+                                "perimeter_m": round(hotspot.perimeter_m, 2),
+                                "compactness": round(hotspot.compactness, 3),
+                                "edge_density": round(hotspot.edge_density, 3),
+                                "verification_status": hotspot.verification_status,
+                                "source": 'gfw',
+                                "confidence": hotspot.confidence
+                            }
                         }
-                    }
-                    features_list.append(feature)
+                        features_list.append(feature)
+                except Exception as e:
+                    logger.error(f"Error processing GFW alerts: {str(e)}")
+                    logger.error(f"AOI data type: {type(project.aoi)}")
+                    logger.error(f"AOI content: {project.aoi}")
+                    raise
 
         # Filter hotspots by minimum area
+        logger.info(f"Filtering hotspots by minimum area of {min_area_ha} ha for prediction {prediction_id}")
         features_list = [f for f in features_list if f["properties"]["area_ha"] >= min_area_ha]
         
         # Sort features by area
+        logger.info(f"Sorting hotspots by area for prediction {prediction_id}")
         features_list.sort(key=lambda x: x["properties"]["area_ha"], reverse=True)
         
         # Calculate statistics by source
-        ml_hotspots = [f for f in features_list if f["properties"]["source"] == "ml"]
+        logger.info(f"Calculating statistics by source for prediction {prediction_id}")
+        local_hotspots = [f for f in features_list if f["properties"]["source"] == "local"]
         gfw_hotspots = [f for f in features_list if f["properties"]["source"] == "gfw"]
         
         metadata = {
@@ -379,9 +407,9 @@ def get_deforestation_hotspots(prediction_id, min_area_ha=1.0, source='all'):
             "total_area_ha": sum(f["properties"]["area_ha"] for f in features_list),
             "prediction_id": prediction_id,
             "by_source": {
-                "ml": {
-                    "count": len(ml_hotspots),
-                    "total_area_ha": sum(f["properties"]["area_ha"] for f in ml_hotspots)
+                "local": {
+                    "count": len(local_hotspots),
+                    "total_area_ha": sum(f["properties"]["area_ha"] for f in local_hotspots)
                 },
                 "gfw": {
                     "count": len(gfw_hotspots),
@@ -398,4 +426,161 @@ def get_deforestation_hotspots(prediction_id, min_area_ha=1.0, source='all'):
             
     except Exception as e:
         logger.error(f"Error in get_deforestation_hotspots: {str(e)}")
+        raise
+
+def decode_gfw_date(value):
+    """Decode GFW alert date and confidence from pixel value"""
+    if value == 0:
+        return None, None
+    
+    # Convert to string for easier processing
+    encoded_str = str(value)
+    
+    # Get confidence level from first digit
+    confidence = int(encoded_str[0])
+    
+    # Get days since Dec 31, 2014
+    days = int(encoded_str[1:])
+    
+    # Calculate date
+    base_date = datetime(2014, 12, 31)
+    alert_date = base_date + timedelta(days=days)
+
+    # logger.info(f"Alert date: {alert_date} - str was: {encoded_str}")
+    return alert_date, confidence
+
+def process_gfw_alerts(prediction_id, aoi_shape):
+    """Process GFW alerts for a given prediction's time period"""
+    try:
+        logger.info(f"Starting GFW alert processing for prediction {prediction_id}")
+        
+        # Get prediction details
+        prediction = Prediction.objects.get(id=prediction_id)
+        
+        # Get date range from prediction
+        start_date = datetime.strptime(prediction.summary_statistics['prediction1_date'], '%Y-%m')
+        end_date = datetime.strptime(prediction.summary_statistics['prediction2_date'], '%Y-%m')
+        logger.info(f"Processing alerts between {start_date} and {end_date}")
+
+        # Transform AOI from Web Mercator (EPSG:3857) to WGS84 (EPSG:4326)
+        project = Transformer.from_crs('EPSG:3857', 'EPSG:4326', always_xy=True).transform
+        aoi_shape_4326 = transform(project, aoi_shape)
+        logger.info(f"Transformed AOI to WGS84")
+
+        # GFW tiles for Ecuador
+        GFW_TILES = [
+            ("https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=10N_080W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c", "10N_080W.tif"),
+            ("https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=00N_080W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c", "00N_080W.tif"),
+            ("https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=00N_090W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c", "00N_090W.tif"),
+            ("https://data-api.globalforestwatch.org/dataset/gfw_integrated_alerts/latest/download/geotiff?grid=10/100000&tile_id=10N_090W&pixel_meaning=date_conf&x-api-key=2d60cd88-8348-4c0f-a6d5-bd9adb585a8c", "10N_090W.tif")
+        ]
+
+        gfw_data_dir = os.path.join(settings.MEDIA_ROOT, 'gfw_alerts')
+        os.makedirs(gfw_data_dir, exist_ok=True)
+
+        features_list = []
+        
+        # Process each tile individually
+        for url, filename in GFW_TILES:
+            # Add date to filename (before extension)
+            name, ext = os.path.splitext(filename)
+            dated_filename = f"{name}_{datetime.now().strftime('%Y%m%d')}{ext}"
+            tile_path = os.path.join(gfw_data_dir, dated_filename)
+            
+            # Download if doesn't exist
+            if not os.path.exists(tile_path):
+                logger.info(f"Downloading tile {filename} to {tile_path}")
+                response = requests.get(url, stream=True)
+                response.raise_for_status()
+                
+                with open(tile_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+            
+            # Process the tile
+            with rasterio.open(tile_path) as src:
+                logger.info(f"Processing tile {filename}")
+                
+                # Check if tile intersects with AOI
+                tile_bounds = box(*src.bounds)
+                if not tile_bounds.intersects(aoi_shape_4326):
+                    logger.info(f"Tile {filename} does not intersect with AOI, skipping")
+                    continue
+                
+                try:
+                    clipped_data, clipped_transform = mask(src, [aoi_shape_4326], crop=True)
+
+                    # Create alert mask for this tile
+                    alert_mask = np.zeros_like(clipped_data[0], dtype=bool)
+                    confidence_data = np.zeros_like(clipped_data[0], dtype=np.uint8)
+                    
+                    # Process each pixel
+                    for idx in np.ndindex(clipped_data[0].shape):
+                        value = clipped_data[0][idx]
+                        if value > 0:  # Skip nodata
+                            alert_date, confidence = decode_gfw_date(value)
+                            if alert_date and start_date <= alert_date <= end_date:
+                                alert_mask[idx] = True
+                                confidence_data[idx] = confidence
+
+                    logger.info(f"Alert mask shape: {alert_mask.shape}")
+                    non_zero_pixels = np.sum(clipped_data[0] > 0)
+                    logger.info(f"Non-zero pixels in tile {filename}: {non_zero_pixels}")
+
+                    # Get shapes from this tile
+                    shapes = features.shapes(
+                        alert_mask.astype(np.uint8),
+                        mask=alert_mask,
+                        transform=clipped_transform
+                    )
+                    
+                    logger.info(f"Shapes from GFW alerts: {shapes}")
+                    
+                    # Process shapes from this tile
+                    for geom, value in shapes:
+                        if value == 1:
+                           # logger.info(f"Processing shape from GFW alerts: {geom}")
+                            polygon = shape(geom)
+
+                            # Project to Web Mercator
+                            project = Transformer.from_crs('EPSG:4326', 'EPSG:3857', always_xy=True).transform
+                            polygon_3857 = transform(project, polygon)
+                            
+                            # Calculate area and other metrics in meters
+                            area_ha = polygon_3857.area / 10000
+                            
+                            # Create hotspot record
+                            hotspot = DeforestationHotspot.objects.create(
+                                prediction_id=prediction_id,
+                                geometry=mapping(polygon_3857),  # Store in Web Mercator
+                                area_ha=float(area_ha),
+                                perimeter_m=float(polygon_3857.length),
+                                compactness=float(4 * math.pi * polygon_3857.area / (polygon_3857.length ** 2)),
+                                edge_density=float(polygon_3857.length / (area_ha * 10000)),
+                                centroid_lon=float(polygon.centroid.x),  # Store centroids in lat/long
+                                centroid_lat=float(polygon.centroid.y),
+                                source='gfw',
+                                confidence=int(np.mean(confidence_data[features.rasterize(
+                                    [(geom, 1)],
+                                    out_shape=alert_mask.shape,
+                                    transform=clipped_transform
+                                ) == 1]))
+                            )
+                            
+                            features_list.append(hotspot)
+                
+                except Exception as e:
+                    logger.error(f"Error processing tile {filename}: {str(e)}")
+                    continue
+        
+        if features_list:
+            logger.info(f"Successfully processed {len(features_list)} hotspots from GFW alerts")
+        else:
+            logger.warning("No valid hotspots found in GFW alerts")
+            
+        return features_list
+            
+    except Exception as e:
+        logger.error(f"Error processing GFW alerts: {str(e)}")
         raise

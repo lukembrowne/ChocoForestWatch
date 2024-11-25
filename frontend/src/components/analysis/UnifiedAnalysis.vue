@@ -128,7 +128,7 @@
                   type="number"
                   label="Min Area (ha)"
                   dense
-                  @update:model-value="debouncedUpdateFilters"
+                  @update:model-value="loadHotspots"
                 >
                   <template v-slot:append>
                     <q-icon name="filter_alt" />
@@ -141,7 +141,7 @@
                   :options="sourceOptions"
                   label="Alert Source"
                   dense
-                  @update:model-value="debouncedUpdateFilters"
+                  @update:model-value="loadHotspots"
                 />
               </div>
             </div>
@@ -154,7 +154,7 @@
                   :key="index" 
                   :class="[
                     'hotspot-item',
-                    hotspot.properties.source === 'gfw' ? 'gfw-alert' : 'ml-alert',
+                    hotspot.properties.source === 'gfw' ? 'gfw-alert' : 'local-alert',
                     {
                       'selected-hotspot': selectedHotspot === hotspot,
                       'verified': hotspot.properties.verification_status === 'verified',
@@ -195,7 +195,7 @@
                   </q-item-section>
 
                   <q-item-section side>
-                    <div class="row q-gutter-xs">
+                    <div class="row q-gutter-xs verification-buttons">
                       <q-btn flat round size="sm" color="green" icon="check_circle"
                         @click.stop="verifyHotspot(hotspot, 'verified')">
                         <q-tooltip>Verify Deforestation</q-tooltip>
@@ -230,8 +230,8 @@
           <div class="map-legend">
             <div class="legend-title">Alert Types</div>
             <div class="legend-item">
-              <div class="legend-line ml-line"></div>
-              <span>ML Prediction</span>
+              <div class="legend-line local-line"></div>
+              <span>Local Alert</span>
             </div>
             <div class="legend-item">
               <div class="legend-line gfw-line"></div>
@@ -274,26 +274,27 @@
 
       <q-card-section class="q-pa-md">
         <!-- Overview Section -->
-        <div class="text-h6 q-mb-md">Overview by Source</div>
+        <div class="text-h6 q-mb-md">Overview by Source (Hotspots ≥ {{ minAreaHa }} ha)</div>
         <div class="row q-col-gutter-md">
-          <!-- ML Alerts -->
+          <!-- local Alerts -->
           <div class="col-6">
-            <q-card class="source-stats-card ml-stats">
+            <q-card class="source-stats-card local-stats">
               <q-card-section>
-                <div class="text-h6 q-mb-md">ML Predictions</div>
+                <div class="text-h6 q-mb-md">Local Alerts</div>
+                <div class="text-caption q-mb-sm">Showing hotspots ≥ {{ minAreaHa }} ha</div>
                 <div class="row q-col-gutter-md">
                   <div class="col-4">
                     <div class="text-subtitle2">Hotspots</div>
-                    <div class="text-h5">{{ sourceStats.ml.count }}</div>
+                    <div class="text-h5">{{ sourceStats.local.count }}</div>
                   </div>
                   <div class="col-4">
                     <div class="text-subtitle2">Total Area</div>
-                    <div class="text-h5">{{ sourceStats.ml.area.toFixed(1) }} ha</div>
-                    <div class="text-caption">{{ (sourceStats.ml.area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI</div>
+                    <div class="text-h5">{{ sourceStats.local.area.toFixed(1) }} ha</div>
+                    <div class="text-caption">{{ (sourceStats.local.area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI</div>
                   </div>
                   <div class="col-4">
                     <div class="text-subtitle2">Annual Rate</div>
-                    <div class="text-h5">{{ sourceStats.ml.rate.toFixed(1) }} ha/year</div>
+                    <div class="text-h5">{{ sourceStats.local.rate.toFixed(1) }} ha/year</div>
                   </div>
                 </div>
               </q-card-section>
@@ -305,6 +306,7 @@
             <q-card class="source-stats-card gfw-stats">
               <q-card-section>
                 <div class="text-h6 q-mb-md">GFW Alerts</div>
+                <div class="text-caption q-mb-sm">Showing hotspots ≥ {{ minAreaHa }} ha</div>
                 <div class="row q-col-gutter-md">
                   <div class="col-4">
                     <div class="text-subtitle2">Hotspots</div>
@@ -326,19 +328,19 @@
         </div>
 
         <!-- Status Breakdown Section -->
-        <div class="text-h6 q-mt-lg q-mb-md">Status Breakdown by Source</div>
+        <div class="text-h6 q-mt-lg q-mb-md">Status Breakdown by Source (Hotspots ≥ {{ minAreaHa }} ha)</div>
         <div class="row q-col-gutter-md">
-          <!-- ML Status Breakdown -->
+          <!-- local Status Breakdown -->
           <div class="col-6">
-            <q-card class="status-breakdown ml-stats">
+            <q-card class="status-breakdown local-stats">
               <q-card-section>
-                <div class="text-h6 q-mb-md">ML Predictions</div>
+                <div class="text-h6 q-mb-md">Local Alerts</div>
                 <div class="row q-col-gutter-md">
-                  <div v-for="status in mlStatusBreakdown" :key="status.name" class="col-6">
+                  <div v-for="status in localStatusBreakdown" :key="status.name" class="col-6">
                     <div :class="`text-${status.color}`">
                       <div class="text-subtitle2">{{ status.name }}</div>
                       <div class="text-h6">{{ status.count }} hotspots</div>
-                      <div class="text-caption">{{ status.percentage.toFixed(1) }}% of ML hotspots</div>
+                      <div class="text-caption">{{ status.percentage.toFixed(1) }}% of local hotspots</div>
                       <div class="text-subtitle2 q-mt-sm">{{ status.area.toFixed(1) }} ha</div>
                       <div class="text-caption">{{ status.areaPercentageOfAOI.toFixed(1) }}% of AOI</div>
                       <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year</div>
@@ -496,7 +498,6 @@ export default {
     const router = useRouter();
 
     // State
-    const activeTab = ref('deforestation');
     const primaryMap = ref(null);
     const secondaryMap = ref(null);
     const predictions = ref([]);
@@ -516,35 +517,18 @@ export default {
     // Add to setup() after other state declarations
     const sourceOptions = [
       { label: 'All Sources', value: 'all' },
-      { label: 'ML Predictions', value: 'ml' },
+      { label: 'Local Alerts', value: 'local' },
       { label: 'Global Forest Watch', value: 'gfw' }
     ];
-
     // Computed
     const getPrimaryMapLabel = computed(() => {
-      switch (activeTab.value) {
-        case 'deforestation':
-          return `Land Cover (${startDate.value?.label || 'Select Date'})`;
-        case 'verification':
-          return selectedDeforestationMap.value ? 
-            `Before (${selectedDeforestationMap.value.summary_statistics.prediction1_date})` : 
-            'Before';
-        default:
-          return 'Primary Map';
-      }
+      if (!selectedDeforestationMap.value) return 'Select Analysis';
+      return formatDate(selectedDeforestationMap.value.summary_statistics.prediction1_date);
     });
 
     const getSecondaryMapLabel = computed(() => {
-      switch (activeTab.value) {
-        case 'deforestation':
-          return `Land Cover (${endDate.value?.label || 'Select Date'})`;
-        case 'verification':
-          return selectedDeforestationMap.value ? 
-            `After (${selectedDeforestationMap.value.summary_statistics.prediction2_date})` : 
-            'After';
-        default:
-          return 'Secondary Map';
-      }
+      if (!selectedDeforestationMap.value) return 'Select Analysis';
+      return formatDate(selectedDeforestationMap.value.summary_statistics.prediction2_date);
     });
 
     // Initialize maps
@@ -595,26 +579,6 @@ export default {
           message: 'Failed to load analysis data',
           icon: 'error'
         });
-      }
-    };
-
-    // Watch for tab changes to update maps
-    watch(activeTab, (newTab) => {
-      // Update maps based on active tab
-      updateMapsForTab(newTab);
-    });
-
-    const updateMapsForTab = async (tab) => {
-      // Clear existing layers from both maps
-      clearMapLayers();
-      
-      switch (tab) {
-        case 'deforestation':
-          await setupDeforestationMaps();
-          break;
-        case 'verification':
-          await setupVerificationMaps();
-          break;
       }
     };
 
@@ -766,73 +730,11 @@ export default {
       }
     };
 
-    const setupVerificationMaps = async () => {
-      if (!selectedDeforestationMap.value) return;
-      
-      try {
-        loading.value = true;
-        clearMapLayers();
-
-        // Add AOI layers if project has AOI
-        if (projectStore.currentProject?.aoi) {
-          const { layer: primaryAOILayer, source: aoiSource } = mapStore.createAOILayer(
-            projectStore.currentProject.aoi
-          );
-          const { layer: secondaryAOILayer } = mapStore.createAOILayer(
-            projectStore.currentProject.aoi
-          );
-
-          mapStore.maps.primary.addLayer(primaryAOILayer);
-          mapStore.maps.secondary.addLayer(secondaryAOILayer);
-
-          // Get AOI extent
-          const aoiFeature = new GeoJSON().readFeature(projectStore.currentProject.aoi);
-          const extent = aoiFeature.getGeometry().getExtent();
-
-          // Fit both maps to AOI extent
-          mapStore.maps.primary.getView().fit(extent, {
-            padding: [50, 50, 50, 50],
-            duration: 1000
-          });
-
-          // The secondary map will automatically sync due to the view synchronization,
-          // but we can force it to be sure
-          mapStore.maps.secondary.getView().fit(extent, {
-            padding: [50, 50, 50, 50],
-            duration: 1000
-          });
-        }
-
-        const beforeDate = selectedDeforestationMap.value.summary_statistics.prediction1_date;
-        const afterDate = selectedDeforestationMap.value.summary_statistics.prediction2_date;
-        
-        // Add Planet basemaps
-        const beforeLayer = mapStore.createPlanetBasemap(beforeDate);
-        const afterLayer = mapStore.createPlanetBasemap(afterDate);
-        
-        mapStore.addLayerToDualMaps(beforeLayer, 'primary');
-        mapStore.addLayerToDualMaps(afterLayer, 'secondary');
-        
-        // Add hotspots if available
-        if (hotspots.value?.length) {
-          displayHotspots();
-        }
-      } catch (error) {
-        console.error('Error setting up verification maps:', error);
-        $q.notify({
-          color: 'negative',
-          message: 'Failed to load maps',
-          icon: 'error'
-        });
-      } finally {
-        loading.value = false;
-      }
-    };
-
     const loadHotspots = async () => {
       if (!selectedDeforestationMap.value) return;
 
       try {
+        console.log("Loading hotspots...", selectedSource.value);
         loading.value = true;
         const response = await api.getDeforestationHotspots(
           selectedDeforestationMap.value.id,
@@ -841,8 +743,10 @@ export default {
         );
         hotspots.value = response.data.features;
 
-        // Update maps with new hotspots
-        await setupVerificationMaps();
+        // Refresh the hotspots on both maps
+        await displayHotspots();
+
+
       } catch (error) {
         console.error('Error loading hotspots:', error);
         $q.notify({
@@ -1064,12 +968,6 @@ export default {
       }
     };
 
-    // Add watch for selectedPrediction
-    watch(selectedPrediction, async (newPrediction) => {
-      if (newPrediction && activeTab.value === 'landcover') {
-        await setupLandCoverMaps();
-      }
-    });
 
     // Replace updatePrimaryMap and updateSecondaryMap with this single function
     const updateMap = async (mapId, date) => {
@@ -1126,13 +1024,13 @@ export default {
 
     // Update the watchers to use the new function
     watch(startDate, async (newDate) => {
-      if (newDate && activeTab.value === 'deforestation') {
+      if (newDate) {
         await updateMap('primary', startDate);
       }
     });
 
     watch(endDate, async (newDate) => {
-      if (newDate && activeTab.value === 'deforestation') {
+      if (newDate) {
         await updateMap('secondary', endDate);
       }
     });
@@ -1339,11 +1237,11 @@ export default {
             after_date: selectedDeforestationMap.value.after_date,
             total_hotspots: hotspotsToExport.length,
             total_area_ha: hotspotsToExport.reduce((sum, h) => sum + h.properties.area_ha, 0),
+            min_area_threshold_ha: minAreaHa.value,
             source_breakdown: {
-              ml: hotspotsToExport.filter(h => h.properties.source === 'ml').length,
+              local: hotspotsToExport.filter(h => h.properties.source === 'local').length,
               gfw: hotspotsToExport.filter(h => h.properties.source === 'gfw').length
             },
-            min_area_ha: minAreaHa.value,
             export_type: type,
             export_timestamp: new Date().toISOString(),
             projection: 'EPSG:3857',
@@ -1501,24 +1399,23 @@ export default {
           ['Analysis Name', selectedDeforestationMap.value.name],
           ['Analysis Period', `${selectedDeforestationMap.value.summary_statistics.prediction1_date} to ${selectedDeforestationMap.value.summary_statistics.prediction2_date}`],
           ['Total AOI Area (ha)', projectStore.aoiAreaHa.toFixed(1)],
+          ['Minimum Hotspot Size (ha)', minAreaHa.value],
           [''],  // Empty row for spacing
           
-          // Land Cover Stats
-          ['Land Cover Statistics'],
-          ['Date', 'Forest (%)', 'Non-Forest (%)', 'Water (%)', 'Cloud (%)'],
-          [
-            selectedDeforestationMap.value.summary_statistics.prediction1_date,
-            selectedDeforestationMap.value.summary_statistics.before_forest_percentage?.toFixed(1) || '0.0',
-            selectedDeforestationMap.value.summary_statistics.before_nonforest_percentage?.toFixed(1) || '0.0',
-            selectedDeforestationMap.value.summary_statistics.before_water_percentage?.toFixed(1) || '0.0',
-            selectedDeforestationMap.value.summary_statistics.before_cloud_percentage?.toFixed(1) || '0.0'
+          // Hotspot Stats by Source
+          ['Hotspot Statistics by Source (Hotspots ≥ ' + minAreaHa.value + ' ha)'],
+          ['Source', 'Count', 'Area (ha)', 'Annual Rate (ha/year)', '% of AOI'],
+          ['Local Alerts', 
+            sourceStats.value.local.count,
+            sourceStats.value.local.area.toFixed(1),
+            sourceStats.value.local.rate.toFixed(1),
+            (sourceStats.value.local.area / projectStore.aoiAreaHa * 100).toFixed(1)
           ],
-          [
-            selectedDeforestationMap.value.summary_statistics.prediction2_date,
-            selectedDeforestationMap.value.summary_statistics.after_forest_percentage?.toFixed(1) || '0.0',
-            selectedDeforestationMap.value.summary_statistics.after_nonforest_percentage?.toFixed(1) || '0.0',
-            selectedDeforestationMap.value.summary_statistics.after_water_percentage?.toFixed(1) || '0.0',
-            selectedDeforestationMap.value.summary_statistics.after_cloud_percentage?.toFixed(1) || '0.0'
+          ['GFW Alerts',
+            sourceStats.value.gfw.count,
+            sourceStats.value.gfw.area.toFixed(1),
+            sourceStats.value.gfw.rate.toFixed(1),
+            (sourceStats.value.gfw.area / projectStore.aoiAreaHa * 100).toFixed(1)
           ],
           [''],  // Empty row for spacing
 
@@ -1531,13 +1428,13 @@ export default {
           [''],  // Empty row for spacing
 
           // Hotspot Stats by Source
-          ['Hotspot Statistics by Source'],
+          ['Hotspot Statistics by Source (Hotspots ≥ ' + minAreaHa.value + ' ha)'],
           ['Source', 'Count', 'Area (ha)', 'Annual Rate (ha/year)', '% of AOI'],
-          ['ML Predictions', 
-            sourceStats.value.ml.count,
-            sourceStats.value.ml.area.toFixed(1),
-            sourceStats.value.ml.rate.toFixed(1),
-            (sourceStats.value.ml.area / projectStore.aoiAreaHa * 100).toFixed(1)
+          ['Local Alerts', 
+            sourceStats.value.local.count,
+            sourceStats.value.local.area.toFixed(1),
+            sourceStats.value.local.rate.toFixed(1),
+            (sourceStats.value.local.area / projectStore.aoiAreaHa * 100).toFixed(1)
           ],
           ['GFW Alerts',
             sourceStats.value.gfw.count,
@@ -1601,7 +1498,7 @@ export default {
     // Add these computed properties in setup() after other computed properties
     const sourceStats = computed(() => {
       const stats = {
-        ml: { count: 0, area: 0, rate: 0 },
+        local: { count: 0, area: 0, rate: 0 },
         gfw: { count: 0, area: 0, rate: 0 }
       }
 
@@ -1617,15 +1514,15 @@ export default {
         const afterDate = new Date(selectedDeforestationMap.value.summary_statistics.prediction2_date);
         const yearsDiff = (afterDate - beforeDate) / (1000 * 60 * 60 * 24 * 365.25);
 
-        stats.ml.rate = stats.ml.area / yearsDiff;
+        stats.local.rate = stats.local.area / yearsDiff;
         stats.gfw.rate = stats.gfw.area / yearsDiff;
       }
 
       return stats;
     });
 
-    const mlStatusBreakdown = computed(() => {
-      return calculateStatusBreakdown(hotspots.value.filter(h => h.properties.source === 'ml'));
+    const localStatusBreakdown = computed(() => {
+      return calculateStatusBreakdown(hotspots.value.filter(h => h.properties.source === 'local'));
     });
 
     const gfwStatusBreakdown = computed(() => {
@@ -1680,7 +1577,6 @@ export default {
 
     return {
       // State
-      activeTab,
       primaryMap,
       secondaryMap,
       predictions,
@@ -1723,7 +1619,7 @@ export default {
       exportStats,
       projectStore,
       sourceStats,
-      mlStatusBreakdown,
+      localStatusBreakdown,
       gfwStatusBreakdown,
       exportHotspots,
       formatDate
@@ -1845,7 +1741,7 @@ export default {
       margin-right: 8px;
     }
     
-    .ml-line {
+    .local-line {
       background: #1976D2;
     }
     
@@ -1872,28 +1768,54 @@ export default {
   transition: all 0.2s ease;
 
   &.selected-hotspot {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(25, 118, 210, 0.1) !important;
     border-left-color: var(--q-primary);
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
   }
 
-  &.ml-alert {
+  &.local-alert {
     border-left-color: #1976D2;
+    &.selected-hotspot {
+      background: rgba(25, 118, 210, 0.1) !important;
+    }
   }
 
   &.gfw-alert {
     border-left-color: #9C27B0;
+    &.selected-hotspot {
+      background: rgba(156, 39, 176, 0.1) !important;
+    }
   }
 
   &.verified {
-    background: rgba(76, 175, 80, 0.1);
+    background: rgba(76, 175, 80, 0.05);
+    &.selected-hotspot {
+      background: rgba(76, 175, 80, 0.15) !important;
+    }
   }
 
   &.rejected {
-    background: rgba(96, 125, 139, 0.1);
+    background: rgba(96, 125, 139, 0.05);
+    &.selected-hotspot {
+      background: rgba(96, 125, 139, 0.15) !important;
+    }
   }
 
   &.unsure {
-    background: rgba(255, 193, 7, 0.1);
+    background: rgba(255, 193, 7, 0.05);
+    &.selected-hotspot {
+      background: rgba(255, 193, 7, 0.15) !important;
+    }
+  }
+}
+
+.verification-buttons {
+  gap: 2px !important;
+  
+  .q-btn {
+    padding: 4px;
+    margin: 0;
   }
 }
 
