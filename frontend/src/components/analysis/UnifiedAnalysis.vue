@@ -470,7 +470,6 @@ export default {
             // Add Planet basemap
             console.log("Adding Planet basemap for start date:", startDate.value.value);
             const beforeBasemap = mapStore.createPlanetBasemap(startDate.value.value);
-            beforeBasemap.setOpacity(0.7);
             mapStore.addLayerToDualMaps(beforeBasemap, 'primary');
 
             // Add land cover prediction
@@ -491,7 +490,6 @@ export default {
           if (pred2) {
             // Add Planet basemap
             const afterBasemap = mapStore.createPlanetBasemap(endDate.value.value);
-            afterBasemap.setOpacity(0.7);
             mapStore.addLayerToDualMaps(afterBasemap, 'secondary');
 
             // Add land cover prediction
@@ -826,31 +824,29 @@ export default {
 
     // Replace updatePrimaryMap and updateSecondaryMap with this single function
     const updateMap = async (mapId, date) => {
-      console.log('updateMap:', date.value);
       try {
-        if (!date) {
-          console.log('Date is not defined');
-          return;
-        }
+        if (!date) return;
 
         const prediction = predictions.value.find(p => p.basemap_date === date.value.value);
-        console.log('adding prediction:', prediction);
         if (prediction) {
-          // Clear existing layers from specified map only
+          // Clear only prediction and basemap layers, preserving AOI layer
           const mapLayers = mapStore.maps[mapId].getLayers().getArray();
           mapLayers.forEach(layer => {
-            if (layer.get('id') !== 'osm' && !layer.get('id')?.includes('aoi')) {
+            const layerId = layer.get('id');
+            // Only remove prediction and planet basemap layers
+            if (layerId?.includes('prediction-') || layerId === 'planet-basemap') {
               mapStore.maps[mapId].removeLayer(layer);
             }
           });
 
-          // Add Planet basemap
+          // Add Planet basemap first (so it's at the bottom)
           console.log(`Adding Planet basemap for ${mapId} date:`, date.value.value);
           const basemap = mapStore.createPlanetBasemap(date.value.value);
-          basemap.setOpacity(0.7);
+          basemap.setVisible(true);
+          basemap.setZIndex(1); // Set lower z-index for basemap
           mapStore.addLayerToDualMaps(basemap, mapId);
 
-          // Add land cover prediction
+          // Add land cover prediction on top
           console.log(`Adding land cover prediction for ${mapId}:`, prediction.name);
           await mapStore.displayPrediction(
             prediction.file,
@@ -859,6 +855,19 @@ export default {
             'prediction',
             mapId
           );
+
+          // Ensure proper layer ordering
+          const layers = mapStore.maps[mapId].getLayers().getArray();
+          layers.forEach(layer => {
+            const layerId = layer.get('id');
+            if (layerId?.includes('prediction-')) {
+              layer.setZIndex(3); // Prediction layer on top
+            } else if (layerId === 'planet-basemap') {
+              layer.setZIndex(1); // Basemap in middle
+            } else if (layerId === 'area-of-interest') {
+              layer.setZIndex(2); // AOI between basemap and prediction
+            }
+          });
         }
       } catch (error) {
         console.error(`Error updating ${mapId} map:`, error);

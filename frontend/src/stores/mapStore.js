@@ -461,7 +461,7 @@ export const useMapStore = defineStore('map', () => {
         }),
         title: layerName,
         id: layerId,
-        visible: true,
+        visible: false,
         zIndex: 1,
         opacity: 0.7
       });
