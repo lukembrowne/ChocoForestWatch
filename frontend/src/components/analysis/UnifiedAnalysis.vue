@@ -275,6 +275,7 @@ import { GeoJSON } from 'ol/format';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import { Style, Fill, Stroke } from 'ol/style';
+import { useRouter } from 'vue-router';
 
 export default {
   name: 'UnifiedAnalysis',
@@ -283,6 +284,7 @@ export default {
     const mapStore = useMapStore();
     const projectStore = useProjectStore();
     const $q = useQuasar();
+    const router = useRouter();
 
     // State
     const activeTab = ref('deforestation');
@@ -338,6 +340,21 @@ export default {
 
     // Initialize maps
     onMounted(() => {
+      if (!projectStore.currentProject) {
+        $q.notify({
+          message: 'Please select a project first',
+          color: 'warning',
+          icon: 'folder',
+          actions: [
+            { 
+              label: 'Select Project', 
+              color: 'white', 
+              handler: () => router.push('/')
+            }
+          ]
+        });
+        return;
+      }
       mapStore.initDualMaps(primaryMap.value, secondaryMap.value);
       loadInitialData();
     });
@@ -345,10 +362,11 @@ export default {
     // Methods
     const loadInitialData = async () => {
       try {
-        // Load predictions and deforestation maps
         const response = await api.getPredictions(projectStore.currentProject.id);
         console.log("Predictions fetched:", response.data);
-        predictions.value = response.data.filter(p => p.type === "land_cover");
+        predictions.value = response.data
+          .filter(p => p.type === "land_cover")
+          .sort((a, b) => new Date(a.basemap_date) - new Date(b.basemap_date));
         deforestationMaps.value = response.data.filter(p => p.type === "deforestation");
       } catch (error) {
         console.error('Error loading initial data:', error);
@@ -399,6 +417,7 @@ export default {
     };
 
     const setupDeforestationMaps = async () => {
+        console.log("Setting up deforestation maps...");
       if (!mapStore.maps.primary || !mapStore.maps.secondary) {
         console.error("Maps not properly initialized!");
         return;
@@ -799,16 +818,58 @@ export default {
       }
     });
 
-    // Add these watchers after the existing watch(activeTab) in setup()
+    // Replace updatePrimaryMap and updateSecondaryMap with this single function
+    const updateMap = async (mapId, date) => {
+      console.log('updateMap:', date.value);
+      try {
+        if (!date) {
+          console.log('Date is not defined');
+          return;
+        }
+
+        const prediction = predictions.value.find(p => p.basemap_date === date.value.value);
+        console.log('adding prediction:', prediction);
+        if (prediction) {
+          // Clear existing layers from specified map only
+          const mapLayers = mapStore.maps[mapId].getLayers().getArray();
+          mapLayers.forEach(layer => {
+            if (layer.get('id') !== 'osm' && !layer.get('id')?.includes('aoi')) {
+              mapStore.maps[mapId].removeLayer(layer);
+            }
+          });
+
+          // Add Planet basemap
+          console.log(`Adding Planet basemap for ${mapId} date:`, date.value.value);
+          const basemap = mapStore.createPlanetBasemap(date.value.value);
+          basemap.setOpacity(0.7);
+          mapStore.addLayerToDualMaps(basemap, mapId);
+
+          // Add land cover prediction
+          console.log(`Adding land cover prediction for ${mapId}:`, prediction.name);
+          await mapStore.displayPrediction(
+            prediction.file,
+            `prediction-${prediction.id}`,
+            prediction.name,
+            'prediction',
+            mapId
+          );
+        }
+      } catch (error) {
+        console.error(`Error updating ${mapId} map:`, error);
+        throw error;
+      }
+    };
+
+    // Update the watchers to use the new function
     watch(startDate, async (newDate) => {
       if (newDate && activeTab.value === 'deforestation') {
-        await setupDeforestationMaps();
+        await updateMap('primary', startDate);
       }
     });
 
     watch(endDate, async (newDate) => {
       if (newDate && activeTab.value === 'deforestation') {
-        await setupDeforestationMaps();
+        await updateMap('secondary', endDate);
       }
     });
 

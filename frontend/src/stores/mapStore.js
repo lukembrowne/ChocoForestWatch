@@ -1130,7 +1130,7 @@ export const useMapStore = defineStore('map', () => {
     console.log('Primary target:', primaryTarget);
     console.log('Secondary target:', secondaryTarget);
 
-    nextTick(() => {
+    nextTick(async () => {
       // Create maps
       maps.value.primary = new Map({
         target: primaryTarget,
@@ -1172,11 +1172,38 @@ export const useMapStore = defineStore('map', () => {
       maps.value.primary.updateSize();
       maps.value.secondary.updateSize();
 
-      // // Sync map movements
+      // Add AOI layers if project has AOI
+      const projectStore = useProjectStore();
+      if (projectStore.currentProject?.aoi) {
+        console.log("Setting up AOI layers in dual maps...");
+        
+        // Create AOI layers
+        const { layer: primaryAOILayer, source: aoiSource } = createAOILayer(
+          projectStore.currentProject.aoi
+        );
+        const { layer: secondaryAOILayer } = createAOILayer(
+          projectStore.currentProject.aoi
+        );
+
+        // Add layers
+        maps.value.primary.addLayer(primaryAOILayer);
+        maps.value.secondary.addLayer(secondaryAOILayer);
+
+        // Get AOI extent and fit both maps
+        const extent = aoiSource.getExtent();
+        console.log('Fitting to AOI extent:', extent);
+        
+        maps.value.primary.getView().fit(extent);
+        maps.value.secondary.getView().fit(extent);
+        
+        // Secondary map will sync automatically due to view synchronization
+      }
+
+      // Sync map movements
       const primaryView = maps.value.primary.getView();
       const secondaryView = maps.value.secondary.getView();
 
-      // // Sync center changes
+      // Sync center changes
       primaryView.on('change:center', () => {
         secondaryView.setCenter(primaryView.getCenter());
       });
