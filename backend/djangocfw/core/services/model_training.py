@@ -155,7 +155,6 @@ class ModelTrainingService:
                 error=str(e)
             )
             raise ModelTrainingError(detail=str(e))
-
     def prepare_training_data(self, training_set_ids):
         """Prepare training data from training sets"""
         all_X = []
@@ -178,7 +177,8 @@ class ModelTrainingService:
             all_y.extend(y)
             all_feature_ids.extend(feature_ids)
             all_dates.extend([training_set.basemap_date] * len(y))
-        
+
+
         return (
             np.vstack(all_X),
             np.array(all_y),
@@ -251,10 +251,19 @@ class ModelTrainingService:
         # Get project and classes
         project = Project.objects.get(id=self.project_id)
         all_class_names = [cls['name'] for cls in project.classes]
+
+        # Define the desired class order
+        desired_class_order = ['Forest', 'Non-Forest', 'Cloud', 'Shadow', 'Water']
         
-        # Create label encoder for classes
+        # Create custom mapping dictionary
+        class_to_int = {class_name: idx for idx, class_name in enumerate(desired_class_order)}
+
+        # Transform labels using the mapping
+        y_encoded = np.array([class_to_int[label] for label in y])
+
+        # Create a custom LabelEncoder that remembers the mapping
         le = LabelEncoder()
-        y_encoded = le.fit_transform(y)
+        le.classes_ = np.array(desired_class_order)
         
         ## Get classes actually present in training data
         classes_in_training = le.classes_.tolist()

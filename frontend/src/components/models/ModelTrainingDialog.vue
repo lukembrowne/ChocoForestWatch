@@ -358,12 +358,14 @@ export default {
           if (existingModel.value.model_parameters) {
             console.log('Existing model parameters:', existingModel.value.model_parameters)
             const params = existingModel.value.model_parameters
+            console.log("Params: ", params);
+            console.log("Gamma: ", params.gamma);
             options.value = {
               n_estimators: params.n_estimators ? params.n_estimators : 'NA',
               max_depth: params.max_depth ? params.max_depth : 'NA',
               learning_rate: params.learning_rate ? params.learning_rate : 'NA',
               min_child_weight: params.min_child_weight ? params.min_child_weight : 'NA',
-              gamma: params.gamma ? params.gamma : 'NA',
+              gamma: params.gamma ?? 'NA',
               subsample: params.subsample ? params.subsample : 'NA',
               colsample_bytree: params.colsample_bytree ? params.colsample_bytree : 'NA',
               sieve_size: params.sieve_size ? params.sieve_size : 'NA'

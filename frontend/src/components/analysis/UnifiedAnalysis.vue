@@ -1071,8 +1071,8 @@ export default {
         // Add basemaps (visible by default)
         const beforeBasemap = mapStore.createPlanetBasemap(map.summary_statistics.prediction1_date);
         const afterBasemap = mapStore.createPlanetBasemap(map.summary_statistics.prediction2_date);
-        beforeBasemap.setOpacity(0.7);
-        afterBasemap.setOpacity(0.7);
+        beforeBasemap.setOpacity(1.0);
+        afterBasemap.setOpacity(1.0);
         mapStore.addLayerToDualMaps(beforeBasemap, 'primary');
         mapStore.addLayerToDualMaps(afterBasemap, 'secondary');
 

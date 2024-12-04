@@ -15,7 +15,7 @@ import { ref, watch, computed, nextTick } from 'vue';
 import { Draw, Modify, Select } from 'ol/interaction';
 import { DragPan, DragZoom } from 'ol/interaction';
 import { click } from 'ol/events/condition';
-import { fromUrl } from 'geotiff';
+import { fromUrl, fromArrayBuffer } from 'geotiff';
 import ImageLayer from 'ol/layer/Image';
 import ImageStatic from 'ol/source/ImageStatic';
 import { getBasemapDateOptions } from 'src/utils/dateUtils';
@@ -394,8 +394,26 @@ export const useMapStore = defineStore('map', () => {
   // Display predictions or deforesation maps
   const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'landcover', mapId = null) => {
     console.log(`Displaying ${mode} on map:`, mapId);
+    console.log('Prediction file path:', predictionFilePath);
+    
     try {
-      const tiff = await fromUrl(predictionFilePath);
+      // Check if predictionFilePath is valid
+      if (!predictionFilePath) {
+        throw new Error('Invalid prediction file path');
+      }
+
+      // const tiff = await fromUrl(predictionFilePath).catch(error => {
+      //   console.error('Error loading TIFF:', error);
+      //   throw new Error(`Failed to load TIFF file: ${error.message}`);
+      // });
+
+          const response = await fetch(predictionFilePath, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch TIFF file: ${response.statusText}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      const tiff = await fromArrayBuffer(arrayBuffer);
+      
       const image = await tiff.getImage();
       const width = image.getWidth();
       const height = image.getHeight();
@@ -418,6 +436,8 @@ export const useMapStore = defineStore('map', () => {
           acc[cls.name] = cls.color;
           return acc;
         }, {});
+
+        console.log("Color mapping: ", colorMapping);
       } else if (mode === 'deforestation') {
         colorMapping = {
           0: '#00FF00',
@@ -485,7 +505,14 @@ export const useMapStore = defineStore('map', () => {
       }
     } catch (error) {
       console.error(`Error displaying ${mode}:`, error);
-      throw new Error(`Failed to display ${mode}: ` + error.message);
+      console.error('Full error details:', {
+        predictionFilePath,
+        layerId,
+        layerName,
+        mode,
+        mapId
+      });
+      throw new Error(`Failed to display ${mode}: ${error.message}`);
     }
   };
 
