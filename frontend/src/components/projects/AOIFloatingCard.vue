@@ -2,46 +2,46 @@
   <div class="aoi-container">
     <q-card class="aoi-card">
       <q-card-section>
-        <div class="text-h6">Define Area of Interest</div>
-        <p class="text-body2">Please draw the Area of Interest (AOI) for your project on the map or upload a GeoJSON file or .zipped Shapefile.</p>
+        <div class="text-h6">{{ t('projects.aoi.title') }}</div>
+        <p class="text-body2">{{ t('projects.aoi.description') }}</p>
         
-        <div class="text-subtitle2 q-mt-md">Current AOI Size</div>
-        <div class="text-body1">{{ aoiSizeHa.toFixed(2) }} ha</div>
+        <div class="text-subtitle2 q-mt-md">{{ t('projects.aoi.currentSize') }}</div>
+        <div class="text-body1">{{ aoiSizeHa.toFixed(2) }} {{ t('projects.aoi.hectares') }}</div>
         <q-badge v-if="aoiSizeHa > maxAoiSizeHa" color="negative" class="q-mt-sm">
-          Warning: AOI size exceeds the maximum allowed ({{ maxAoiSizeHa }} ha)
+          {{ t('projects.aoi.sizeWarning', { max: maxAoiSizeHa }) }}
         </q-badge>
       </q-card-section>
 
       <q-separator />
 
       <q-card-section>
-        <div class="text-subtitle2 q-mb-sm">Actions</div>
+        <div class="text-subtitle2 q-mb-sm">{{ t('projects.aoi.actions') }}</div>
         <div class="column q-gutter-y-sm">
           <q-btn 
-            label="Draw AOI" 
+            :label="t('projects.aoi.buttons.draw')"
             color="primary" 
             icon="create" 
             @click="startDrawingAOI"
             class="full-width" 
           />
           <q-btn 
-            label="Upload AOI file" 
+            :label="t('projects.aoi.buttons.upload')"
             color="secondary" 
             icon="upload_file"
             @click="triggerFileUpload"
             class="full-width" 
           >
-            <q-tooltip>Upload .geojson or zipped shapefile</q-tooltip>
+            <q-tooltip>{{ t('projects.aoi.tooltips.upload') }}</q-tooltip>
           </q-btn>
           <q-btn 
-            label="Clear AOI" 
+            :label="t('projects.aoi.buttons.clear')"
             color="negative" 
             icon="clear" 
             @click="clearAOI"
             class="full-width" 
           />
           <q-btn 
-            label="Save AOI" 
+            :label="t('projects.aoi.buttons.save')"
             color="positive" 
             icon="save" 
             @click="saveAOI" 
@@ -67,6 +67,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import Draw, {
     createBox,
 } from 'ol/interaction/Draw.js'; import { Vector as VectorLayer } from 'ol/layer'
@@ -86,6 +87,7 @@ export default {
         const projectStore = useProjectStore()
         const mapStore = useMapStore()
         const $q = useQuasar()
+        const { t } = useI18n()
 
         const isDrawing = ref(false)
         const aoiDrawn = ref(false)
@@ -167,7 +169,7 @@ export default {
                     aoiDrawn.value = false;
                     $q.notify({
                         color: 'negative',
-                        message: `Drawn AOI is too large. Maximum allowed area is ${maxAoiSizeHa.value} ha`,
+                        message: t('projects.aoi.notifications.tooLarge', { max: maxAoiSizeHa.value }),
                         icon: 'error'
                     });
                 } else {
@@ -242,15 +244,16 @@ export default {
 
                 $q.notify({
                     color: 'positive',
-                    message: 'AOI saved successfully',
+                    message: t('projects.aoi.notifications.saved'),
                     icon: 'check'
                 })
 
+                emit('aoi-saved', { success: true, area: aoiSizeHa.value, timestamp: Date.now() })
             } catch (error) {
                 console.error('Error in saveAOI:', error)
                 $q.notify({
                     color: 'negative',
-                    message: 'Failed to save AOI',
+                    message: t('projects.aoi.notifications.saveFailed'),
                     icon: 'error'
                 })
             }
@@ -271,7 +274,7 @@ export default {
             } else {
                 $q.notify({
                     color: 'negative',
-                    message: 'Unsupported file type. Please upload a GeoJSON or a Zipped Shapefile.',
+                    message: t('projects.aoi.notifications.unsupportedFile'),
                     icon: 'error'
                 });
             }
@@ -287,7 +290,7 @@ export default {
                     console.error('Error parsing GeoJSON:', error);
                     $q.notify({
                         color: 'negative',
-                        message: 'Failed to parse GeoJSON file',
+                        message: t('projects.aoi.notifications.uploadFailed', { fileType: 'GeoJSON' }),
                         icon: 'error'
                     });
                 }
@@ -297,7 +300,6 @@ export default {
 
         const handleShapefile = async (file) => {
             try {
-                // Check if it's a zip file
                 if (file.type === "application/zip" || file.name.endsWith('.zip')) {
                     const arrayBuffer = await file.arrayBuffer();
                     const geojson = await shp(arrayBuffer);
@@ -307,7 +309,7 @@ export default {
                 console.error('Error parsing Shapefile:', error);
                 $q.notify({
                     color: 'negative',
-                    message: 'Failed to parse Shapefile: ' + error.message,
+                    message: t('projects.aoi.notifications.uploadFailed', { fileType: 'Shapefile' }),
                     icon: 'error'
                 });
             }
@@ -332,7 +334,7 @@ export default {
                     aoiDrawn.value = false;
                     $q.notify({
                         color: 'negative',
-                        message: `Uploaded AOI is too large. Maximum allowed area is ${maxAoiSizeHa.value} ha`,
+                        message: t('projects.aoi.notifications.tooLarge', { max: maxAoiSizeHa.value }),
                         icon: 'error'
                     });
 
@@ -360,7 +362,8 @@ export default {
             handleFileUpload,
             fileInput,
             aoiSizeHa,
-            maxAoiSizeHa
+            maxAoiSizeHa,
+            t
         }
     }
 }

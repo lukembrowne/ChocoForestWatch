@@ -90,5 +90,75 @@ export default {
     error: {
       training: 'Error al transicionar al modo de entrenamiento'
     }
+  },
+  projects: {
+    existingProjects: 'Proyectos Existentes',
+    createNew: 'Crear Nuevo Proyecto',
+    projectName: 'Nombre del Proyecto',
+    description: 'Descripción',
+    createButton: 'Crear Proyecto',
+    nameRequired: 'El nombre del proyecto es requerido. Por favor ingrese un nombre para su proyecto.',
+    minClasses: 'Se requieren al menos 2 clases',
+    uniqueClasses: 'Los nombres de las clases deben ser únicos',
+    created: 'Proyecto creado exitosamente. Por favor defina su Área de Interés.',
+    failedCreate: 'Error al crear el proyecto',
+    rename: {
+      title: 'Renombrar Proyecto',
+      newName: 'Nuevo Nombre del Proyecto',
+      empty: 'El nombre del proyecto no puede estar vacío',
+      success: 'Proyecto renombrado exitosamente',
+      failed: 'Error al renombrar el proyecto'
+    },
+    delete: {
+      title: 'Confirmar Eliminación',
+      confirm: '¿Está seguro que desea eliminar el proyecto "{name}"?',
+      success: 'Proyecto eliminado exitosamente',
+      failed: 'Error al eliminar el proyecto'
+    },
+    table: {
+      name: 'Nombre',
+      updated: 'Actualizado',
+      actions: 'Acciones'
+    },
+    tooltips: {
+      load: 'Cargar Proyecto',
+      rename: 'Renombrar Proyecto',
+      delete: 'Eliminar Proyecto'
+    },
+    buttons: {
+      cancel: 'Cancelar',
+      rename: 'Renombrar'
+    },
+    aoi: {
+      title: 'Definir Área de Interés',
+      description: 'Por favor dibuje el Área de Interés (AOI) para su proyecto en el mapa o cargue un archivo GeoJSON o Shapefile comprimido.',
+      currentSize: 'Tamaño Actual del AOI',
+      hectares: 'ha',
+      sizeWarning: 'Advertencia: El tamaño del AOI excede el máximo permitido ({max} ha)',
+      actions: 'Acciones',
+      buttons: {
+        draw: 'Dibujar AOI',
+        upload: 'Cargar archivo AOI',
+        clear: 'Limpiar AOI',
+        save: 'Guardar AOI'
+      },
+      tooltips: {
+        upload: 'Cargar archivo .geojson o shapefile comprimido'
+      },
+      notifications: {
+        saved: 'AOI guardado exitosamente',
+        saveFailed: 'Error al guardar AOI',
+        uploadSuccess: 'Archivo cargado exitosamente',
+        uploadFailed: 'Error al procesar {fileType}',
+        unsupportedFile: 'Tipo de archivo no soportado. Por favor cargue un archivo GeoJSON o Shapefile comprimido.',
+        tooLarge: 'El AOI es demasiado grande. El área máxima permitida es {max} ha',
+        noFeatures: 'No se encontraron características válidas en el archivo',
+        noAoi: 'No se ha dibujado ningún AOI'
+      }
+    },
+    notifications: {
+      fetchFailed: 'Error al cargar los proyectos'
+    },
+    ok: 'Aceptar'
   }
 } 

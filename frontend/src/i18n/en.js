@@ -90,5 +90,75 @@ export default {
     error: {
       training: 'Error transitioning to training mode'
     }
+  },
+  projects: {
+    existingProjects: 'Existing Projects',
+    createNew: 'Create New Project',
+    projectName: 'Project Name',
+    description: 'Description',
+    createButton: 'Create Project',
+    nameRequired: 'Project name is required. Please enter a name for your project.',
+    minClasses: 'At least 2 classes are required',
+    uniqueClasses: 'Class names must be unique',
+    created: 'Project created successfully. Please define your Area of Interest.',
+    failedCreate: 'Failed to create project',
+    rename: {
+      title: 'Rename Project',
+      newName: 'New Project Name',
+      empty: 'Project name cannot be empty',
+      success: 'Project renamed successfully',
+      failed: 'Failed to rename project'
+    },
+    delete: {
+      title: 'Confirm Delete',
+      confirm: 'Are you sure you want to delete the project "{name}"?',
+      success: 'Project deleted successfully',
+      failed: 'Failed to delete project'
+    },
+    table: {
+      name: 'Name',
+      updated: 'Updated',
+      actions: 'Actions'
+    },
+    tooltips: {
+      load: 'Load Project',
+      rename: 'Rename Project',
+      delete: 'Delete Project'
+    },
+    buttons: {
+      cancel: 'Cancel',
+      rename: 'Rename'
+    },
+    aoi: {
+      title: 'Define Area of Interest',
+      description: 'Please draw the Area of Interest (AOI) for your project on the map or upload a GeoJSON file or .zipped Shapefile.',
+      currentSize: 'Current AOI Size',
+      hectares: 'ha',
+      sizeWarning: 'Warning: AOI size exceeds the maximum allowed ({max} ha)',
+      actions: 'Actions',
+      buttons: {
+        draw: 'Draw AOI',
+        upload: 'Upload AOI file',
+        clear: 'Clear AOI',
+        save: 'Save AOI'
+      },
+      tooltips: {
+        upload: 'Upload .geojson or zipped shapefile'
+      },
+      notifications: {
+        saved: 'AOI saved successfully',
+        saveFailed: 'Failed to save AOI',
+        uploadSuccess: 'File uploaded successfully',
+        uploadFailed: 'Failed to parse {fileType}',
+        unsupportedFile: 'Unsupported file type. Please upload a GeoJSON or a Zipped Shapefile.',
+        tooLarge: 'AOI is too large. Maximum allowed area is {max} ha',
+        noFeatures: 'No valid features found in the file',
+        noAoi: 'No AOI drawn'
+      }
+    },
+    notifications: {
+      fetchFailed: 'Failed to fetch projects'
+    },
+    ok: 'Ok'
   }
 } 

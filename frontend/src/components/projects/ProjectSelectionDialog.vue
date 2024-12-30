@@ -2,7 +2,7 @@
   <div class="project-selection-container">
     <q-card class="project-card">
       <q-card-section>
-        <div class="text-subtitle1 q-mb-sm">Existing Projects</div>
+        <div class="text-subtitle1 q-mb-sm">{{ t('projects.existingProjects') }}</div>
         <q-table 
           :rows="projects" 
           :columns="columns" 
@@ -15,13 +15,13 @@
           <template v-slot:body-cell-actions="props">
             <q-td :props="props">
               <q-btn flat round color="primary" icon="launch" @click.stop="onOk(props.row)">
-                <q-tooltip>Load Project</q-tooltip>
+                <q-tooltip>{{ t('projects.tooltips.load') }}</q-tooltip>
               </q-btn>
               <q-btn flat round color="secondary" icon="edit" @click.stop="openRenameDialog(props.row)">
-                <q-tooltip>Rename Project</q-tooltip>
+                <q-tooltip>{{ t('projects.tooltips.rename') }}</q-tooltip>
               </q-btn>
               <q-btn flat round color="negative" icon="delete" @click.stop="confirmDelete(props.row)">
-                <q-tooltip>Delete Project</q-tooltip>
+                <q-tooltip>{{ t('projects.tooltips.delete') }}</q-tooltip>
               </q-btn>
             </q-td>
           </template>
@@ -31,14 +31,14 @@
       <q-separator />
 
       <q-card-section>
-        <div class="text-subtitle1 q-mb-sm">Create New Project</div>
+        <div class="text-subtitle1 q-mb-sm">{{ t('projects.createNew') }}</div>
         <q-form @submit.prevent="validateAndCreateProject">
           <q-input 
             dense 
             rounded 
             outlined 
             v-model="newProject.name" 
-            label="Project Name" 
+            :label="t('projects.projectName')"
             class="q-mb-md" 
           />
           <q-input 
@@ -46,12 +46,12 @@
             rounded 
             outlined 
             v-model="newProject.description" 
-            label="Description" 
+            :label="t('projects.description')"
             type="textarea"
             class="q-mb-md" 
           />
           <q-btn 
-            label="Create Project" 
+            :label="t('projects.createButton')"
             type="submit" 
             color="primary" 
             class="q-mt-md full-width" 
@@ -65,21 +65,21 @@
     <q-dialog v-model="showRenameDialog">
       <q-card style="min-width: 350px">
         <q-card-section>
-          <div class="text-h6">Rename Project</div>
+          <div class="text-h6">{{ t('projects.rename.title') }}</div>
         </q-card-section>
 
         <q-card-section class="q-pt-none">
           <q-input 
             v-model="newProjectName" 
-            label="New Project Name" 
+            :label="t('projects.rename.newName')"
             autofocus 
             @keyup.enter="renameProject" 
           />
         </q-card-section>
 
         <q-card-actions align="right" class="text-primary">
-          <q-btn flat label="Cancel" v-close-popup />
-          <q-btn flat label="Rename" @click="renameProject" v-close-popup />
+          <q-btn flat :label="t('projects.buttons.cancel')" v-close-popup />
+          <q-btn flat :label="t('projects.buttons.rename')" @click="renameProject" v-close-popup />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -89,6 +89,7 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import { useProjectStore } from 'src/stores/projectStore'
 import { date } from 'quasar'
 
@@ -99,6 +100,7 @@ export default {
   setup(props, { emit }) {
     const $q = useQuasar()
     const projectStore = useProjectStore()
+    const { t } = useI18n()
     const projects = ref([])
     const newProjectName = ref('')
     const projectToRename = ref(null)
@@ -119,7 +121,7 @@ export default {
       { 
         name: 'name', 
         required: true, 
-        label: 'Name', 
+        label: t('projects.table.name'),
         align: 'left', 
         field: 'name', 
         sortable: true 
@@ -127,7 +129,7 @@ export default {
       { 
         name: 'updated_at', 
         align: 'left', 
-        label: 'Updated', 
+        label: t('projects.table.updated'),
         field: 'updated_at', 
         sortable: true,
         format: (val) => date.formatDate(val, 'MM/DD/YY'),
@@ -136,7 +138,7 @@ export default {
       { 
         name: 'actions', 
         align: 'right', 
-        label: 'Actions',
+        label: t('projects.table.actions'),
         style: 'width: 120px'
       }
     ]
@@ -152,7 +154,7 @@ export default {
         console.error('Error fetching projects:', error)
         $q.notify({
           color: 'negative',
-          message: 'Failed to fetch projects',
+          message: t('projects.notifications.fetchFailed'),
           icon: 'error'
         })
       }
@@ -162,10 +164,10 @@ export default {
       console.log("Validating and creating project...")
       if (!newProject.value.name.trim()) {
         $q.dialog({
-          title: 'Error',
-          message: 'Project name is required. Please enter a name for your project.',
+          title: t('common.error'),
+          message: t('projects.nameRequired'),
           color: 'negative',
-          ok: 'Ok'
+          ok: t('common.ok')
         })
         return
       }
@@ -176,7 +178,7 @@ export default {
       if (newProject.value.classes.length < 2) {
         $q.notify({
           color: 'negative',
-          message: 'At least 2 classes are required',
+          message: t('projects.minClasses'),
           icon: 'error'
         })
         return
@@ -185,7 +187,7 @@ export default {
       if (new Set(newProject.value.classes.map(c => c.name)).size !== newProject.value.classes.length) {
         $q.notify({
           color: 'negative',
-          message: 'Class names must be unique',
+          message: t('projects.uniqueClasses'),
           icon: 'error'
         })
         return
@@ -210,7 +212,7 @@ export default {
         }
 
         $q.notify({
-          message: 'Project created successfully. Please define your Area of Interest.',
+          message: t('projects.created'),
           color: 'positive',
           icon: 'check'
         })
@@ -218,7 +220,7 @@ export default {
         console.error('Error creating project:', error)
         $q.notify({
           color: 'negative',
-          message: 'Failed to create project',
+          message: t('projects.failedCreate'),
           icon: 'error'
         })
       }
@@ -246,7 +248,7 @@ export default {
       if (!newProjectName.value.trim()) {
         $q.notify({
           color: 'negative',
-          message: 'Project name cannot be empty',
+          message: t('projects.rename.empty'),
           icon: 'error'
         })
         return
@@ -257,14 +259,14 @@ export default {
         await fetchProjects()
         $q.notify({
           color: 'positive',
-          message: 'Project renamed successfully',
+          message: t('projects.rename.success'),
           icon: 'check'
         })
       } catch (error) {
         console.error('Error renaming project:', error)
         $q.notify({
           color: 'negative',
-          message: 'Failed to rename project',
+          message: t('projects.rename.failed'),
           icon: 'error'
         })
       }
@@ -272,8 +274,8 @@ export default {
 
     const confirmDelete = (project) => {
       $q.dialog({
-        title: 'Confirm Delete',
-        message: `Are you sure you want to delete the project "${project.name}"?`,
+        title: t('projects.delete.title'),
+        message: t('projects.delete.confirm', { name: project.name }),
         cancel: true,
         persistent: true
       }).onOk(async () => {
@@ -282,14 +284,14 @@ export default {
           await fetchProjects()
           $q.notify({
             color: 'positive',
-            message: 'Project deleted successfully',
+            message: t('projects.delete.success'),
             icon: 'check'
           })
         } catch (error) {
           console.error('Error deleting project:', error)
           $q.notify({
             color: 'negative',
-            message: 'Failed to delete project',
+            message: t('projects.delete.failed'),
             icon: 'error'
           })
         }
@@ -312,7 +314,8 @@ export default {
       showRenameDialog,
       renameProject,
       confirmDelete,
-      openRenameDialog
+      openRenameDialog,
+      t
     }
   }
 }
