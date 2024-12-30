@@ -537,12 +537,12 @@ export default {
     onMounted(() => {
       if (!projectStore.currentProject) {
         $q.notify({
-          message: 'Please select a project first',
+          message: t('analysis.unified.notifications.projectRequired'),
           color: 'warning',
           icon: 'folder',
           actions: [
             { 
-              label: 'Select Project', 
+              label: t('analysis.unified.notifications.selectProject'),
               color: 'white', 
               handler: () => router.push('/')
             }
@@ -867,16 +867,14 @@ export default {
         }
 
         $q.notify({
-          color: 'positive',
-          message: 'Hotspot verification updated',
-          icon: 'check'
+          type: 'positive',
+          message: t('analysis.unified.notifications.verificationUpdated')
         });
       } catch (error) {
         console.error('Error verifying hotspot:', error);
         $q.notify({
-          color: 'negative',
-          message: 'Failed to update hotspot verification',
-          icon: 'error'
+          type: 'negative',
+          message: t('analysis.unified.notifications.verificationError')
         });
       }
     };
@@ -957,16 +955,14 @@ export default {
         await loadInitialData();
 
         $q.notify({
-          color: 'positive',
-          message: 'Analysis completed. Verify the detected hotspots.',
-          icon: 'check'
+          type: 'positive',
+          message: t('analysis.unified.notifications.analysisSaved')
         });
       } catch (error) {
         console.error('Error analyzing deforestation:', error);
         $q.notify({
-          color: 'negative',
-          message: 'Failed to analyze deforestation: ' + error.message,
-          icon: 'error'
+          type: 'negative',
+          message: t('analysis.unified.notifications.analysisError')
         });
       } finally {
         loading.value = false;
@@ -1123,9 +1119,8 @@ export default {
       } catch (error) {
         console.error('Error loading existing analysis:', error);
         $q.notify({
-          color: 'negative',
-          message: 'Failed to load analysis: ' + error.message,
-          icon: 'error'
+          type: 'negative',
+          message: t('analysis.unified.notifications.analysisError')
         });
       } finally {
         loading.value = false;
@@ -1138,48 +1133,32 @@ export default {
 
     const confirmDeleteAnalysis = (map) => {
       $q.dialog({
-        title: 'Confirm Deletion',
-        message: `Are you sure you want to delete the analysis "${map.name}"?`,
-        cancel: true,
-        persistent: true
-      }).onOk(async () => {
-        try {
-          await deleteAnalysis(map);
-        } catch (error) {
-          console.error('Error deleting analysis:', error);
-          $q.notify({
-            color: 'negative',
-            message: 'Failed to delete analysis',
-            icon: 'error'
-          });
-        }
+        title: t('analysis.unified.dialogs.delete.title'),
+        message: t('analysis.unified.dialogs.delete.message'),
+        ok: {
+          color: 'negative',
+          label: t('analysis.unified.dialogs.delete.confirm')
+        },
+        cancel: t('analysis.unified.dialogs.delete.cancel')
+      }).onOk(() => {
+        deleteAnalysis(map);
       });
     };
 
     const deleteAnalysis = async (map) => {
       try {
-        loading.value = true;
-        await api.deletePrediction(map.id);
-        
-        // Remove from local state
-        deforestationMaps.value = deforestationMaps.value.filter(m => m.id !== map.id);
-        
-        // Clear selection if this was the selected map
-        if (selectedDeforestationMap.value?.id === map.id) {
-          selectedDeforestationMap.value = null;
-          hotspots.value = [];
-          clearMapLayers();
-        }
-
+        await projectStore.deleteDeforestationMap(map.id);
+        await loadInitialData();
         $q.notify({
-          color: 'positive',
-          message: 'Analysis deleted successfully',
-          icon: 'check'
+          type: 'positive',
+          message: t('analysis.unified.notifications.analysisDeleted')
         });
       } catch (error) {
-        throw error;
-      } finally {
-        loading.value = false;
+        console.error('Error deleting analysis:', error);
+        $q.notify({
+          type: 'negative',
+          message: t('analysis.unified.notifications.deleteError')
+        });
       }
     };
 
@@ -1205,9 +1184,8 @@ export default {
       } catch (error) {
         console.error('Error updating hotspots:', error);
         $q.notify({
-          color: 'negative',
-          message: 'Failed to update hotspots',
-          icon: 'error'
+          type: 'negative',
+          message: 'Failed to update hotspots'
         });
       } finally {
         loading.value = false;
@@ -1215,7 +1193,7 @@ export default {
     };
 
     // Add to setup()
-    const exportHotspots = (type) => {
+    const exportHotspots = async (type) => {
       try {
         let hotspotsToExport = [];
         if (type === 'verified') {
@@ -1288,18 +1266,15 @@ export default {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
 
-        // Show success notification
         $q.notify({
-          color: 'positive',
-          message: `Successfully exported ${hotspotsToExport.length} hotspots`,
-          icon: 'check'
+          type: 'positive',
+          message: t('analysis.unified.notifications.exportSuccess')
         });
       } catch (error) {
-        console.error('Error exporting hotspots:', error);
+        console.error('Error exporting data:', error);
         $q.notify({
-          color: 'negative',
-          message: 'Failed to export hotspots',
-          icon: 'error'
+          type: 'negative',
+          message: t('analysis.unified.notifications.exportError')
         });
       }
     };
@@ -1486,16 +1461,14 @@ export default {
         URL.revokeObjectURL(url);
 
         $q.notify({
-          color: 'positive',
-          message: 'Statistics exported successfully',
-          icon: 'check'
+          type: 'positive',
+          message: t('analysis.unified.notifications.exportSuccess')
         });
       } catch (error) {
         console.error('Error exporting statistics:', error);
         $q.notify({
-          color: 'negative',
-          message: 'Failed to export statistics',
-          icon: 'error'
+          type: 'negative',
+          message: t('analysis.unified.notifications.exportError')
         });
       }
     };

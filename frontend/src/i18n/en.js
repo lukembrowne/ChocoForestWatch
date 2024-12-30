@@ -147,6 +147,36 @@ export default {
         subtitle: '{start} to {end}',
         close: 'Close',
         export: 'Export'
+      },
+      notifications: {
+        projectRequired: 'Please select a project first',
+        selectProject: 'Select Project',
+        analysisDeleted: 'Analysis deleted successfully',
+        deleteError: 'Failed to delete analysis',
+        analysisSaved: 'Analysis saved successfully',
+        analysisError: 'Error running analysis',
+        verificationUpdated: 'Verification status updated',
+        verificationError: 'Error updating verification status',
+        exportSuccess: 'Export completed successfully',
+        exportError: 'Error exporting data'
+      },
+      dialogs: {
+        delete: {
+          title: 'Delete Analysis',
+          message: 'Are you sure you want to delete this analysis?',
+          confirm: 'Delete',
+          cancel: 'Cancel'
+        },
+        stats: {
+          title: 'Analysis Statistics',
+          close: 'Close',
+          export: 'Export Statistics',
+          sections: {
+            overview: 'Overview',
+            sources: 'Alert Sources',
+            verification: 'Verification Status'
+          }
+        }
       }
     }
   },
