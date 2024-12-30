@@ -1,6 +1,6 @@
 <template>
   <div class="custom-layer-switcher">
-    <p class="text-subtitle2 q-mb-sm">Layers</p>
+    <p class="text-subtitle2 q-mb-sm">{{ t('layers.switcher.title') }}</p>
     <q-separator class="q-mb-sm" />
     <Sortable
       :list="mapLayers"
@@ -14,7 +14,9 @@
             <q-icon name="drag_indicator" class="drag-handle cursor-move q-mr-sm" />
             <q-checkbox v-model="element.visible" :label="element.title"
               @update:model-value="toggleLayerVisibility(element.id)" dense class="col" />
-            <q-btn flat round dense icon="tune" size="sm" @click="element.showOpacity = !element.showOpacity" />
+            <q-btn flat round dense icon="tune" size="sm" @click="element.showOpacity = !element.showOpacity">
+              <q-tooltip>{{ t('layers.switcher.tooltips.toggleOpacity') }}</q-tooltip>
+            </q-btn>
             <q-btn
               v-if="element.id.includes('prediction') || element.id.includes('deforestation')"
               flat
@@ -25,7 +27,7 @@
               size="sm"
               @click="removeLayer(element.id)"
             >
-              <q-tooltip>Remove layer</q-tooltip>
+              <q-tooltip>{{ t('layers.switcher.tooltips.remove') }}</q-tooltip>
             </q-btn>
           </div>
           <q-slide-transition>
@@ -53,6 +55,7 @@
 import { ref, computed } from 'vue';
 import { useMapStore } from 'src/stores/mapStore';
 import { Sortable } from 'sortablejs-vue3';
+import { useI18n } from 'vue-i18n';
 
 export default {
   name: 'CustomLayerSwitcher',
@@ -68,6 +71,7 @@ export default {
   },
   setup(props) {
     const mapStore = useMapStore();
+    const { t } = useI18n();
 
     const mapLayers = computed(() => {
       if(props.mapId === 'training') {
@@ -112,7 +116,8 @@ export default {
       onDragEnd,
       toggleLayerVisibility,
       updateLayerOpacity,
-      removeLayer
+      removeLayer,
+      t
     };
   }
 };

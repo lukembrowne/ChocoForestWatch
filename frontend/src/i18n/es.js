@@ -97,6 +97,14 @@ export default {
     baseMap: 'Mapa Base',
     satellite: 'Satélite',
     terrain: 'Terreno',
+    switcher: {
+      title: 'Capas',
+      opacity: 'Opacidad',
+      tooltips: {
+        toggleOpacity: 'Ajustar opacidad',
+        remove: 'Eliminar capa'
+      }
+    },
     basemapDate: {
       title: 'Fecha del Mapa Base',
       months: {

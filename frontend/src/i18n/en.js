@@ -97,6 +97,14 @@ export default {
     baseMap: 'Base Map',
     satellite: 'Satellite',
     terrain: 'Terrain',
+    switcher: {
+      title: 'Layers',
+      opacity: 'Opacity',
+      tooltips: {
+        toggleOpacity: 'Toggle opacity control',
+        remove: 'Remove layer'
+      }
+    },
     basemapDate: {
       title: 'Basemap Date',
       months: {
