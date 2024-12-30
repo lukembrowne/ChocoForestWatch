@@ -72,7 +72,83 @@ export default {
   analysis: {
     title: 'Análisis',
     runAnalysis: 'Ejecutar Análisis',
-    selectArea: 'Seleccionar Área'
+    selectArea: 'Seleccionar Área',
+    unified: {
+      deforestation: {
+        title: 'Análisis de Deforestación',
+        existing: {
+          title: 'Análisis Existentes',
+          empty: 'No hay análisis de deforestación disponibles. Cree un nuevo análisis abajo.',
+          tooltips: {
+            delete: 'Eliminar Análisis'
+          },
+          confirm: {
+            title: 'Eliminar Análisis',
+            message: '¿Está seguro que desea eliminar este análisis?'
+          }
+        },
+        new: {
+          title: 'Nuevo Análisis',
+          startDate: 'Fecha de Inicio',
+          endDate: 'Fecha Final',
+          analyze: 'Analizar'
+        }
+      },
+      hotspots: {
+        title: 'Puntos Críticos Detectados',
+        count: 'punto crítico | puntos críticos',
+        empty: 'No se encontraron puntos críticos en el área seleccionada.',
+        export: {
+          title: 'Exportar Puntos Críticos',
+          all: 'Todos los Puntos Críticos',
+          verifiedOnly: 'Solo Verificados'
+        },
+        filters: {
+          minArea: 'Área Mínima (ha)',
+          source: 'Fuente de Alerta',
+          sources: {
+            all: 'Todas las Fuentes',
+            local: 'Alertas Locales',
+            gfw: 'Global Forest Watch'
+          }
+        },
+        confidence: {
+          high: 'Alta',
+          medium: 'Media',
+          low: 'Baja'
+        },
+        status: {
+          unverified: 'Sin Verificar',
+          verified: 'Verificado',
+          rejected: 'Rechazado',
+          unsure: 'Incierto'
+        },
+        tooltips: {
+          verify: 'Verificar Deforestación',
+          unsure: 'Marcar como Incierto',
+          reject: 'Rechazar Alerta'
+        }
+      },
+      maps: {
+        legend: {
+          title: 'Tipos de Alertas',
+          local: 'Alerta Local',
+          gfw: 'Alerta GFW',
+          status: {
+            title: 'Estado de Verificación',
+            verified: 'Verificado',
+            unsure: 'Incierto',
+            rejected: 'Rechazado'
+          }
+        }
+      },
+      stats: {
+        title: 'Estadísticas de Análisis',
+        subtitle: '{start} a {end}',
+        close: 'Cerrar',
+        export: 'Exportar'
+      }
+    }
   },
   training: {
     startTraining: 'Iniciar Entrenamiento',
@@ -82,6 +158,14 @@ export default {
       title: {
         train: 'Entrenar Modelo XGBoost',
         update: 'Actualizar Modelo XGBoost'
+      },
+      progress: {
+        title: 'Entrenamiento y Predicción en Progreso',
+        close: 'Cerrar',
+        cancel: 'Cancelar',
+        tooltips: {
+          cancel: 'Cancelar entrenamiento'
+        }
       },
       buttons: {
         cancel: 'Cancelar',

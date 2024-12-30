@@ -4,14 +4,14 @@
     <div class="analysis-controls-container">
       <q-card class="analysis-card">
         <q-card-section class="analysis-header">
-          <div class="text-h6">Deforestation Analysis</div>
+          <div class="text-h6">{{ t('analysis.unified.deforestation.title') }}</div>
         </q-card-section>
 
         <!-- Wrap the scrollable content -->
         <q-card-section class="analysis-content">
           <!-- Existing Analyses Section -->
           <div class="section q-mb-md">
-            <div class="text-subtitle2 q-mb-sm">Existing Analyses</div>
+            <div class="text-subtitle2 q-mb-sm">{{ t('analysis.unified.deforestation.existing.title') }}</div>
             <q-scroll-area style="height: 150px" v-if="deforestationMaps.length">
               <q-list separator dense>
                 <q-item 
@@ -41,37 +41,37 @@
                       icon="delete"
                       @click.stop="confirmDeleteAnalysis(map)"
                     >
-                      <q-tooltip>Delete Analysis</q-tooltip>
+                      <q-tooltip>{{ t('analysis.unified.deforestation.existing.tooltips.delete') }}</q-tooltip>
                     </q-btn>
                   </q-item-section>
                 </q-item>
               </q-list>
             </q-scroll-area>
             <div v-else class="text-caption q-pa-md text-center">
-              No deforestation analyses available. Create a new analysis below.
+              {{ t('analysis.unified.deforestation.existing.empty') }}
             </div>
           </div>
 
           <!-- New Analysis Section -->
           <div class="section q-mb-md">
-            <div class="text-subtitle2 q-mb-sm">New Analysis</div>
+            <div class="text-subtitle2 q-mb-sm">{{ t('analysis.unified.deforestation.new.title') }}</div>
             <div class="row q-col-gutter-md">
               <q-select
                 v-model="startDate"
                 :options="predictionDates"
-                label="Start Date"
+                :label="t('analysis.unified.deforestation.new.startDate')"
                 class="col"
               />
               <q-select
                 v-model="endDate"
                 :options="predictionDates"
-                label="End Date"
+                :label="t('analysis.unified.deforestation.new.endDate')"
                 class="col"
               />
             </div>
             <div class="row justify-end q-mt-sm">
               <q-btn 
-                label="Analyze" 
+                :label="t('analysis.unified.deforestation.new.analyze')"
                 color="primary"
                 @click="analyzeDeforestation"
                 :disable="!startDate || !endDate"
@@ -84,9 +84,9 @@
           <div class="section" v-if="hotspots?.length">
             <div class="row items-center justify-between q-mb-sm">
               <div class="text-subtitle2">
-                Detected Hotspots
+                {{ t('analysis.unified.hotspots.title') }}
                 <q-badge color="primary" class="q-ml-sm">
-                  {{ hotspots.length }} hotspots
+                  {{ hotspots.length }} {{ t('analysis.unified.hotspots.count', hotspots.length) }}
                 </q-badge>
               </div>
               <div class="row q-gutter-sm">
@@ -95,7 +95,7 @@
                   dense
                   color="primary" 
                   icon="analytics" 
-                  label="Statistics"
+                  :label="t('analysis.unified.stats.title')"
                   @click="showStats = true"
                 />
                 <q-btn 
@@ -103,16 +103,16 @@
                   dense
                   color="primary" 
                   icon="download" 
-                  label="Export Hotspots"
+                  :label="t('analysis.unified.hotspots.export.title')"
                   @click="exportHotspots('all')"
                 >
                   <q-menu>
                     <q-list dense style="min-width: 100px">
                       <q-item clickable v-close-popup @click="exportHotspots('all')">
-                        <q-item-section>All Hotspots</q-item-section>
+                        <q-item-section>{{ t('analysis.unified.hotspots.export.all') }}</q-item-section>
                       </q-item>
                       <q-item clickable v-close-popup @click="exportHotspots('verified')">
-                        <q-item-section>Verified Only</q-item-section>
+                        <q-item-section>{{ t('analysis.unified.hotspots.export.verifiedOnly') }}</q-item-section>
                       </q-item>
                     </q-list>
                   </q-menu>
@@ -126,7 +126,7 @@
                 <q-input
                   v-model.number="minAreaHa"
                   type="number"
-                  label="Min Area (ha)"
+                  :label="t('analysis.unified.hotspots.filters.minArea')"
                   dense
                   @update:model-value="loadHotspots"
                 >
@@ -139,7 +139,7 @@
                 <q-select
                   v-model="selectedSource"
                   :options="sourceOptions"
-                  label="Alert Source"
+                  :label="t('analysis.unified.hotspots.filters.source')"
                   dense
                   @update:model-value="loadHotspots"
                 />
@@ -228,27 +228,27 @@
           
           <!-- Add legend -->
           <div class="map-legend">
-            <div class="legend-title">Alert Types</div>
+            <div class="legend-title">{{ t('analysis.unified.maps.legend.title') }}</div>
             <div class="legend-item">
               <div class="legend-line local-line"></div>
-              <span>Local Alert</span>
+              <span>{{ t('analysis.unified.maps.legend.local') }}</span>
             </div>
             <div class="legend-item">
               <div class="legend-line gfw-line"></div>
-              <span>GFW Alert</span>
+              <span>{{ t('analysis.unified.maps.legend.gfw') }}</span>
             </div>
-            <div class="legend-title mt-2">Verification Status</div>
+            <div class="legend-title mt-2">{{ t('analysis.unified.maps.legend.status.title') }}</div>
             <div class="legend-item">
               <div class="legend-line verified-line"></div>
-              <span>Verified</span>
+              <span>{{ t('analysis.unified.maps.legend.status.verified') }}</span>
             </div>
             <div class="legend-item">
               <div class="legend-line unsure-line"></div>
-              <span>Unsure</span>
+              <span>{{ t('analysis.unified.maps.legend.status.unsure') }}</span>
             </div>
             <div class="legend-item">
               <div class="legend-line rejected-line"></div>
-              <span>Rejected</span>
+              <span>{{ t('analysis.unified.maps.legend.status.rejected') }}</span>
             </div>
           </div>
         </div>
@@ -484,6 +484,7 @@ import { Style, Fill, Stroke } from 'ol/style';
 import { useRouter } from 'vue-router';
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue';
 import debounce from 'lodash/debounce';
+import { useI18n } from 'vue-i18n';
 
 export default {
   name: 'UnifiedAnalysis',
@@ -496,6 +497,7 @@ export default {
     const projectStore = useProjectStore();
     const $q = useQuasar();
     const router = useRouter();
+    const { t } = useI18n();
 
     // State
     const primaryMap = ref(null);
@@ -516,9 +518,9 @@ export default {
 
     // Add to setup() after other state declarations
     const sourceOptions = [
-      { label: 'All Sources', value: 'all' },
-      { label: 'Local Alerts', value: 'local' },
-      { label: 'Global Forest Watch', value: 'gfw' }
+      { label: t('analysis.unified.hotspots.filters.sources.all'), value: 'all' },
+      { label: t('analysis.unified.hotspots.filters.sources.local'), value: 'local' },
+      { label: t('analysis.unified.hotspots.filters.sources.gfw'), value: 'gfw' }
     ];
     // Computed
     const getPrimaryMapLabel = computed(() => {
@@ -1625,7 +1627,8 @@ export default {
       localStatusBreakdown,
       gfwStatusBreakdown,
       exportHotspots,
-      formatDate
+      formatDate,
+      t
     };
   }
 };

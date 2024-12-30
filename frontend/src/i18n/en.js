@@ -72,7 +72,83 @@ export default {
   analysis: {
     title: 'Analysis',
     runAnalysis: 'Run Analysis',
-    selectArea: 'Select Area'
+    selectArea: 'Select Area',
+    unified: {
+      deforestation: {
+        title: 'Deforestation Analysis',
+        existing: {
+          title: 'Existing Analyses',
+          empty: 'No deforestation analyses available. Create a new analysis below.',
+          tooltips: {
+            delete: 'Delete Analysis'
+          },
+          confirm: {
+            title: 'Delete Analysis',
+            message: 'Are you sure you want to delete this analysis?'
+          }
+        },
+        new: {
+          title: 'New Analysis',
+          startDate: 'Start Date',
+          endDate: 'End Date',
+          analyze: 'Analyze'
+        }
+      },
+      hotspots: {
+        title: 'Detected Hotspots',
+        count: 'hotspot | hotspots',
+        empty: 'No hotspots found in the selected area.',
+        export: {
+          title: 'Export Hotspots',
+          all: 'All Hotspots',
+          verifiedOnly: 'Verified Only'
+        },
+        filters: {
+          minArea: 'Min Area (ha)',
+          source: 'Alert Source',
+          sources: {
+            all: 'All Sources',
+            local: 'Local Alerts',
+            gfw: 'Global Forest Watch'
+          }
+        },
+        confidence: {
+          high: 'High',
+          medium: 'Medium',
+          low: 'Low'
+        },
+        status: {
+          unverified: 'Unverified',
+          verified: 'Verified',
+          rejected: 'Rejected',
+          unsure: 'Unsure'
+        },
+        tooltips: {
+          verify: 'Verify Deforestation',
+          unsure: 'Mark as Unsure',
+          reject: 'Reject Alert'
+        }
+      },
+      maps: {
+        legend: {
+          title: 'Alert Types',
+          local: 'Local Alert',
+          gfw: 'GFW Alert',
+          status: {
+            title: 'Verification Status',
+            verified: 'Verified',
+            unsure: 'Unsure',
+            rejected: 'Rejected'
+          }
+        }
+      },
+      stats: {
+        title: 'Analysis Statistics',
+        subtitle: '{start} to {end}',
+        close: 'Close',
+        export: 'Export'
+      }
+    }
   },
   training: {
     startTraining: 'Start Training',
@@ -82,6 +158,14 @@ export default {
       title: {
         train: 'Train XGBoost Model',
         update: 'Update XGBoost Model'
+      },
+      progress: {
+        title: 'Training and Prediction in Progress',
+        close: 'Close',
+        cancel: 'Cancel',
+        tooltips: {
+          cancel: 'Cancel training'
+        }
       },
       buttons: {
         cancel: 'Cancel',

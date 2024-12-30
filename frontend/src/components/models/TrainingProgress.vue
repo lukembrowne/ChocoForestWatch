@@ -2,7 +2,7 @@
   <q-dialog v-model="dialogModel" persistent>
     <q-card style="min-width: 300px">
       <q-card-section class="row items-center">
-        <div class="text-h6">Training and Prediction in Progress</div>
+        <div class="text-h6">{{ t('training.modelTraining.progress.title') }}</div>
         <q-space />
         <q-btn
           icon="close"
@@ -11,7 +11,9 @@
           dense
           @click="handleCancel"
           :disable="progress >= 100"
-        />
+        >
+          <q-tooltip>{{ t('training.modelTraining.progress.tooltips.cancel') }}</q-tooltip>
+        </q-btn>
       </q-card-section>
 
       <q-card-section class="q-pt-none">
@@ -28,7 +30,7 @@
       </q-card-section>
 
       <q-card-section v-if="progress >= 100" class="text-center">
-        <q-btn color="primary" label="Close" @click="closeDialog" />
+        <q-btn color="primary" :label="t('training.modelTraining.progress.close')" @click="closeDialog" />
       </q-card-section>
     </q-card>
   </q-dialog>
@@ -36,6 +38,7 @@
 
 <script>
 import { defineComponent, computed, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 export default defineComponent({
   name: 'TrainingProgress',
@@ -47,6 +50,7 @@ export default defineComponent({
   },
   emits: ['update:show', 'cancel', 'complete'],
   setup(props, { emit }) {
+    const { t } = useI18n();
     const dialogModel = computed({
       get: () => props.show,
       set: (value) => emit('update:show', value)
@@ -72,7 +76,8 @@ export default defineComponent({
     return {
       dialogModel,
       handleCancel,
-      closeDialog
+      closeDialog,
+      t
     };
   }
 });
