@@ -78,6 +78,50 @@ export default {
     startTraining: 'Start Training',
     selectPolygons: 'Select Polygons',
     modelSettings: 'Model Settings',
+    evaluation: {
+      title: 'Model Evaluation',
+      noMetrics: {
+        title: 'No Model Metrics Available',
+        subtitle: 'Please train a model first.'
+      },
+      created: 'Created',
+      updated: 'Updated',
+      parameters: {
+        title: 'Model Parameters',
+        splitMethod: 'Split Method',
+        trainTestSplit: 'Train/Test Split',
+        estimators: 'Number of Estimators',
+        maxDepth: 'Max Depth',
+        learningRate: 'Learning Rate',
+        minChildWeight: 'Min Child Weight',
+        sieveSize: 'Sieve Filter Size',
+        pixels: 'pixels',
+        subsample: 'Subsample'
+      },
+      metrics: {
+        title: 'Performance Metrics',
+        overallAccuracy: 'Overall Accuracy',
+        class: 'Class',
+        precision: 'Precision',
+        recall: 'Recall',
+        f1Score: 'F1 Score'
+      },
+      confusionMatrix: {
+        title: 'Confusion Matrix',
+        predicted: 'Predicted'
+      },
+      interpretation: {
+        title: 'Interpretation',
+        accuracy: 'The model achieves an overall accuracy of {accuracy}%, meaning it correctly classifies this percentage of all test samples.',
+        keyFindings: 'Key findings per class:',
+        classMetrics: {
+          precision: 'Precision: {value}% of areas predicted as {class} are correct',
+          recall: 'Recall: {value}% of actual {class} areas are correctly identified',
+          f1: 'F1 Score: {value}% balanced accuracy measure'
+        }
+      },
+      close: 'Close'
+    },
     summary: {
       title: 'Training Data Summary',
       features: 'feature',

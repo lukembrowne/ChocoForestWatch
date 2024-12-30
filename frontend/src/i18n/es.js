@@ -78,6 +78,50 @@ export default {
     startTraining: 'Iniciar Entrenamiento',
     selectPolygons: 'Seleccionar Polígonos',
     modelSettings: 'Configuración del Modelo',
+    evaluation: {
+      title: 'Evaluación del Modelo',
+      noMetrics: {
+        title: 'No Hay Métricas Disponibles',
+        subtitle: 'Por favor, entrene un modelo primero.'
+      },
+      created: 'Creado',
+      updated: 'Actualizado',
+      parameters: {
+        title: 'Parámetros del Modelo',
+        splitMethod: 'Método de División',
+        trainTestSplit: 'División Entrenamiento/Prueba',
+        estimators: 'Número de Estimadores',
+        maxDepth: 'Profundidad Máxima',
+        learningRate: 'Tasa de Aprendizaje',
+        minChildWeight: 'Peso Mínimo del Hijo',
+        sieveSize: 'Tamaño del Filtro Tamiz',
+        pixels: 'píxeles',
+        subsample: 'Submuestreo'
+      },
+      metrics: {
+        title: 'Métricas de Rendimiento',
+        overallAccuracy: 'Precisión General',
+        class: 'Clase',
+        precision: 'Precisión',
+        recall: 'Exhaustividad',
+        f1Score: 'Puntuación F1'
+      },
+      confusionMatrix: {
+        title: 'Matriz de Confusión',
+        predicted: 'Predicho'
+      },
+      interpretation: {
+        title: 'Interpretación',
+        accuracy: 'El modelo alcanza una precisión general del {accuracy}%, lo que significa que clasifica correctamente este porcentaje de todas las muestras de prueba.',
+        keyFindings: 'Hallazgos clave por clase:',
+        classMetrics: {
+          precision: 'Precisión: {value}% de las áreas predichas como {class} son correctas',
+          recall: 'Exhaustividad: {value}% de las áreas reales de {class} son identificadas correctamente',
+          f1: 'Puntuación F1: {value}% medida de precisión balanceada'
+        }
+      },
+      close: 'Cerrar'
+    },
     summary: {
       title: 'Resumen de Datos de Entrenamiento',
       features: 'característica',
