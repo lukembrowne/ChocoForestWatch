@@ -1,6 +1,6 @@
 <template>
     <div class="basemap-date-slider">
-        <p style="margin: 0; padding: 0;">Basemap Date</p>
+        <p style="margin: 0; padding: 0;">{{ t('layers.basemapDate.title') }}</p>
         <div class="slider-container">
             <div class="year-markers">
                 <div v-for="year in years" :key="year" class="year-marker"
@@ -29,10 +29,12 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useMapStore } from 'src/stores/mapStore';
 import { useProjectStore } from 'src/stores/projectStore';
 import { getBasemapDateOptions } from 'src/utils/dateUtils';
+import { useI18n } from 'vue-i18n';
 
 export default {
     name: 'BasemapDateSlider',
     setup() {
+        const { t } = useI18n();
         const mapStore = useMapStore();
         const projectStore = useProjectStore();
         const dates = ref(getBasemapDateOptions().map(option => option.value));
@@ -75,19 +77,32 @@ export default {
             mapStore.updateBasemap(dates.value[value]);
 
             // Load training polygons for the selected date
+            console.log("Loading training polygons for date:", dates.value[value]);
             mapStore.loadTrainingPolygonsForDate(dates.value[value]);
         };
 
         const formatDate = (date) => {
             const [year, month] = date.split('-');
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            return `${monthNames[parseInt(month) - 1]} -  ${year}`;
+            const monthNames = [
+                t('layers.basemapDate.months.jan'),
+                t('layers.basemapDate.months.feb'),
+                t('layers.basemapDate.months.mar'),
+                t('layers.basemapDate.months.apr'),
+                t('layers.basemapDate.months.may'),
+                t('layers.basemapDate.months.jun'),
+                t('layers.basemapDate.months.jul'),
+                t('layers.basemapDate.months.aug'),
+                t('layers.basemapDate.months.sep'),
+                t('layers.basemapDate.months.oct'),
+                t('layers.basemapDate.months.nov'),
+                t('layers.basemapDate.months.dec')
+            ];
+            return `${monthNames[parseInt(month) - 1]} - ${year}`;
         };
 
         const formatMonth = (date) => {
             const [, month] = date.split('-');
-            const monthNames = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-            return monthNames[parseInt(month) - 1];
+            return month;
         };
 
         const getYearPosition = (year) => {
@@ -133,6 +148,7 @@ export default {
             getYearPosition,
             hasTrainingData,
             isDateExcluded,
+            t
         };
     },
 };

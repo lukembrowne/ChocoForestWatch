@@ -96,7 +96,24 @@ export default {
   layers: {
     baseMap: 'Base Map',
     satellite: 'Satellite',
-    terrain: 'Terrain'
+    terrain: 'Terrain',
+    basemapDate: {
+      title: 'Basemap Date',
+      months: {
+        jan: 'Jan',
+        feb: 'Feb',
+        mar: 'Mar',
+        apr: 'Apr',
+        may: 'May',
+        jun: 'Jun',
+        jul: 'Jul',
+        aug: 'Aug',
+        sep: 'Sep',
+        oct: 'Oct',
+        nov: 'Nov',
+        dec: 'Dec'
+      }
+    }
   },
   notifications: {
     projectLoaded: 'Project loaded successfully',
