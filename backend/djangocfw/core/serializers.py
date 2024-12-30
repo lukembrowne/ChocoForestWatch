@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot
+from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot, User, UserSettings
 from django.contrib.gis.geos import GEOSGeometry
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -78,5 +78,26 @@ class DeforestationHotspotSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeforestationHotspot
         fields = '__all__'
+
+class UserSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserSettings
+        fields = ('preferred_language',)
+
+class UserSerializer(serializers.ModelSerializer):
+    settings = UserSettingsSerializer(read_only=True)
+    
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'settings')
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=validated_data['password'],
+            preferred_language=validated_data.get('preferred_language', 'en')
+        )
+        return user
 
 # Add other serializers...

@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.gis.db import models as gis_models
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.conf import settings
 from .storage import ModelStorage, PredictionStorage
 from django.db.models import JSONField
 from django.contrib.postgres.fields import ArrayField
@@ -148,3 +149,23 @@ class ModelTrainingTask(models.Model):
     error = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+class UserSettings(models.Model):
+    LANGUAGE_CHOICES = [
+        ('en', 'English'),
+        ('es', 'Español'),
+    ]
+    
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='settings'
+    )
+    preferred_language = models.CharField(
+        max_length=2,
+        choices=LANGUAGE_CHOICES,
+        default='en'
+    )
+
+    def __str__(self):
+        return f"{self.user.username}'s settings"

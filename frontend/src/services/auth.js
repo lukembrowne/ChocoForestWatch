@@ -20,12 +20,14 @@ class AuthService {
         sessionStorage.removeItem('user');
     }
 
-    register(username, email, password) {
-        return axios.post(API_URL + 'auth/register/', {
+    async register(username, email, password, preferred_language) {
+        const response = await axios.post(API_URL + 'auth/register/', {
             username,
             email,
-            password
+            password,
+            preferred_language
         });
+        return response.data;
     }
 
     getCurrentUser() {

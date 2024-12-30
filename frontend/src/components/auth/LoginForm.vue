@@ -6,6 +6,23 @@
         <div class="text-subtitle1 text-grey-7">
           Monitor and analyze forest cover changes using satellite imagery and machine learning
         </div>
+        <!-- Simple Language Selector -->
+        <div class="row justify-center q-mt-md">
+          <q-btn-group flat>
+            <q-btn
+              :flat="currentLanguage !== 'English'"
+              :color="currentLanguage === 'English' ? 'primary' : 'grey'"
+              @click="changeLanguage('en')"
+              label="English"
+            />
+            <q-btn
+              :flat="currentLanguage !== 'Español'"
+              :color="currentLanguage === 'Español' ? 'primary' : 'grey'"
+              @click="changeLanguage('es')"
+              label="Español"
+            />
+          </q-btn-group>
+        </div>
       </q-card-section>
 
       <q-card-section>
@@ -127,6 +144,22 @@
               </template>
             </q-input>
 
+            <q-input
+              v-model="registerForm.preferred_language"
+              label="Preferred Language"
+              outlined
+              :options="[
+                { label: 'English', value: 'en' },
+                { label: 'Español', value: 'es' }
+              ]"
+              emit-value
+              map-options
+            >
+              <template v-slot:prepend>
+                <q-icon name="language" />
+              </template>
+            </q-input>
+
             <q-btn
               type="submit"
               color="primary"
@@ -185,11 +218,12 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import authService from '../../services/auth'
-import axios from 'axios';
+import axios from 'axios'
 
 export default {
   name: 'LoginForm',
@@ -197,6 +231,10 @@ export default {
   setup() {
     const $q = useQuasar()
     const router = useRouter()
+    const { t, locale } = useI18n()
+    
+    // Initialize locale from localStorage or default to 'en'
+    locale.value = localStorage.getItem('userLanguage') || 'en'
     
     const username = ref('')
     const password = ref('')
@@ -214,18 +252,32 @@ export default {
     const registerForm = ref({
       username: '',
       email: '',
-      password: ''
+      password: '',
+      preferred_language: locale.value
     })
+
+    const currentLanguage = computed(() => 
+      locale.value === 'en' ? 'English' : 'Español'
+    )
+
+    const changeLanguage = (lang) => {
+      console.log('Changing language to:', lang)
+      locale.value = lang
+      localStorage.setItem('userLanguage', lang)
+    }
 
     const handleLogin = async () => {
       try {
         loading.value = true
         error.value = null
-        await authService.login(username.value, password.value)
+        const response = await authService.login(username.value, password.value)
+        if (response.user?.preferred_language) {
+          changeLanguage(response.user.preferred_language)
+        }
         router.push('/projects')
         $q.notify({
           color: 'positive',
-          message: 'Successfully logged in',
+          message: t('Successfully logged in'),
           icon: 'check'
         })
       } catch (err) {
@@ -246,7 +298,8 @@ export default {
         await authService.register(
           registerForm.value.username,
           registerForm.value.email,
-          registerForm.value.password
+          registerForm.value.password,
+          registerForm.value.preferred_language
         )
         // Auto login after registration
         await authService.login(registerForm.value.username, registerForm.value.password)
@@ -254,7 +307,7 @@ export default {
         router.push('/projects')
         $q.notify({
           color: 'positive',
-          message: 'Account created successfully!',
+          message: t('Account created successfully!'),
           icon: 'check'
         })
       } catch (err) {
@@ -312,6 +365,8 @@ export default {
       isRegisterPwd,
       registerLoading,
       registerForm,
+      currentLanguage,
+      changeLanguage,
       handleLogin,
       handleRegister,
       showRegisterDialog,

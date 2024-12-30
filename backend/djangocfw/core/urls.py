@@ -20,4 +20,5 @@ urlpatterns = [
     path('auth/login/', auth_views.login, name='login'),
     path('auth/request-reset/', auth_views.request_password_reset, name='request-reset'),
     path('auth/reset-password/<str:uidb64>/<str:token>/', auth_views.reset_password, name='reset-password'),
+    path('auth/settings/', views.update_user_settings, name='user-settings'),
 ]

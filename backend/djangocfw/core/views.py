@@ -1,13 +1,13 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, action
+from rest_framework.decorators import api_view, action, permission_classes
 from django.utils import timezone
 from django.contrib.gis.geos import GEOSGeometry
 from django.core.exceptions import ValidationError
-from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot, ModelTrainingTask
+from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot, ModelTrainingTask, UserSettings
 from .serializers import (ProjectSerializer, TrainingPolygonSetSerializer, 
                          TrainedModelSerializer, PredictionSerializer, 
-                         DeforestationHotspotSerializer)
+                         DeforestationHotspotSerializer, UserSerializer)
 from .services.model_training import ModelTrainingService
 from .services.prediction import PredictionService
 from loguru import logger
@@ -16,6 +16,9 @@ from django.conf import settings
 from django.http import JsonResponse
 from .services.deforestation import analyze_change, get_deforestation_hotspots
 from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
+from django.contrib.auth import authenticate
 
 @api_view(['GET'])
 def health_check(request):
@@ -484,3 +487,53 @@ def deforestation_hotspots(request, prediction_id):
         return Response(result)
     except Exception as e:
         return Response({'error': str(e)}, status=400)
+
+@api_view(['POST'])
+def register(request):
+    serializer = UserSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        # Create user settings with preferred language
+        UserSettings.objects.create(
+            user=user,
+            preferred_language=request.data.get('preferred_language', 'en')
+        )
+        return Response({
+            'user': UserSerializer(user).data,
+            'message': 'User Created Successfully'
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def login(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    
+    user = authenticate(username=username, password=password)
+    if user:
+        token, _ = Token.objects.get_or_create(user=user)
+        # Get or create user settings
+        settings, _ = UserSettings.objects.get_or_create(user=user)
+        return Response({
+            'token': token.key,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'preferred_language': settings.preferred_language
+            }
+        })
+    return Response({'error': 'Invalid credentials'}, status=400)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_user_settings(request):
+    settings, _ = UserSettings.objects.get_or_create(user=request.user)
+    
+    if 'preferred_language' in request.data:
+        settings.preferred_language = request.data['preferred_language']
+        settings.save()
+    
+    return Response({
+        'preferred_language': settings.preferred_language
+    })
