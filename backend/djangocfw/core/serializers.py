@@ -82,7 +82,7 @@ class DeforestationHotspotSerializer(serializers.ModelSerializer):
 class UserSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserSettings
-        fields = ('preferred_language',)
+        fields = ['preferred_language']
 
 class UserSerializer(serializers.ModelSerializer):
     settings = UserSettingsSerializer(read_only=True)

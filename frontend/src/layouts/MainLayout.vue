@@ -32,15 +32,22 @@
                 <q-icon name="language" />
               </q-item-section>
               <q-item-section>
-                <q-select
-                  v-model="currentLocale"
-                  :options="languageOptions"
-                  @update:model-value="handleLocaleChange"
-                  dense
-                  hide-dropdown-icon
-                  emit-value
-                  map-options
-                />
+                <div class="row q-gutter-sm">
+                  <q-radio
+                    v-model="currentLocale"
+                    val="en"
+                    label="English"
+                    color="primary"
+                    @update:model-value="handleLocaleChange"
+                  />
+                  <q-radio
+                    v-model="currentLocale"
+                    val="es"
+                    label="Español"
+                    color="primary"
+                    @update:model-value="handleLocaleChange"
+                  />
+                </div>
               </q-item-section>
             </q-item>
 
@@ -79,12 +86,6 @@
       </q-page>
     </q-page-container>
 
-    <div class="language-switcher">
-      <select v-model="currentLocale">
-        <option value="en">English</option>
-        <option value="es">Español</option>
-      </select>
-    </div>
   </q-layout>
 </template>
 
@@ -101,6 +102,7 @@ import BasemapDateSlider from 'components/BasemapDateSlider.vue'
 import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
 import { useRouter } from 'vue-router'
 import authService from '../services/auth'
+import api from '../services/api'
 import { GeoJSON } from 'ol/format'
 import { useI18n } from 'vue-i18n'
 
@@ -152,14 +154,20 @@ export default {
     )
 
     const { t, locale } = useI18n()
-    const currentLocale = ref(locale.value)
+    const currentLocale = ref('en')
 
-    const languageOptions = [
-      { label: 'English', value: 'en' },
-      { label: 'Español', value: 'es' }
-    ]
+    onMounted(async () => {
+      try {
+        // Load user settings first
+        const { data } = await api.getUserSettings()
+        if (data.preferred_language) {
+          currentLocale.value = data.preferred_language
+          locale.value = data.preferred_language
+        }
+      } catch (error) {
+        console.error('Error loading user settings:', error)
+      }
 
-    onMounted(() => {
       // Standard loading sequence
       // Initialize map
       mapStore.initMap('map')
@@ -296,9 +304,23 @@ export default {
       })
     }
 
-    const handleLocaleChange = (newLocale) => {
-      locale.value = newLocale
-      localStorage.setItem('userLanguage', newLocale)
+    const handleLocaleChange = async (newLocale) => {
+      try {
+        await api.updateUserSettings({ preferred_language: newLocale })
+        locale.value = newLocale
+        $q.notify({
+          message: t('notifications.languageUpdated'),
+          color: 'positive',
+          icon: 'check'
+        })
+      } catch (error) {
+        console.error('Error updating language:', error)
+        $q.notify({
+          message: t('notifications.languageUpdateFailed'),
+          color: 'negative',
+          icon: 'error'
+        })
+      }
     }
 
     return {
@@ -316,7 +338,6 @@ export default {
       showHotspotVerification,
       currentUser,
       handleLogout,
-      languageOptions,
       currentLocale,
       t,
       handleLocaleChange,
@@ -388,4 +409,9 @@ export default {
   height: 100%;
 }
 
+:deep(.q-btn-toggle) {
+  .q-btn {
+    border: 1px solid currentColor;
+  }
+}
 </style>

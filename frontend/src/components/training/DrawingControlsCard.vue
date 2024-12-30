@@ -1,17 +1,17 @@
 <template>
   <div class="drawing-controls q-pa-sm">
     <!-- Primary Drawing Controls -->
-    <div class="text-subtitle1 q-mb-sm">Drawing Controls</div>
+    <div class="text-subtitle1 q-mb-sm">{{ t('drawing.title') }}</div>
     <div class="row q-col-gutter-sm">
       <!-- Main drawing mode toggle with keyboard shortcuts -->
       <div class="col-12">
         <q-btn-toggle
           v-model="interactionMode"
           :options="[
-            { label: 'Draw (D)', value: 'draw', icon: 'create' },
-            { label: 'Pan (M)', value: 'pan', icon: 'pan_tool' },
-            { label: 'Zoom In (Z)', value: 'zoom_in', icon: 'zoom_in' },
-            { label: 'Zoom Out (X)', value: 'zoom_out', icon: 'zoom_out' }
+            { label: t('drawing.modes.draw'), value: 'draw', icon: 'create' },
+            { label: t('drawing.modes.pan'), value: 'pan', icon: 'pan_tool' },
+            { label: t('drawing.modes.zoomIn'), value: 'zoom_in', icon: 'zoom_in' },
+            { label: t('drawing.modes.zoomOut'), value: 'zoom_out', icon: 'zoom_out' }
           ]"
           @update:model-value="setInteractionMode"
           spread
@@ -20,13 +20,13 @@
         />
       </div>
 
-      <!-- Drawing Configuration Section - More Compact -->
+      <!-- Drawing Configuration Section -->
       <div class="col-12">
         <q-expansion-item
           dense
           group="controls"
           icon="brush"
-          label="Drawing Options"
+          :label="t('drawing.options.title')"
         >
           <q-card class="compact-card">
             <q-card-section class="q-pa-sm">
@@ -34,7 +34,7 @@
               <div class="row items-center q-mb-sm">
                 <div class="col">
                   <q-btn
-                    :label="drawingMode === 'square' ? 'Square Mode (F)' : 'Freehand Mode (F)'"
+                    :label="drawingMode === 'square' ? t('drawing.options.squareMode') : t('drawing.options.freehandMode')"
                     :icon="drawingMode === 'square' ? 'crop_square' : 'gesture'"
                     @click="toggleDrawingMode"
                     :color="drawingMode === 'square' ? 'primary' : 'secondary'"
@@ -45,7 +45,7 @@
               </div>
 
               <!-- Polygon Size Slider -->
-              <div class="text-caption q-mb-xs">Polygon Size (m)</div>
+              <div class="text-caption q-mb-xs">{{ t('drawing.options.polygonSize') }}</div>
               <q-slider
                 v-model="polygonSize"
                 :min="10"
@@ -62,9 +62,9 @@
         </q-expansion-item>
       </div>
 
-      <!-- Class Selection Section - Always Open -->
+      <!-- Class Selection Section -->
       <div class="col-12">
-        <div class="text-subtitle2 q-mb-xs">Select Class</div>
+        <div class="text-subtitle2 q-mb-xs">{{ t('drawing.classes.title') }}</div>
         <div class="row q-col-gutter-xs">
           <div 
             v-for="(className, index) in projectClasses"
@@ -89,37 +89,29 @@
           dense
           group="controls"
           icon="settings"
-          label="Polygon Management"
+          :label="t('drawing.management.title')"
         >
           <q-card>
             <q-card-section class="q-pa-md">
               <div class="row q-col-gutter-sm">
                 <div class="col-6">
-                  <q-btn class="full-width" label="Undo (Ctrl+Z)" icon="undo" @click="undoLastDraw" :disable="interactionMode !== 'draw'" />
+                  <q-btn class="full-width" :label="t('drawing.management.undo')" icon="undo" @click="undoLastDraw" :disable="interactionMode !== 'draw'" />
                 </div>
                 <div class="col-6">
-                  <q-btn class="full-width" label="Save (Ctrl+S)" icon="save" @click="saveTrainingPolygons" />
+                  <q-btn class="full-width" :label="t('drawing.management.save')" icon="save" @click="saveTrainingPolygons" />
                 </div>
                 <div class="col-6">
-                  <q-btn class="full-width" label="Clear" icon="delete_sweep" @click="clearDrawnPolygons" />
+                  <q-btn class="full-width" :label="t('drawing.management.clear')" icon="delete_sweep" @click="clearDrawnPolygons" />
                 </div>
                 <div class="col-6">
-                  <q-btn class="full-width" label="Delete (Del)" icon="delete" @click="deleteSelectedFeature"/>
+                  <q-btn class="full-width" :label="t('drawing.management.delete')" icon="delete" @click="deleteSelectedFeature"/>
                 </div>
                 <div class="col-6">
-                  <q-btn class="full-width" label="Download" icon="download" @click="downloadPolygons" />
+                  <q-btn class="full-width" :label="t('drawing.management.download')" icon="download" @click="downloadPolygons" />
                 </div>
                 <div class="col-6">
-                  <q-btn class="full-width" label="Load" icon="upload_file" @click="triggerFileUpload" />
+                  <q-btn class="full-width" :label="t('drawing.management.load')" icon="upload_file" @click="triggerFileUpload" />
                 </div>
-                <!-- <div class="col-12">
-                  <q-btn
-                    class="full-width q-mt-sm"
-                    :label="isCurrentDateExcluded ? 'Include Date' : 'Exclude Date'"
-                    :icon="isCurrentDateExcluded ? 'add_circle' : 'block'"
-                    @click="toggleExcludeCurrentDate"
-                  />
-                </div> -->
               </div>
             </q-card-section>
           </q-card>
@@ -135,6 +127,7 @@
 import { computed, onMounted, onUnmounted, watch, ref } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
 import { useProjectStore } from 'src/stores/projectStore'
+import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 
 export default {
@@ -142,6 +135,7 @@ export default {
     setup() {
         const mapStore = useMapStore()
         const projectStore = useProjectStore()
+        const { t } = useI18n()
         const $q = useQuasar()
         const drawnPolygons = computed(() => mapStore.drawnPolygons)
         const selectedBasemapDate = computed(() => mapStore.selectedBasemapDate)
@@ -249,13 +243,13 @@ export default {
                 // Show success notification
                 $q.notify({
                     type: 'positive',
-                    message: 'Training polygons saved successfully'
+                    message: t('drawing.notifications.dateIncluded')
                 });
             } catch (error) {
                 // Show error notification
                 $q.notify({
                     type: 'negative',
-                    message: 'Error saving training polygons'
+                    message: t('drawing.notifications.saveError')
                 });
             }
         };
@@ -274,23 +268,22 @@ export default {
                 $q.notify({
                     type: 'positive',
                     message: isCurrentDateExcluded.value
-                        ? 'Date has been included'
-                        : 'Date has been excluded'
+                        ? t('drawing.notifications.dateIncluded')
+                        : t('drawing.notifications.dateExcluded')
                 });
             } catch (error) {
                 $q.notify({
                     type: 'negative',
-                    message: 'Error toggling date exclusion status'
+                    message: t('drawing.notifications.dateToggleError')
                 });
             }
         };
 
         const deleteSelectedFeature = () => {
             if (mapStore.selectedFeature) {
-                console.log("selected feature", mapStore.selectedFeature)
                 $q.dialog({
-                    title: 'Delete Feature',
-                    message: 'Are you sure you want to delete this feature?',
+                    title: t('drawing.dialogs.delete.title'),
+                    message: t('drawing.dialogs.delete.message'),
                     cancel: true,
                     persistent: true
                 }).onOk(() => {
@@ -299,7 +292,7 @@ export default {
             } else {
                 $q.notify({
                     type: 'negative',
-                    message: 'No feature selected'
+                    message: t('drawing.notifications.noFeatureSelected')
                 });
             }
         };
@@ -360,13 +353,13 @@ export default {
                     });
                     $q.notify({
                         type: 'positive',
-                        message: 'Polygons loaded successfully'
+                        message: t('drawing.notifications.polygonsLoaded')
                     });
                 } catch (error) {
                     console.error('Error loading GeoJSON:', error);
                     $q.notify({
                         type: 'negative',
-                        message: 'Failed to load polygons from file'
+                        message: t('drawing.notifications.loadError')
                     });
                 }
             };
@@ -404,6 +397,7 @@ export default {
             fileInput,
             drawingMode,
             toggleDrawingMode,
+            t
         }
     }
 }

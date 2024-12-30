@@ -165,5 +165,13 @@ export default {
         return apiClient.post('/analysis/change/', data);
     },
 
+    // User settings endpoints
+    getUserSettings() {
+        return apiClient.get('/user/settings/');
+    },
+
+    updateUserSettings(data) {
+        return apiClient.patch('/user/settings/', data);
+    },
 };
 

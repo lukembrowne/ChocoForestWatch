@@ -77,7 +77,21 @@ export default {
   training: {
     startTraining: 'Start Training',
     selectPolygons: 'Select Polygons',
-    modelSettings: 'Model Settings'
+    modelSettings: 'Model Settings',
+    summary: {
+      title: 'Training Data Summary',
+      features: 'feature',
+      features_plural: 'features',
+      hectares: 'ha'
+    },
+    model: {
+      title: 'Fit and Evaluate Model',
+      fit: 'Fit Model',
+      evaluate: 'Evaluate Model',
+      notifications: {
+        initiated: 'Model training initiated successfully'
+      }
+    }
   },
   layers: {
     baseMap: 'Base Map',
@@ -87,6 +101,8 @@ export default {
   notifications: {
     projectLoaded: 'Project loaded successfully',
     aoiSaved: 'AOI saved successfully. You can now start training your model.',
+    languageUpdated: 'Language preference updated successfully',
+    languageUpdateFailed: 'Failed to update language preference',
     error: {
       training: 'Error transitioning to training mode'
     }
@@ -160,5 +176,49 @@ export default {
       fetchFailed: 'Failed to fetch projects'
     },
     ok: 'Ok'
+  },
+  drawing: {
+    title: 'Drawing Controls',
+    options: {
+      title: 'Drawing Options',
+      squareMode: 'Square Mode (F)',
+      freehandMode: 'Freehand Mode (F)',
+      polygonSize: 'Polygon Size (m)'
+    },
+    modes: {
+      draw: 'Draw (D)',
+      pan: 'Pan (M)',
+      zoomIn: 'Zoom In (Z)',
+      zoomOut: 'Zoom Out (X)'
+    },
+    classes: {
+      title: 'Select Class'
+    },
+    management: {
+      title: 'Polygon Management',
+      undo: 'Undo (Ctrl+Z)',
+      save: 'Save (Ctrl+S)',
+      clear: 'Clear',
+      delete: 'Delete (Del)',
+      download: 'Download',
+      load: 'Load',
+      includeDate: 'Include Date',
+      excludeDate: 'Exclude Date'
+    },
+    dialogs: {
+      delete: {
+        title: 'Delete Feature',
+        message: 'Are you sure you want to delete this feature?'
+      }
+    },
+    notifications: {
+      saveError: 'Error saving training polygons',
+      dateIncluded: 'Date has been included',
+      dateExcluded: 'Date has been excluded',
+      dateToggleError: 'Error toggling date exclusion status',
+      noFeatureSelected: 'No feature selected',
+      polygonsLoaded: 'Polygons loaded successfully',
+      loadError: 'Failed to load polygons from file'
+    }
   }
 } 

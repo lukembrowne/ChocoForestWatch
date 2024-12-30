@@ -77,7 +77,21 @@ export default {
   training: {
     startTraining: 'Iniciar Entrenamiento',
     selectPolygons: 'Seleccionar Polígonos',
-    modelSettings: 'Configuración del Modelo'
+    modelSettings: 'Configuración del Modelo',
+    summary: {
+      title: 'Resumen de Datos de Entrenamiento',
+      features: 'característica',
+      features_plural: 'características',
+      hectares: 'ha'
+    },
+    model: {
+      title: 'Ajustar y Evaluar Modelo',
+      fit: 'Ajustar Modelo',
+      evaluate: 'Evaluar Modelo',
+      notifications: {
+        initiated: 'Entrenamiento del modelo iniciado exitosamente'
+      }
+    }
   },
   layers: {
     baseMap: 'Mapa Base',
@@ -87,6 +101,8 @@ export default {
   notifications: {
     projectLoaded: 'Proyecto cargado exitosamente',
     aoiSaved: 'AOI guardado exitosamente. Ahora puede comenzar a entrenar su modelo.',
+    languageUpdated: 'Preferencia de idioma actualizada exitosamente',
+    languageUpdateFailed: 'Error al actualizar la preferencia de idioma',
     error: {
       training: 'Error al transicionar al modo de entrenamiento'
     }
@@ -160,5 +176,49 @@ export default {
       fetchFailed: 'Error al cargar los proyectos'
     },
     ok: 'Aceptar'
+  },
+  drawing: {
+    title: 'Controles de Dibujo',
+    options: {
+      title: 'Opciones de Dibujo',
+      squareMode: 'Modo Cuadrado (F)',
+      freehandMode: 'Modo Mano Libre (F)',
+      polygonSize: 'Tamaño del Polígono (m)'
+    },
+    modes: {
+      draw: 'Dibujar (D)',
+      pan: 'Desplazar (M)',
+      zoomIn: 'Acercar (Z)',
+      zoomOut: 'Alejar (X)'
+    },
+    classes: {
+      title: 'Seleccionar Clase'
+    },
+    management: {
+      title: 'Gestión de Polígonos',
+      undo: 'Deshacer (Ctrl+Z)',
+      save: 'Guardar (Ctrl+S)',
+      clear: 'Limpiar',
+      delete: 'Eliminar (Del)',
+      download: 'Descargar',
+      load: 'Cargar',
+      includeDate: 'Incluir Fecha',
+      excludeDate: 'Excluir Fecha'
+    },
+    dialogs: {
+      delete: {
+        title: 'Eliminar Característica',
+        message: '¿Está seguro que desea eliminar esta característica?'
+      }
+    },
+    notifications: {
+      saveError: 'Error al guardar los polígonos de entrenamiento',
+      dateIncluded: 'Fecha ha sido incluida',
+      dateExcluded: 'Fecha ha sido excluida',
+      dateToggleError: 'Error al cambiar el estado de exclusión de la fecha',
+      noFeatureSelected: 'Ninguna característica seleccionada',
+      polygonsLoaded: 'Polígonos cargados exitosamente',
+      loadError: 'Error al cargar polígonos desde el archivo'
+    }
   }
 } 

@@ -10,18 +10,18 @@
 
         <q-card class="polygon-list-card">
             <q-card-section class="q-pa-sm">
-                <div class="text-subtitle1 q-mb-sm">Training Data Summary</div>
+                <div class="text-subtitle1 q-mb-sm">{{ t('training.summary.title') }}</div>
                 <div class="summary-grid">
                     <q-item v-for="(summary, className) in classSummary" :key="className" class="summary-item">
                         <q-item-section>
                             <q-item-label>{{ className }}</q-item-label>
                             <q-item-label caption>
-                                {{ summary.count }} feature{{ summary.count !== 1 ? 's' : '' }}
+                                {{ summary.count }} {{ summary.count === 1 ? t('training.summary.features') : t('training.summary.features_plural') }}
                             </q-item-label>
                         </q-item-section>
                         <q-item-section side>
                             <q-chip color="primary" text-color="white" size="sm">
-                                {{ summary.area.toFixed(2) }} ha
+                                {{ summary.area.toFixed(2) }} {{ t('training.summary.hectares') }}
                             </q-chip>
                         </q-item-section>
                     </q-item>
@@ -32,10 +32,10 @@
             <q-card>
                 <q-card-section class="q-pa-sm">
 
-                    <div class="text-subtitle1 q-mb-sm">Fit and Evaluate Model</div>
+                    <div class="text-subtitle1 q-mb-sm">{{ t('training.model.title') }}</div>
                     <q-card-actions align="center">
-                        <q-btn label="Fit Model" color="primary" @click="openModelTrainingDialog" />
-                        <q-btn label="Evaluate Model" color="primary" @click="openModelEvaluationDialog" />
+                        <q-btn :label="t('training.model.fit')" color="primary" @click="openModelTrainingDialog" />
+                        <q-btn :label="t('training.model.evaluate')" color="primary" @click="openModelEvaluationDialog" />
 
                     </q-card-actions>
                 </q-card-section>
@@ -51,6 +51,7 @@
 import { ref, computed, watch, reactive, onMounted, onUnmounted } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
 import { useProjectStore } from 'src/stores/projectStore'
+import { useI18n } from 'vue-i18n'
 import { getArea } from 'ol/sphere'
 import { GeoJSON } from 'ol/format'
 import { useQuasar } from 'quasar'
@@ -68,6 +69,7 @@ export default {
         const mapStore = useMapStore()
         const projectStore = useProjectStore()
         const $q = useQuasar()
+        const { t } = useI18n()
         const selectedBasemapDate = computed(() => mapStore.selectedBasemapDate)
         const drawnPolygons = computed(() => mapStore.drawnPolygons)
 
@@ -152,7 +154,7 @@ export default {
                 console.log('Model training completed:', response)
                 $q.notify({
                     color: 'positive',
-                    message: 'Model training initiated successfully',
+                    message: t('training.model.notifications.initiated'),
                     icon: 'check'
                 })
             })
@@ -165,7 +167,8 @@ export default {
             classSummary,
             getClassColor,
             openModelTrainingDialog,
-            openModelEvaluationDialog
+            openModelEvaluationDialog,
+            t
         }
     }
 }

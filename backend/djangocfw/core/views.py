@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot, ModelTrainingTask, UserSettings
 from .serializers import (ProjectSerializer, TrainingPolygonSetSerializer, 
                          TrainedModelSerializer, PredictionSerializer, 
-                         DeforestationHotspotSerializer, UserSerializer)
+                         DeforestationHotspotSerializer, UserSerializer, UserSettingsSerializer)
 from .services.model_training import ModelTrainingService
 from .services.prediction import PredictionService
 from loguru import logger
@@ -525,15 +525,21 @@ def login(request):
         })
     return Response({'error': 'Invalid credentials'}, status=400)
 
-@api_view(['PUT'])
+@api_view(['GET', 'PATCH'])
 @permission_classes([IsAuthenticated])
-def update_user_settings(request):
-    settings, _ = UserSettings.objects.get_or_create(user=request.user)
-    
-    if 'preferred_language' in request.data:
-        settings.preferred_language = request.data['preferred_language']
-        settings.save()
-    
-    return Response({
-        'preferred_language': settings.preferred_language
-    })
+def user_settings(request):
+    try:
+        settings = UserSettings.objects.get(user=request.user)
+    except UserSettings.DoesNotExist:
+        settings = UserSettings.objects.create(user=request.user)
+
+    if request.method == 'GET':
+        serializer = UserSettingsSerializer(settings)
+        return Response(serializer.data)
+
+    elif request.method == 'PATCH':
+        serializer = UserSettingsSerializer(settings, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
