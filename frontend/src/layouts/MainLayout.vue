@@ -2,14 +2,15 @@
   <q-layout view="hHh LpR fFf">
     <q-header elevated class="bg-primary text-white">
       <q-toolbar class="q-px-md">
-        <q-toolbar-title class="gt-xs">Choco Forest Watch</q-toolbar-title>
-        <q-toolbar-title class="lt-sm">CFW</q-toolbar-title>
+        <q-toolbar-title class="gt-xs">{{ t('header.title') }}</q-toolbar-title>
+        <q-toolbar-title class="lt-sm">{{ t('header.titleShort') }}</q-toolbar-title>
         
         <div class="row items-center no-wrap">
-          <q-btn v-for="section in sections" :key="section.name" flat square :icon="section.icon" :label="$q.screen.gt.xs ? section.name : ''"
+          <q-btn v-for="section in sections" :key="section.name" flat square :icon="section.icon" 
+            :label="$q.screen.gt.xs ? t(`navigation.${section.id}.name`) : ''"
             class="q-px-sm"
             @click="handleSectionClick(section)">
-            <q-tooltip>{{ section.tooltip }}</q-tooltip>
+            <q-tooltip>{{ t(`navigation.${section.id}.tooltip`) }}</q-tooltip>
           </q-btn>
         </div>
 
@@ -26,18 +27,28 @@
 
             <q-separator />
 
-            <q-item clickable v-ripple @click="handleUserSettings">
+            <q-item>
               <q-item-section avatar>
-                <q-icon name="settings" />
+                <q-icon name="language" />
               </q-item-section>
-              <q-item-section>Settings</q-item-section>
+              <q-item-section>
+                <q-select
+                  v-model="currentLocale"
+                  :options="languageOptions"
+                  @update:model-value="handleLocaleChange"
+                  dense
+                  hide-dropdown-icon
+                  emit-value
+                  map-options
+                />
+              </q-item-section>
             </q-item>
 
             <q-item clickable v-ripple @click="handleLogout">
               <q-item-section avatar>
                 <q-icon name="logout" />
               </q-item-section>
-              <q-item-section>Logout</q-item-section>
+              <q-item-section>{{ t('common.logout') }}</q-item-section>
             </q-item>
           </q-list>
         </q-btn-dropdown>
@@ -67,11 +78,18 @@
         </div>
       </q-page>
     </q-page-container>
+
+    <div class="language-switcher">
+      <select v-model="currentLocale">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+      </select>
+    </div>
   </q-layout>
 </template>
 
 <script>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useProjectStore } from 'src/stores/projectStore'
 import { useMapStore } from 'src/stores/mapStore'
@@ -80,13 +98,11 @@ import TrainingAndPolygonManager from 'components/training/TrainingAndPolygonMan
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
 import BasemapDateSlider from 'components/BasemapDateSlider.vue'
-import LandCoverAnalysis from 'components/analysis/LandCoverAnalysis.vue'
-import DeforestationAnalysis from 'components/analysis/DeforestationAnalysis.vue'
-import HotspotVerification from 'components/analysis/HotspotVerification.vue'
 import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
 import { useRouter } from 'vue-router'
 import authService from '../services/auth'
 import { GeoJSON } from 'ol/format'
+import { useI18n } from 'vue-i18n'
 
 
 export default {
@@ -113,9 +129,9 @@ export default {
     const showProjectSelection = ref(false)
     const showUnifiedAnalysis = ref(false)
     const sections = [
-      { name: 'projects', icon: 'folder', component: null, tooltip: 'Select or create a project' },
-      { name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager, tooltip: 'Train Model' },
-      { name: 'Analysis', icon: 'analytics', component: UnifiedAnalysis, tooltip: 'Analyze and verify' }
+      { id: 'projects', name: 'projects', icon: 'folder', component: null },
+      { id: 'training', name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager },
+      { id: 'analysis', name: 'Analysis', icon: 'analytics', component: UnifiedAnalysis }
     ]
 
     const sidebarWidth = computed(() => isExpanded.value ? 300 : 60)
@@ -135,29 +151,20 @@ export default {
       showHotspotVerification.value
     )
 
-    onMounted(() => {
+    const { t, locale } = useI18n()
+    const currentLocale = ref(locale.value)
 
+    const languageOptions = [
+      { label: 'English', value: 'en' },
+      { label: 'Español', value: 'es' }
+    ]
+
+    onMounted(() => {
       // Standard loading sequence
       // Initialize map
       mapStore.initMap('map')
       mapStore.initializeBasemapDates()
       showProjectSelection.value = true
-
-      // // Open project dialogue to have user select or create new project
-      // console.log('Loading default project...')
-      // mapStore.initMap('map')
-      // currentSection.value = 'training'
-      // // Sleep 2 seconds
-      // setTimeout(() => {
-      //   projectStore.loadProject(36)
-      // }, 2000)
-
-      // mapStore.initializeBasemapDates()
-
-      // setTimeout(() => {
-      //   mapStore.updateBasemap('2022-01')
-      // }, 1000)
-
     })
 
     const handleSectionClick = async (section) => {
@@ -256,7 +263,7 @@ export default {
         }
         
         $q.notify({
-          message: 'AOI saved successfully. You can now start training your model.',
+          message: t('notifications.aoiSaved'),
           color: 'positive',
           icon: 'check',
           timeout: 3000
@@ -264,7 +271,7 @@ export default {
       } catch (error) {
         console.error('Error in handleAOISaved:', error)
         $q.notify({
-          message: 'Error transitioning to training mode',
+          message: t('notifications.error.training'),
           color: 'negative',
           icon: 'error'
         })
@@ -272,29 +279,26 @@ export default {
     }
 
 
-    const handleUserSettings = () => {
-      $q.notify({
-        message: 'User settings coming soon!',
-        color: 'info',
-        icon: 'settings'
-      })
-    }
-
     const handleLogout = () => {
       $q.dialog({
-        title: 'Confirm Logout',
-        message: 'Are you sure you want to logout?',
+        title: t('common.logout'),
+        message: t('common.confirmLogout'),
         cancel: true,
         persistent: true
       }).onOk(() => {
         authService.logout()
         router.push('/login')
         $q.notify({
-          message: 'Successfully logged out',
+          message: t('common.logoutSuccess'),
           color: 'positive',
           icon: 'logout'
         })
       })
+    }
+
+    const handleLocaleChange = (newLocale) => {
+      locale.value = newLocale
+      localStorage.setItem('userLanguage', newLocale)
     }
 
     return {
@@ -311,12 +315,15 @@ export default {
       showDeforestationAnalysis,
       showHotspotVerification,
       currentUser,
-      handleUserSettings,
       handleLogout,
+      languageOptions,
+      currentLocale,
+      t,
+      handleLocaleChange,
       showProjectSelection,
       selectProject,
       showAnyPanel,
-      showUnifiedAnalysis
+      showUnifiedAnalysis,
     }
   }
 }
@@ -380,4 +387,5 @@ export default {
 .q-page {
   height: 100%;
 }
+
 </style>

@@ -1630,7 +1630,6 @@ export default {
   }
 };
 </script>
-
 <style lang="scss" scoped>
 .analysis-controls-container {
   width: var(--app-sidebar-width);
@@ -1831,3 +1830,4 @@ export default {
   height: 100%;
 }
 </style> 
+
