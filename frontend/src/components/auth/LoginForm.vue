@@ -2,9 +2,9 @@
   <div class="login-container">
     <q-card class="login-card">
       <q-card-section class="text-center">
-        <div class="text-h4 q-mb-md">Choco Forest Watch</div>
+        <div class="text-h4 q-mb-md">{{ t('common.login.title') }}</div>
         <div class="text-subtitle1 text-grey-7">
-          Monitor and analyze forest cover changes using satellite imagery and machine learning
+          {{ t('common.login.subtitle') }}
         </div>
         <!-- Simple Language Selector -->
         <div class="row justify-center q-mt-md">
@@ -29,9 +29,9 @@
         <q-form @submit.prevent="handleLogin" class="q-gutter-md">
           <q-input
             v-model="username"
-            label="Username"
+            :label="t('common.login.username')"
             outlined
-            :rules="[val => !!val || 'Username is required']"
+            :rules="[val => !!val || t('common.login.usernameRequired')]"
             :error="!!error"
           >
             <template v-slot:prepend>
@@ -41,10 +41,10 @@
 
           <q-input
             v-model="password"
-            label="Password"
+            :label="t('common.login.password')"
             outlined
             :type="isPwd ? 'password' : 'text'"
-            :rules="[val => !!val || 'Password is required']"
+            :rules="[val => !!val || t('common.login.passwordRequired')]"
             :error="!!error"
             :error-message="error"
           >
@@ -61,8 +61,8 @@
           </q-input>
 
           <div class="row justify-between items-center q-mt-md">
-            <q-checkbox v-model="rememberMe" label="Remember me" />
-            <q-btn flat color="primary" label="Forgot password?" @click="handleForgotPassword" />
+            <q-checkbox v-model="rememberMe" :label="t('common.login.rememberMe')" />
+            <q-btn flat color="primary" :label="t('common.login.forgotPassword')" @click="handleForgotPassword" />
           </div>
 
           <q-btn
@@ -71,7 +71,7 @@
             class="full-width q-mt-lg"
             size="lg"
             :loading="loading"
-            label="Login"
+            :label="t('common.login.loginButton')"
           />
         </q-form>
       </q-card-section>
@@ -79,11 +79,11 @@
       <q-separator />
 
       <q-card-section class="text-center q-pa-md">
-        <p class="text-grey-7 q-mb-sm">Don't have an account?</p>
+        <p class="text-grey-7 q-mb-sm">{{ t('common.login.noAccount') }}</p>
         <q-btn
           flat
           color="primary"
-          label="Create Account"
+          :label="t('common.login.createAccount')"
           @click="showRegisterDialog"
         />
       </q-card-section>
@@ -374,7 +374,8 @@ export default {
       resetPasswordDialog,
       resetEmail,
       resetLoading,
-      handleResetPassword
+      handleResetPassword,
+      t
     }
   }
 }

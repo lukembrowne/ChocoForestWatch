@@ -5,6 +5,40 @@ export default {
     save: 'Save',
     cancel: 'Cancel',
     logout: 'Logout',
+    login: {
+      title: 'Choco Forest Watch',
+      subtitle: 'Monitor and analyze forest cover changes using satellite imagery and machine learning',
+      username: 'Username',
+      password: 'Password',
+      rememberMe: 'Remember me',
+      forgotPassword: 'Forgot password?',
+      loginButton: 'Login',
+      noAccount: 'Don\'t have an account?',
+      createAccount: 'Create Account',
+      usernameRequired: 'Username is required',
+      passwordRequired: 'Password is required',
+      loginSuccess: 'Successfully logged in',
+      loginFailed: 'Login failed'
+    },
+    register: {
+      title: 'Create Account',
+      subtitle: 'Join Choco Forest Watch',
+      email: 'Email',
+      emailRequired: 'Email is required',
+      invalidEmail: 'Invalid email',
+      preferredLanguage: 'Preferred Language',
+      createButton: 'Create Account',
+      success: 'Account created successfully!',
+      failed: 'Registration failed'
+    },
+    resetPassword: {
+      title: 'Reset Password',
+      instructions: 'Enter your email address and we\'ll send you instructions to reset your password.',
+      cancel: 'Cancel',
+      sendLink: 'Send Reset Link',
+      success: 'Password reset instructions sent to your email',
+      failed: 'Failed to send reset email'
+    },
     confirmLogout: 'Are you sure you want to logout?',
     logoutSuccess: 'Successfully logged out'
   },
