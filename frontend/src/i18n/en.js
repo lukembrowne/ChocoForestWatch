@@ -78,6 +78,92 @@ export default {
     startTraining: 'Start Training',
     selectPolygons: 'Select Polygons',
     modelSettings: 'Model Settings',
+    modelTraining: {
+      title: {
+        train: 'Train XGBoost Model',
+        update: 'Update XGBoost Model'
+      },
+      buttons: {
+        cancel: 'Cancel',
+        train: 'Train Model',
+        update: 'Update Model'
+      },
+      validation: {
+        invalidConfig: 'Please ensure all model parameters are valid before training',
+        oneFeature: 'Classes with exactly 1 feature are not allowed',
+        oneFeatureCaption: 'Please add at least one more feature to: {classes}',
+        twoClasses: 'At least two classes must have training data',
+        twoClassesCaption: 'Please add features to at least one more class',
+        noData: 'No training data available',
+        parameterErrors: {
+          invalid: 'Invalid value for {param}',
+          estimators: 'Number of estimators must be at least 10',
+          maxDepth: 'Max depth must be at least 1',
+          learningRate: 'Learning rate must be greater than 0',
+          minChildWeight: 'Min child weight must be at least 1',
+          gamma: 'Gamma must be non-negative',
+          subsample: 'Subsample must be between 0 and 1',
+          colsample: 'Colsample bytree must be between 0 and 1'
+        }
+      },
+      dataSummary: {
+        totalSets: 'Total Training Sets',
+        totalArea: 'Total Area',
+        class: 'Class',
+        features: 'Features',
+        area: 'Area (ha)',
+        percentage: '%',
+        trainingDates: 'Training data dates:'
+      },
+      parameters: {
+        title: 'Model Parameters',
+        caption: 'Click to customize model parameters',
+        modelParams: {
+          estimators: {
+            title: 'Number of Estimators',
+            description: 'The number of trees in the forest. Higher values generally improve performance but increase training time.'
+          },
+          maxDepth: {
+            title: 'Max Depth',
+            description: 'Maximum depth of the trees. Higher values make the model more complex and prone to overfitting.'
+          },
+          learningRate: {
+            title: 'Learning Rate',
+            description: 'Step size shrinkage used to prevent overfitting. Lower values are generally better but require more iterations.'
+          },
+          minChildWeight: {
+            title: 'Min Child Weight',
+            description: 'Minimum sum of instance weight needed in a child. Higher values make the model more conservative.'
+          },
+          gamma: {
+            title: 'Gamma',
+            description: 'Minimum loss reduction required to make a further partition. Higher values make the model more conservative.'
+          },
+          subsample: {
+            title: 'Subsample',
+            description: 'Fraction of samples used for fitting the trees. Lower values can help prevent overfitting.'
+          },
+          colsample: {
+            title: 'Colsample Bytree',
+            description: 'Fraction of features used for building each tree. Can help in reducing overfitting.'
+          }
+        },
+        splitMethod: {
+          title: 'Choose split method:',
+          feature: 'Feature-based',
+          pixel: 'Pixel-based',
+          featureDescription: 'Feature-based split ensures independence between training and testing data by splitting entire polygons. Pixel-based split may mix pixels from the same polygon in both training and testing sets.'
+        },
+        trainTest: {
+          title: 'Adjust the train/test split:',
+          description: 'This determines the proportion of data used for testing. A value of {value} means {percent}% of the data will be used for testing and {remaining}% for training. Higher test percentages provide more reliable accuracy estimates but leave less data for training, which may lead to overfitting.'
+        },
+        sieveFilter: {
+          title: 'Sieve Filter Size:',
+          description: 'Minimum size of connected pixel groups to keep in the final prediction. Higher values create a more generalized map by removing small isolated patches. Set to 0 to disable filtering.'
+        }
+      }
+    },
     evaluation: {
       title: 'Model Evaluation',
       noMetrics: {
@@ -152,18 +238,32 @@ export default {
     basemapDate: {
       title: 'Basemap Date',
       months: {
-        jan: 'Jan',
-        feb: 'Feb',
-        mar: 'Mar',
-        apr: 'Apr',
+        jan: 'January',
+        feb: 'February',
+        mar: 'March',
+        apr: 'April',
         may: 'May',
-        jun: 'Jun',
-        jul: 'Jul',
-        aug: 'Aug',
-        sep: 'Sep',
-        oct: 'Oct',
-        nov: 'Nov',
-        dec: 'Dec'
+        jun: 'June',
+        jul: 'July',
+        aug: 'August',
+        sep: 'September',
+        oct: 'October',
+        nov: 'November',
+        dec: 'December',
+        short: {
+          jan: 'Jan',
+          feb: 'Feb',
+          mar: 'Mar',
+          apr: 'Apr',
+          may: 'May',
+          jun: 'Jun',
+          jul: 'Jul',
+          aug: 'Aug',
+          sep: 'Sep',
+          oct: 'Oct',
+          nov: 'Nov',
+          dec: 'Dec'
+        }
       }
     }
   },

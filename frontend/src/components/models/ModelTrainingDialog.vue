@@ -2,15 +2,15 @@
   <q-dialog ref="dialogRef" @hide="onDialogHide">
     <q-card class="q-dialog-plugin" style="width: 800px; max-width: 90vw;">
       <q-card-section class="row items-center justify-between">
-        <div class="text-h6">{{ existingModel ? 'Update' : 'Train' }} XGBoost Model</div>
+        <div class="text-h6">{{ t(`training.modelTraining.title.${existingModel ? 'update' : 'train'}`) }}</div>
         <div class="row items-center q-gutter-sm">
           <span v-if="!isValidConfiguration" class="text-negative text-caption">
             {{ validationMessage }}
           </span>
           <div class="row q-gutter-sm">
-            <q-btn flat label="Cancel" color="primary" v-close-popup />
+            <q-btn flat :label="t('training.modelTraining.buttons.cancel')" color="primary" v-close-popup />
             <q-btn 
-              :label="existingModel ? 'Update Model' : 'Train Model'" 
+              :label="t(`training.modelTraining.buttons.${existingModel ? 'update' : 'train'}`)"
               color="primary" 
               @click="validateAndTrain"
               :disable="!isValidConfiguration"
@@ -29,7 +29,7 @@
             <q-card class="bg-primary text-white">
               <q-card-section class="q-pa-sm">
                 <div class="text-h6">{{ trainingDataSummary.totalSets }}</div>
-                <div class="text-subtitle2">Total Training Sets</div>
+                <div class="text-subtitle2">{{ t('training.modelTraining.dataSummary.totalSets') }}</div>
               </q-card-section>
             </q-card>
           </div>
@@ -37,7 +37,7 @@
             <q-card class="bg-secondary text-white">
               <q-card-section class="q-pa-sm">
                 <div class="text-h6">{{ totalArea.toFixed(2) }} ha</div>
-                <div class="text-subtitle2">Total Area</div>
+                <div class="text-subtitle2">{{ t('training.modelTraining.dataSummary.totalArea') }}</div>
               </q-card-section>
             </q-card>
           </div>
@@ -46,10 +46,10 @@
         <q-markup-table flat bordered dense class="q-mt-sm">
           <thead>
             <tr>
-              <th class="text-left">Class</th>
-              <th class="text-right">Features</th>
-              <th class="text-right">Area (ha)</th>
-              <th class="text-right">%</th>
+              <th class="text-left">{{ t('training.modelTraining.dataSummary.class') }}</th>
+              <th class="text-right">{{ t('training.modelTraining.dataSummary.features') }}</th>
+              <th class="text-right">{{ t('training.modelTraining.dataSummary.area') }}</th>
+              <th class="text-right">{{ t('training.modelTraining.dataSummary.percentage') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -67,7 +67,7 @@
         </q-markup-table>
 
         <div class="q-mt-sm">
-          <div class="text-caption">Training data dates:</div>
+          <div class="text-caption">{{ t('training.modelTraining.dataSummary.trainingDates') }}</div>
           <div class="row q-gutter-xs">
             <q-chip
               v-for="date in basemapOptions"
@@ -86,85 +86,77 @@
       <q-card-section>
         <q-expansion-item
           expand-separator
-          label="Model Parameters"
-          caption="Click to customize model parameters"
+          :label="t('training.modelTraining.parameters.title')"
+          :caption="t('training.modelTraining.parameters.caption')"
           :default-opened="!isValidConfiguration"
         >
           <div class="row q-col-gutter-md">
             <div class="col-12">
-              <p>Choose split method:</p>
-              <q-radio v-model="splitMethod" val="feature" label="Feature-based" color="primary" />
-              <q-radio v-model="splitMethod" val="pixel" label="Pixel-based" color="primary" />
+              <p>{{ t('training.modelTraining.parameters.splitMethod.title') }}</p>
+              <q-radio v-model="splitMethod" val="feature" 
+                :label="t('training.modelTraining.parameters.splitMethod.feature')" color="primary" />
+              <q-radio v-model="splitMethod" val="pixel" 
+                :label="t('training.modelTraining.parameters.splitMethod.pixel')" color="primary" />
               <p class="text-caption q-mt-sm">
-                Feature-based split ensures independence between training and testing data by splitting entire
-                polygons.
-                Pixel-based split may mix pixels from the same polygon in both training and testing sets.
+                {{ t('training.modelTraining.parameters.splitMethod.featureDescription') }}
               </p>
             </div>
             <div class="col-12">
-              <p>Adjust the train/test split:</p>
+              <p>{{ t('training.modelTraining.parameters.trainTest.title') }}</p>
               <q-slider v-model="trainTestSplit" :min="0.1" :max="0.5" :step="0.05" label label-always
                 color="primary" />
               <p class="text-caption">
-                This determines the proportion of data used for testing. A value of {{ trainTestSplit }} means
-                {{ (trainTestSplit * 100).toFixed(0) }}% of the {{ splitMethod === 'pixel' ? 'pixels' : 'features' }}
-                will be used for testing, and
-                {{ (100 - trainTestSplit * 100).toFixed(0) }}% for training.
+                {{ t('training.modelTraining.parameters.trainTest.description', {
+                  value: trainTestSplit,
+                  percent: (trainTestSplit * 100).toFixed(0),
+                  remaining: (100 - trainTestSplit * 100).toFixed(0)
+                }) }}
               </p>
             </div>
             <div class="col-12 col-md-6">
-              <p>Number of Estimators:</p>
+              <p>{{ t('training.modelTraining.parameters.modelParams.estimators.title') }}:</p>
               <q-slider v-model="options.n_estimators" :min="10" :max="1000" :step="10" label label-always
                 color="primary" />
-              <p class="text-caption">The number of trees in the forest. Higher values generally improve performance
-                but increase training time.</p>
+              <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.estimators.description') }}</p>
             </div>
             <div class="col-12 col-md-6">
-              <p>Max Depth:</p>
+              <p>{{ t('training.modelTraining.parameters.modelParams.maxDepth.title') }}:</p>
               <q-slider v-model="options.max_depth" :min="1" :max="10" :step="1" label label-always color="primary" />
-              <p class="text-caption">Maximum depth of the trees. Higher values make the model more complex and prone
-                to overfitting.</p>
+              <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.maxDepth.description') }}</p>
             </div>
             <div class="col-12 col-md-6">
-              <p>Learning Rate:</p>
+              <p>{{ t('training.modelTraining.parameters.modelParams.learningRate.title') }}:</p>
               <q-slider v-model="options.learning_rate" :min="0.01" :max="0.3" :step="0.01" label label-always
                 color="primary" />
-              <p class="text-caption">Step size shrinkage used to prevent overfitting. Lower values are generally
-                better but require more iterations.</p>
+              <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.learningRate.description') }}</p>
             </div>
             <div class="col-12 col-md-6">
-              <p>Min Child Weight:</p>
+              <p>{{ t('training.modelTraining.parameters.modelParams.minChildWeight.title') }}:</p>
               <q-slider v-model="options.min_child_weight" :min="1" :max="10" :step="1" label label-always
                 color="primary" />
-              <p class="text-caption">Minimum sum of instance weight needed in a child. Higher values make the model
-                more conservative.</p>
+              <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.minChildWeight.description') }}</p>
             </div>
             <div class="col-12 col-md-6">
-              <p>Gamma:</p>
+              <p>{{ t('training.modelTraining.parameters.modelParams.gamma.title') }}:</p>
               <q-slider v-model="options.gamma" :min="0" :max="1" :step="0.1" label label-always color="primary" />
-              <p class="text-caption">Minimum loss reduction required to make a further partition. Higher values make
-                the model more conservative.</p>
+              <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.gamma.description') }}</p>
             </div>
             <div class="col-12 col-md-6">
-              <p>Subsample:</p>
+              <p>{{ t('training.modelTraining.parameters.modelParams.subsample.title') }}:</p>
               <q-slider v-model="options.subsample" :min="0.5" :max="1" :step="0.1" label label-always
                 color="primary" />
-              <p class="text-caption">Fraction of samples used for fitting the trees. Lower values can help prevent
-                overfitting.</p>
+              <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.subsample.description') }}</p>
             </div>
             <div class="col-12 col-md-6">
-              <p>Colsample Bytree:</p>
+              <p>{{ t('training.modelTraining.parameters.modelParams.colsample.title') }}:</p>
               <q-slider v-model="options.colsample_bytree" :min="0.5" :max="1" :step="0.1" label label-always
                 color="primary" />
-              <p class="text-caption">Fraction of features used for building each tree. Can help in reducing
-                overfitting.</p>
+              <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.colsample.description') }}</p>
             </div>
             <div class="col-12 col-md-6">
-              <p>Sieve Filter Size:</p>
+              <p>{{ t('training.modelTraining.parameters.sieveFilter.title') }}</p>
               <q-slider v-model="options.sieve_size" :min="0" :max="100" :step="5" label label-always color="primary" />
-              <p class="text-caption">Minimum size of connected pixel groups to keep in the final prediction.
-                Higher values create a more generalized map by removing small isolated patches.
-                Set to 0 to disable filtering.</p>
+              <p class="text-caption">{{ t('training.modelTraining.parameters.sieveFilter.description') }}</p>
             </div>
           </div>
         </q-expansion-item>
@@ -191,6 +183,7 @@ import { GeoJSON } from 'ol/format'
 import { transformExtent } from 'ol/proj'
 import TrainingProgress from 'components/models/TrainingProgress.vue'
 import { getBasemapDateOptions } from 'src/utils/dateUtils';
+import { useI18n } from 'vue-i18n'
 
 
 
@@ -205,6 +198,7 @@ export default {
     const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent()
     const $q = useQuasar()
     const projectStore = useProjectStore()
+    const { t } = useI18n()
 
     const basemapOptions = computed(() => {
       return getBasemapDateOptions().map(option => ({
@@ -549,20 +543,17 @@ export default {
     // Modify the validateAndTrain method to give more specific error messages
     const validateAndTrain = async () => {
       if (!hasMinimumFeaturesPerClass.value) {
-        // Check which condition failed
         const classesWithOneFeature = Object.entries(trainingDataSummary.value.classStats)
           .filter(([_, stats]) => stats.featureCount === 1)
           .map(([className]) => className);
           
-        const classesWithFeatures = Object.values(trainingDataSummary.value.classStats)
-          .filter(stats => stats.featureCount > 0)
-          .length;
-        
         if (classesWithOneFeature.length > 0) {
           $q.notify({
             type: 'negative',
-            message: `Classes with exactly 1 feature are not allowed`,
-            caption: `Please add at least one more feature to: ${classesWithOneFeature.join(', ')}`
+            message: t('training.modelTraining.validation.oneFeature'),
+            caption: t('training.modelTraining.validation.oneFeatureCaption', { 
+              classes: classesWithOneFeature.join(', ') 
+            })
           });
           return;
         }
@@ -570,8 +561,8 @@ export default {
         if (classesWithFeatures < 2) {
           $q.notify({
             type: 'negative',
-            message: 'At least two classes must have training data',
-            caption: 'Please add features to at least one more class'
+            message: t('training.modelTraining.validation.twoClasses'),
+            caption: t('training.modelTraining.validation.twoClassesCaption')
           });
           return;
         }
@@ -580,7 +571,7 @@ export default {
       if (!isValidConfiguration.value) {
         $q.notify({
           type: 'negative',
-          message: 'Please ensure all model parameters are valid before training'
+          message: t('training.modelTraining.validation.invalidConfig')
         });
         return;
       }
@@ -590,9 +581,8 @@ export default {
     };
 
     const validationMessage = computed(() => {
-      // Check for minimum features per class
       if (!trainingDataSummary.value?.classStats) {
-        return 'No training data available';
+        return t('training.modelTraining.validation.noData');
       }
 
       // Check for classes with exactly 1 feature
@@ -601,7 +591,7 @@ export default {
         .map(([className]) => className);
       
       if (classesWithOneFeature.length > 0) {
-        return `Classes with exactly 1 feature: ${classesWithOneFeature.join(', ')}. Add at least one more feature to these classes.`;
+        return t('training.modelTraining.validation.oneFeature');
       }
 
       // Check if we have at least two classes with features
@@ -610,24 +600,26 @@ export default {
         .length;
       
       if (classesWithFeatures < 2) {
-        return 'At least two classes must have training data';
+        return t('training.modelTraining.validation.twoClasses');
       }
 
       // Check model parameters
       for (const [key, value] of Object.entries(options.value)) {
         if (value === 'NA' || value === null || isNaN(value)) {
-          return `Invalid value for ${key.replace(/_/g, ' ')}`;
+          return t('training.modelTraining.validation.parameterErrors.invalid', {
+            param: key.replace(/_/g, ' ')
+          });
         }
       }
 
       // Validate parameter ranges
-      if (options.value.n_estimators < 10) return 'Number of estimators must be at least 10';
-      if (options.value.max_depth < 1) return 'Max depth must be at least 1';
-      if (options.value.learning_rate <= 0) return 'Learning rate must be greater than 0';
-      if (options.value.min_child_weight < 1) return 'Min child weight must be at least 1';
-      if (options.value.gamma < 0) return 'Gamma must be non-negative';
-      if (options.value.subsample <= 0 || options.value.subsample > 1) return 'Subsample must be between 0 and 1';
-      if (options.value.colsample_bytree <= 0 || options.value.colsample_bytree > 1) return 'Colsample bytree must be between 0 and 1';
+      if (options.value.n_estimators < 10) return t('training.modelTraining.validation.parameterErrors.estimators');
+      if (options.value.max_depth < 1) return t('training.modelTraining.validation.parameterErrors.maxDepth');
+      if (options.value.learning_rate <= 0) return t('training.modelTraining.validation.parameterErrors.learningRate');
+      if (options.value.min_child_weight < 1) return t('training.modelTraining.validation.parameterErrors.minChildWeight');
+      if (options.value.gamma < 0) return t('training.modelTraining.validation.parameterErrors.gamma');
+      if (options.value.subsample <= 0 || options.value.subsample > 1) return t('training.modelTraining.validation.parameterErrors.subsample');
+      if (options.value.colsample_bytree <= 0 || options.value.colsample_bytree > 1) return t('training.modelTraining.validation.parameterErrors.colsample');
 
       return '';
     });
@@ -659,6 +651,7 @@ export default {
       isValidConfiguration,
       validateAndTrain,
       validationMessage,
+      t,
     }
   }
 }

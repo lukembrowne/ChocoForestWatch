@@ -78,6 +78,92 @@ export default {
     startTraining: 'Iniciar Entrenamiento',
     selectPolygons: 'Seleccionar Polígonos',
     modelSettings: 'Configuración del Modelo',
+    modelTraining: {
+      title: {
+        train: 'Entrenar Modelo XGBoost',
+        update: 'Actualizar Modelo XGBoost'
+      },
+      buttons: {
+        cancel: 'Cancelar',
+        train: 'Entrenar Modelo',
+        update: 'Actualizar Modelo'
+      },
+      validation: {
+        invalidConfig: 'Por favor, asegúrese de que todos los parámetros del modelo sean válidos antes de entrenar',
+        oneFeature: 'No se permiten clases con exactamente 1 característica',
+        oneFeatureCaption: 'Por favor, agregue al menos una característica más a: {classes}',
+        twoClasses: 'Al menos dos clases deben tener datos de entrenamiento',
+        twoClassesCaption: 'Por favor, agregue características a al menos una clase más',
+        noData: 'No hay datos de entrenamiento disponibles',
+        parameterErrors: {
+          invalid: 'Valor inválido para {param}',
+          estimators: 'El número de estimadores debe ser al menos 10',
+          maxDepth: 'La profundidad máxima debe ser al menos 1',
+          learningRate: 'La tasa de aprendizaje debe ser mayor que 0',
+          minChildWeight: 'El peso mínimo del hijo debe ser al menos 1',
+          gamma: 'Gamma debe ser no negativo',
+          subsample: 'El submuestreo debe estar entre 0 y 1',
+          colsample: 'El colsample bytree debe estar entre 0 y 1'
+        }
+      },
+      dataSummary: {
+        totalSets: 'Total de Conjuntos de Entrenamiento',
+        totalArea: 'Área Total',
+        class: 'Clase',
+        features: 'Características',
+        area: 'Área (ha)',
+        percentage: '%',
+        trainingDates: 'Fechas de datos de entrenamiento:'
+      },
+      parameters: {
+        title: 'Parámetros del Modelo',
+        caption: 'Haga clic para personalizar los parámetros del modelo',
+        modelParams: {
+          estimators: {
+            title: 'Número de Estimadores',
+            description: 'El número de árboles en el bosque. Valores más altos generalmente mejoran el rendimiento pero aumentan el tiempo de entrenamiento.'
+          },
+          maxDepth: {
+            title: 'Profundidad Máxima',
+            description: 'Profundidad máxima de los árboles. Valores más altos hacen que el modelo sea más complejo y propenso al sobreajuste.'
+          },
+          learningRate: {
+            title: 'Tasa de Aprendizaje',
+            description: 'Reducción del tamaño del paso utilizada para prevenir el sobreajuste. Valores más bajos son generalmente mejores pero requieren más iteraciones.'
+          },
+          minChildWeight: {
+            title: 'Peso Mínimo del Hijo',
+            description: 'Suma mínima del peso de instancia necesaria en un hijo. Valores más altos hacen que el modelo sea más conservador.'
+          },
+          gamma: {
+            title: 'Gamma',
+            description: 'Reducción mínima de pérdida requerida para hacer una partición adicional. Valores más altos hacen que el modelo sea más conservador.'
+          },
+          subsample: {
+            title: 'Submuestreo',
+            description: 'Fracción de muestras utilizadas para ajustar los árboles. Valores más bajos pueden ayudar a prevenir el sobreajuste.'
+          },
+          colsample: {
+            title: 'Muestreo por Columna',
+            description: 'Fracción de características utilizadas para construir cada árbol. Puede ayudar a reducir el sobreajuste.'
+          }
+        },
+        splitMethod: {
+          title: 'Elija el método de división:',
+          feature: 'Basado en características',
+          pixel: 'Basado en píxeles',
+          featureDescription: 'La división basada en características asegura la independencia entre los datos de entrenamiento y prueba al dividir polígonos completos. La división basada en píxeles puede mezclar píxeles del mismo polígono en ambos conjuntos de entrenamiento y prueba.'
+        },
+        trainTest: {
+          title: 'Ajustar la división entrenamiento/prueba:',
+          description: 'Esto determina la proporción de datos utilizada para pruebas. Un valor de {value} significa que el {percent}% de los datos se utilizará para pruebas y el {remaining}% para entrenamiento. Porcentajes más altos de prueba proporcionan estimaciones de precisión más confiables pero dejan menos datos para el entrenamiento, lo que puede llevar al sobreajuste.'
+        },
+        sieveFilter: {
+          title: 'Tamaño del Filtro Tamiz:',
+          description: 'Tamaño mínimo de grupos de píxeles conectados para mantener en la predicción final. Valores más altos crean un mapa más generalizado al eliminar parches aislados pequeños. Establezca en 0 para deshabilitar el filtrado.'
+        }
+      }
+    },
     evaluation: {
       title: 'Evaluación del Modelo',
       noMetrics: {
@@ -152,18 +238,32 @@ export default {
     basemapDate: {
       title: 'Fecha del Mapa Base',
       months: {
-        jan: 'Ene',
-        feb: 'Feb',
-        mar: 'Mar',
-        apr: 'Abr',
-        may: 'May',
-        jun: 'Jun',
-        jul: 'Jul',
-        aug: 'Ago',
-        sep: 'Sep',
-        oct: 'Oct',
-        nov: 'Nov',
-        dec: 'Dic'
+        jan: 'Enero',
+        feb: 'Febrero',
+        mar: 'Marzo',
+        apr: 'Abril',
+        may: 'Mayo',
+        jun: 'Junio',
+        jul: 'Julio',
+        aug: 'Agosto',
+        sep: 'Septiembre',
+        oct: 'Octubre',
+        nov: 'Noviembre',
+        dec: 'Diciembre',
+        short: {
+          jan: 'Ene',
+          feb: 'Feb',
+          mar: 'Mar',
+          apr: 'Abr',
+          may: 'May',
+          jun: 'Jun',
+          jul: 'Jul',
+          aug: 'Ago',
+          sep: 'Sep',
+          oct: 'Oct',
+          nov: 'Nov',
+          dec: 'Dic'
+        }
       }
     }
   },
