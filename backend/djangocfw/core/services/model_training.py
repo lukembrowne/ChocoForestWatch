@@ -266,7 +266,9 @@ class ModelTrainingService:
         le.classes_ = np.array(desired_class_order)
         
         ## Get classes actually present in training data
-        classes_in_training = le.classes_.tolist()
+        ## classes_in_training = le.classes_.tolist()
+
+        classes_in_training = np.unique(y).tolist()
         
         # Create date and month encoders
         date_encoder = LabelEncoder()

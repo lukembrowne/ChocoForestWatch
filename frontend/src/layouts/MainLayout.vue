@@ -63,7 +63,7 @@
           <div class="floating-elements">
             <BasemapDateSlider v-if="!showAOICard && !showUnifiedAnalysis" class="date-slider" />
           </div>
-          <custom-layer-switcher v-if="!showUnifiedAnalysis" />
+          <custom-layer-switcher v-if="!showUnifiedAnalysis" mapId="training" />
         </div>
       </q-page>
     </q-page-container>

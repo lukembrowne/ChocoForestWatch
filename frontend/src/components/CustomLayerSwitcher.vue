@@ -1,6 +1,6 @@
 <template>
   <div class="custom-layer-switcher">
-    <p class="text-subtitle2 q-mb-sm">{{ mapId === 'primary' ? 'Primary' : 'Secondary' }} Map Layers</p>
+    <p class="text-subtitle2 q-mb-sm">Layers</p>
     <q-separator class="q-mb-sm" />
     <Sortable
       :list="mapLayers"
@@ -63,13 +63,17 @@ export default {
     mapId: {
       type: String,
       required: true,
-      validator: value => ['primary', 'secondary'].includes(value)
+      validator: value => ['primary', 'secondary', 'training'].includes(value)
     }
   },
   setup(props) {
     const mapStore = useMapStore();
 
     const mapLayers = computed(() => {
+      if(props.mapId === 'training') {
+        return mapStore.layers;
+      } else {
+
       const map = mapStore.maps[props.mapId];
       if (!map) return [];
 
@@ -84,6 +88,7 @@ export default {
           layer: layer
         }))
         .sort((a, b) => b.zIndex - a.zIndex);
+      }
     });
 
     const onDragEnd = (event) => {
