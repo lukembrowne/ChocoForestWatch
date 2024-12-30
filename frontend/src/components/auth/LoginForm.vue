@@ -176,24 +176,24 @@
     <q-dialog v-model="resetPasswordDialog">
       <q-card style="min-width: 350px">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Reset Password</div>
+          <div class="text-h6">{{ t('common.resetPassword.title') }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section>
           <p class="text-body2">
-            Enter your email address and we'll send you instructions to reset your password.
+            {{ t('common.resetPassword.instructions') }}
           </p>
           <q-form @submit.prevent="handleResetPassword">
             <q-input
               v-model="resetEmail"
-              label="Email"
+              :label="t('common.register.email')"
               type="email"
               outlined
               :rules="[
-                val => !!val || 'Email is required',
-                val => /.+@.+\..+/.test(val) || 'Invalid email'
+                val => !!val || t('common.register.emailRequired'),
+                val => /.+@.+\..+/.test(val) || t('common.register.invalidEmail')
               ]"
             >
               <template v-slot:prepend>
@@ -202,9 +202,9 @@
             </q-input>
 
             <div class="row justify-end q-mt-md">
-              <q-btn label="Cancel" color="primary" flat v-close-popup />
+              <q-btn :label="t('common.resetPassword.cancel')" color="primary" flat v-close-popup />
               <q-btn
-                label="Send Reset Link"
+                :label="t('common.resetPassword.sendLink')"
                 color="primary"
                 :loading="resetLoading"
                 type="submit"

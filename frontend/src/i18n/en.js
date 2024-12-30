@@ -37,7 +37,16 @@ export default {
       cancel: 'Cancel',
       sendLink: 'Send Reset Link',
       success: 'Password reset instructions sent to your email',
-      failed: 'Failed to send reset email'
+      failed: 'Failed to send reset email',
+      enterNew: 'Enter your new password',
+      newPassword: 'New Password',
+      confirmPassword: 'Confirm Password',
+      passwordRequired: 'Password is required',
+      confirmRequired: 'Password confirmation is required',
+      passwordsNoMatch: 'Passwords do not match',
+      resetButton: 'Reset Password',
+      resetSuccess: 'Password reset successful! Please login with your new password.',
+      resetFailed: 'Failed to reset password'
     },
     confirmLogout: 'Are you sure you want to logout?',
     logoutSuccess: 'Successfully logged out'

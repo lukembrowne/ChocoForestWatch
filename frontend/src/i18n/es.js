@@ -39,7 +39,16 @@ export default {
       cancel: 'Cancelar',
       sendLink: 'Enviar Link',
       success: 'Instrucciones enviadas a su correo electrónico',
-      failed: 'Error al enviar el correo electrónico'
+      failed: 'Error al enviar el correo electrónico',
+      enterNew: 'Ingrese su nueva contraseña',
+      newPassword: 'Nueva Contraseña',
+      confirmPassword: 'Confirmar Contraseña',
+      passwordRequired: 'La contraseña es requerida',
+      confirmRequired: 'La confirmación de contraseña es requerida',
+      passwordsNoMatch: 'Las contraseñas no coinciden',
+      resetButton: 'Restablecer Contraseña',
+      resetSuccess: '¡Contraseña restablecida exitosamente! Por favor inicie sesión con su nueva contraseña.',
+      resetFailed: 'Error al restablecer la contraseña'
     }
   },
   header: {

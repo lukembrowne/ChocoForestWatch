@@ -2,9 +2,9 @@
   <div class="login-container">
     <q-card class="reset-card">
       <q-card-section class="text-center">
-        <div class="text-h5">Reset Password</div>
+        <div class="text-h5">{{ t('common.resetPassword.title') }}</div>
         <p class="text-subtitle1 text-grey-7">
-          Enter your new password
+          {{ t('common.resetPassword.enterNew') }}
         </p>
       </q-card-section>
 
@@ -12,10 +12,10 @@
         <q-form @submit.prevent="handleResetPassword" class="q-gutter-md">
           <q-input
             v-model="newPassword"
-            label="New Password"
+            :label="t('common.resetPassword.newPassword')"
             outlined
             :type="isPwd ? 'password' : 'text'"
-            :rules="[val => !!val || 'Password is required']"
+            :rules="[val => !!val || t('common.resetPassword.passwordRequired')]"
             :error="!!error"
           >
             <template v-slot:prepend>
@@ -32,12 +32,12 @@
 
           <q-input
             v-model="confirmPassword"
-            label="Confirm Password"
+            :label="t('common.resetPassword.confirmPassword')"
             outlined
             :type="isPwd ? 'password' : 'text'"
             :rules="[
-              val => !!val || 'Password confirmation is required',
-              val => val === newPassword || 'Passwords do not match'
+              val => !!val || t('common.resetPassword.confirmRequired'),
+              val => val === newPassword || t('common.resetPassword.passwordsNoMatch')
             ]"
             :error="!!error"
             :error-message="error"
@@ -52,7 +52,7 @@
             color="primary"
             class="full-width q-mt-lg"
             :loading="loading"
-            label="Reset Password"
+            :label="t('common.resetPassword.resetButton')"
           />
         </q-form>
       </q-card-section>
@@ -61,9 +61,10 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 
 export default {
@@ -73,6 +74,14 @@ export default {
     const $q = useQuasar()
     const router = useRouter()
     const route = useRoute()
+    const { t, locale } = useI18n()
+    
+    // Initialize locale from localStorage or default to 'en'
+    locale.value = localStorage.getItem('userLanguage') || 'en'
+
+    onMounted(() => {
+      console.log("Password resset local: ", locale.value)
+    })
     
     const newPassword = ref('')
     const confirmPassword = ref('')
@@ -96,13 +105,13 @@ export default {
 
         $q.notify({
           color: 'positive',
-          message: 'Password reset successful! Please login with your new password.',
+          message: t('common.resetPassword.resetSuccess'),
           icon: 'check'
         })
 
         router.push('/login')
       } catch (err) {
-        error.value = err.response?.data?.error || 'Failed to reset password'
+        error.value = err.response?.data?.error || t('common.resetPassword.resetFailed')
         $q.notify({
           color: 'negative',
           message: error.value,
@@ -119,7 +128,8 @@ export default {
       error,
       loading,
       isPwd,
-      handleResetPassword
+      handleResetPassword,
+      t
     }
   }
 }
