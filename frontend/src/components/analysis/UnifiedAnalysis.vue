@@ -274,27 +274,27 @@
 
       <q-card-section class="q-pa-md">
         <!-- Overview Section -->
-        <div class="text-h6 q-mb-md">Overview by Source (Hotspots ≥ {{ minAreaHa }} ha)</div>
+        <div class="text-h6 q-mb-md">{{ t('analysis.unified.stats.overview.title', { minArea: minAreaHa }) }}</div>
         <div class="row q-col-gutter-md">
-          <!-- local Alerts -->
+          <!-- Local Alerts -->
           <div class="col-6">
             <q-card class="source-stats-card local-stats">
               <q-card-section>
-                <div class="text-h6 q-mb-md">Local Alerts</div>
-                <div class="text-caption q-mb-sm">Showing hotspots ≥ {{ minAreaHa }} ha</div>
+                <div class="text-h6 q-mb-md">{{ t('analysis.unified.stats.overview.localAlerts') }}</div>
+                <div class="text-caption q-mb-sm">{{ t('analysis.unified.stats.overview.showing', { minArea: minAreaHa }) }}</div>
                 <div class="row q-col-gutter-md">
                   <div class="col-4">
-                    <div class="text-subtitle2">Hotspots</div>
+                    <div class="text-subtitle2">{{ t('analysis.unified.stats.overview.hotspots') }}</div>
                     <div class="text-h5">{{ sourceStats.local.count }}</div>
                   </div>
                   <div class="col-4">
-                    <div class="text-subtitle2">Total Area</div>
+                    <div class="text-subtitle2">{{ t('analysis.unified.stats.overview.totalArea') }}</div>
                     <div class="text-h5">{{ sourceStats.local.area.toFixed(1) }} ha</div>
-                    <div class="text-caption">{{ (sourceStats.local.area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI</div>
+                    <div class="text-caption">{{ t('analysis.unified.stats.overview.percentOfAoi', { percent: (sourceStats.local.area / projectStore.aoiAreaHa * 100).toFixed(1) }) }}</div>
                   </div>
                   <div class="col-4">
-                    <div class="text-subtitle2">Annual Rate</div>
-                    <div class="text-h5">{{ sourceStats.local.rate.toFixed(1) }} ha/year</div>
+                    <div class="text-subtitle2">{{ t('analysis.unified.stats.overview.annualRate') }}</div>
+                    <div class="text-h5">{{ sourceStats.local.rate.toFixed(1) }} {{ t('analysis.unified.stats.overview.haPerYear') }}</div>
                   </div>
                 </div>
               </q-card-section>
@@ -305,21 +305,21 @@
           <div class="col-6">
             <q-card class="source-stats-card gfw-stats">
               <q-card-section>
-                <div class="text-h6 q-mb-md">GFW Alerts</div>
-                <div class="text-caption q-mb-sm">Showing hotspots ≥ {{ minAreaHa }} ha</div>
+                <div class="text-h6 q-mb-md">{{ t('analysis.unified.stats.overview.gfwAlerts') }}</div>
+                <div class="text-caption q-mb-sm">{{ t('analysis.unified.stats.overview.showing', { minArea: minAreaHa }) }}</div>
                 <div class="row q-col-gutter-md">
                   <div class="col-4">
-                    <div class="text-subtitle2">Hotspots</div>
+                    <div class="text-subtitle2">{{ t('analysis.unified.stats.overview.hotspots') }}</div>
                     <div class="text-h5">{{ sourceStats.gfw.count }}</div>
                   </div>
                   <div class="col-4">
-                    <div class="text-subtitle2">Total Area</div>
+                    <div class="text-subtitle2">{{ t('analysis.unified.stats.overview.totalArea') }}</div>
                     <div class="text-h5">{{ sourceStats.gfw.area.toFixed(1) }} ha</div>
-                    <div class="text-caption">{{ (sourceStats.gfw.area / projectStore.aoiAreaHa * 100).toFixed(1) }}% of AOI</div>
+                    <div class="text-caption">{{ t('analysis.unified.stats.overview.percentOfAoi', { percent: (sourceStats.gfw.area / projectStore.aoiAreaHa * 100).toFixed(1) }) }}</div>
                   </div>
                   <div class="col-4">
-                    <div class="text-subtitle2">Annual Rate</div>
-                    <div class="text-h5">{{ sourceStats.gfw.rate.toFixed(1) }} ha/year</div>
+                    <div class="text-subtitle2">{{ t('analysis.unified.stats.overview.annualRate') }}</div>
+                    <div class="text-h5">{{ sourceStats.gfw.rate.toFixed(1) }} {{ t('analysis.unified.stats.overview.haPerYear') }}</div>
                   </div>
                 </div>
               </q-card-section>
@@ -328,22 +328,22 @@
         </div>
 
         <!-- Status Breakdown Section -->
-        <div class="text-h6 q-mt-lg q-mb-md">Status Breakdown by Source (Hotspots ≥ {{ minAreaHa }} ha)</div>
+        <div class="text-h6 q-mt-lg q-mb-md">{{ t('analysis.unified.stats.breakdown.title', { minArea: minAreaHa }) }}</div>
         <div class="row q-col-gutter-md">
-          <!-- local Status Breakdown -->
+          <!-- Local Status Breakdown -->
           <div class="col-6">
             <q-card class="status-breakdown local-stats">
               <q-card-section>
-                <div class="text-h6 q-mb-md">Local Alerts</div>
+                <div class="text-h6 q-mb-md">{{ t('analysis.unified.stats.overview.localAlerts') }}</div>
                 <div class="row q-col-gutter-md">
                   <div v-for="status in localStatusBreakdown" :key="status.name" class="col-6">
                     <div :class="`text-${status.color}`">
-                      <div class="text-subtitle2">{{ status.name }}</div>
-                      <div class="text-h6">{{ status.count }} hotspots</div>
-                      <div class="text-caption">{{ status.percentage.toFixed(1) }}% of local hotspots</div>
+                      <div class="text-subtitle2">{{ t(`analysis.unified.stats.breakdown.status.${status.name.toLowerCase()}`) }}</div>
+                      <div class="text-h6">{{ t('analysis.unified.stats.breakdown.hotspotCount', { count: status.count }) }}</div>
+                      <div class="text-caption">{{ t('analysis.unified.stats.breakdown.percentOfSource', { percent: status.percentage.toFixed(1), source: t('analysis.unified.stats.overview.localAlerts') }) }}</div>
                       <div class="text-subtitle2 q-mt-sm">{{ status.area.toFixed(1) }} ha</div>
-                      <div class="text-caption">{{ status.areaPercentageOfAOI.toFixed(1) }}% of AOI</div>
-                      <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year</div>
+                      <div class="text-caption">{{ t('analysis.unified.stats.overview.percentOfAoi', { percent: status.areaPercentageOfAOI.toFixed(1) }) }}</div>
+                      <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} {{ t('analysis.unified.stats.overview.haPerYear') }}</div>
                     </div>
                   </div>
                 </div>
@@ -355,16 +355,16 @@
           <div class="col-6">
             <q-card class="status-breakdown gfw-stats">
               <q-card-section>
-                <div class="text-h6 q-mb-md">GFW Alerts</div>
+                <div class="text-h6 q-mb-md">{{ t('analysis.unified.stats.overview.gfwAlerts') }}</div>
                 <div class="row q-col-gutter-md">
                   <div v-for="status in gfwStatusBreakdown" :key="status.name" class="col-6">
                     <div :class="`text-${status.color}`">
-                      <div class="text-subtitle2">{{ status.name }}</div>
-                      <div class="text-h6">{{ status.count }} hotspots</div>
-                      <div class="text-caption">{{ status.percentage.toFixed(1) }}% of GFW hotspots</div>
+                      <div class="text-subtitle2">{{ t(`analysis.unified.stats.breakdown.status.${status.name.toLowerCase()}`) }}</div>
+                      <div class="text-h6">{{ t('analysis.unified.stats.breakdown.hotspotCount', { count: status.count }) }}</div>
+                      <div class="text-caption">{{ t('analysis.unified.stats.breakdown.percentOfSource', { percent: status.percentage.toFixed(1), source: t('analysis.unified.stats.overview.gfwAlerts') }) }}</div>
                       <div class="text-subtitle2 q-mt-sm">{{ status.area.toFixed(1) }} ha</div>
-                      <div class="text-caption">{{ status.areaPercentageOfAOI.toFixed(1) }}% of AOI</div>
-                      <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} ha/year</div>
+                      <div class="text-caption">{{ t('analysis.unified.stats.overview.percentOfAoi', { percent: status.areaPercentageOfAOI.toFixed(1) }) }}</div>
+                      <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} {{ t('analysis.unified.stats.overview.haPerYear') }}</div>
                     </div>
                   </div>
                 </div>
@@ -376,11 +376,11 @@
         <!-- Add AOI info -->
         <div class="text-caption q-mt-md">
           <q-icon name="info" size="xs" class="q-mr-xs" />
-          Area percentages are calculated relative to the total AOI area of {{ projectStore.aoiAreaHa.toFixed(1) }} ha
+          {{ t('analysis.unified.stats.aoiInfo', { area: projectStore.aoiAreaHa.toFixed(1) }) }}
         </div>
 
-        <!-- Add this section after the Overview Section in the stats dialog -->
-        <div class="text-h6 q-mt-lg q-mb-md">Land Cover Percentages</div>
+        <!-- Land Cover Percentages -->
+        <div class="text-h6 q-mt-lg q-mb-md">{{ t('analysis.unified.stats.landCover.title') }}</div>
         <div class="row q-col-gutter-md">
           <!-- Before -->
           <div class="col-6">
@@ -388,31 +388,13 @@
               <q-card-section>
                 <div class="text-h6 q-mb-md">{{ formatDate(selectedDeforestationMap.summary_statistics.prediction1_date) }}</div>
                 <div class="row q-col-gutter-md">
-                  <div class="col-6">
-                    <div class="text-subtitle2">Forest</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time1?.Forest?.toFixed(1) || 'NaN' }}%</div>
-                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time1_ha?.Forest?.toFixed(1) || 'NaN' }} ha</div>
-                  </div>
-                  <div class="col-6">
-                    <div class="text-subtitle2">Non-Forest</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time1?.['Non-Forest']?.toFixed(1) || 'NaN' }}%</div>
-                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time1_ha?.['Non-Forest']?.toFixed(1) || 'NaN' }} ha</div>
-                  </div>
-                  <div class="col-6">
-                    <div class="text-subtitle2">Water</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time1?.Water?.toFixed(1) || 'NaN' }}%</div>
-                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time1_ha?.Water?.toFixed(1) || 'NaN' }} ha</div>
-                  </div>
-                  <div class="col-6">
-                    <div class="text-subtitle2">Cloud</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time1?.Cloud?.toFixed(1) || 'NaN' }}%</div>
-                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time1_ha?.Cloud?.toFixed(1) || 'NaN' }} ha</div>
-                  </div>
-                  <div class="col-6">
-                    <div class="text-subtitle2">Shadow</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time1?.Shadow?.toFixed(1) || 'NaN' }}%</div>
-                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time1_ha?.Shadow?.toFixed(1) || 'NaN' }} ha</div>
-                  </div>
+                  <template v-for="type in ['Forest', 'Non-Forest', 'Water', 'Cloud', 'Shadow']" :key="type">
+                    <div class="col-6">
+                      <div class="text-subtitle2">{{ t(`analysis.unified.stats.landCover.types.${type.toLowerCase()}`) }}</div>
+                      <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time1?.[type]?.toFixed(1) || 'NaN' }}%</div>
+                      <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time1_ha?.[type]?.toFixed(1) || 'NaN' }} ha</div>
+                    </div>
+                  </template>
                 </div>
               </q-card-section>
             </q-card>
@@ -424,31 +406,13 @@
               <q-card-section>
                 <div class="text-h6 q-mb-md">{{ formatDate(selectedDeforestationMap.summary_statistics.prediction2_date) }}</div>
                 <div class="row q-col-gutter-md">
-                  <div class="col-6">
-                    <div class="text-subtitle2">Forest</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time2?.Forest?.toFixed(1) || 'NaN' }}%</div>
-                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time2_ha?.Forest?.toFixed(1) || 'NaN' }} ha</div>
-                  </div>
-                  <div class="col-6">
-                    <div class="text-subtitle2">Non-Forest</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time2?.['Non-Forest']?.toFixed(1) || 'NaN' }}%</div>
-                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time2_ha?.['Non-Forest']?.toFixed(1) || 'NaN' }} ha</div>
-                  </div>
-                  <div class="col-6">
-                    <div class="text-subtitle2">Water</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time2?.Water?.toFixed(1) || 'NaN' }}%</div>
-                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time2_ha?.Water?.toFixed(1) || 'NaN' }} ha</div>
-                  </div>
-                  <div class="col-6">
-                    <div class="text-subtitle2">Cloud</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time2?.Cloud?.toFixed(1) || 'NaN' }}%</div>
-                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time2_ha?.Cloud?.toFixed(1) || 'NaN' }} ha</div>
-                  </div>
-                  <div class="col-6">
-                    <div class="text-subtitle2">Shadow</div>
-                    <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time2?.Shadow?.toFixed(1) || 'NaN' }}%</div>
-                    <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time2_ha?.Shadow?.toFixed(1) || 'NaN' }} ha</div>
-                  </div>
+                  <template v-for="type in ['Forest', 'Non-Forest', 'Water', 'Cloud', 'Shadow']" :key="type">
+                    <div class="col-6">
+                      <div class="text-subtitle2">{{ t(`analysis.unified.stats.landCover.types.${type.toLowerCase()}`) }}</div>
+                      <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time2?.[type]?.toFixed(1) || 'NaN' }}%</div>
+                      <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time2_ha?.[type]?.toFixed(1) || 'NaN' }} ha</div>
+                    </div>
+                  </template>
                 </div>
               </q-card-section>
             </q-card>
@@ -457,10 +421,10 @@
       </q-card-section>
 
       <q-card-actions align="right">
-        <q-btn flat label="Close" color="primary" v-close-popup />
+        <q-btn flat :label="t('common.close')" color="primary" v-close-popup />
         <q-btn 
           flat 
-          label="Export" 
+          :label="t('common.export')"
           color="primary" 
           icon="download"
           @click="exportStats" 

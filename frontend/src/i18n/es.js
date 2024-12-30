@@ -49,7 +49,9 @@ export default {
       resetButton: 'Restablecer Contraseña',
       resetSuccess: '¡Contraseña restablecida exitosamente! Por favor inicie sesión con su nueva contraseña.',
       resetFailed: 'Error al restablecer la contraseña'
-    }
+    },
+    close: 'Cerrar',
+    export: 'Exportar'
   },
   header: {
     title: 'Choco Forest Watch',
@@ -146,7 +148,40 @@ export default {
         title: 'Estadísticas de Análisis',
         subtitle: '{start} a {end}',
         close: 'Cerrar',
-        export: 'Exportar'
+        export: 'Exportar',
+        overview: {
+          title: 'Resumen por Fuente (Puntos críticos ≥ {minArea} ha)',
+          localAlerts: 'Alertas Locales',
+          gfwAlerts: 'Alertas GFW',
+          showing: 'Mostrando puntos críticos ≥ {minArea} ha',
+          hotspots: 'Puntos críticos',
+          totalArea: 'Área Total',
+          annualRate: 'Tasa Anual',
+          haPerYear: 'ha/año',
+          percentOfAoi: '{percent}% del AOI'
+        },
+        breakdown: {
+          title: 'Desglose por Estado (Puntos críticos ≥ {minArea} ha)',
+          hotspotCount: '{count} puntos críticos',
+          percentOfSource: '{percent}% de {source}',
+          status: {
+            verified: 'Verificado',
+            unsure: 'Incierto',
+            rejected: 'Rechazado',
+            unverified: 'No verificado'
+          }
+        },
+        landCover: {
+          title: 'Porcentajes de Cobertura Terrestre',
+          types: {
+            forest: 'Bosque',
+            'non-forest': 'No Bosque',
+            water: 'Agua',
+            cloud: 'Nube',
+            shadow: 'Sombra'
+          }
+        },
+        aoiInfo: 'Los porcentajes de área se calculan en relación con el área total del AOI de {area} ha'
       },
       notifications: {
         projectRequired: 'Por favor seleccione un proyecto primero',

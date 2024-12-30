@@ -49,7 +49,9 @@ export default {
       resetFailed: 'Failed to reset password'
     },
     confirmLogout: 'Are you sure you want to logout?',
-    logoutSuccess: 'Successfully logged out'
+    logoutSuccess: 'Successfully logged out',
+    close: 'Close',
+    export: 'Export'
   },
   header: {
     title: 'Choco Forest Watch',
@@ -146,7 +148,40 @@ export default {
         title: 'Analysis Statistics',
         subtitle: '{start} to {end}',
         close: 'Close',
-        export: 'Export'
+        export: 'Export',
+        overview: {
+          title: 'Overview by Source (Hotspots ≥ {minArea} ha)',
+          localAlerts: 'Local Alerts',
+          gfwAlerts: 'GFW Alerts',
+          showing: 'Showing hotspots ≥ {minArea} ha',
+          hotspots: 'Hotspots',
+          totalArea: 'Total Area',
+          annualRate: 'Annual Rate',
+          haPerYear: 'ha/year',
+          percentOfAoi: '{percent}% of AOI'
+        },
+        breakdown: {
+          title: 'Status Breakdown by Source (Hotspots ≥ {minArea} ha)',
+          hotspotCount: '{count} hotspots',
+          percentOfSource: '{percent}% of {source}',
+          status: {
+            verified: 'Verified',
+            unsure: 'Unsure',
+            rejected: 'Rejected',
+            unverified: 'Unverified'
+          }
+        },
+        landCover: {
+          title: 'Land Cover Percentages',
+          types: {
+            forest: 'Forest',
+            'non-forest': 'Non-Forest',
+            water: 'Water',
+            cloud: 'Cloud',
+            shadow: 'Shadow'
+          }
+        },
+        aoiInfo: 'Area percentages are calculated relative to the total AOI area of {area} ha'
       },
       notifications: {
         projectRequired: 'Please select a project first',
