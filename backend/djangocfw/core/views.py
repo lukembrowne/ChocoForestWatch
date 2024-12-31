@@ -20,6 +20,8 @@ from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
+from djangocfw.version import __version__
+from rest_framework.permissions import AllowAny
 
 @api_view(['GET'])
 def health_check(request):
@@ -582,3 +584,13 @@ def submit_feedback(request):
     except Exception as e:
         logger.error(f"Error submitting feedback: {str(e)}")
         return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_version_info(request):
+    """Return version information about the API"""
+    return Response({
+        'version': __version__,
+        'environment': 'production' if not settings.DEBUG else 'development',
+        'api_root': request.build_absolute_uri('/api/'),
+    })

@@ -100,3 +100,9 @@ backend/djangocfw/djangocfw/__pycache__/urls.cpython-312.pyc
 backend/djangocfw/data/
 backend/djangocfw/media/
 
+# Deployment scripts with sensitive info
+deploy_docker.sh
+*.pem
+*.key
+backup-*.sql
+version.txt

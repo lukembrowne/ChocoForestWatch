@@ -1,6 +1,7 @@
 // services/api.js
 import axios from 'axios';
 import authService from './auth';
+import { boot } from 'quasar/wrappers';
 
 const API_URL = 'http://localhost:8000/api/';
 
@@ -35,8 +36,27 @@ apiClient.interceptors.response.use(
     }
 );
 
+// Version check function
+async function checkVersion() {
+    try {
+        const response = await apiClient.get('/version/');
+        const serverVersion = response.data.version;
+        const clientVersion = process.env.APP_VERSION;
+
+        if (serverVersion !== clientVersion) {
+            console.warn(`Version mismatch: Client ${clientVersion} / Server ${serverVersion}`);
+            // You could trigger a notification here
+        }
+    } catch (error) {
+        console.error('Failed to check version:', error);
+    }
+}
+
 // API functions
-export default {
+const api = {
+    // Add version check to existing API object
+    checkVersion,
+
     // Project endpoints
     getProjects() {
         return apiClient.get('/projects/');
@@ -179,4 +199,13 @@ export default {
         return apiClient.post('/feedback/', data);
     },
 };
+
+// Export for use in boot file
+export const boot = ({ app }) => {
+    app.config.globalProperties.$axios = axios;
+    app.config.globalProperties.$api = api;
+    checkVersion();
+};
+
+export default api;
 
