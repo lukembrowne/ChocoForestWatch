@@ -1,7 +1,6 @@
 // services/api.js
 import axios from 'axios';
 import authService from './auth';
-import { boot } from 'quasar/wrappers';
 
 const API_URL = 'http://localhost:8000/api/';
 
@@ -200,12 +199,13 @@ const api = {
     },
 };
 
-// Export for use in boot file
-export const boot = ({ app }) => {
+// Initialize function for boot
+function initializeApi(app) {
     app.config.globalProperties.$axios = axios;
     app.config.globalProperties.$api = api;
     checkVersion();
-};
+}
 
+export { initializeApi };
 export default api;
 
