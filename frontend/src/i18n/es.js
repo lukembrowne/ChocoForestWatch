@@ -4,6 +4,8 @@ export default {
     error: 'Se produjo un error',
     save: 'Guardar',
     cancel: 'Cancelar',
+    showHelp: 'Mostrar Ayuda',
+    getStarted: 'Comenzar',
     logout: 'Cerrar Sesión',
     confirmLogout: '¿Está seguro que desea cerrar sesión?',
     logoutSuccess: 'Sesión cerrada exitosamente',
@@ -537,6 +539,25 @@ export default {
       noFeatureSelected: 'Ninguna característica seleccionada',
       polygonsLoaded: 'Polígonos cargados exitosamente',
       loadError: 'Error al cargar polígonos desde el archivo'
+    }
+  },
+  welcome: {
+    dontShowAgain: "No mostrar de nuevo",
+    projects: {
+      title: 'Bienvenido a Proyectos',
+      intro: 'Los proyectos te ayudan a organizar tu trabajo de monitoreo de deforestación. Aquí te explicamos cómo empezar:',
+      create: {
+        title: 'Crear un Proyecto',
+        description: 'Comienza creando un nuevo proyecto para organizar tu trabajo de monitoreo.'
+      },
+      aoi: {
+        title: 'Definir Área de Interés',
+        description: 'Sube o dibuja tu área de interés (AOI) para enfocar tu análisis.'
+      },
+      configure: {
+        title: 'Configurar Ajustes',
+        description: 'Configura las clases de cobertura terrestre y otros ajustes específicos del proyecto.'
+      }
     }
   }
 } 

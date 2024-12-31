@@ -42,7 +42,7 @@
             </q-card>
         </q-card>
 
-
+        <training-welcome-modal />
 
     </div>
 </template>
@@ -58,12 +58,14 @@ import { useQuasar } from 'quasar'
 import DrawingControlsCard from './DrawingControlsCard.vue'
 import ModelTrainingDialog from 'components/models/ModelTrainingDialog.vue'
 import ModelEvaluationDialog from 'components/models/ModelEvaluationDialog.vue'
+import TrainingWelcomeModal from 'components/welcome/TrainingWelcomeModal.vue'
 
 
 export default {
     name: 'TrainingAndPolygonManager',
     components: {
-        DrawingControlsCard
+        DrawingControlsCard,
+        TrainingWelcomeModal
     },
     setup() {
         const mapStore = useMapStore()

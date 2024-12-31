@@ -166,6 +166,10 @@ class UserSettings(models.Model):
         choices=LANGUAGE_CHOICES,
         default='en'
     )
+    # Add fields to track modal states
+    seen_welcome_projects = models.BooleanField(default=False)
+    seen_welcome_training = models.BooleanField(default=False)
+    seen_welcome_analysis = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.user.username}'s settings"
+        return f"Settings for {self.user.username}"

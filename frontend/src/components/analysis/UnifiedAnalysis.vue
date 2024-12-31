@@ -432,6 +432,8 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <analysis-welcome-modal />
 </template>
 
 <script>
@@ -449,11 +451,13 @@ import { useRouter } from 'vue-router';
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue';
 import debounce from 'lodash/debounce';
 import { useI18n } from 'vue-i18n';
+import AnalysisWelcomeModal from 'components/welcome/AnalysisWelcomeModal.vue';
 
 export default {
   name: 'UnifiedAnalysis',
   components: {
-    CustomLayerSwitcher
+    CustomLayerSwitcher,
+    AnalysisWelcomeModal
   },
 
   setup() {

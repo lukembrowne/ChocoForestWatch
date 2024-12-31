@@ -51,7 +51,7 @@
         {
             "label": "Run Code2Prompt",
             "type": "shell",
-            "command": "cd backend && source venv/bin/activate && cd .. && code2prompt --path ./ --filter 'backend/app.py,frontend/src/**' --output project_summary.md --tokens",
+            "command": "cd backend && source venv/bin/activate && cd .. && code2prompt --path ./ --filter 'backend/djangocfw/core/**,frontend/src/**' --output project_summary.md --tokens",
             "problemMatcher": [],
             "isBackground": false,
             "presentation": {

@@ -83,6 +83,8 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <projects-welcome-modal />
   </div>
 </template>
 
@@ -92,9 +94,13 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useProjectStore } from 'src/stores/projectStore'
 import { date } from 'quasar'
+import ProjectsWelcomeModal from 'components/welcome/ProjectsWelcomeModal.vue'
 
 export default {
   name: 'ProjectSelection',
+  components: {
+    ProjectsWelcomeModal
+  },
   emits: ['project-selected'],
 
   setup(props, { emit }) {

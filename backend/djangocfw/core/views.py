@@ -526,20 +526,21 @@ def login(request):
     return Response({'error': 'Invalid credentials'}, status=400)
 
 @api_view(['GET', 'PATCH'])
-@permission_classes([IsAuthenticated])
 def user_settings(request):
-    try:
-        settings = UserSettings.objects.get(user=request.user)
-    except UserSettings.DoesNotExist:
-        settings = UserSettings.objects.create(user=request.user)
-
+    """Get or update user settings"""
     if request.method == 'GET':
-        serializer = UserSettingsSerializer(settings)
-        return Response(serializer.data)
-
+        settings = request.user.settings
+        return Response({
+            'preferred_language': settings.preferred_language,
+            'seen_welcome_projects': settings.seen_welcome_projects,
+            'seen_welcome_training': settings.seen_welcome_training,
+            'seen_welcome_analysis': settings.seen_welcome_analysis
+        })
+    
     elif request.method == 'PATCH':
-        serializer = UserSettingsSerializer(settings, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        settings = request.user.settings
+        for key, value in request.data.items():
+            if hasattr(settings, key):
+                setattr(settings, key, value)
+        settings.save()
+        return Response(status=204)

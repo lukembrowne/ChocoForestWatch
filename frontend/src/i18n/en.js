@@ -4,6 +4,8 @@ export default {
     error: 'An error occurred',
     save: 'Save',
     cancel: 'Cancel',
+    showHelp: 'Show Help',
+    getStarted: 'Get Started',
     logout: 'Logout',
     login: {
       title: 'Choco Forest Watch',
@@ -537,6 +539,25 @@ export default {
       noFeatureSelected: 'No feature selected',
       polygonsLoaded: 'Polygons loaded successfully',
       loadError: 'Failed to load polygons from file'
+    }
+  },
+  welcome: {
+    dontShowAgain: "Don't show this again",
+    projects: {
+      title: 'Welcome to Projects',
+      intro: 'Projects help you organize your deforestation monitoring work. Here\'s how to get started:',
+      create: {
+        title: 'Create a Project',
+        description: 'Start by creating a new project to organize your monitoring work.'
+      },
+      aoi: {
+        title: 'Define Area of Interest',
+        description: 'Upload or draw your area of interest (AOI) to focus your analysis.'
+      },
+      configure: {
+        title: 'Configure Settings',
+        description: 'Set up land cover classes and other project-specific settings.'
+      }
     }
   }
 } 

@@ -51,12 +51,21 @@
               </q-item-section>
             </q-item>
 
+            <q-item clickable v-ripple @click="showHelp">
+              <q-item-section avatar>
+                <q-icon name="help" />
+              </q-item-section>
+              <q-item-section>{{ t('common.showHelp') }}</q-item-section>
+            </q-item>
+
             <q-item clickable v-ripple @click="handleLogout">
               <q-item-section avatar>
                 <q-icon name="logout" />
               </q-item-section>
               <q-item-section>{{ t('common.logout') }}</q-item-section>
             </q-item>
+
+           
           </q-list>
         </q-btn-dropdown>
       </q-toolbar>
@@ -100,11 +109,12 @@ import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
 import BasemapDateSlider from 'components/BasemapDateSlider.vue'
 import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import authService from '../services/auth'
 import api from '../services/api'
 import { GeoJSON } from 'ol/format'
 import { useI18n } from 'vue-i18n'
+import { useWelcomeStore } from 'src/stores/welcomeStore'
 
 
 export default {
@@ -155,6 +165,20 @@ export default {
 
     const { t, locale } = useI18n()
     const currentLocale = ref('en')
+
+    const route = useRoute();
+    const welcomeStore = useWelcomeStore();
+
+    const showHelp = () => {
+      const currentPath = route.path;
+      if (currentPath.startsWith('/projects')) {
+        welcomeStore.showHelp('projects');
+      } else if (currentPath.startsWith('/training')) {
+        welcomeStore.showHelp('training');
+      } else if (currentPath.startsWith('/analysis')) {
+        welcomeStore.showHelp('analysis');
+      }
+    };
 
     onMounted(async () => {
       try {
@@ -345,6 +369,7 @@ export default {
       selectProject,
       showAnyPanel,
       showUnifiedAnalysis,
+      showHelp,
     }
   }
 }

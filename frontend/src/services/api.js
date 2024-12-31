@@ -170,8 +170,8 @@ export default {
         return apiClient.get('/user/settings/');
     },
 
-    updateUserSettings(data) {
-        return apiClient.patch('/user/settings/', data);
+    updateUserSettings(settings) {
+        return apiClient.patch('/user/settings/', settings);
     },
 };
 
