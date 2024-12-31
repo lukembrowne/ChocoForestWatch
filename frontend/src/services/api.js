@@ -197,6 +197,10 @@ const api = {
     submitFeedback(data) {
         return apiClient.post('/feedback/', data);
     },
+
+    getVersion() {
+        return apiClient.get('/version/');
+    },
 };
 
 // Initialize function for boot

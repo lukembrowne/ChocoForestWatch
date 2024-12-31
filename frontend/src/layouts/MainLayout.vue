@@ -68,6 +68,13 @@
               <q-item-section>{{ t('common.showHelp') }}</q-item-section>
             </q-item>
 
+            <q-item clickable v-ripple @click="showAboutDialog = true">
+              <q-item-section avatar>
+                <q-icon name="info" />
+              </q-item-section>
+              <q-item-section>{{ t('common.about') }}</q-item-section>
+            </q-item>
+
             <q-item clickable v-ripple @click="handleLogout">
               <q-item-section avatar>
                 <q-icon name="logout" />
@@ -150,6 +157,67 @@
             </div>
           </q-form>
         </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="showAboutDialog">
+      <q-card style="width: 700px; max-width: 90vw;">
+        <q-card-section class="bg-primary text-white">
+          <div class="text-h6">{{ t('about.title') }}</div>
+        </q-card-section>
+
+        <q-card-section>
+          <div class="q-pa-md">
+            <p class="text-body1">
+              {{ t('about.version') }}: {{ version }}
+            </p>
+
+            <p class="text-body1">
+              {{ t('about.description') }}
+              <a href="https://github.com/lukembrowne/chocoforestwatch-public" target="_blank">
+                {{ t('about.github') }}
+              </a>.
+            </p>
+
+            <p class="text-body1">
+              {{ t('about.contact') }}
+              <a href="mailto:lukebrowne@fcat-ecuador.org">lukebrowne@fcat-ecuador.org</a>
+            </p>
+
+            <div class="text-h6 q-mt-lg">{{ t('about.creditsTitle') }}</div>
+            
+            <p class="text-body1">
+              <strong>{{ t('about.satellite.title') }}:</strong><br>
+              {{ t('about.satellite.description') }}
+              <a href="https://planet.widen.net/s/zfdpf8qxwk/participantlicenseagreement_nicfi_2024" target="_blank">
+                {{ t('about.satellite.license') }}
+              </a>.
+            </p>
+
+            <p class="text-body1">
+              <strong>{{ t('about.alerts.title') }}:</strong><br>
+              {{ t('about.alerts.description') }}
+              <a href="https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about" target="_blank">
+                {{ t('about.alerts.license') }}
+              </a>.
+            </p>
+
+            <p class="text-body1">
+              <strong>{{ t('about.funding.title') }}:</strong><br>
+              {{ t('about.funding.description') }}
+              <ul>
+                <li>{{ t('about.funding.sources.gfw') }}</li>
+                <li>{{ t('about.funding.sources.yale') }}</li>
+                <li>{{ t('about.funding.sources.tulane') }}</li>
+                <li>{{ t('about.funding.sources.caids') }}</li>
+              </ul>
+            </p>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat :label="t('common.close')" color="primary" v-close-popup />
+        </q-card-actions>
       </q-card>
     </q-dialog>
   </q-layout>
@@ -242,8 +310,15 @@ export default {
       });
     };
 
+    const version = ref('')
+    const showAboutDialog = ref(false)
+
     onMounted(async () => {
       try {
+        // Get version
+        const versionResponse = await api.getVersion()
+        version.value = versionResponse.data.version
+
         // Load user settings first
         const { data } = await api.getUserSettings()
         if (data.preferred_language) {
@@ -251,7 +326,7 @@ export default {
           locale.value = data.preferred_language
         }
       } catch (error) {
-        console.error('Error loading user settings:', error)
+        console.error('Error in mounted:', error)
       }
 
       // Standard loading sequence
@@ -492,6 +567,8 @@ export default {
       submittingFeedback,
       feedbackOptions,
       submitFeedback,
+      version,
+      showAboutDialog,
     }
   }
 }

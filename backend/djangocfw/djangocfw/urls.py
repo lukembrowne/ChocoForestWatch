@@ -21,7 +21,7 @@ from django.conf.urls.static import static
 from core.views import (
     health_check, get_model_metrics, change_analysis, 
     deforestation_hotspots, register, login, user_settings,
-    submit_feedback
+    submit_feedback, get_version_info
 )
 
 urlpatterns = [
@@ -29,6 +29,7 @@ urlpatterns = [
     path('api/', include('core.urls')),
     path('api/auth/', include('rest_framework.urls')),
     path('api/feedback/', submit_feedback, name='submit_feedback'),
+    path('api/version/', get_version_info, name='version'),
 ]
 
 if settings.DEBUG:

@@ -7,6 +7,7 @@ export default {
     showHelp: 'Mostrar Ayuda',
     getStarted: 'Comenzar',
     logout: 'Cerrar Sesión',
+    about: 'Acerca de',
     confirmLogout: '¿Está seguro que desea cerrar sesión?',
     logoutSuccess: 'Sesión cerrada exitosamente',
     login: {
@@ -621,6 +622,34 @@ export default {
       feature: 'Solicitud de Función',
       improvement: 'Mejora',
       other: 'Otro'
+    }
+  },
+  about: {
+    title: 'Acerca de Choco Forest Watch',
+    version: 'Versión',
+    description: 'Choco Forest Watch es un proyecto de código abierto. El código está disponible en',
+    github: 'GitHub',
+    contact: 'Para preguntas, inquietudes o comentarios, por favor contacte a:',
+    creditsTitle: 'Créditos y Uso de Datos',
+    satellite: {
+      title: 'Imágenes Satelitales',
+      description: 'Imágenes con derechos de autor 2024 de Planet Labs, Inc. Todo uso está sujeto al',
+      license: 'Acuerdo de Licencia de Participante del Programa de Datos Satelitales NICFI'
+    },
+    alerts: {
+      title: 'Alertas de Deforestación',
+      description: 'Alertas integradas de Global Forest Watch disponibles bajo',
+      license: 'Licencia CC BY 4.0'
+    },
+    funding: {
+      title: 'Financiamiento',
+      description: 'Este proyecto fue posible gracias al financiamiento de:',
+      sources: {
+        gfw: 'Programa de Pequeñas Subvenciones de Global Forest Watch y el World Resources Institute',
+        yale: 'Iniciativa de Ciencia de Datos Ambientales de Yale (YEDSI)',
+        tulane: 'Centro de Excelencia para la Inteligencia Artificial Comprometida con la Comunidad de Tulane (CEAI)',
+        caids: 'Instituto Connolly Alexander de Ciencia de Datos (CAIDS)'
+      }
     }
   }
 } 

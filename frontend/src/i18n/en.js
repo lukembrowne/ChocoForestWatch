@@ -7,6 +7,7 @@ export default {
     showHelp: 'Show Help',
     getStarted: 'Get Started',
     logout: 'Logout',
+    about: 'About',
     login: {
       title: 'Choco Forest Watch',
       subtitle: 'Monitor and analyze forest cover changes using satellite imagery and machine learning',
@@ -621,6 +622,34 @@ export default {
       feature: 'Feature Request',
       improvement: 'Improvement',
       other: 'Other'
+    }
+  },
+  about: {
+    title: 'About Choco Forest Watch',
+    version: 'Version',
+    description: 'Choco Forest Watch is an open-source project. The code is available on',
+    github: 'GitHub',
+    contact: 'For questions, concerns, or feedback, please contact:',
+    creditsTitle: 'Credits and Data Use',
+    satellite: {
+      title: 'Satellite Imagery',
+      description: 'Imagery copyright 2024 from Planet Labs, Inc. All use is subject to the',
+      license: 'NICFI Satellite Data Program Participant License Agreement'
+    },
+    alerts: {
+      title: 'Deforestation Alerts',
+      description: 'Global Forest Watch integrated alerts available under',
+      license: 'CC BY 4.0 License'
+    },
+    funding: {
+      title: 'Funding',
+      description: 'This project was made possible by funding from:',
+      sources: {
+        gfw: 'Global Forest Watch Small Grants Program and the World Resources Institute',
+        yale: 'Yale Environmental Data Science Initiative (YEDSI)',
+        tulane: 'Tulane Center of Excellence for Community-Engaged Artificial Intelligence (CEAI)',
+        caids: 'The Connolly Alexander Institute for Data Science (CAIDS)'
+      }
     }
   }
 } 
