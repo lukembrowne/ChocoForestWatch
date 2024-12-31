@@ -20,7 +20,20 @@ export default {
       usernameRequired: 'Username is required',
       passwordRequired: 'Password is required',
       loginSuccess: 'Successfully logged in',
-      loginFailed: 'Login failed'
+      loginFailed: 'Login failed',
+      about: {
+        title: 'What is Choco Forest Watch?',
+        description: 'Choco Forest Watch is a specialized platform that empowers communities to monitor deforestation using satellite imagery and artificial intelligence. Our tool combines cutting-edge technology with local knowledge to protect valuable forest ecosystems.',
+        features: {
+          title: 'With Choco Forest Watch, you can:',
+          project: 'Create Projects: Define your areas of interest and customize land cover classes to match your local context.',
+          training: 'Train the System: Provide examples of different land cover types to help the AI understand your forest landscape.',
+          model: 'Build Custom Models: Develop machine learning models tailored to your specific region and forest types.',
+          analysis: 'Monitor Changes: Track deforestation patterns and identify areas that need attention.',
+          share: 'Drive Action: Generate detailed reports and visualizations to support conservation efforts.'
+        },
+        getStarted: 'Ready to begin? Sign in below or create a new account to join our community of forest guardians. Our interactive guides will help you every step of the way.'
+      }
     },
     register: {
       title: 'Create Account',

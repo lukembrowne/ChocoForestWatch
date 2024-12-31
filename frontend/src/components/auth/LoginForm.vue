@@ -3,9 +3,37 @@
     <q-card class="login-card">
       <q-card-section class="text-center">
         <div class="text-h4 q-mb-md">{{ t('common.login.title') }}</div>
-        <div class="text-subtitle1 text-grey-7">
-          {{ t('common.login.subtitle') }}
+        <div class="about-section q-pa-md">
+          <div class="text-h6">{{ t('common.login.about.title') }}</div>
+          <p class="text-body1 q-my-md">{{ t('common.login.about.description') }}</p>
+          
+          <div class="text-subtitle1 q-mt-lg">{{ t('common.login.about.features.title') }}</div>
+          <div class="features-list q-py-md">
+            <div class="feature-item">
+              <q-icon name="folder" color="primary" size="sm" class="q-mr-sm" />
+              {{ t('common.login.about.features.project') }}
+            </div>
+            <div class="feature-item">
+              <q-icon name="school" color="primary" size="sm" class="q-mr-sm" />
+              {{ t('common.login.about.features.training') }}
+            </div>
+            <div class="feature-item">
+              <q-icon name="psychology" color="primary" size="sm" class="q-mr-sm" />
+              {{ t('common.login.about.features.model') }}
+            </div>
+            <div class="feature-item">
+              <q-icon name="analytics" color="primary" size="sm" class="q-mr-sm" />
+              {{ t('common.login.about.features.analysis') }}
+            </div>
+            <div class="feature-item">
+              <q-icon name="share" color="primary" size="sm" class="q-mr-sm" />
+              {{ t('common.login.about.features.share') }}
+            </div>
+          </div>
+          
+          <p class="text-body2 q-mt-lg">{{ t('common.login.about.getStarted') }}</p>
         </div>
+
         <!-- Simple Language Selector -->
         <div class="row justify-center q-mt-md">
           <q-btn-group flat>
@@ -382,6 +410,26 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.about-section {
+  text-align: left;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.features-list {
+  .feature-item {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    margin: 4px 0;
+    border-radius: 4px;
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.03);
+    }
+  }
+}
+
 .login-container {
   min-height: 100vh;
   display: flex;
@@ -392,7 +440,7 @@ export default {
 }
 
 .login-card {
-  width: 400px;
+  width: 600px;
   max-width: 90vw;
   border-radius: 8px;
 }
