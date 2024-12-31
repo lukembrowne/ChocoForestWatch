@@ -1,5 +1,5 @@
 <template>
-  <q-dialog v-model="showModal" persistent>
+  <q-dialog v-model="showModal">
     <q-card class="welcome-modal">
       <q-card-section class="bg-primary text-white">
         <div class="text-h6">{{ t('welcome.analysis.title') }}</div>

@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import api from 'src/services/api';
 
 export const useWelcomeStore = defineStore('welcome', () => {
   const showProjectsModal = ref(false);
@@ -8,6 +7,7 @@ export const useWelcomeStore = defineStore('welcome', () => {
   const showAnalysisModal = ref(false);
 
   const showHelp = (section) => {
+    console.log('Showing help for section:', section);
     switch(section) {
       case 'projects':
         showProjectsModal.value = true;
@@ -18,6 +18,8 @@ export const useWelcomeStore = defineStore('welcome', () => {
       case 'analysis':
         showAnalysisModal.value = true;
         break;
+      default:
+        console.warn('Unknown section:', section);
     }
   };
 

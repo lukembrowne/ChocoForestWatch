@@ -170,14 +170,18 @@ export default {
     const welcomeStore = useWelcomeStore();
 
     const showHelp = () => {
-      const currentPath = route.path;
-      if (currentPath.startsWith('/projects')) {
+      if (showProjectSelection.value) {
         welcomeStore.showHelp('projects');
-      } else if (currentPath.startsWith('/training')) {
+      } else if (showTrainingAndPolygonManager.value) {
         welcomeStore.showHelp('training');
-      } else if (currentPath.startsWith('/analysis')) {
+      } else if (showUnifiedAnalysis.value) {
         welcomeStore.showHelp('analysis');
       }
+      console.log('Component visibility:', {
+        projects: showProjectSelection.value,
+        training: showTrainingAndPolygonManager.value,
+        analysis: showUnifiedAnalysis.value
+      });
     };
 
     onMounted(async () => {
