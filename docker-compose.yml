@@ -15,7 +15,7 @@ services:
       start_period: 10s
 
   redis:
-    image: redis:alpine
+    image: redis:latest
     ports:
       - "6379:6379"
     healthcheck:
@@ -23,6 +23,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    sysctls:
+      - vm.overcommit_memory=1
 
   backend:
     build: 
