@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view, action, permission_classes
 from django.utils import timezone
 from django.contrib.gis.geos import GEOSGeometry
 from django.core.exceptions import ValidationError
-from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot, ModelTrainingTask, UserSettings
+from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot, ModelTrainingTask, UserSettings, Feedback
 from .serializers import (ProjectSerializer, TrainingPolygonSetSerializer, 
                          TrainedModelSerializer, PredictionSerializer, 
                          DeforestationHotspotSerializer, UserSerializer, UserSettingsSerializer)
@@ -19,6 +19,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
+from django.core.mail import send_mail
 
 @api_view(['GET'])
 def health_check(request):
@@ -544,3 +545,40 @@ def user_settings(request):
                 setattr(settings, key, value)
         settings.save()
         return Response(status=204)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_feedback(request):
+    try:
+        feedback = Feedback.objects.create(
+            user=request.user,
+            type=request.data.get('type'),
+            message=request.data.get('message'),
+            page_url=request.data.get('pageUrl'),
+            browser_info=request.data.get('browserInfo')
+        )
+
+        # Send email notification
+        subject = f'Choco Forest Watch - New Feedback: {feedback.get_type_display()}'
+        message = f"""
+        Type: {feedback.get_type_display()}
+        User: {feedback.user.username}
+        Page: {feedback.page_url}
+        Message: {feedback.message}
+        
+        Browser Info:
+        {json.dumps(feedback.browser_info, indent=2)}
+        """
+        
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [settings.EMAIL_HOST_USER],
+            fail_silently=False,
+        )
+
+        return Response({'message': 'Feedback submitted successfully'})
+    except Exception as e:
+        logger.error(f"Error submitting feedback: {str(e)}")
+        return Response({'error': str(e)}, status=500)

@@ -173,5 +173,10 @@ export default {
     updateUserSettings(settings) {
         return apiClient.patch('/user/settings/', settings);
     },
+
+    // Feedback endpoint
+    submitFeedback(data) {
+        return apiClient.post('/feedback/', data);
+    },
 };
 

@@ -604,5 +604,23 @@ export default {
         description: 'Confirm or reject detected changes and export your findings.'
       }
     }
+  },
+  feedback: {
+    button: 'Give Feedback',
+    buttonNav: 'Feedback',
+    title: 'Send Feedback',
+    intro: 'Help us improve Choco Forest Watch! Share your experience, report bugs, or suggest new features.',
+    message: 'Your message',
+    messagePlaceholder: 'Please provide as much detail as possible. For bugs, include what you were doing when the issue occurred.',
+    messageRequired: 'Please enter your feedback',
+    submit: 'Submit',
+    submitSuccess: 'Thank you for your feedback!',
+    submitError: 'Failed to submit feedback. Please try again.',
+    types: {
+      bug: 'Bug Report',
+      feature: 'Feature Request',
+      improvement: 'Improvement',
+      other: 'Other'
+    }
   }
 } 

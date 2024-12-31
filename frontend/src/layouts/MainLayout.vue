@@ -14,6 +14,16 @@
           </q-btn>
         </div>
 
+        <q-btn
+          flat
+          icon="feedback"
+          :label="$q.screen.gt.xs ? t('feedback.buttonNav') : ''"
+          class="q-mr-sm"
+          @click="showFeedbackDialog = true"
+        >
+          <q-tooltip>{{ t('feedback.button') }}</q-tooltip>
+        </q-btn>
+
         <q-btn-dropdown flat round icon="account_circle" class="q-ml-md" v-if="currentUser">
           <q-list>
             <q-item class="text-center q-py-md">
@@ -95,6 +105,53 @@
       </q-page>
     </q-page-container>
 
+    <q-dialog v-model="showFeedbackDialog">
+      <q-card style="width: 500px; max-width: 90vw;">
+        <q-card-section class="bg-primary text-white">
+          <div class="text-h6">{{ t('feedback.title') }}</div>
+        </q-card-section>
+
+        <q-card-section>
+          <p class="text-body1 q-mb-md">{{ t('feedback.intro') }}</p>
+          <q-form @submit="submitFeedback" class="q-gutter-md">
+            <div class="row q-col-gutter-sm">
+              <div class="col-12">
+                <q-option-group
+                  v-model="feedbackType"
+                  :options="feedbackOptions"
+                  color="primary"
+                  inline
+                />
+              </div>
+
+              <div class="col-12">
+                <q-input
+                  v-model="feedbackMessage"
+                  type="textarea"
+                  :label="t('feedback.message')"
+                  :placeholder="t('feedback.messagePlaceholder')"
+                  filled
+                  autogrow
+                  rows="6"
+                  class="feedback-textarea"
+                  :rules="[val => !!val || t('feedback.messageRequired')]"
+                />
+              </div>
+            </div>
+
+            <div class="row justify-end q-gutter-sm">
+              <q-btn flat :label="t('common.cancel')" v-close-popup />
+              <q-btn 
+                type="submit" 
+                color="primary"
+                :label="t('feedback.submit')"
+                :loading="submittingFeedback"
+              />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-layout>
 </template>
 
@@ -115,6 +172,7 @@ import api from '../services/api'
 import { GeoJSON } from 'ol/format'
 import { useI18n } from 'vue-i18n'
 import { useWelcomeStore } from 'src/stores/welcomeStore'
+import { consoleLogger } from 'src/services/consoleLogger'
 
 
 export default {
@@ -125,7 +183,7 @@ export default {
     AOIFloatingCard,
     BasemapDateSlider,
     ProjectSelection,
-    UnifiedAnalysis
+    UnifiedAnalysis,
   },
   setup() {
     const $q = useQuasar()
@@ -351,6 +409,60 @@ export default {
       }
     }
 
+    // Add feedback related refs and functions
+    const showFeedbackDialog = ref(false)
+    const feedbackType = ref('bug')
+    const feedbackMessage = ref('')
+    const submittingFeedback = ref(false)
+
+    const feedbackOptions = [
+      { label: t('feedback.types.bug'), value: 'bug' },
+      { label: t('feedback.types.feature'), value: 'feature' },
+      { label: t('feedback.types.improvement'), value: 'improvement' },
+      { label: t('feedback.types.other'), value: 'other' }
+    ]
+
+    const getBrowserInfo = () => ({
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      platform: navigator.platform,
+      screenSize: `${window.screen.width}x${window.screen.height}`,
+      windowSize: `${window.innerWidth}x${window.innerHeight}`,
+      url: window.location.href,
+      path: window.location.pathname
+    })
+
+    const submitFeedback = async () => {
+      try {
+        submittingFeedback.value = true
+        const recentLogs = consoleLogger.getRecentLogs()
+        await api.submitFeedback({
+          type: feedbackType.value,
+          message: feedbackMessage.value,
+          pageUrl: window.location.href,
+          browserInfo: {
+            ...getBrowserInfo(),
+            consoleLogs: recentLogs
+          }
+        })
+
+        $q.notify({
+          type: 'positive',
+          message: t('feedback.submitSuccess')
+        })
+        showFeedbackDialog.value = false
+        feedbackMessage.value = ''
+      } catch (error) {
+        console.error('Error submitting feedback:', error)
+        $q.notify({
+          type: 'negative',
+          message: t('feedback.submitError')
+        })
+      } finally {
+        submittingFeedback.value = false
+      }
+    }
+
     return {
       currentSection,
       sections,
@@ -374,6 +486,12 @@ export default {
       showAnyPanel,
       showUnifiedAnalysis,
       showHelp,
+      showFeedbackDialog,
+      feedbackType,
+      feedbackMessage,
+      submittingFeedback,
+      feedbackOptions,
+      submitFeedback,
     }
   }
 }
@@ -441,6 +559,16 @@ export default {
 :deep(.q-btn-toggle) {
   .q-btn {
     border: 1px solid currentColor;
+  }
+}
+
+.feedback-textarea {
+  .q-field__native {
+    min-height: 120px !important;
+  }
+  
+  textarea {
+    line-height: 1.4;
   }
 }
 </style>

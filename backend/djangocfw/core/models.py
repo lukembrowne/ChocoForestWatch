@@ -173,3 +173,18 @@ class UserSettings(models.Model):
 
     def __str__(self):
         return f"Settings for {self.user.username}"
+
+class Feedback(models.Model):
+    FEEDBACK_TYPES = [
+        ('bug', 'Bug Report'),
+        ('feature', 'Feature Request'),
+        ('improvement', 'Improvement'),
+        ('other', 'Other')
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    type = models.CharField(max_length=20, choices=FEEDBACK_TYPES)
+    message = models.TextField()
+    page_url = models.CharField(max_length=255)
+    browser_info = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)

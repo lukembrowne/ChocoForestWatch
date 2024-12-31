@@ -18,11 +18,17 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from core.views import (
+    health_check, get_model_metrics, change_analysis, 
+    deforestation_hotspots, register, login, user_settings,
+    submit_feedback
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('core.urls')),
     path('api/auth/', include('rest_framework.urls')),
+    path('api/feedback/', submit_feedback, name='submit_feedback'),
 ]
 
 if settings.DEBUG:
