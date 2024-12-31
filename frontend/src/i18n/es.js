@@ -558,6 +558,38 @@ export default {
         title: 'Configurar Ajustes',
         description: 'Configura las clases de cobertura terrestre y otros ajustes específicos del proyecto.'
       }
+    },
+    training: {
+      title: 'Bienvenido al Entrenamiento del Modelo',
+      intro: 'Entrena tu propio modelo de detección de deforestación usando aprendizaje automático. Sigue estos pasos:',
+      draw: {
+        title: 'Dibujar Datos de Entrenamiento',
+        description: 'Dibuja o carga polígonos de entrenamiento para identificar bosque, no-bosque y otros tipos de cobertura.'
+      },
+      configure: {
+        title: 'Configurar Ajustes del Modelo',
+        description: 'Elige los parámetros del modelo y la configuración de validación para optimizar el rendimiento.'
+      },
+      train: {
+        title: 'Entrenar y Evaluar',
+        description: 'Inicia el entrenamiento y monitorea el progreso. Revisa las métricas de precisión al finalizar.'
+      }
+    },
+    analysis: {
+      title: 'Bienvenido al Análisis',
+      intro: 'Analiza patrones de deforestación y verifica cambios en tu área de interés:',
+      run: {
+        title: 'Ejecutar Análisis',
+        description: 'Genera predicciones y compara cambios de cobertura entre dos fechas.'
+      },
+      review: {
+        title: 'Revisar Puntos Críticos',
+        description: 'Examina posibles áreas de deforestación identificadas por el modelo.'
+      },
+      verify: {
+        title: 'Verificar Cambios',
+        description: 'Confirma o rechaza los cambios detectados y exporta tus hallazgos.'
+      }
     }
   }
 } 

@@ -558,6 +558,38 @@ export default {
         title: 'Configure Settings',
         description: 'Set up land cover classes and other project-specific settings.'
       }
+    },
+    training: {
+      title: 'Welcome to Model Training',
+      intro: 'Train your own deforestation detection model using machine learning. Follow these steps:',
+      draw: {
+        title: 'Draw Training Data',
+        description: 'Draw or upload training polygons to identify forest, non-forest, and other land cover types.'
+      },
+      configure: {
+        title: 'Configure Model Settings',
+        description: 'Choose model parameters and validation settings to optimize performance.'
+      },
+      train: {
+        title: 'Train and Evaluate',
+        description: 'Start training and monitor progress. Review accuracy metrics when complete.'
+      }
+    },
+    analysis: {
+      title: 'Welcome to Analysis',
+      intro: 'Analyze deforestation patterns and verify changes in your area of interest:',
+      run: {
+        title: 'Run Analysis',
+        description: 'Generate predictions and compare land cover changes between two dates.'
+      },
+      review: {
+        title: 'Review Hotspots',
+        description: 'Examine potential deforestation hotspots identified by the model.'
+      },
+      verify: {
+        title: 'Verify Changes',
+        description: 'Confirm or reject detected changes and export your findings.'
+      }
     }
   }
 } 
