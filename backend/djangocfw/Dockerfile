@@ -29,6 +29,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . .
 
+# Collect static files
+#  RUN python manage.py collectstatic --noinput
+
 # Make scripts executable
 RUN chmod +x entrypoint.sh
 RUN chmod +x wait_for_db.py

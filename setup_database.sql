@@ -1,8 +1,0 @@
--- setup_database.sql
-
--- Enable PostGIS extension
-CREATE EXTENSION IF NOT EXISTS postgis;
-
--- Grant privileges on tables
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO CURRENT_USER;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO CURRENT_USER;

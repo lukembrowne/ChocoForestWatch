@@ -106,3 +106,4 @@ deploy_docker.sh
 *.key
 backup-*.sql
 version.txt
+.env.prod

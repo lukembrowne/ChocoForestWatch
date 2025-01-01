@@ -14,8 +14,16 @@ python manage.py shell << END
 from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(username='admin').exists():
-    User.objects.create_superuser('admin', 'admin@example.com', 'admin')
-    print('Superuser created.')
+    admin_user = os.getenv('DJANGO_ADMIN_USER', 'admin')
+    admin_email = os.getenv('DJANGO_ADMIN_EMAIL', 'admin@yourdomain.com')
+    admin_password = os.getenv('DJANGO_ADMIN_PASSWORD')
+    if admin_password:
+        User.objects.create_superuser(admin_user, admin_email, admin_password)
+        print('Superuser created with provided credentials.')
+    else:
+        print('WARNING: No DJANGO_ADMIN_PASSWORD provided. Skipping superuser creation.')
+        print('Please set a password manually using python manage.py createsuperuser')
+        print('Superuser created.')
 else:
     print('Superuser already exists.')
 END

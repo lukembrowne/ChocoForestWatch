@@ -23,8 +23,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-    sysctls:
-      - vm.overcommit_memory=1
+
 
   backend:
     build: 
