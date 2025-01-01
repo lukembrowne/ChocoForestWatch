@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    env_file:
+      - ./.env.prod
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  backend:
+    build: 
+      context: ./backend/djangocfw
+      dockerfile: Dockerfile.prod
+    volumes:
+      - planet_data:/app/djangocfw/data/planet_quads
+      - ./media:/app/media
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./.env.prod
+    command: gunicorn djangocfw.wsgi:application --bind 0.0.0.0:8000 --workers 3
+
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "9000:9000" 
