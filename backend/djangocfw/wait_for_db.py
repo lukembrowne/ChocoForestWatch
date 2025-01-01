@@ -5,11 +5,11 @@ import psycopg2
 def wait_for_db():
     """Wait for database to be available"""
     db_config = {
-        'dbname': os.getenv('POSTGRES_DB', 'cfwdb'),
-        'user': os.getenv('POSTGRES_USER', 'cfwuser'),
-        'password': os.getenv('POSTGRES_PASSWORD', '1234'),
-        'host': os.getenv('DB_HOST', 'db'),
-        'port': os.getenv('DB_PORT', '5432'),
+        'dbname': os.getenv('POSTGRES_DB'),
+        'user': os.getenv('POSTGRES_USER'),
+        'password': os.getenv('POSTGRES_PASSWORD'),
+        'host': os.getenv('DB_HOST'),
+        'port': os.getenv('DB_PORT'),
     }
 
     while True:
