@@ -3,6 +3,5 @@ dist/
 .quasar/
 .git/
 .gitignore
-.env
 *.log
 .DS_Store 
