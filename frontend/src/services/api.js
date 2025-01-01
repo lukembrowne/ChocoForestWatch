@@ -2,7 +2,7 @@
 import axios from 'axios';
 import authService from './auth';
 
-const API_URL = 'http://localhost:8000/api/';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
 
 // Create axios instance with base configuration
 const apiClient = axios.create({

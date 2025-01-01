@@ -52,7 +52,7 @@ services:
     ports:
       - "9000:9000"
     env_file:
-      - ./.env
+      - ./.env.prod
       
 volumes:
   postgres_data:
