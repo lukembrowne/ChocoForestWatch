@@ -61,20 +61,11 @@ const api = {
         return apiClient.get('/projects/');
     },
     
-    async createProject(projectData) {
-        try {
-            const token = authService.getToken();
-            // Note the /api prefix and no trailing slash
-            const response = await axios.post(`${API_URL}/projects`, projectData, {
-                headers: {
-                    'Authorization': `Token ${token}`
-                }
-            });
-            return response.data;
-        } catch (error) {
-            console.error('Error creating project:', error);
-            throw error;
-        }
+    createProject(projectData) {
+        // print API URL
+        console.log('API URL:', API_URL);
+
+        return apiClient.post('/projects', projectData);
     },
     
     getProject(id) {
