@@ -58,6 +58,7 @@ else:
 # Print allowed orgins
 print(f"Allowed origins: {CORS_ALLOWED_ORIGINS}")
 print(f"Allowed hosts: {ALLOWED_HOSTS}")
+print(f"CORS allow all origins: {CORS_ALLOW_ALL_ORIGINS}")
 
 # Application definition
 
@@ -88,6 +89,8 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+CORS_REPLACE_HTTPS_REFERER = True
+CORS_ORIGIN_ALLOW_ALL = True
 
 # Add your environment variables
 import os
@@ -333,14 +336,14 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 # EMAIL_PORT = '2525'
 
 # Security settings
-SECURE_SSL_REDIRECT = not DEBUG
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+SECURE_SSL_REDIRECT = False  # Disable SSL redirect for now
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+SECURE_HSTS_SECONDS = 0  # Disable HSTS for now
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
 
 # # Whitenoise settings
 # STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
