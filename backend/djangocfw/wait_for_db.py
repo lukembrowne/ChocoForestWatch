@@ -12,8 +12,6 @@ def wait_for_db():
         'port': os.getenv('DB_PORT'),
     }
 
-    print(db_config)
-
     while True:
         try:
             conn = psycopg2.connect(**db_config)
