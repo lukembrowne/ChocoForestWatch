@@ -38,6 +38,7 @@ services:
       context: ./frontend
       args:
         VITE_API_URL: ${VITE_API_URL}
+        VUE_APP_PLANET_API_KEY: ${VUE_APP_PLANET_API_KEY}
     ports:
       - "9000:9000"
     env_file:

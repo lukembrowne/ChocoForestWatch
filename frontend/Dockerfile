@@ -1,9 +1,11 @@
 # Build stage
 FROM node:18-alpine as build-stage
 
-# Define build argument
+# Define build arguments
 ARG VITE_API_URL
+ARG VUE_APP_PLANET_API_KEY
 ENV VITE_API_URL=$VITE_API_URL
+ENV VUE_APP_PLANET_API_KEY=$VUE_APP_PLANET_API_KEY
 
 WORKDIR /app
 
@@ -14,7 +16,7 @@ RUN npm install
 
 # Copy project files and build
 COPY . .
-RUN echo "VITE_API_URL=${VITE_API_URL}" > .env.production
+RUN echo "VITE_API_URL=${VITE_API_URL}\nVUE_APP_PLANET_API_KEY=${VUE_APP_PLANET_API_KEY}" > .env.production
 RUN quasar build
 
 # Production stage
