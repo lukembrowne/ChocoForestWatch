@@ -69,7 +69,7 @@ const api = {
         // print API URL
         console.log('API URL:', API_URL);
 
-        return apiClient.post('/projects', projectData);
+        return apiClient.post('/projects/', projectData);
     },
     
     getProject(id) {
