@@ -30,7 +30,11 @@ urlpatterns = [
     path('api/auth/login', login),
     path('api/feedback', submit_feedback),
     path('api/version', get_version_info),
-    path('api', include('core.urls')),
+    path('api/', include([
+        path('projects', include('core.urls')),
+        path('user/settings', user_settings),
+        # Add other API endpoints here
+    ])),
 ]
 
 if settings.DEBUG:
