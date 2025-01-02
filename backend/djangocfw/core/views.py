@@ -531,17 +531,16 @@ def login(request):
 @api_view(['GET', 'PATCH'])
 def user_settings(request):
     """Get or update user settings"""
-    if request.method == 'GET':
+    try:
         settings = request.user.settings
-        return Response({
-            'preferred_language': settings.preferred_language,
-            'seen_welcome_projects': settings.seen_welcome_projects,
-            'seen_welcome_training': settings.seen_welcome_training,
-            'seen_welcome_analysis': settings.seen_welcome_analysis
-        })
+    except User.settings.RelatedObjectDoesNotExist:
+        settings = UserSettings.objects.create(user=request.user)
+
+    if request.method == 'GET':
+        serializer = UserSettingsSerializer(settings)
+        return Response(serializer.data)
     
     elif request.method == 'PATCH':
-        settings = request.user.settings
         for key, value in request.data.items():
             if hasattr(settings, key):
                 setattr(settings, key, value)

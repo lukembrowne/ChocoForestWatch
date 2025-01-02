@@ -6,7 +6,7 @@ from django.conf import settings
 from .storage import ModelStorage, PredictionStorage
 from django.db.models import JSONField
 from django.contrib.postgres.fields import ArrayField
-from django.db.models.signals import pre_save
+from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 
 # Add this to ensure unique emails without migration
@@ -173,6 +173,16 @@ class UserSettings(models.Model):
 
     def __str__(self):
         return f"Settings for {self.user.username}"
+
+    @receiver(post_save, sender=User)
+    def create_user_settings(sender, instance, created, **kwargs):
+        if created:
+            UserSettings.objects.create(user=instance)
+
+    @receiver(post_save, sender=User)
+    def save_user_settings(sender, instance, **kwargs):
+        if not hasattr(instance, 'settings'):
+            UserSettings.objects.create(user=instance)
 
 class Feedback(models.Model):
     FEEDBACK_TYPES = [
