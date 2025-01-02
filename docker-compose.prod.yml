@@ -31,11 +31,6 @@ services:
     env_file:
       - ./.env.prod
     command: gunicorn djangocfw.wsgi:application --bind 0.0.0.0:8000 --workers 3
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     restart: on-failure:3
 
   frontend:
