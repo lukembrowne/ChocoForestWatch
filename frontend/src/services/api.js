@@ -2,7 +2,7 @@
 import axios from 'axios';
 import authService from './auth';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://chocoforestwatch.fcat-ecuador.org/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Add some debugging
 console.log('API_URL:', API_URL);
@@ -66,10 +66,8 @@ const api = {
     },
     
     createProject(projectData) {
-        // print API URL
-        console.log('API URL:', API_URL);
 
-        return apiClient.post('/projects/', projectData);
+        return apiClient.post('/projects/', projectData); // Has to end in trailing slash
     },
     
     getProject(id) {
