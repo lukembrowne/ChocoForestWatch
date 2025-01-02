@@ -351,3 +351,6 @@ CORS_ALLOW_METHODS = [
 
 # Add to your Django settings
 APPEND_SLASH = False  # Don't automatically append slashes
+PREPEND_WWW = False
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

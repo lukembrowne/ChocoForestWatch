@@ -1,18 +1,23 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://chocoforestwatch.fcat-ecuador.org/api/';
+const API_URL = import.meta.env.VITE_API_URL || 'https://chocoforestwatch.fcat-ecuador.org/api';
 
 class AuthService {
     async login(username, password, remember = false) {
-        const response = await axios.post(`${API_URL}auth/login`, {
-            username,
-            password
-        });
-        if (response.data.token) {
-            const storage = remember ? localStorage : sessionStorage;
-            storage.setItem('user', JSON.stringify(response.data));
+        try {
+            const response = await axios.post(`${API_URL}/auth/login`, {
+                username,
+                password
+            });
+            if (response.data.token) {
+                const storage = remember ? localStorage : sessionStorage;
+                storage.setItem('user', JSON.stringify(response.data));
+            }
+            return response.data;
+        } catch (error) {
+            console.error('Login error:', error);
+            throw error;
         }
-        return response.data;
     }
 
     logout() {

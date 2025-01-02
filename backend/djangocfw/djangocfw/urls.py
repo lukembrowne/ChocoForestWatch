@@ -26,12 +26,11 @@ from core.views import (
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('core.urls')),
-    path('api/auth/', include('rest_framework.urls')),
-    path('api/feedback/', submit_feedback, name='submit_feedback'),
-    path('api/version/', get_version_info, name='version'),
-    path('api/auth/register', register, name='register'),
-    path('api/auth/login', login, name='login'),
+    path('api/auth/register', register),
+    path('api/auth/login', login),
+    path('api/feedback', submit_feedback),
+    path('api/version', get_version_info),
+    path('api', include('core.urls')),
 ]
 
 if settings.DEBUG:
