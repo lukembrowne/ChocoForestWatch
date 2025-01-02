@@ -39,10 +39,9 @@ services:
     restart: on-failure:3
 
   frontend:
-    build: ./frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "9000:9000"
     env_file:

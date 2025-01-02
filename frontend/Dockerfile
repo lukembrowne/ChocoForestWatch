@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:18-alpine
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Build the app
-RUN npm run build
+RUN quasar build
 
 # Install serve to run the built app
 RUN npm install -g serve
@@ -23,3 +23,8 @@ EXPOSE 9000
 
 # Start Quasar in development mode
 CMD [ "npx", "quasar", "dev", "--hostname", "0.0.0.0" ]
+
+FROM nginx:alpine
+COPY --from=0 /app/dist/spa /usr/share/nginx/html
+EXPOSE 9000
+CMD ["nginx", "-g", "daemon off;"]

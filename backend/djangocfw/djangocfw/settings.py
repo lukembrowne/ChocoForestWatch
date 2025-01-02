@@ -52,7 +52,7 @@ if DEBUG:
 # Production settings
 else:
     ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
-    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_ALL_ORIGINS = False
     CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
 
 # Print allowed orgins
@@ -325,13 +325,6 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
-
-# Development email settings - prints to console
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-# EMAIL_HOST = 'smtp.mailtrap.io'
-# EMAIL_HOST_USER = 'your_mailtrap_user'
-# EMAIL_HOST_PASSWORD = 'your_mailtrap_password'
-# EMAIL_PORT = '2525'
 
 # Security settings
 SECURE_SSL_REDIRECT = not DEBUG
