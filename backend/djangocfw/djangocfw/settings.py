@@ -328,3 +328,12 @@ SECURE_HSTS_PRELOAD = True
 # # Whitenoise settings
 # STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Where static files will be collected
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
