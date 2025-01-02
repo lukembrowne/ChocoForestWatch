@@ -26,12 +26,12 @@ from core.views import (
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/auth/register', register),
-    path('api/auth/login', login),
-    path('api/feedback', submit_feedback),
-    path('api/version', get_version_info),
+    path('api/auth/register/', register),
+    path('api/auth/login/', login),
+    path('api/feedback/', submit_feedback),
+    path('api/version/', get_version_info),
     path('api/', include('core.urls')),
-    path('api/user/settings', user_settings),
+    path('api/user/settings/', user_settings),
     # Add other API endpoints here
 ]
 
