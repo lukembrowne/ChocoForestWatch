@@ -348,3 +348,6 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+
+# Add to your Django settings
+APPEND_SLASH = False  # Don't automatically append slashes

@@ -30,6 +30,8 @@ urlpatterns = [
     path('api/auth/', include('rest_framework.urls')),
     path('api/feedback/', submit_feedback, name='submit_feedback'),
     path('api/version/', get_version_info, name='version'),
+    path('api/auth/register', register, name='register'),
+    path('api/auth/login', login, name='login'),
 ]
 
 if settings.DEBUG:
