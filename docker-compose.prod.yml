@@ -34,9 +34,10 @@ services:
     restart: on-failure:3
 
   frontend:
-    build: 
+    build:
       context: ./frontend
-      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
     ports:
       - "9000:9000"
     env_file:

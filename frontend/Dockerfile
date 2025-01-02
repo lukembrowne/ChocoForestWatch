@@ -1,6 +1,10 @@
 # Build stage
 FROM node:18-alpine as build-stage
 
+# Define build argument
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 WORKDIR /app
 
 # Install dependencies
@@ -10,6 +14,7 @@ RUN npm install
 
 # Copy project files and build
 COPY . .
+RUN echo "VITE_API_URL=${VITE_API_URL}" > .env.production
 RUN quasar build
 
 # Production stage
