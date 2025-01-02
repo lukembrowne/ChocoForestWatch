@@ -1,30 +1,20 @@
-FROM node:18-alpine
+# Build stage
+FROM node:18-alpine as build-stage
 
 WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-
-# Install global dependencies
 RUN npm install -g @quasar/cli
-
 RUN npm install
 
-# Copy project files
+# Copy project files and build
 COPY . .
-
-# Build the app
 RUN quasar build
 
-# Install serve to run the built app
-RUN npm install -g serve
-
-EXPOSE 9000
-
-# Start Quasar in development mode
-CMD [ "npx", "quasar", "dev", "--hostname", "0.0.0.0" ]
-
+# Production stage
 FROM nginx:alpine
-COPY --from=0 /app/dist/spa /usr/share/nginx/html
+COPY --from=build-stage /app/dist/spa /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 9000
 CMD ["nginx", "-g", "daemon off;"]
