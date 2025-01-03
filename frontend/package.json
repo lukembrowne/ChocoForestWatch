@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@quasar/extras": "^1.16.4",
+    "@sentry/browser": "^7.120.2",
+    "@sentry/vue": "^7.0.0",
     "axios": "^1.7.2",
     "chart.js": "^4.4.3",
     "geotiff": "^2.1.3",

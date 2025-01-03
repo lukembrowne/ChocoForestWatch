@@ -174,7 +174,7 @@
 
             <p class="text-body1">
               {{ t('about.description') }}
-              <a href="https://github.com/lukembrowne/chocoforestwatch-public" target="_blank">
+              <a href="https://github.com/lukembrowne/chocoforestwatch" target="_blank">
                 {{ t('about.github') }}
               </a>.
             </p>
@@ -540,6 +540,10 @@ export default {
       }
     }
 
+    const testSentryError = () => {
+      throw new Error('Test Sentry Error from Frontend');
+    }
+
     return {
       currentSection,
       sections,
@@ -571,6 +575,7 @@ export default {
       submitFeedback,
       version,
       showAboutDialog,
+      testSentryError
     }
   }
 }

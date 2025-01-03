@@ -13,6 +13,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - app-network
 
   redis:
     image: redis:latest
@@ -23,6 +25,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - app-network
 
 
   backend:
@@ -30,7 +34,11 @@ services:
       context: ./backend/djangocfw
       dockerfile: Dockerfile
     volumes:
-      - ./backend/djangocfw:/app
+      - ./backend/djangocfw/core:/app/core
+      - ./backend/djangocfw/djangocfw:/app/djangocfw
+      - ./backend/djangocfw/manage.py:/app/manage.py
+      - ./backend/djangocfw/wait_for_db.py:/app/wait_for_db.py
+      - ./backend/djangocfw/entrypoint.sh:/app/entrypoint.sh
       - planet_data:/app/djangocfw/data/planet_quads
       - ./media:/app/media
       - ./logs:/app/logs
@@ -47,6 +55,8 @@ services:
       redis:
         condition: service_healthy
     restart: on-failure:3
+    networks:
+      - app-network
 
   frontend:
     build: ./frontend
@@ -57,6 +67,16 @@ services:
       - "9000:9000"
     env_file:
       - ./.env
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    working_dir: /app
+    command: ["npm", "run", "dev"]
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   postgres_data:

@@ -22,6 +22,7 @@ from django.contrib.auth import authenticate
 from django.core.mail import send_mail
 from djangocfw.version import __version__
 from rest_framework.permissions import AllowAny
+from sentry_sdk import capture_message, capture_exception
 
 @api_view(['GET'])
 def health_check(request):
@@ -593,3 +594,10 @@ def get_version_info(request):
         'environment': 'production' if not settings.DEBUG else 'development',
         'api_root': request.build_absolute_uri('/api/'),
     })
+
+def test_sentry(request):
+    try:
+        division_by_zero = 1 / 0
+    except Exception as e:
+        capture_exception(e)
+        return JsonResponse({"status": "error sent to sentry"}, status=500)

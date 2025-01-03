@@ -13,6 +13,10 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+import logging
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -354,3 +358,33 @@ APPEND_SLASH = False
 PREPEND_WWW = False
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Sentry configuration
+sentry_sdk.init(
+    dsn=os.getenv('DJANGO_SENTRY_DSN'),
+    integrations=[
+        DjangoIntegration(),
+        LoggingIntegration(
+            level=logging.INFO,        # Capture info and above as breadcrumbs
+            event_level=logging.ERROR  # Send errors as events
+        ),
+    ],
+    
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for performance monitoring.
+    traces_sample_rate=1.0,
+    
+    # Set profiles_sample_rate to 1.0 to profile 100%
+    # of sampled transactions.
+    profiles_sample_rate=1.0,
+
+    # If you're not in production, you can set this to True
+    debug=DEBUG,
+    environment=os.getenv('DJANGO_ENV', 'development'),
+    
+    # Configure here what you don't want to send to Sentry
+    ignore_errors=[
+        KeyError,
+        # Add other exceptions you want to ignore
+    ],
+)

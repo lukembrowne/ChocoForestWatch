@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y \
     python3-gdal \
     binutils \
     libproj-dev \
-    libgeos-dev
+    libgeos-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -20,17 +21,16 @@ RUN pip install debugpy
 # Set work directory
 WORKDIR /app
 
-# Copy requirements first to leverage Docker cache
+# Copy only requirements first to leverage Docker cache
 COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
-COPY . .
-
-# Collect static files
-#  RUN python manage.py collectstatic --noinput
+# Copy only necessary project files
+COPY manage.py wait_for_db.py entrypoint.sh ./
+COPY core/ ./core/
+COPY djangocfw/ ./djangocfw/
 
 # Make scripts executable
 RUN chmod +x entrypoint.sh
