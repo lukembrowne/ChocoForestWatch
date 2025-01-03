@@ -26,14 +26,16 @@ RUN if [ "$DJANGO_DEBUG" != "True" ]; then \
     quasar build; \
     fi
 
-# Production stage (only used if not in debug mode)
+# Choose final image based on DJANGO_DEBUG
 FROM nginx:alpine as production
 COPY --from=build-stage /app/dist/spa /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 9000
+CMD ["nginx", "-g", "daemon off;"]
 
-# Final stage - choose between development and production
-FROM build-stage as final
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-ENTRYPOINT ["/docker-entrypoint.sh"]
+FROM build-stage as development
+EXPOSE 9000
+CMD ["npx", "quasar", "dev", "--hostname", "0.0.0.0"]
+
+# Select the appropriate final stage
+FROM ${DJANGO_DEBUG:+development}${DJANGO_DEBUG:-production} as final
