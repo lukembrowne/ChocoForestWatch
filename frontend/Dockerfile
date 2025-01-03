@@ -12,6 +12,7 @@ ENV DJANGO_DEBUG=$DJANGO_DEBUG
 # Validate DJANGO_DEBUG value
 RUN if [ "$DJANGO_DEBUG" != "True" ] && [ "$DJANGO_DEBUG" != "False" ]; then \
     echo "Error: DJANGO_DEBUG must be either 'True' or 'False'" && \
+    echo "DJANGO_DEBUG: $DJANGO_DEBUG" && \
     exit 1; \
     fi
 
