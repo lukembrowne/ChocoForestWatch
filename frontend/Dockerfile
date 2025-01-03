@@ -9,6 +9,12 @@ ENV VITE_API_URL=$VITE_API_URL
 ENV VUE_APP_PLANET_API_KEY=$VUE_APP_PLANET_API_KEY
 ENV DJANGO_DEBUG=$DJANGO_DEBUG
 
+# Validate DJANGO_DEBUG value
+RUN if [ "$DJANGO_DEBUG" != "True" ] && [ "$DJANGO_DEBUG" != "False" ]; then \
+    echo "Error: DJANGO_DEBUG must be either 'True' or 'False'" && \
+    exit 1; \
+    fi
+
 WORKDIR /app
 
 # Install dependencies
@@ -26,16 +32,16 @@ RUN if [ "$DJANGO_DEBUG" != "True" ]; then \
     quasar build; \
     fi
 
-# Choose final image based on DJANGO_DEBUG
-FROM nginx:alpine as production
+# Development stage
+FROM build-stage AS development
+EXPOSE 9000
+CMD ["npx", "quasar", "dev", "--hostname", "0.0.0.0"]
+
+# Production stage
+FROM nginx:alpine AS production
 COPY --from=build-stage /app/dist/spa /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 9000
 CMD ["nginx", "-g", "daemon off;"]
 
-FROM build-stage as development
-EXPOSE 9000
-CMD ["npx", "quasar", "dev", "--hostname", "0.0.0.0"]
-
-# Select the appropriate final stage
-FROM ${DJANGO_DEBUG:+development}${DJANGO_DEBUG:-production} as final
+# No final stage selection here; use build targets instead

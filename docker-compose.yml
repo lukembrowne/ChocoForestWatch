@@ -59,8 +59,12 @@ services:
       - app-network
 
   frontend:
-    build: ./frontend
-    volumes:
+    build: 
+      context: ./frontend
+      args:
+        DJANGO_DEBUG: "${DJANGO_DEBUG:-False}"  # Default to production
+      target: ${BUILD_TARGET:-production}       # Use 'development' or 'production'
+    volumes:  
       - ./frontend:/app
       - /app/node_modules
     ports:
@@ -71,8 +75,6 @@ services:
       - backend
     networks:
       - app-network
-    working_dir: /app
-    command: ["npm", "run", "dev"]
 
 networks:
   app-network:
