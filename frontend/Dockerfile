@@ -13,6 +13,8 @@ ENV DJANGO_DEBUG=$DJANGO_DEBUG
 RUN if [ "$DJANGO_DEBUG" != "True" ] && [ "$DJANGO_DEBUG" != "False" ]; then \
     echo "Error: DJANGO_DEBUG must be either 'True' or 'False'" && \
     echo "DJANGO_DEBUG: $DJANGO_DEBUG" && \
+    echo "VITE_API_URL: $VITE_API_URL" && \
+    echo "VUE_APP_PLANET_API_KEY: $VUE_APP_PLANET_API_KEY" && \
     exit 1; \
     fi
 
