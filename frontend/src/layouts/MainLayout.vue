@@ -29,9 +29,9 @@
             <q-item class="text-center q-py-md">
               <q-item-section>
                 <q-avatar size="72px" color="primary" text-color="white">
-                  {{ currentUser.username.charAt(0).toUpperCase() }}
+                  {{ currentUser.user.username.charAt(0).toUpperCase() }}
                 </q-avatar>
-                <div class="text-subtitle1 q-mt-md">{{ currentUser.username }}</div>
+                <div class="text-subtitle1 q-mt-md">{{ currentUser.user.username }}</div>
               </q-item-section>
             </q-item>
 
@@ -240,7 +240,6 @@ import api from '../services/api'
 import { GeoJSON } from 'ol/format'
 import { useI18n } from 'vue-i18n'
 import { useWelcomeStore } from 'src/stores/welcomeStore'
-import { consoleLogger } from 'src/services/consoleLogger'
 
 
 export default {
@@ -296,6 +295,7 @@ export default {
     const welcomeStore = useWelcomeStore();
 
     const showHelp = () => {
+      
       if (showProjectSelection.value) {
         welcomeStore.showHelp('projects');
       } else if (showTrainingAndPolygonManager.value) {
@@ -510,14 +510,16 @@ export default {
     const submitFeedback = async () => {
       try {
         submittingFeedback.value = true
-        const recentLogs = consoleLogger.getRecentLogs()
         await api.submitFeedback({
           type: feedbackType.value,
           message: feedbackMessage.value,
           pageUrl: window.location.href,
+          user_id: currentUser.value.user.id,
+          user_name: currentUser.value.user.username,
+          user_email: currentUser.value.user.email,
+          project: currentProject.value.id,
           browserInfo: {
             ...getBrowserInfo(),
-            consoleLogs: recentLogs
           }
         })
 
