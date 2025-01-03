@@ -2,21 +2,21 @@
 FROM node:18-alpine as build-stage
 
 # Define build arguments
-ARG VITE_API_URL
-ARG VUE_APP_PLANET_API_KEY
-ARG DJANGO_DEBUG
-ENV VITE_API_URL=$VITE_API_URL
-ENV VUE_APP_PLANET_API_KEY=$VUE_APP_PLANET_API_KEY
-ENV DJANGO_DEBUG=$DJANGO_DEBUG
+# ARG VITE_API_URL
+# ARG VUE_APP_PLANET_API_KEY
+# ARG DJANGO_DEBUG
+# ENV VITE_API_URL=$VITE_API_URL
+# ENV VUE_APP_PLANET_API_KEY=$VUE_APP_PLANET_API_KEY
+# ENV DJANGO_DEBUG=$DJANGO_DEBUG
 
-# Validate DJANGO_DEBUG value
-RUN if [ "$DJANGO_DEBUG" != "True" ] && [ "$DJANGO_DEBUG" != "False" ]; then \
-    echo "Error: DJANGO_DEBUG must be either 'True' or 'False'" && \
-    echo "DJANGO_DEBUG: $DJANGO_DEBUG" && \
-    echo "VITE_API_URL: $VITE_API_URL" && \
-    echo "VUE_APP_PLANET_API_KEY: $VUE_APP_PLANET_API_KEY" && \
-    exit 1; \
-    fi
+# # Validate DJANGO_DEBUG value
+# RUN if [ "$DJANGO_DEBUG" != "True" ] && [ "$DJANGO_DEBUG" != "False" ]; then \
+#     echo "Error: DJANGO_DEBUG must be either 'True' or 'False'" && \
+#     echo "DJANGO_DEBUG: $DJANGO_DEBUG" && \
+#     echo "VITE_API_URL: $VITE_API_URL" && \
+#     echo "VUE_APP_PLANET_API_KEY: $VUE_APP_PLANET_API_KEY" && \
+#     exit 1; \
+#     fi
 
 WORKDIR /app
 
@@ -31,7 +31,7 @@ COPY . .
 # If not in debug mode, build for production
 RUN if [ "$DJANGO_DEBUG" != "True" ]; then \
     echo "Building for production..." && \
-    echo "VITE_API_URL=${VITE_API_URL}\nVUE_APP_PLANET_API_KEY=${VUE_APP_PLANET_API_KEY}" > .env.production && \
+    # echo "VITE_API_URL=${VITE_API_URL}\nVUE_APP_PLANET_API_KEY=${VUE_APP_PLANET_API_KEY}" > .env.production && \
     quasar build; \
     fi
 
