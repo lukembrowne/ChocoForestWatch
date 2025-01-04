@@ -62,8 +62,8 @@ services:
     build: 
       context: ./frontend
       args:
-        DJANGO_DEBUG: "${DJANGO_DEBUG:-True}"  # Default to production
-      target: ${BUILD_TARGET:-development}       # Use 'development' or 'production'
+        DJANGO_DEBUG: "True"  # Default to production
+      target: "development"       # Use 'development' or 'production'
     volumes:  
       - ./frontend:/app
       - /app/node_modules
