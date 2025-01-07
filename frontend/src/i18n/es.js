@@ -36,6 +36,35 @@ export default {
           share: 'Impulsar Acciones: Genera informes detallados y visualizaciones para apoyar esfuerzos de conservación.'
         },
         getStarted: '¿Listo para comenzar? Inicia sesión o crea una nueva cuenta para unirte a nuestra comunidad de guardianes del bosque. Nuestras guías interactivas te ayudarán en cada paso.'
+      },
+      landing: {
+        tagline: "Monitoreo de Deforestación para Conservación Local",
+        subtitle: "Plataforma gratuita y de código abierto que potencia los esfuerzos de conservación local con tecnología de vanguardia",
+        motivation: "Las iniciativas globales de monitoreo de la deforestación son invaluables, a menudo enfrentan desafíos a escalas locales donde ocurre la mayoría del trabajo de conservación en terreno. Choco Forest Watch cierra esta brecha permitiendo modelos de aprendizaje automático personalizados entrenados con experiencia local.",
+        features: {
+          title: "Características Principales",
+          satellite: {
+            title: "Imágenes Satelitales de Alta Resolución",
+            description: "Accede a imágenes mensuales de 4.7m de resolución de PlanetLabs a través del Programa NICFI"
+          },
+          ml: {
+            title: "Aprendizaje Automático Personalizado",
+            description: "Desarrolla modelos localizados adaptados a tu región y paisaje específico"
+          },
+          monitoring: {
+            title: "Monitoreo Avanzado",
+            description: "Genera alertas de deforestación de alta resolución y rastrea cambios en el uso del suelo a lo largo del tiempo"
+          }
+        },
+        funding: {
+          title: "Apoyado Por",
+          description: "El desarrollo de Choco Forest Watch fue posible gracias al apoyo de:"
+        },
+        cta: {
+          login: "Iniciar Sesión",
+          createAccount: "Crear Cuenta Gratuita",
+          learnMore: "Más Información"
+        }
       }
     },
     register: {

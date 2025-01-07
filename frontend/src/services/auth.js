@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://chocoforestwatch.fcat-ecuador.org/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 class AuthService {
     async login(username, password, remember = false) {
@@ -26,7 +26,7 @@ class AuthService {
     }
 
     async register(username, email, password, preferred_language) {
-        const response = await axios.post(`${API_URL}auth/register/`, {
+        const response = await axios.post(`${API_URL}/auth/register/`, {
             username,
             email,
             password,

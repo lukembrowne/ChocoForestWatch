@@ -24,7 +24,7 @@ export default {
       loginFailed: 'Login failed',
       about: {
         title: 'What is Choco Forest Watch?',
-        description: 'Choco Forest Watch is a specialized platform that empowers communities to monitor deforestation using satellite imagery and artificial intelligence. Our tool combines cutting-edge technology with local knowledge to protect valuable forest ecosystems.',
+        description: 'Choco Forest Watch is a platform that supports communities to monitor deforestation using satellite imagery and artificial intelligence. Our tool combines cutting-edge technology with local knowledge to protect valuable forest ecosystems.',
         features: {
           title: 'With Choco Forest Watch, you can:',
           project: 'Create Projects: Define your areas of interest and customize land cover classes to match your local context.',
@@ -34,6 +34,53 @@ export default {
           share: 'Drive Action: Generate detailed reports and visualizations to support conservation efforts.'
         },
         getStarted: 'Ready to begin? Sign in below or create a new account to join our community of forest guardians. Our interactive guides will help you every step of the way.'
+      },
+      landing: {
+        tagline: "Deforestation Monitoring for Local Conservation",
+        subtitle: "Free, open-source platform supporting local conservation efforts",
+        motivation: "While global deforestation monitoring initiatives are invaluable, they often face challenges at local scales where most on-the-ground conservation work happens. Choco Forest Watch bridges this gap by enabling custom machine learning models trained with local expertise.",
+        features: {
+          title: "Key Features",
+          satellite: {
+            title: "High-Resolution Satellite Imagery",
+            description: "View monthly 4.7m resolution imagery from PlanetLabs through the NICFI Program"
+          },
+          ml: {
+            title: "Custom Machine Learning Models",
+            description: "Develop localized models tailored to your specific region and landscape"
+          },
+          monitoring: {
+            title: "Advanced Monitoring",
+            description: "Generate high-resolution deforestation alerts and track land use changes over time"
+          }
+        },
+        funding: {
+          title: "Supported By",
+          description: "Choco Forest Watch's development was made possible through the support of:",
+          sources: [
+            {
+              name: "Global Forest Watch Small Grants Program and the World Resources Institute",
+              logo: "gfw-logo"
+            },
+            {
+              name: "Yale Environmental Data Science Initiative (YEDSI)",
+              logo: "yale-logo"
+            },
+            {
+              name: "Tulane Center of Excellence for Community-Engaged Artificial Intelligence (CEAI)",
+              logo: "tulane-logo"
+            },
+            {
+              name: "The Connolly Alexander Institute for Data Science (CAIDS)",
+              logo: "caids-logo"
+            }
+          ]
+        },
+        cta: {
+          login: "Login",
+          createAccount: "Create Free Account",
+          learnMore: "Learn More"
+        }
       }
     },
     register: {
