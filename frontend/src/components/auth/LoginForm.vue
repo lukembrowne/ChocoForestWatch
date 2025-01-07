@@ -537,19 +537,34 @@ export default {
 
 .content-wrapper {
   height: 100vh;
-  padding-top: 64px; // Height of navbar
+  padding-top: 48px; // Reduced space below navbar
   display: flex;
   flex-direction: column;
+  gap: 2rem; // Control spacing between sections
 }
 
 .hero-section {
-  flex: 1;
-  padding: 2rem 4rem;
+  padding: 1rem 4rem;
   background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+  display: flex;
+  align-items: center;
+  min-height: 400px; // Set a minimum height instead of flex: 1
+
+  h1.text-h3 {
+    margin-bottom: 0.5rem;
+  }
+  
+  .text-h6 {
+    margin-bottom: 1rem;
+  }
+  
+  .text-body1 {
+    margin-bottom: 1.5rem;
+  }
 }
 
 .info-section {
-  padding: 2rem 4rem;
+  padding: 1rem 4rem 2rem;
   background: white;
 }
 
@@ -580,11 +595,16 @@ export default {
 @media (max-width: 1023px) {
   .content-wrapper {
     height: auto;
+    gap: 1rem;
+  }
+  
+  .hero-section {
+    min-height: 300px;
   }
   
   .hero-section,
   .info-section {
-    padding: 2rem;
+    padding: 1rem 2rem;
   }
 }
 
@@ -592,6 +612,16 @@ export default {
   .hero-section,
   .info-section {
     padding: 1rem;
+  }
+
+  .hero-section {
+    h1.text-h3 {
+      font-size: 1.75rem;
+    }
+    
+    .text-h6 {
+      font-size: 1.1rem;
+    }
   }
 }
 </style> 
