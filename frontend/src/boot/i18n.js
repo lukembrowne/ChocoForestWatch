@@ -1,20 +1,16 @@
 import { createI18n } from 'vue-i18n'
-import en from 'src/i18n/en.js'
-import es from 'src/i18n/es.js'
+import messages from '../locales'
 
-const messages = {
-    en,
-    es
-}
+const i18n = createI18n({
+  legacy: false, // Use Composition API
+  locale: localStorage.getItem('locale') || 'en', // Default locale
+  fallbackLocale: 'en',
+  messages
+})
 
 export default ({ app }) => {
-  // Create I18n instance
-  const i18n = createI18n({
-    locale: 'en',
-    legacy: false, // comment this out if not using Composition API
-    messages
-  })
-
-  // Tell app to use the I18n instance
+  // Install i18n instance on app
   app.use(i18n)
 }
+
+export { i18n }

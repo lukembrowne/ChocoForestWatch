@@ -19,7 +19,7 @@
               label="Español"
             />
           </q-btn-group>
-          <q-btn color="primary" :label="t('common.login.landing.cta.login')" @click="loginDialogOpen = true" />
+          <q-btn color="primary" :label="t('auth.login.landing.cta.login')" @click="loginDialogOpen = true" />
         </div>
       </div>
     </div>
@@ -28,14 +28,14 @@
       <!-- Hero Section -->
       <div class="hero-section row items-center">
         <div class="col-12 col-md-6 q-pr-md">
-          <h1 class="text-h3 text-weight-bold q-mb-md">{{ t('common.login.landing.tagline') }}</h1>
-          <p class="text-h6 q-mb-lg">{{ t('common.login.landing.subtitle') }}</p>
-          <p class="text-body1 q-mb-lg">{{ t('common.login.landing.motivation') }}</p>
+          <h1 class="text-h3 text-weight-bold q-mb-md">{{ t('auth.login.landing.tagline') }}</h1>
+          <p class="text-h6 q-mb-lg">{{ t('auth.login.landing.subtitle') }}</p>
+          <p class="text-body1 q-mb-lg">{{ t('auth.login.landing.motivation') }}</p>
           <div class="row q-gutter-md">
             <q-btn
               color="primary"
               size="lg"
-              :label="t('common.login.landing.cta.createAccount')"
+              :label="t('auth.login.landing.cta.createAccount')"
               @click="registerDialogOpen = true"
             />
           </div>
@@ -49,14 +49,14 @@
       <div class="info-section row q-col-gutter-xl">
         <!-- Features Section -->
         <div class="col-12 col-md-8">
-          <h2 class="text-h4 q-mb-lg">{{ t('common.login.landing.features.title') }}</h2>
+          <h2 class="text-h4 q-mb-lg">{{ t('auth.login.landing.features.title') }}</h2>
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-4">
               <q-card class="feature-card">
                 <q-card-section class="text-center">
                   <q-icon name="satellite_alt" size="3rem" color="primary" class="q-mb-md" />
-                  <div class="text-h6 q-mb-sm">{{ t('common.login.landing.features.satellite.title') }}</div>
-                  <p class="text-body2">{{ t('common.login.landing.features.satellite.description') }}</p>
+                  <div class="text-h6 q-mb-sm">{{ t('auth.login.landing.features.satellite.title') }}</div>
+                  <p class="text-body2">{{ t('auth.login.landing.features.satellite.description') }}</p>
                 </q-card-section>
               </q-card>
             </div>
@@ -64,8 +64,8 @@
               <q-card class="feature-card">
                 <q-card-section class="text-center">
                   <q-icon name="psychology" size="3rem" color="primary" class="q-mb-md" />
-                  <div class="text-h6 q-mb-sm">{{ t('common.login.landing.features.ml.title') }}</div>
-                  <p class="text-body2">{{ t('common.login.landing.features.ml.description') }}</p>
+                  <div class="text-h6 q-mb-sm">{{ t('auth.login.landing.features.ml.title') }}</div>
+                  <p class="text-body2">{{ t('auth.login.landing.features.ml.description') }}</p>
                 </q-card-section>
               </q-card>
             </div>
@@ -73,8 +73,8 @@
               <q-card class="feature-card">
                 <q-card-section class="text-center">
                   <q-icon name="monitoring" size="3rem" color="primary" class="q-mb-md" />
-                  <div class="text-h6 q-mb-sm">{{ t('common.login.landing.features.monitoring.title') }}</div>
-                  <p class="text-body2">{{ t('common.login.landing.features.monitoring.description') }}</p>
+                  <div class="text-h6 q-mb-sm">{{ t('auth.login.landing.features.monitoring.title') }}</div>
+                  <p class="text-body2">{{ t('auth.login.landing.features.monitoring.description') }}</p>
                 </q-card-section>
               </q-card>
             </div>
@@ -83,7 +83,7 @@
 
         <!-- Funding Section -->
         <div class="col-12 col-md-4">
-          <h2 class="text-h4 q-mb-lg">{{ t('common.login.landing.funding.title') }}</h2>
+          <h2 class="text-h4 q-mb-lg">{{ t('auth.login.landing.funding.title') }}</h2>
           <div class="funding-list q-gutter-y-md">
             <div v-for="source in fundingSources" :key="source.name" class="funding-item">
               <q-item>
@@ -104,16 +104,16 @@
     <q-dialog v-model="loginDialogOpen">
       <q-card class="login-dialog">
         <q-card-section class="text-center">
-          <div class="text-h5 text-weight-bold q-mb-sm">{{ t('common.login.title') }}</div>
+          <div class="text-h5 text-weight-bold q-mb-sm">{{ t('auth.login.title') }}</div>
           <q-form @submit.prevent="handleLogin" class="q-gutter-md">
             <!-- Username -->
             <div class="input-group">
               <q-input
                 v-model="username"
-                :label="t('common.login.username')"
+                :label="t('auth.login.username')"
                 outlined
                 class="full-width"
-                :rules="[val => !!val || t('common.login.usernameRequired')]"
+                :rules="[val => !!val || t('auth.login.usernameRequired')]"
               >
                 <template v-slot:prepend>
                   <q-icon name="person" color="primary" />
@@ -125,11 +125,11 @@
             <div class="input-group">
               <q-input
                 v-model="password"
-                :label="t('common.login.password')"
+                :label="t('auth.login.password')"
                 outlined
                 :type="isPwd ? 'password' : 'text'"
                 class="full-width"
-                :rules="[val => !!val || t('common.login.passwordRequired')]"
+                :rules="[val => !!val || t('auth.login.passwordRequired')]"
               >
                 <template v-slot:prepend>
                   <q-icon name="lock" color="primary" />
@@ -148,14 +148,14 @@
             <div class="row items-center justify-between q-mb-md">
               <q-checkbox 
                 v-model="rememberMe" 
-                :label="t('common.login.rememberMe')"
+                :label="t('auth.login.rememberMe')"
                 color="primary"
               />
               <q-btn
                 flat
                 dense
                 color="primary"
-                :label="t('common.login.forgotPassword')"
+                :label="t('auth.login.forgotPassword')"
                 @click="handleForgotPassword"
               />
             </div>
@@ -165,7 +165,7 @@
               <q-btn
                 type="submit"
                 color="primary"
-                :label="t('common.login.loginButton')"
+                :label="t('auth.login.loginButton')"
                 :loading="loading"
                 class="full-width q-py-sm"
                 size="lg"
@@ -174,11 +174,11 @@
 
             <!-- Create Account Link -->
             <div class="text-center q-mt-md">
-              <p class="text-grey-7 q-mb-xs">{{ t('common.login.noAccount') }}</p>
+              <p class="text-grey-7 q-mb-xs">{{ t('auth.login.noAccount') }}</p>
               <q-btn
                 flat
                 color="primary"
-                :label="t('common.login.createAccount')"
+                :label="t('auth.login.createAccount')"
                 @click="() => { loginDialogOpen = false; registerDialogOpen = true; }"
               />
             </div>
@@ -191,18 +191,18 @@
     <q-dialog v-model="registerDialogOpen">
       <q-card class="register-dialog">
         <q-card-section class="text-center">
-          <div class="text-h5 text-weight-bold q-mb-sm">{{ t('common.register.title') }}</div>
-          <p class="text-subtitle1 text-grey-7 q-mb-lg">{{ t('common.register.subtitle') }}</p>
+          <div class="text-h5 text-weight-bold q-mb-sm">{{ t('auth.register.title') }}</div>
+          <p class="text-subtitle1 text-grey-7 q-mb-lg">{{ t('auth.register.subtitle') }}</p>
           
           <q-form @submit.prevent="handleRegister" class="q-gutter-md">
             <!-- Username -->
             <div class="input-group">
               <q-input
                 v-model="registerForm.username"
-                :label="t('common.login.username')"
+                :label="t('auth.login.username')"
                 outlined
                 class="full-width"
-                :rules="[val => !!val || t('common.login.usernameRequired')]"
+                :rules="[val => !!val || t('auth.login.usernameRequired')]"
               >
                 <template v-slot:prepend>
                   <q-icon name="person" color="primary" />
@@ -214,13 +214,13 @@
             <div class="input-group">
               <q-input
                 v-model="registerForm.email"
-                :label="t('common.register.email')"
+                :label="t('auth.register.email')"
                 outlined
                 type="email"
                 class="full-width"
                 :rules="[
-                  val => !!val || t('common.register.emailRequired'),
-                  val => /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(val) || t('common.register.invalidEmail')
+                  val => !!val || t('auth.register.emailRequired'),
+                  val => /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(val) || t('auth.register.invalidEmail')
                 ]"
               >
                 <template v-slot:prepend>
@@ -233,11 +233,11 @@
             <div class="input-group">
               <q-input
                 v-model="registerForm.password"
-                :label="t('common.login.password')"
+                :label="t('auth.login.password')"
                 outlined
                 :type="isRegisterPwd ? 'password' : 'text'"
                 class="full-width"
-                :rules="[val => !!val || t('common.login.passwordRequired')]"
+                :rules="[val => !!val || t('auth.login.passwordRequired')]"
               >
                 <template v-slot:prepend>
                   <q-icon name="lock" color="primary" />
@@ -260,7 +260,7 @@
                   { label: 'English', value: 'en' },
                   { label: 'Español', value: 'es' }
                 ]"
-                :label="t('common.register.preferredLanguage')"
+                :label="t('auth.register.preferredLanguage')"
                 outlined
                 class="full-width"
               >
@@ -275,7 +275,7 @@
               <q-btn
                 type="submit"
                 color="primary"
-                :label="t('common.register.createButton')"
+                :label="t('auth.register.createButton')"
                 :loading="registerLoading"
                 class="full-width q-py-sm"
                 size="lg"
@@ -284,11 +284,11 @@
 
             <!-- Login Link -->
             <div class="text-center q-mt-md">
-              <p class="text-grey-7 q-mb-xs">{{ t('common.login.alreadyHaveAccount') }}</p>
+              <p class="text-grey-7 q-mb-xs">{{ t('auth.login.alreadyHaveAccount') }}</p>
               <q-btn
                 flat
                 color="primary"
-                :label="t('common.login.loginButton')"
+                :label="t('auth.login.loginButton')"
                 @click="() => { registerDialogOpen = false; loginDialogOpen = true; }"
               />
             </div>
@@ -365,7 +365,7 @@ export default {
         router.push('/projects')
         $q.notify({
           color: 'positive',
-          message: t('Successfully logged in'),
+          message: t('auth.login.loginSuccess'),
           icon: 'check'
         })
       } catch (err) {
@@ -382,7 +382,7 @@ export default {
 
     const getErrorMessage = (err) => {
       if (typeof err !== 'object') {
-        return t('common.register.failed');
+        return t('auth.register.failed');
       }
 
       // Handle specific field errors
@@ -400,7 +400,7 @@ export default {
       }
 
       // Fallback to generic error message
-      return err.error || t('common.register.failed');
+      return err.error || t('auth.register.failed');
     };
 
     const handleRegister = async () => {
@@ -418,11 +418,11 @@ export default {
         router.push('/projects')
         $q.notify({
           color: 'positive',
-          message: t('common.register.success'),
+          message: t('auth.register.success'),
           icon: 'check'
         });
       } catch (err) {
-        let errorMessage = t('common.register.failed');
+        let errorMessage = t('auth.register.failed');
         
         // Handle field-specific errors
         if (err.username) {

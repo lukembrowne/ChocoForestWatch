@@ -1,0 +1,672 @@
+{
+  "about": {
+    "alerts": {
+      "description": "Global Forest Watch integrated alerts available under",
+      "license": "CC BY 4.0 License",
+      "title": "Deforestation Alerts"
+    },
+    "contact": "For questions, concerns, or feedback, please contact:",
+    "creditsTitle": "Credits and Data Use",
+    "description": "Choco Forest Watch is an open-source project. The code is available on",
+    "funding": {
+      "description": "This project was made possible by funding from:",
+      "sources": {
+        "caids": "The Connolly Alexander Institute for Data Science (CAIDS)",
+        "gfw": "Global Forest Watch Small Grants Program and the World Resources Institute",
+        "tulane": "Tulane Center of Excellence for Community-Engaged Artificial Intelligence (CEAI)",
+        "yale": "Yale Environmental Data Science Initiative (YEDSI)"
+      },
+      "title": "Funding"
+    },
+    "github": "GitHub",
+    "satellite": {
+      "description": "Imagery copyright 2024 from Planet Labs, Inc. All use is subject to the",
+      "license": "NICFI Satellite Data Program Participant License Agreement",
+      "title": "Satellite Imagery"
+    },
+    "title": "About Choco Forest Watch",
+    "version": "Version"
+  },
+  "analysis": {
+    "runAnalysis": "Run Analysis",
+    "selectArea": "Select Area",
+    "title": "Analysis",
+    "unified": {
+      "deforestation": {
+        "existing": {
+          "confirm": {
+            "message": "Are you sure you want to delete this analysis?",
+            "title": "Delete Analysis"
+          },
+          "empty": "No deforestation analyses available. Create a new analysis below.",
+          "title": "Existing Analyses",
+          "tooltips": {
+            "delete": "Delete Analysis"
+          }
+        },
+        "new": {
+          "analyze": "Analyze",
+          "endDate": "End Date",
+          "startDate": "Start Date",
+          "title": "New Analysis"
+        },
+        "title": "Deforestation Analysis"
+      },
+      "dialogs": {
+        "delete": {
+          "cancel": "Cancel",
+          "confirm": "Delete",
+          "message": "Are you sure you want to delete this analysis?",
+          "title": "Delete Analysis"
+        },
+        "stats": {
+          "close": "Close",
+          "export": "Export Statistics",
+          "sections": {
+            "overview": "Overview",
+            "sources": "Alert Sources",
+            "verification": "Verification Status"
+          },
+          "title": "Analysis Statistics"
+        }
+      },
+      "hotspots": {
+        "confidence": {
+          "high": "High",
+          "low": "Low",
+          "medium": "Medium"
+        },
+        "count": "hotspot | hotspots",
+        "empty": "No hotspots found in the selected area.",
+        "export": {
+          "all": "All Hotspots",
+          "title": "Export Hotspots",
+          "verifiedOnly": "Verified Only"
+        },
+        "filters": {
+          "minArea": "Min Area (ha)",
+          "source": "Alert Source",
+          "sources": {
+            "all": "All Sources",
+            "gfw": "Global Forest Watch",
+            "local": "Local Alerts"
+          }
+        },
+        "status": {
+          "rejected": "Rejected",
+          "unsure": "Unsure",
+          "unverified": "Unverified",
+          "verified": "Verified"
+        },
+        "title": "Detected Hotspots",
+        "tooltips": {
+          "reject": "Reject Alert",
+          "unsure": "Mark as Unsure",
+          "verify": "Verify Deforestation"
+        }
+      },
+      "maps": {
+        "legend": {
+          "gfw": "GFW Alert",
+          "local": "Local Alert",
+          "status": {
+            "rejected": "Rejected",
+            "title": "Verification Status",
+            "unsure": "Unsure",
+            "verified": "Verified"
+          },
+          "title": "Alert Types"
+        }
+      },
+      "notifications": {
+        "analysisDeleted": "Analysis deleted successfully",
+        "analysisError": "Error running analysis",
+        "analysisSaved": "Analysis saved successfully",
+        "deleteError": "Failed to delete analysis",
+        "exportError": "Error exporting data",
+        "exportSuccess": "Export completed successfully",
+        "projectRequired": "Please select a project first",
+        "selectProject": "Select Project",
+        "verificationError": "Error updating verification status",
+        "verificationUpdated": "Verification status updated"
+      },
+      "stats": {
+        "aoiInfo": "Area percentages are calculated relative to the total AOI area of {area} ha",
+        "breakdown": {
+          "hotspotCount": "{count} hotspots",
+          "percentOfSource": "{percent}% of {source}",
+          "status": {
+            "rejected": "Rejected",
+            "unsure": "Unsure",
+            "unverified": "Unverified",
+            "verified": "Verified"
+          },
+          "title": "Status Breakdown by Source (Hotspots ≥ {minArea} ha)"
+        },
+        "close": "Close",
+        "export": "Export",
+        "landCover": {
+          "title": "Land Cover Percentages",
+          "types": {
+            "cloud": "Cloud",
+            "forest": "Forest",
+            "non-forest": "Non-Forest",
+            "shadow": "Shadow",
+            "water": "Water"
+          }
+        },
+        "overview": {
+          "annualRate": "Annual Rate",
+          "gfwAlerts": "GFW Alerts",
+          "haPerYear": "ha/year",
+          "hotspots": "Hotspots",
+          "localAlerts": "Local Alerts",
+          "percentOfAoi": "{percent}% of AOI",
+          "showing": "Showing hotspots ≥ {minArea} ha",
+          "title": "Overview by Source (Hotspots ≥ {minArea} ha)",
+          "totalArea": "Total Area"
+        },
+        "subtitle": "{start} to {end}",
+        "title": "Analysis Statistics"
+      }
+    }
+  },
+  "auth": {
+    "login": {
+      "alreadyHaveAccount": "Already have an account?",
+      "createAccount": "Create Account",
+      "forgotPassword": "Forgot password?",
+      "loginButton": "Login",
+      "loginFailed": "Login failed",
+      "loginSuccess": "Successfully logged in",
+      "noAccount": "Don't have an account?",
+      "password": "Password",
+      "passwordRequired": "Password is required",
+      "rememberMe": "Remember me",
+      "subtitle": "Monitor and analyze forest cover changes using satellite imagery and machine learning",
+      "title": "Choco Forest Watch",
+      "username": "Username",
+      "usernameRequired": "Username is required",
+      "landing": {
+        "tagline": "Deforestation Monitoring for Local Conservation",
+        "subtitle": "Free, open-source platform supporting local conservation efforts",
+        "motivation": "While global deforestation monitoring initiatives are invaluable, they often face challenges at local scales where most on-the-ground conservation work happens. Choco Forest Watch bridges this gap by enabling custom machine learning models trained with local expertise.",
+        "cta": {
+          "login": "Login",
+          "createAccount": "Create Free Account"
+        },
+        "features": {
+          "title": "Key Features",
+          "satellite": {
+            "title": "High-Resolution Satellite Imagery",
+            "description": "View monthly 4.7m resolution imagery from PlanetLabs through the NICFI Program"
+          },
+          "ml": {
+            "title": "Custom Machine Learning Models",
+            "description": "Develop localized models tailored to your specific region and landscape"
+          },
+          "monitoring": {
+            "title": "Advanced Monitoring",
+            "description": "Generate high-resolution deforestation alerts and track land use changes over time"
+          }
+        },
+        "funding": {
+          "title": "Supported By"
+        }
+      }
+    },
+    "register": {
+      "createButton": "Create Account",
+      "email": "Email",
+      "emailRequired": "Email is required",
+      "failed": "Registration failed",
+      "invalidEmail": "Invalid email",
+      "preferredLanguage": "Preferred Language",
+      "subtitle": "Join Choco Forest Watch",
+      "success": "Account created successfully!",
+      "title": "Create Account"
+    },
+    "resetPassword": {
+      "cancel": "Cancel",
+      "confirmPassword": "Confirm Password",
+      "confirmRequired": "Password confirmation is required",
+      "enterNew": "Enter your new password",
+      "failed": "Failed to send reset email",
+      "instructions": "Enter your email address and we'll send you instructions to reset your password.",
+      "newPassword": "New Password",
+      "passwordRequired": "Password is required",
+      "passwordsNoMatch": "Passwords do not match",
+      "resetButton": "Reset Password",
+      "resetFailed": "Failed to reset password",
+      "resetSuccess": "Password reset successful! Please login with your new password.",
+      "sendLink": "Send Reset Link",
+      "success": "Password reset instructions sent to your email",
+      "title": "Reset Password"
+    }
+  },
+  "common": {
+    "about": "About",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirmLogout": "Are you sure you want to logout?",
+    "error": "An error occurred",
+    "export": "Export",
+    "getStarted": "Get Started",
+    "loading": "Loading...",
+    "logout": "Logout",
+    "logoutSuccess": "Successfully logged out",
+    "save": "Save",
+    "showHelp": "Show Help"
+  },
+  "drawing": {
+    "classes": {
+      "title": "Select Class"
+    },
+    "dialogs": {
+      "delete": {
+        "message": "Are you sure you want to delete this feature?",
+        "title": "Delete Feature"
+      }
+    },
+    "management": {
+      "clear": "Clear",
+      "delete": "Delete (Del)",
+      "download": "Download",
+      "excludeDate": "Exclude Date",
+      "includeDate": "Include Date",
+      "load": "Load",
+      "save": "Save (Ctrl+S)",
+      "title": "Polygon Management",
+      "undo": "Undo (Ctrl+Z)"
+    },
+    "modes": {
+      "draw": "Draw (D)",
+      "pan": "Pan (M)",
+      "zoomIn": "Zoom In (Z)",
+      "zoomOut": "Zoom Out (X)"
+    },
+    "notifications": {
+      "dateExcluded": "Date has been excluded",
+      "dateIncluded": "Date has been included",
+      "dateToggleError": "Error toggling date exclusion status",
+      "loadError": "Failed to load polygons from file",
+      "noFeatureSelected": "No feature selected",
+      "polygonsLoaded": "Polygons loaded successfully",
+      "saveError": "Error saving training polygons"
+    },
+    "options": {
+      "freehandMode": "Freehand Mode (F)",
+      "polygonSize": "Polygon Size (m)",
+      "squareMode": "Square Mode (F)",
+      "title": "Drawing Options"
+    },
+    "title": "Drawing Controls"
+  },
+  "feedback": {
+    "button": "Give Feedback",
+    "buttonNav": "Feedback",
+    "intro": "Help us improve Choco Forest Watch! Share your experience, report bugs, or suggest new features.",
+    "message": "Your message",
+    "messagePlaceholder": "Please provide as much detail as possible. For bugs, include what you were doing when the issue occurred.",
+    "messageRequired": "Please enter your feedback",
+    "submit": "Submit",
+    "submitError": "Failed to submit feedback. Please try again.",
+    "submitSuccess": "Thank you for your feedback!",
+    "title": "Send Feedback",
+    "types": {
+      "bug": "Bug Report",
+      "feature": "Feature Request",
+      "improvement": "Improvement",
+      "other": "Other"
+    }
+  },
+  "header": {
+    "title": "Choco Forest Watch",
+    "titleShort": "CFW"
+  },
+  "layers": {
+    "baseMap": "Base Map",
+    "basemapDate": {
+      "months": {
+        "apr": "April",
+        "aug": "August",
+        "dec": "December",
+        "feb": "February",
+        "jan": "January",
+        "jul": "July",
+        "jun": "June",
+        "mar": "March",
+        "may": "May",
+        "nov": "November",
+        "oct": "October",
+        "sep": "September",
+        "short": {
+          "apr": "Apr",
+          "aug": "Aug",
+          "dec": "Dec",
+          "feb": "Feb",
+          "jan": "Jan",
+          "jul": "Jul",
+          "jun": "Jun",
+          "mar": "Mar",
+          "may": "May",
+          "nov": "Nov",
+          "oct": "Oct",
+          "sep": "Sep"
+        }
+      },
+      "title": "Basemap Date"
+    },
+    "satellite": "Satellite",
+    "switcher": {
+      "opacity": "Opacity",
+      "title": "Layers",
+      "tooltips": {
+        "remove": "Remove layer",
+        "toggleOpacity": "Toggle opacity control"
+      }
+    },
+    "terrain": "Terrain"
+  },
+  "navigation": {
+    "analysis": {
+      "name": "Analysis",
+      "tooltip": "Analyze and verify"
+    },
+    "projects": {
+      "name": "Projects",
+      "tooltip": "Select or create a project"
+    },
+    "training": {
+      "name": "Train Model",
+      "tooltip": "Train Model"
+    }
+  },
+  "notifications": {
+    "aoiSaved": "AOI saved successfully. You can now start training your model.",
+    "error": {
+      "training": "Error transitioning to training mode"
+    },
+    "languageUpdateFailed": "Failed to update language preference",
+    "languageUpdated": "Language preference updated successfully",
+    "projectLoaded": "Project loaded successfully"
+  },
+  "projects": {
+    "aoi": {
+      "actions": "Actions",
+      "buttons": {
+        "clear": "Clear AOI",
+        "draw": "Draw AOI",
+        "save": "Save AOI",
+        "upload": "Upload AOI file"
+      },
+      "currentSize": "Current AOI Size",
+      "description": "Please draw the Area of Interest (AOI) for your project on the map or upload a GeoJSON file or .zipped Shapefile.",
+      "hectares": "ha",
+      "notifications": {
+        "noAoi": "No AOI drawn",
+        "noFeatures": "No valid features found in the file",
+        "saveFailed": "Failed to save AOI",
+        "saved": "AOI saved successfully",
+        "tooLarge": "AOI is too large. Maximum allowed area is {max} ha",
+        "unsupportedFile": "Unsupported file type. Please upload a GeoJSON or a Zipped Shapefile.",
+        "uploadFailed": "Failed to parse {fileType}",
+        "uploadSuccess": "File uploaded successfully"
+      },
+      "sizeWarning": "Warning: AOI size exceeds the maximum allowed ({max} ha)",
+      "title": "Define Area of Interest",
+      "tooltips": {
+        "upload": "Upload .geojson or zipped shapefile"
+      }
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "rename": "Rename"
+    },
+    "createButton": "Create Project",
+    "createNew": "Create New Project",
+    "created": "Project created successfully. Please define your Area of Interest.",
+    "delete": {
+      "confirm": "Are you sure you want to delete the project \"{name}\"?",
+      "failed": "Failed to delete project",
+      "success": "Project deleted successfully",
+      "title": "Confirm Delete"
+    },
+    "description": "Description",
+    "existingProjects": "Existing Projects",
+    "failedCreate": "Failed to create project",
+    "minClasses": "At least 2 classes are required",
+    "nameRequired": "Project name is required. Please enter a name for your project.",
+    "notifications": {
+      "fetchFailed": "Failed to fetch projects"
+    },
+    "ok": "Ok",
+    "projectName": "Project Name",
+    "rename": {
+      "empty": "Project name cannot be empty",
+      "failed": "Failed to rename project",
+      "newName": "New Project Name",
+      "success": "Project renamed successfully",
+      "title": "Rename Project"
+    },
+    "table": {
+      "actions": "Actions",
+      "name": "Name",
+      "updated": "Updated"
+    },
+    "tooltips": {
+      "delete": "Delete Project",
+      "load": "Load Project",
+      "rename": "Rename Project"
+    },
+    "uniqueClasses": "Class names must be unique"
+  },
+  "training": {
+    "evaluation": {
+      "close": "Close",
+      "confusionMatrix": {
+        "predicted": "Predicted",
+        "title": "Confusion Matrix"
+      },
+      "created": "Created",
+      "interpretation": {
+        "accuracy": "The model achieves an overall accuracy of {accuracy}%, meaning it correctly classifies this percentage of all test samples.",
+        "classMetrics": {
+          "f1": "F1 Score: {value}% balanced accuracy measure",
+          "precision": "Precision: {value}% of areas predicted as {class} are correct",
+          "recall": "Recall: {value}% of actual {class} areas are correctly identified"
+        },
+        "keyFindings": "Key findings per class:",
+        "title": "Interpretation"
+      },
+      "metrics": {
+        "class": "Class",
+        "f1Score": "F1 Score",
+        "overallAccuracy": "Overall Accuracy",
+        "precision": "Precision",
+        "recall": "Recall",
+        "title": "Performance Metrics"
+      },
+      "noMetrics": {
+        "subtitle": "Please train a model first.",
+        "title": "No Model Metrics Available"
+      },
+      "parameters": {
+        "estimators": "Number of Estimators",
+        "learningRate": "Learning Rate",
+        "maxDepth": "Max Depth",
+        "minChildWeight": "Min Child Weight",
+        "pixels": "pixels",
+        "sieveSize": "Sieve Filter Size",
+        "splitMethod": "Split Method",
+        "subsample": "Subsample",
+        "title": "Model Parameters",
+        "trainTestSplit": "Train/Test Split"
+      },
+      "title": "Model Evaluation",
+      "updated": "Updated"
+    },
+    "model": {
+      "evaluate": "Evaluate Model",
+      "fit": "Fit Model",
+      "notifications": {
+        "initiated": "Model training initiated successfully"
+      },
+      "title": "Fit and Evaluate Model"
+    },
+    "modelSettings": "Model Settings",
+    "modelTraining": {
+      "buttons": {
+        "cancel": "Cancel",
+        "train": "Train Model",
+        "update": "Update Model"
+      },
+      "dataSummary": {
+        "area": "Area (ha)",
+        "class": "Class",
+        "features": "Features",
+        "percentage": "%",
+        "totalArea": "Total Area",
+        "totalSets": "Total Training Sets",
+        "trainingDates": "Training data dates:"
+      },
+      "parameters": {
+        "caption": "Click to customize model parameters",
+        "modelParams": {
+          "colsample": {
+            "description": "Fraction of features used for building each tree. Can help in reducing overfitting.",
+            "title": "Colsample Bytree"
+          },
+          "estimators": {
+            "description": "The number of trees in the forest. Higher values generally improve performance but increase training time.",
+            "title": "Number of Estimators"
+          },
+          "gamma": {
+            "description": "Minimum loss reduction required to make a further partition. Higher values make the model more conservative.",
+            "title": "Gamma"
+          },
+          "learningRate": {
+            "description": "Step size shrinkage used to prevent overfitting. Lower values are generally better but require more iterations.",
+            "title": "Learning Rate"
+          },
+          "maxDepth": {
+            "description": "Maximum depth of the trees. Higher values make the model more complex and prone to overfitting.",
+            "title": "Max Depth"
+          },
+          "minChildWeight": {
+            "description": "Minimum sum of instance weight needed in a child. Higher values make the model more conservative.",
+            "title": "Min Child Weight"
+          },
+          "subsample": {
+            "description": "Fraction of samples used for fitting the trees. Lower values can help prevent overfitting.",
+            "title": "Subsample"
+          }
+        },
+        "sieveFilter": {
+          "description": "Minimum size of connected pixel groups to keep in the final prediction. Higher values create a more generalized map by removing small isolated patches. Set to 0 to disable filtering.",
+          "title": "Sieve Filter Size:"
+        },
+        "splitMethod": {
+          "feature": "Feature-based",
+          "featureDescription": "Feature-based split ensures independence between training and testing data by splitting entire polygons. Pixel-based split may mix pixels from the same polygon in both training and testing sets.",
+          "pixel": "Pixel-based",
+          "title": "Choose split method:"
+        },
+        "title": "Model Parameters",
+        "trainTest": {
+          "description": "This determines the proportion of data used for testing. A value of {value} means {percent}% of the data will be used for testing and {remaining}% for training. Higher test percentages provide more reliable accuracy estimates but leave less data for training, which may lead to overfitting.",
+          "title": "Adjust the train/test split:"
+        }
+      },
+      "progress": {
+        "cancel": "Cancel",
+        "close": "Close",
+        "title": "Training and Prediction in Progress",
+        "tooltips": {
+          "cancel": "Cancel training"
+        }
+      },
+      "title": {
+        "train": "Train XGBoost Model",
+        "update": "Update XGBoost Model"
+      },
+      "validation": {
+        "invalidConfig": "Please ensure all model parameters are valid before training",
+        "noData": "No training data available",
+        "oneFeature": "Classes with exactly 1 feature are not allowed",
+        "oneFeatureCaption": "Please add at least one more feature to: {classes}",
+        "parameterErrors": {
+          "colsample": "Colsample bytree must be between 0 and 1",
+          "estimators": "Number of estimators must be at least 10",
+          "gamma": "Gamma must be non-negative",
+          "invalid": "Invalid value for {param}",
+          "learningRate": "Learning rate must be greater than 0",
+          "maxDepth": "Max depth must be at least 1",
+          "minChildWeight": "Min child weight must be at least 1",
+          "subsample": "Subsample must be between 0 and 1"
+        },
+        "twoClasses": "At least two classes must have training data",
+        "twoClassesCaption": "Please add features to at least one more class"
+      }
+    },
+    "selectPolygons": "Select Polygons",
+    "startTraining": "Start Training",
+    "summary": {
+      "features": "feature",
+      "features_plural": "features",
+      "hectares": "ha",
+      "title": "Training Data Summary"
+    }
+  },
+  "welcome": {
+    "analysis": {
+      "intro": "Analyze deforestation patterns and verify changes in your area of interest:",
+      "review": {
+        "description": "Examine potential deforestation hotspots identified by the model.",
+        "title": "Review Hotspots"
+      },
+      "run": {
+        "description": "Generate predictions and compare land cover changes between two dates.",
+        "title": "Run Analysis"
+      },
+      "title": "Welcome to Analysis",
+      "verify": {
+        "description": "Confirm or reject detected changes and export your findings.",
+        "title": "Verify Changes"
+      }
+    },
+    "dontShowAgain": "Don't show this again",
+    "projects": {
+      "aoi": {
+        "description": "Upload or draw your area of interest (AOI) to focus your analysis.",
+        "title": "Define Area of Interest"
+      },
+      "configure": {
+        "description": "Set up land cover classes and other project-specific settings.",
+        "title": "Configure Settings"
+      },
+      "create": {
+        "description": "Start by creating a new project to organize your monitoring work.",
+        "title": "Create a Project"
+      },
+      "intro": "Projects help you organize your deforestation monitoring work. Here's how to get started:",
+      "title": "Welcome to Projects"
+    },
+    "training": {
+      "configure": {
+        "description": "Choose model parameters and validation settings to optimize performance.",
+        "title": "Configure Model Settings"
+      },
+      "draw": {
+        "description": "Draw or upload training polygons to identify forest, non-forest, and other land cover types.",
+        "title": "Draw Training Data"
+      },
+      "intro": "Train your own deforestation detection model using machine learning. Follow these steps:",
+      "title": "Welcome to Model Training",
+      "train": {
+        "description": "Start training and monitor progress. Review accuracy metrics when complete.",
+        "title": "Train and Evaluate"
+      }
+    }
+  }
+}
