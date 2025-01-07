@@ -6,37 +6,56 @@
       </q-card-section>
 
       <q-card-section class="q-pa-md">
-        <div class="text-body1 q-mb-md">
+        <div class="text-body1 q-mb-lg">
           {{ t('welcome.projects.intro') }}
         </div>
 
-        <div class="key-features q-gutter-y-md">
+        <div class="workflow-steps q-gutter-y-md">
           <!-- Create Project -->
-          <div class="feature-item">
-            <q-icon name="add" color="primary" size="sm" class="q-mr-sm" />
-            <div>
+          <div class="workflow-step">
+            <div class="step-number">1</div>
+            <div class="step-content">
               <div class="text-weight-medium">{{ t('welcome.projects.create.title') }}</div>
-              <div class="text-caption">{{ t('welcome.projects.create.description') }}</div>
+              <div class="text-body2">{{ t('welcome.projects.create.description') }}</div>
             </div>
           </div>
 
           <!-- Define AOI -->
-          <div class="feature-item">
-            <q-icon name="map" color="primary" size="sm" class="q-mr-sm" />
-            <div>
+          <div class="workflow-step">
+            <div class="step-number">2</div>
+            <div class="step-content">
               <div class="text-weight-medium">{{ t('welcome.projects.aoi.title') }}</div>
-              <div class="text-caption">{{ t('welcome.projects.aoi.description') }}</div>
+              <div class="text-body2">{{ t('welcome.projects.aoi.description') }}</div>
             </div>
           </div>
 
-          <!-- Configure -->
-          <div class="feature-item">
-            <q-icon name="settings" color="primary" size="sm" class="q-mr-sm" />
-            <div>
-              <div class="text-weight-medium">{{ t('welcome.projects.configure.title') }}</div>
-              <div class="text-caption">{{ t('welcome.projects.configure.description') }}</div>
+          <!-- Train Model -->
+          <div class="workflow-step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <div class="text-weight-medium">{{ t('welcome.projects.train.title') }}</div>
+              <div class="text-body2">{{ t('welcome.projects.train.description') }}</div>
             </div>
           </div>
+
+          <!-- Analysis -->
+          <div class="workflow-step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+              <div class="text-weight-medium">{{ t('welcome.projects.analysis.title') }}</div>
+              <div class="text-body2">{{ t('welcome.projects.analysis.description') }}</div>
+            </div>
+          </div>
+        </div>
+
+        <q-separator class="q-my-md" />
+
+        <div class="text-body2 q-mb-md">
+          {{ t('welcome.projects.landcover') }}
+        </div>
+
+        <div class="text-body2 q-mb-md">
+          {{ t('welcome.projects.feedback') }}
         </div>
       </q-card-section>
 
@@ -111,18 +130,37 @@ export default {
 
 <style lang="scss" scoped>
 .welcome-modal {
-  width: 500px;
+  width: 600px;
   max-width: 90vw;
 }
 
-.feature-item {
+.workflow-step {
   display: flex;
   align-items: flex-start;
-  padding: 8px;
-  border-radius: 4px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.02);
   
   &:hover {
-    background: rgba(0,0,0,0.03);
+    background: rgba(0,0,0,0.05);
   }
+}
+
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--q-primary);
+  color: white;
+  font-weight: bold;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.step-content {
+  flex: 1;
 }
 </style> 
