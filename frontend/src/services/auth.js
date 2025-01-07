@@ -49,6 +49,27 @@ class AuthService {
         const user = this.getCurrentUser();
         return user ? user.token : null;
     }
+
+    async requestPasswordReset(email) {
+        try {
+            const response = await axios.post(`${API_URL}/auth/request-reset/`, { email });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || { error: 'Failed to send reset email' };
+        }
+    }
+
+    async resetPassword(token, newPassword) {
+        try {
+            const response = await axios.post(`${API_URL}/auth/reset-password/`, {
+                token,
+                new_password: newPassword
+            });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || { error: 'Failed to reset password' };
+        }
+    }
 }
 
 export default new AuthService(); 

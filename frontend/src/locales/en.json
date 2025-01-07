@@ -182,7 +182,7 @@
       "forgotPassword": "Forgot password?",
       "landing": {
         "cta": {
-          "createAccount": "Create Free Account",
+          "createAccount": "Create Account",
           "login": "Login"
         },
         "features": {
@@ -217,7 +217,8 @@
       "subtitle": "Monitor and analyze forest cover changes using satellite imagery and machine learning",
       "title": "Choco Forest Watch",
       "username": "Username",
-      "usernameRequired": "Username is required"
+      "usernameRequired": "Username is required",
+      "languageRequired": "Preferred language is required"
     },
     "register": {
       "createButton": "Create Account",
@@ -231,21 +232,23 @@
       "title": "Create Account"
     },
     "resetPassword": {
-      "cancel": "Cancel",
-      "confirmPassword": "Confirm Password",
-      "confirmRequired": "Password confirmation is required",
       "enterNew": "Enter your new password",
-      "failed": "Failed to send reset email",
+      "title": "Reset Password",
       "instructions": "Enter your email address and we'll send you instructions to reset your password.",
-      "newPassword": "New Password",
-      "passwordRequired": "Password is required",
-      "passwordsNoMatch": "Passwords do not match",
-      "resetButton": "Reset Password",
-      "resetFailed": "Failed to reset password",
-      "resetSuccess": "Password reset successful! Please login with your new password.",
+      "email": "Email",
+      "emailRequired": "Email is required",
+      "invalidEmail": "Invalid email address",
       "sendLink": "Send Reset Link",
+      "cancel": "Cancel",
       "success": "Password reset instructions sent to your email",
-      "title": "Reset Password"
+      "error": "Failed to send reset email",
+      "resetSuccess": "Password reset successful! Please login with your new password.",
+      "resetFailed": "Failed to reset password",
+      "password": "New Password",
+      "confirm": "Confirm Password",
+      "confirmRequired": "Password confirmation is required",
+      "mismatch": "Passwords do not match",
+      "submit": "Reset Password"
     }
   },
   "common": {

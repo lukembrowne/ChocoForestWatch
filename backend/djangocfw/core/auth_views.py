@@ -9,6 +9,7 @@ from django.core.mail import send_mail
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
+from django.conf import settings
 import random
 import string
 import os
@@ -16,6 +17,12 @@ import logging
 from .serializers import UserSerializer
 
 logger = logging.getLogger(__name__)
+
+def get_frontend_url():
+    """Get the frontend URL based on environment"""
+    if settings.DEBUG:
+        return 'http://localhost:9000'
+    return 'https://chocoforestwatch.org'  # Replace with your production URL
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -56,12 +63,16 @@ def login(request):
 @permission_classes([AllowAny])
 def request_password_reset(request):
     email = request.data.get('email')
+    logger.info(f"Password reset requested for email: {email}")
+    
     try:
         user = User.objects.get(email=email)
         token = default_token_generator.make_token(user)
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         
-        reset_url = f"http://localhost:9000/reset-password/{uid}/{token}"
+        frontend_url = get_frontend_url()
+        reset_url = f"{frontend_url}/reset-password/{uid}/{token}"
+        logger.info(f"Generated reset URL: {reset_url}")
         
         try:
             send_mail(
@@ -85,22 +96,24 @@ The Choco Forest Watch Team
                 [email],
                 fail_silently=False,
             )
+            logger.info(f"Password reset email sent successfully to {email}")
             return Response({
                 'message': 'Password reset instructions sent to your email',
                 'email': email
             })
         except Exception as e:
-            logger.error(f"Email sending error: {str(e)}")
+            logger.error(f"Failed to send password reset email to {email}. Error: {str(e)}")
             return Response({
                 'error': 'Failed to send email. Please check email configuration.'
             }, status=500)
             
     except User.DoesNotExist:
+        logger.warning(f"Password reset attempted for non-existent email: {email}")
         return Response({
             'message': 'If an account exists with this email, you will receive password reset instructions.'
         }, status=200)
     except Exception as e:
-        logger.error(f"Password reset error: {str(e)}")
+        logger.error(f"Unexpected error during password reset for {email}. Error: {str(e)}")
         return Response({
             'error': 'Unable to process password reset request. Please try again later.'
         }, status=500)

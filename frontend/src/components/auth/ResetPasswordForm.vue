@@ -2,9 +2,9 @@
   <div class="login-container">
     <q-card class="reset-card">
       <q-card-section class="text-center">
-        <div class="text-h5">{{ t('common.resetPassword.title') }}</div>
+        <div class="text-h5">{{ t('auth.resetPassword.title') }}</div>
         <p class="text-subtitle1 text-grey-7">
-          {{ t('common.resetPassword.enterNew') }}
+          {{ t('auth.resetPassword.enterNew') }}
         </p>
       </q-card-section>
 
@@ -12,10 +12,10 @@
         <q-form @submit.prevent="handleResetPassword" class="q-gutter-md">
           <q-input
             v-model="newPassword"
-            :label="t('common.resetPassword.newPassword')"
+            :label="t('auth.resetPassword.password')"
             outlined
             :type="isPwd ? 'password' : 'text'"
-            :rules="[val => !!val || t('common.resetPassword.passwordRequired')]"
+            :rules="[val => !!val || t('auth.login.passwordRequired')]"
             :error="!!error"
           >
             <template v-slot:prepend>
@@ -32,15 +32,15 @@
 
           <q-input
             v-model="confirmPassword"
-            :label="t('common.resetPassword.confirmPassword')"
+            :label="t('auth.resetPassword.confirm')"
             outlined
             :type="isPwd ? 'password' : 'text'"
             :rules="[
-              val => !!val || t('common.resetPassword.confirmRequired'),
-              val => val === newPassword || t('common.resetPassword.passwordsNoMatch')
+              val => !!val || t('auth.resetPassword.confirmRequired'),
+              val => val === newPassword || t('auth.resetPassword.mismatch')
             ]"
             :error="!!error"
-            :error-message="error"
+              :error-message="error"
           >
             <template v-slot:prepend>
               <q-icon name="lock" />
@@ -52,7 +52,7 @@
             color="primary"
             class="full-width q-mt-lg"
             :loading="loading"
-            :label="t('common.resetPassword.resetButton')"
+            :label="t('auth.resetPassword.submit')"
           />
         </q-form>
       </q-card-section>
@@ -91,7 +91,7 @@ export default {
 
     const handleResetPassword = async () => {
       if (newPassword.value !== confirmPassword.value) {
-        error.value = 'Passwords do not match'
+        error.value = t('auth.resetPassword.mismatch')
         return
       }
 
@@ -99,19 +99,17 @@ export default {
         loading.value = true
         const { uid, token } = route.params
         
-        await axios.post(`http://localhost:8000/api/auth/reset-password/${uid}/${token}/`, {
-          new_password: newPassword.value
-        })
+        await authService.resetPassword(uid, token, newPassword.value)
 
         $q.notify({
           color: 'positive',
-          message: t('common.resetPassword.resetSuccess'),
+          message: t('auth.resetPassword.resetSuccess'),
           icon: 'check'
         })
 
         router.push('/login')
       } catch (err) {
-        error.value = err.response?.data?.error || t('common.resetPassword.resetFailed')
+        error.value = err.response?.data?.error || t('auth.resetPassword.resetFailed')
         $q.notify({
           color: 'negative',
           message: error.value,

@@ -263,6 +263,7 @@
                 :label="t('auth.register.preferredLanguage')"
                 outlined
                 class="full-width"
+                :rules="[val => !!val || t('auth.login.languageRequired')]"
               >
                 <template v-slot:prepend>
                   <q-icon name="language" color="primary" />
@@ -299,7 +300,45 @@
 
     <!-- Reset Password Dialog -->
     <q-dialog v-model="resetPasswordDialog">
-      <!-- Existing reset password dialog content -->
+      <q-card class="modern-menu" style="min-width: 350px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">{{ t('auth.resetPassword.title') }}</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section>
+          <p class="text-body2">
+            {{ t('auth.resetPassword.instructions') }}
+          </p>
+          <q-form @submit.prevent="handleResetPassword">
+            <q-input
+              v-model="resetEmail"
+              :label="t('auth.resetPassword.email')"
+              type="email"
+              outlined
+              :rules="[
+                val => !!val || t('auth.resetPassword.emailRequired'),
+                val => /.+@.+\..+/.test(val) || t('auth.resetPassword.invalidEmail')
+              ]"
+            >
+              <template v-slot:prepend>
+                <q-icon name="email" />
+              </template>
+            </q-input>
+
+            <div class="row justify-end q-mt-md">
+              <q-btn :label="t('auth.resetPassword.cancel')" color="primary" flat v-close-popup />
+              <q-btn
+                :label="t('auth.resetPassword.sendLink')"
+                color="primary"
+                :loading="resetLoading"
+                type="submit"
+              />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
     </q-dialog>
   </div>
 </template>
@@ -341,7 +380,7 @@ export default {
       username: '',
       email: '',
       password: '',
-      preferred_language: locale.value
+      preferred_language: ''
     })
 
     const currentLanguage = computed(() => 
@@ -410,7 +449,7 @@ export default {
           registerForm.value.username,
           registerForm.value.email,
           registerForm.value.password,
-          registerForm.value.preferred_language
+          registerForm.value.preferred_language.value // Need to pass two leter code
         )
         // Auto login after registration
         await authService.login(registerForm.value.username, registerForm.value.password)
@@ -458,21 +497,19 @@ export default {
     const handleResetPassword = async () => {
       try {
         resetLoading.value = true
-        await axios.post('http://localhost:8000/api/auth/request-reset/', {
-          email: resetEmail.value
-        })
+        await authService.requestPasswordReset(resetEmail.value)
         
         resetPasswordDialog.value = false
         $q.notify({
           color: 'positive',
-          message: 'Password reset instructions sent to your email',
+          message: t('auth.resetPassword.success'),
           icon: 'check'
         })
         resetEmail.value = ''
       } catch (error) {
         $q.notify({
           color: 'negative',
-          message: error.response?.data?.error || 'Failed to send reset email',
+          message: error.response?.data?.error || t('auth.resetPassword.error'),
           icon: 'error'
         })
       } finally {

@@ -182,7 +182,7 @@
       "forgotPassword": "¿Olvidó su contraseña?",
       "landing": {
         "cta": {
-          "createAccount": "Crear Cuenta Gratuita",
+          "createAccount": "Crear Cuenta",
           "login": "Iniciar Sesión"
         },
         "features": {
@@ -217,7 +217,8 @@
       "subtitle": "Monitoree y analice los cambios en la cobertura forestal utilizando imágenes satelitales e inteligencia artificial",
       "title": "Choco Forest Watch",
       "username": "Usuario",
-      "usernameRequired": "El usuario es requerido"
+      "usernameRequired": "El usuario es requerido",
+      "languageRequired": "El idioma preferido es requerido"
     },
     "register": {
       "createButton": "Crear Cuenta",
@@ -237,10 +238,10 @@
       "enterNew": "Ingrese su nueva contraseña",
       "failed": "Error al enviar el correo electrónico",
       "instructions": "Ingrese su correo electrónico y le enviaremos instrucciones para restablecer su contraseña.",
-      "newPassword": "Nueva Contraseña",
+      "password": "Nueva Contraseña",
       "passwordRequired": "La contraseña es requerida",
-      "passwordsNoMatch": "Las contraseñas no coinciden",
-      "resetButton": "Restablecer Contraseña",
+      "mismatch": "Las contraseñas no coinciden",
+      "submit": "Restablecer Contraseña",
       "resetFailed": "Error al restablecer la contraseña",
       "resetSuccess": "¡Contraseña restablecida exitosamente! Por favor inicie sesión con su nueva contraseña.",
       "sendLink": "Enviar Link",

@@ -388,3 +388,6 @@ sentry_sdk.init(
         # Add other exceptions you want to ignore
     ],
 )
+
+# Frontend URL Configuration
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:9000')
