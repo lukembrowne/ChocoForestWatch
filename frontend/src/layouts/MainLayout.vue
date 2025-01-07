@@ -3,6 +3,9 @@
     <q-header class="modern-header">
       <q-toolbar class="q-px-lg">
         <div class="header-title">
+          <q-avatar size="24px" class="q-mr-sm">
+            <img src="/images/favicon-32x32.png" alt="logo">
+          </q-avatar>
           <span class="gt-xs">{{ t('header.title') }}</span>
           <span class="lt-sm">{{ t('header.titleShort') }}</span>
         </div>
@@ -598,6 +601,12 @@ export default {
   font-weight: 600;
   color: white;
   letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  
+  .q-avatar {
+    border-radius: 4px;
+  }
 }
 
 .flex-grow {
