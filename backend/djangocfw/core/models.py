@@ -10,12 +10,12 @@ from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 
 # Add this to ensure unique emails without migration
-@receiver(pre_save, sender=User)
-def ensure_unique_email(sender, instance, **kwargs):
-    email = instance.email.lower()  # Convert to lowercase
-    if User.objects.filter(email=email).exclude(id=instance.id).exists():
-        raise ValueError('Email already exists')
-    instance.email = email
+# @receiver(pre_save, sender=User)
+# def ensure_unique_email(sender, instance, **kwargs):
+#     email = instance.email.lower()
+#     if User.objects.filter(email=email).exclude(id=instance.id).exists():
+#         raise ValueError('Email already exists')
+#     instance.email = email
 
 class Project(models.Model):
     name = models.CharField(max_length=100)
@@ -173,16 +173,6 @@ class UserSettings(models.Model):
 
     def __str__(self):
         return f"Settings for {self.user.username}"
-
-    @receiver(post_save, sender=User)
-    def create_user_settings(sender, instance, created, **kwargs):
-        if created:
-            UserSettings.objects.create(user=instance)
-
-    @receiver(post_save, sender=User)
-    def save_user_settings(sender, instance, **kwargs):
-        if not hasattr(instance, 'settings'):
-            UserSettings.objects.create(user=instance)
 
 class Feedback(models.Model):
     FEEDBACK_TYPES = [

@@ -13,46 +13,24 @@ import random
 import string
 import os
 import logging
+from .serializers import UserSerializer
 
 logger = logging.getLogger(__name__)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
-    email = request.data.get('email')
-    
-    if not username or not password or not email:
-        return Response(
-            {'error': 'Please provide username, password and email'}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    if User.objects.filter(username=username).exists():
-        return Response(
-            {'error': 'Username already exists'}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    if User.objects.filter(email=email).exists():
-        return Response(
-            {'error': 'Email already exists'}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
-        
-    user = User.objects.create_user(
-        username=username,
-        password=password,
-        email=email
-    )
-    token, _ = Token.objects.get_or_create(user=user)
-    
-    return Response({
-        'token': token.key,
-        'user_id': user.id,
-        'username': user.username
-    })
+    print("TESTING TO SEE IF THIS WORKS")
+    serializer = UserSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({
+            'token': token.key,
+            'user_id': user.id,
+            'username': user.username
+        })
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])

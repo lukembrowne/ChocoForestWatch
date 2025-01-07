@@ -62,10 +62,11 @@ export default {
         },
         cta: {
           login: "Iniciar Sesión",
-          createAccount: "Crear Cuenta Gratuita",
+          createAccount: "Crear Cuenta",
           learnMore: "Más Información"
         }
-      }
+      },
+      alreadyHaveAccount: '¿Ya tienes una cuenta?'
     },
     register: {
       title: 'Crear Cuenta',

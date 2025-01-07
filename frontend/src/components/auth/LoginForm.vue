@@ -102,54 +102,79 @@
 
     <!-- Login Dialog -->
     <q-dialog v-model="loginDialogOpen">
-      <q-card style="width: 400px">
+      <q-card class="login-dialog">
         <q-card-section class="text-center">
-          <div class="text-h5 q-mb-md">{{ t('common.login.title') }}</div>
+          <div class="text-h5 text-weight-bold q-mb-sm">{{ t('common.login.title') }}</div>
           <q-form @submit.prevent="handleLogin" class="q-gutter-md">
-            <q-input
-              v-model="username"
-              :label="t('common.login.username')"
-              outlined
-              :rules="[val => !!val || t('common.login.usernameRequired')]"
-            />
+            <!-- Username -->
+            <div class="input-group">
+              <q-input
+                v-model="username"
+                :label="t('common.login.username')"
+                outlined
+                class="full-width"
+                :rules="[val => !!val || t('common.login.usernameRequired')]"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="person" color="primary" />
+                </template>
+              </q-input>
+            </div>
             
-            <q-input
-              v-model="password"
-              :label="t('common.login.password')"
-              outlined
-              :type="isPwd ? 'password' : 'text'"
-              :rules="[val => !!val || t('common.login.passwordRequired')]"
-            >
-              <template v-slot:append>
-                <q-icon
-                  :name="isPwd ? 'visibility_off' : 'visibility'"
-                  class="cursor-pointer"
-                  @click="isPwd = !isPwd"
-                />
-              </template>
-            </q-input>
+            <!-- Password -->
+            <div class="input-group">
+              <q-input
+                v-model="password"
+                :label="t('common.login.password')"
+                outlined
+                :type="isPwd ? 'password' : 'text'"
+                class="full-width"
+                :rules="[val => !!val || t('common.login.passwordRequired')]"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="lock" color="primary" />
+                </template>
+                <template v-slot:append>
+                  <q-icon
+                    :name="isPwd ? 'visibility_off' : 'visibility'"
+                    class="cursor-pointer"
+                    @click="isPwd = !isPwd"
+                  />
+                </template>
+              </q-input>
+            </div>
 
-            <div class="row items-center justify-between">
-              <q-checkbox v-model="rememberMe" :label="t('common.login.rememberMe')" />
+            <!-- Remember Me & Forgot Password -->
+            <div class="row items-center justify-between q-mb-md">
+              <q-checkbox 
+                v-model="rememberMe" 
+                :label="t('common.login.rememberMe')"
+                color="primary"
+              />
               <q-btn
                 flat
+                dense
                 color="primary"
                 :label="t('common.login.forgotPassword')"
                 @click="handleForgotPassword"
               />
             </div>
 
-            <div class="row q-gutter-sm justify-center">
+            <!-- Submit Button -->
+            <div class="q-mt-lg">
               <q-btn
                 type="submit"
                 color="primary"
                 :label="t('common.login.loginButton')"
                 :loading="loading"
+                class="full-width q-py-sm"
+                size="lg"
               />
             </div>
 
+            <!-- Create Account Link -->
             <div class="text-center q-mt-md">
-              <p class="text-grey-7">{{ t('common.login.noAccount') }}</p>
+              <p class="text-grey-7 q-mb-xs">{{ t('common.login.noAccount') }}</p>
               <q-btn
                 flat
                 color="primary"
@@ -164,62 +189,107 @@
 
     <!-- Register Dialog -->
     <q-dialog v-model="registerDialogOpen">
-      <q-card style="width: 400px">
+      <q-card class="register-dialog">
         <q-card-section class="text-center">
-          <div class="text-h5 q-mb-md">{{ t('common.register.title') }}</div>
-          <p class="text-subtitle1">{{ t('common.register.subtitle') }}</p>
+          <div class="text-h5 text-weight-bold q-mb-sm">{{ t('common.register.title') }}</div>
+          <p class="text-subtitle1 text-grey-7 q-mb-lg">{{ t('common.register.subtitle') }}</p>
           
           <q-form @submit.prevent="handleRegister" class="q-gutter-md">
-            <q-input
-              v-model="registerForm.username"
-              :label="t('common.login.username')"
-              outlined
-              :rules="[val => !!val || t('common.login.usernameRequired')]"
-            />
+            <!-- Username -->
+            <div class="input-group">
+              <q-input
+                v-model="registerForm.username"
+                :label="t('common.login.username')"
+                outlined
+                class="full-width"
+                :rules="[val => !!val || t('common.login.usernameRequired')]"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="person" color="primary" />
+                </template>
+              </q-input>
+            </div>
 
-            <q-input
-              v-model="registerForm.email"
-              :label="t('common.register.email')"
-              outlined
-              type="email"
-              :rules="[
-                val => !!val || t('common.register.emailRequired'),
-                val => /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(val) || t('common.register.invalidEmail')
-              ]"
-            />
+            <!-- Email -->
+            <div class="input-group">
+              <q-input
+                v-model="registerForm.email"
+                :label="t('common.register.email')"
+                outlined
+                type="email"
+                class="full-width"
+                :rules="[
+                  val => !!val || t('common.register.emailRequired'),
+                  val => /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(val) || t('common.register.invalidEmail')
+                ]"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="email" color="primary" />
+                </template>
+              </q-input>
+            </div>
 
-            <q-input
-              v-model="registerForm.password"
-              :label="t('common.login.password')"
-              outlined
-              :type="isRegisterPwd ? 'password' : 'text'"
-              :rules="[val => !!val || t('common.login.passwordRequired')]"
-            >
-              <template v-slot:append>
-                <q-icon
-                  :name="isRegisterPwd ? 'visibility_off' : 'visibility'"
-                  class="cursor-pointer"
-                  @click="isRegisterPwd = !isRegisterPwd"
-                />
-              </template>
-            </q-input>
+            <!-- Password -->
+            <div class="input-group">
+              <q-input
+                v-model="registerForm.password"
+                :label="t('common.login.password')"
+                outlined
+                :type="isRegisterPwd ? 'password' : 'text'"
+                class="full-width"
+                :rules="[val => !!val || t('common.login.passwordRequired')]"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="lock" color="primary" />
+                </template>
+                <template v-slot:append>
+                  <q-icon
+                    :name="isRegisterPwd ? 'visibility_off' : 'visibility'"
+                    class="cursor-pointer"
+                    @click="isRegisterPwd = !isRegisterPwd"
+                  />
+                </template>
+              </q-input>
+            </div>
 
-            <q-select
-              v-model="registerForm.preferred_language"
-              :options="[
-                { label: 'English', value: 'en' },
-                { label: 'Español', value: 'es' }
-              ]"
-              :label="t('common.register.preferredLanguage')"
-              outlined
-            />
+            <!-- Language Preference -->
+            <div class="input-group">
+              <q-select
+                v-model="registerForm.preferred_language"
+                :options="[
+                  { label: 'English', value: 'en' },
+                  { label: 'Español', value: 'es' }
+                ]"
+                :label="t('common.register.preferredLanguage')"
+                outlined
+                class="full-width"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="language" color="primary" />
+                </template>
+              </q-select>
+            </div>
 
-            <div class="row q-gutter-sm justify-center">
+            <!-- Submit Button -->
+            <div class="q-mt-lg">
               <q-btn
                 type="submit"
                 color="primary"
                 :label="t('common.register.createButton')"
                 :loading="registerLoading"
+                class="full-width q-py-sm"
+                size="lg"
+              />
+            </div>
+
+            <!-- Login Link -->
+            <div class="text-center q-mt-md">
+              <p class="text-grey-7 q-mb-xs">{{ t('common.login.alreadyHaveAccount') }}</p>
+              <q-btn
+                flat
+                color="primary"
+                :label="t('common.login.loginButton')"
+                @click="() => { registerDialogOpen = false; loginDialogOpen = true; }"
               />
             </div>
           </q-form>
@@ -310,9 +380,32 @@ export default {
       }
     }
 
+    const getErrorMessage = (err) => {
+      if (typeof err !== 'object') {
+        return t('common.register.failed');
+      }
+
+      // Handle specific field errors
+      const fieldErrors = {
+        username: err.username?.[0],
+        email: err.email?.[0],
+        password: err.password?.[0]
+      };
+
+      // Return the first error message found
+      for (const [field, message] of Object.entries(fieldErrors)) {
+        if (message) {
+          return message;
+        }
+      }
+
+      // Fallback to generic error message
+      return err.error || t('common.register.failed');
+    };
+
     const handleRegister = async () => {
       try {
-        registerLoading.value = true
+        registerLoading.value = true;
         await authService.register(
           registerForm.value.username,
           registerForm.value.email,
@@ -325,19 +418,34 @@ export default {
         router.push('/projects')
         $q.notify({
           color: 'positive',
-          message: t('Account created successfully!'),
+          message: t('common.register.success'),
           icon: 'check'
-        })
+        });
       } catch (err) {
+        let errorMessage = t('common.register.failed');
+        
+        // Handle field-specific errors
+        if (err.username) {
+          errorMessage = err.username[0];
+        } else if (err.email) {
+          errorMessage = err.email[0];
+        } else if (err.details) {
+          errorMessage = err.details;
+        } else if (err.error) {
+          errorMessage = err.error;
+        }
+
         $q.notify({
           color: 'negative',
-          message: err.response?.data?.error || 'Registration failed',
-          icon: 'error'
-        })
+          message: errorMessage,
+          icon: 'error',
+          timeout: 3000,
+          position: 'top'
+        });
       } finally {
-        registerLoading.value = false
+        registerLoading.value = false;
       }
-    }
+    };
 
     const showRegisterDialog = () => {
       registerDialogOpen.value = true

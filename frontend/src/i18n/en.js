@@ -78,10 +78,11 @@ export default {
         },
         cta: {
           login: "Login",
-          createAccount: "Create Free Account",
+          createAccount: "Create Account",
           learnMore: "Learn More"
         }
-      }
+      },
+      alreadyHaveAccount: 'Already have an account?'
     },
     register: {
       title: 'Create Account',
@@ -92,7 +93,12 @@ export default {
       preferredLanguage: 'Preferred Language',
       createButton: 'Create Account',
       success: 'Account created successfully!',
-      failed: 'Registration failed'
+      failed: 'Registration failed',
+      errors: {
+        userExists: 'A user with that username already exists',
+        emailExists: 'A user with that email already exists',
+        invalidEmail: 'Please enter a valid email address'
+      }
     },
     resetPassword: {
       title: 'Reset Password',

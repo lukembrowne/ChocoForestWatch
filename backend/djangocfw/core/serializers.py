@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, DeforestationHotspot, User, UserSettings
 from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.auth.models import User
 
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
@@ -85,19 +86,31 @@ class UserSettingsSerializer(serializers.ModelSerializer):
         fields = ['preferred_language', 'seen_welcome_analysis', 'seen_welcome_projects', 'seen_welcome_training']
 
 class UserSerializer(serializers.ModelSerializer):
-    settings = UserSettingsSerializer(read_only=True)
+    password = serializers.CharField(write_only=True)
     
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'settings')
+        fields = ('id', 'username', 'email', 'password')
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'email': {'required': True}
+        }
+
+    def validate_email(self, value):
+        """
+        Check that the email is unique
+        """
+        email = value.lower()
+        if User.objects.filter(email=email).exists():
+            raise serializers.ValidationError("A user with that email already exists.")
+        return email
 
     def create(self, validated_data):
+        # Ensure email is lowercase before creating user
+        validated_data['email'] = validated_data['email'].lower()
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
-            password=validated_data['password'],
-            preferred_language=validated_data.get('preferred_language', 'en')
+            password=validated_data['password']
         )
         return user
-
-# Add other serializers...

@@ -8,6 +8,8 @@ services:
     ports:
       - "5432:5432"
     restart: always
+    environment:
+      - TZ=America/New_York
 
   redis:
     image: redis:latest
@@ -34,6 +36,8 @@ services:
       - ./.env.prod
     command: gunicorn djangocfw.wsgi:application --bind 0.0.0.0:8000 --workers 3
     restart: always
+    environment:
+      - TZ=America/New_York
 
   frontend:
     build:
@@ -49,6 +53,8 @@ services:
     env_file:
       - ./.env.prod
     restart: always
+    environment:
+      - TZ=America/New_York
       
 volumes:
   postgres_data:
