@@ -3,7 +3,7 @@
     <!-- Left Panel - Analysis Controls -->
     <div class="analysis-controls-container">
       <q-card class="analysis-card">
-        <q-card-section class="analysis-header">
+        <q-card-section class="section-header">
           <div class="text-h6">{{ t('analysis.unified.deforestation.title') }}</div>
         </q-card-section>
 
@@ -11,7 +11,7 @@
         <q-card-section class="analysis-content">
           <!-- Existing Analyses Section -->
           <div class="section q-mb-md">
-            <div class="text-subtitle2 q-mb-sm">{{ t('analysis.unified.deforestation.existing.title') }}</div>
+            <div class="section-subheader">{{ t('analysis.unified.deforestation.existing.title') }}</div>
             <q-scroll-area style="height: 150px" v-if="deforestationMaps.length">
               <q-list separator dense>
                 <q-item 
@@ -21,6 +21,7 @@
                   v-ripple
                   @click="loadExistingAnalysis(map)"
                   :class="{'selected-analysis': selectedDeforestationMap?.id === map.id}"
+                  class="analysis-item"
                 >
                   <q-item-section>
                     <div class="row items-center justify-between">
@@ -54,19 +55,23 @@
 
           <!-- New Analysis Section -->
           <div class="section q-mb-md">
-            <div class="text-subtitle2 q-mb-sm">{{ t('analysis.unified.deforestation.new.title') }}</div>
+            <div class="section-subheader">{{ t('analysis.unified.deforestation.new.title') }}</div>
             <div class="row q-col-gutter-md">
               <q-select
                 v-model="startDate"
                 :options="predictionDates"
                 :label="t('analysis.unified.deforestation.new.startDate')"
-                class="col"
+                class="col modern-input"
+                dense
+                outlined
               />
               <q-select
                 v-model="endDate"
                 :options="predictionDates"
                 :label="t('analysis.unified.deforestation.new.endDate')"
-                class="col"
+                class="col modern-input"
+                dense
+                outlined
               />
             </div>
             <div class="row justify-end q-mt-sm">
@@ -76,6 +81,8 @@
                 @click="analyzeDeforestation"
                 :disable="!startDate || !endDate"
                 :loading="loading"
+                size="sm"
+                unelevated
               />
             </div>
           </div>
@@ -83,7 +90,7 @@
           <!-- Hotspots Section -->
           <div class="section" v-if="hotspots?.length">
             <div class="row items-center justify-between q-mb-sm">
-              <div class="text-subtitle2">
+              <div class="section-subheader">
                 {{ t('analysis.unified.hotspots.title') }}
                 <q-badge color="primary" class="q-ml-sm">
                   {{ hotspots.length }} {{ t('analysis.unified.hotspots.count', hotspots.length) }}
@@ -128,6 +135,8 @@
                   type="number"
                   :label="t('analysis.unified.hotspots.filters.minArea')"
                   dense
+                  outlined
+                  class="modern-input"
                   @update:model-value="loadHotspots"
                 >
                   <template v-slot:append>
@@ -141,6 +150,8 @@
                   :options="sourceOptions"
                   :label="t('analysis.unified.hotspots.filters.source')"
                   dense
+                  outlined
+                  class="modern-input"
                   @update:model-value="loadHotspots"
                 />
               </div>
@@ -1578,17 +1589,29 @@ export default {
 .analysis-controls-container {
   width: var(--app-sidebar-width);
   height: 100vh;
+  background: #fafafa;
 }
 
 .analysis-card {
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: white;
+  box-shadow: none;
+  border-radius: 0;
 }
 
-.analysis-header {
+.section-header {
+  background: #e8f5e9;
+  padding: 12px 16px;
+  border-radius: 8px;
   flex: 0 0 auto;
-  padding: 16px;
+  
+  .text-h6 {
+    font-size: 0.85rem;
+    color: var(--q-primary);
+    font-weight: 600;
+  }
 }
 
 .analysis-content {
@@ -1605,6 +1628,41 @@ export default {
   }
 }
 
+.section-subheader {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+
+.analysis-item {
+  background-color: #f8fafc;
+  border-radius: 8px;
+  margin: 4px 0;
+  font-size: 0.8rem;
+  
+  &:hover {
+    background-color: #f1f8f1;
+  }
+  
+  &.selected-analysis {
+    background: rgba(46, 125, 50, 0.1);
+    border-left: 4px solid var(--q-primary);
+  }
+}
+
+.modern-input {
+  :deep(.q-field__control) {
+    height: 36px;
+    min-height: 36px;
+  }
+  
+  :deep(.q-field__label) {
+    font-size: 0.8rem;
+    top: 8px;
+  }
+}
+
 .hotspots-scroll-area {
   height: calc(100vh - 300px);
   min-height: 200px;
@@ -1615,6 +1673,7 @@ export default {
   flex: 1;
   height: calc(100vh - var(--app-header-height));
   padding: 16px;
+  background: #fafafa;
 }
 
 .comparison-maps {
@@ -1627,9 +1686,11 @@ export default {
 .map-container {
   flex: 1;
   position: relative;
-  border: 1px solid #ddd;
+  border: none;
   border-radius: 8px;
   overflow: hidden;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }
 
 .comparison-map {
@@ -1662,14 +1723,15 @@ export default {
   right: 20px;
   background: white;
   padding: 10px;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
   font-size: 12px;
   z-index: 1000;
   
   .legend-title {
     font-weight: 600;
     margin-bottom: 5px;
+    font-size: 0.8rem;
   }
   
   .mt-2 {

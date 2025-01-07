@@ -1,20 +1,24 @@
 <template>
     <div class="training-and-polygon-manager">
+        <div class="content-wrapper">
+            <!-- DrawingControlsCard here -->
+            <drawing-controls-card />
 
-        <!-- DrawingControlsCard here -->
-        <drawing-controls-card />
+            <q-separator class="q-my-md" />
 
-        <q-separator />
+            <q-card class="polygon-list-card">
+                <q-card-section class="section-header">
+                    <div class="text-subtitle1">{{ t('training.summary.title') }}</div>
+                </q-card-section>
 
-
-
-        <q-card class="polygon-list-card">
-            <q-card-section class="q-pa-sm">
-                <div class="text-subtitle1 q-mb-sm">{{ t('training.summary.title') }}</div>
                 <div class="summary-grid">
-                    <q-item v-for="(summary, className) in classSummary" :key="className" class="summary-item">
+                    <q-item v-for="(summary, className) in classSummary" 
+                        :key="className" 
+                        class="summary-item"
+                        dense
+                    >
                         <q-item-section>
-                            <q-item-label>{{ className }}</q-item-label>
+                            <q-item-label class="text-weight-medium">{{ className }}</q-item-label>
                             <q-item-label caption>
                                 {{ summary.count }} {{ summary.count === 1 ? t('training.summary.features') : t('training.summary.features_plural') }}
                             </q-item-label>
@@ -26,24 +30,35 @@
                         </q-item-section>
                     </q-item>
                 </div>
-            </q-card-section>
-            <q-separator />
 
-            <q-card>
-                <q-card-section class="q-pa-sm">
+                <q-separator class="q-my-md" />
 
-                    <div class="text-subtitle1 q-mb-sm">{{ t('training.model.title') }}</div>
-                    <q-card-actions align="center">
-                        <q-btn :label="t('training.model.fit')" color="primary" @click="openModelTrainingDialog" />
-                        <q-btn :label="t('training.model.evaluate')" color="primary" @click="openModelEvaluationDialog" />
+                <q-card-section class="section-header">
+                    <div class="text-subtitle1">{{ t('training.model.title') }}</div>
+                </q-card-section>
 
+                <q-card-section class="q-pa-md">
+                    <q-card-actions align="center" class="q-gutter-sm">
+                        <q-btn 
+                            :label="t('training.model.fit')" 
+                            color="primary" 
+                            @click="openModelTrainingDialog"
+                            size="sm"
+                            unelevated 
+                        />
+                        <q-btn 
+                            :label="t('training.model.evaluate')" 
+                            color="primary" 
+                            @click="openModelEvaluationDialog"
+                            size="sm"
+                            unelevated 
+                        />
                     </q-card-actions>
                 </q-card-section>
             </q-card>
-        </q-card>
 
-        <training-welcome-modal />
-
+            <training-welcome-modal />
+        </div>
     </div>
 </template>
 
@@ -180,44 +195,71 @@ export default {
 .training-and-polygon-manager {
     height: calc(100vh - var(--app-header-height));
     overflow-y: auto;
+    background: #fafafa;
+}
+
+.content-wrapper {
+    padding: 16px;
+    height: 100%;
 }
 
 .manager-card {
     background-color: rgba(255, 255, 255, 1.0);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
 }
 
 .polygon-list-card {
     border-radius: 0px;
+    background: white;
+    box-shadow: none;
 }
 
-.polygon-list-section {
-    flex-grow: 1;
-    overflow-y: auto;
-}
-
-.polygon-list-card {
-    background-color: rgba(255, 255, 255, 1.0);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
-    overflow-y: auto;
-}
-
-.summary {
-    display: flex;
-    flex-wrap: wrap;
-    margin-bottom: 8px;
+.section-header {
+    background: #e8f5e9;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 0 16px;
+    
+    .text-subtitle1 {
+        font-size: 0.85rem;
+        color: var(--q-primary);
+        font-weight: 600;
+    }
 }
 
 .summary-grid {
     display: grid;
     gap: 8px;
-    width: 60%;
+    padding: 0 16px;
 }
 
 .summary-item {
-    background-color: rgba(0, 0, 0, 0.03);
+    background-color: #f8fafc;
+    border-radius: 8px;
+    padding: 8px;
     width: 100%;
+    font-size: 0.8rem;
+
+    &:hover {
+        background-color: #f1f8f1;
+    }
+
+    :deep(.q-item__label) {
+        font-size: 0.8rem;
+    }
+
+    :deep(.q-item__label--caption) {
+        font-size: 0.75rem;
+    }
+}
+
+:deep(.q-chip) {
+    font-size: 0.75rem;
+    padding: 0 8px;
+}
+
+.q-separator {
+    margin: 16px 0;
 }
 </style>

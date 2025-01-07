@@ -1,37 +1,52 @@
 <template>
   <q-layout view="hHh LpR fFf">
-    <q-header elevated class="bg-primary text-white">
-      <q-toolbar class="q-px-md">
-        <q-toolbar-title class="gt-xs">{{ t('header.title') }}</q-toolbar-title>
-        <q-toolbar-title class="lt-sm">{{ t('header.titleShort') }}</q-toolbar-title>
+    <q-header class="modern-header">
+      <q-toolbar class="q-px-lg">
+        <div class="header-title">
+          <span class="gt-xs">{{ t('header.title') }}</span>
+          <span class="lt-sm">{{ t('header.titleShort') }}</span>
+        </div>
         
-        <div class="row items-center no-wrap">
-          <q-btn v-for="section in sections" :key="section.name" flat square :icon="section.icon" 
+        <div class="flex-grow" />
+        
+        <div class="nav-section row items-center no-wrap q-gutter-x-md">
+          <q-btn 
+            v-for="section in sections" 
+            :key="section.name" 
+            flat 
+            :icon="section.icon" 
             :label="$q.screen.gt.xs ? t(`navigation.${section.id}.name`) : ''"
-            class="q-px-sm"
+            class="nav-btn"
+            size="sm"
             @click="handleSectionClick(section)">
             <q-tooltip>{{ t(`navigation.${section.id}.tooltip`) }}</q-tooltip>
           </q-btn>
+          <q-btn
+            flat
+            icon="feedback"
+            :label="$q.screen.gt.xs ? t('feedback.buttonNav') : ''"
+            class="nav-btn"
+            size="sm"
+            @click="showFeedbackDialog = true"
+          >
+            <q-tooltip>{{ t('feedback.button') }}</q-tooltip>
+          </q-btn>
         </div>
 
-        <q-btn
-          flat
-          icon="feedback"
-          :label="$q.screen.gt.xs ? t('feedback.buttonNav') : ''"
-          class="q-mr-sm"
-          @click="showFeedbackDialog = true"
+        <q-btn-dropdown 
+          flat 
+          :icon="currentUser ? 'account_circle' : 'login'"
+          class="user-menu-btn q-ml-lg" 
+          v-if="currentUser"
+          size="sm"
         >
-          <q-tooltip>{{ t('feedback.button') }}</q-tooltip>
-        </q-btn>
-
-        <q-btn-dropdown flat round icon="account_circle" class="q-ml-md" v-if="currentUser">
-          <q-list>
+          <q-list class="modern-menu">
             <q-item class="text-center q-py-md">
               <q-item-section>
-                <q-avatar size="72px" color="primary" text-color="white">
+                <q-avatar size="48px" color="primary" text-color="white">
                   {{ currentUser.user.username.charAt(0).toUpperCase() }}
                 </q-avatar>
-                <div class="text-subtitle1 q-mt-md">{{ currentUser.user.username }}</div>
+                <div class="text-subtitle2 q-mt-sm">{{ currentUser.user.username }}</div>
               </q-item-section>
             </q-item>
 
@@ -582,6 +597,108 @@ export default {
 </script>
 
 <style lang="scss">
+.modern-header {
+  background: #2e7d32;
+  color: white;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  height: var(--app-header-height);
+}
+
+.header-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;
+  letter-spacing: -0.3px;
+}
+
+.flex-grow {
+  flex: 1;
+}
+
+.nav-section {
+  margin: 0;
+}
+
+.nav-btn {
+  border-radius: 8px;
+  font-weight: 500;
+  color: #e4e9f2;
+  font-size: 15px;
+  padding: 8px 12px;
+  min-height: 36px;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
+  
+  .q-icon {
+    font-size: 1.4rem;
+  }
+  
+  &.q-btn--flat {
+    min-height: 36px;
+    padding: 0 16px;
+  }
+}
+
+.user-menu-btn {
+  border-radius: 8px;
+  padding: 4px;
+  color: #e4e9f2;
+  
+  &:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  .q-icon {
+    font-size: 1.6rem;
+  }
+
+  :deep(.q-menu) {
+    margin-top: 12px;
+  }
+}
+
+.modern-menu {
+  border-radius: 12px;
+  margin-top: 8px;
+  background: white;
+  width: 280px;
+  
+  :deep(.q-item) {
+    min-height: 40px;
+    font-size: 0.9rem;
+    color: #2c3e50;
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.03);
+      color: var(--q-primary);
+    }
+    
+    .q-icon {
+      font-size: 1.2rem;
+      color: #666;
+    }
+  }
+
+  .q-item.text-center {
+    padding: 24px 0;
+    background: #f8fafc;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+
+  .q-separator {
+    background: rgba(0, 0, 0, 0.06);
+  }
+
+  .q-radio {
+    font-size: 0.9rem;
+  }
+}
+
 .z-layers {
   .sidebar-container {
     position: absolute;

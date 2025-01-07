@@ -1,8 +1,12 @@
 <template>
   <div class="project-selection-container">
     <q-card class="project-card">
-      <q-card-section>
-        <div class="text-subtitle1 q-mb-sm">{{ t('projects.existingProjects') }}</div>
+      <!-- Existing Projects Section -->
+      <q-card-section class="section-header">
+        <div class="text-subtitle1 text-weight-medium">{{ t('projects.existingProjects') }}</div>
+      </q-card-section>
+
+      <q-card-section class="q-pa-none">
         <q-table 
           :rows="projects" 
           :columns="columns" 
@@ -11,18 +15,22 @@
           @row-click="onRowClick"
           dense
           flat
+          class="modern-table"
+          :style="{ fontSize: '0.8rem' }"
         >
           <template v-slot:body-cell-actions="props">
-            <q-td :props="props">
-              <q-btn flat round color="primary" icon="launch" @click.stop="onOk(props.row)">
-                <q-tooltip>{{ t('projects.tooltips.load') }}</q-tooltip>
-              </q-btn>
-              <q-btn flat round color="secondary" icon="edit" @click.stop="openRenameDialog(props.row)">
-                <q-tooltip>{{ t('projects.tooltips.rename') }}</q-tooltip>
-              </q-btn>
-              <q-btn flat round color="negative" icon="delete" @click.stop="confirmDelete(props.row)">
-                <q-tooltip>{{ t('projects.tooltips.delete') }}</q-tooltip>
-              </q-btn>
+            <q-td :props="props" class="text-right">
+              <div class="row justify-end actions-container">
+                <q-btn flat round dense color="primary" icon="launch" size="sm" @click.stop="onOk(props.row)">
+                  <q-tooltip>{{ t('projects.tooltips.load') }}</q-tooltip>
+                </q-btn>
+                <q-btn flat round dense color="secondary" icon="edit" size="sm" @click.stop="openRenameDialog(props.row)">
+                  <q-tooltip>{{ t('projects.tooltips.rename') }}</q-tooltip>
+                </q-btn>
+                <q-btn flat round dense color="negative" icon="delete" size="sm" @click.stop="confirmDelete(props.row)">
+                  <q-tooltip>{{ t('projects.tooltips.delete') }}</q-tooltip>
+                </q-btn>
+              </div>
             </q-td>
           </template>
         </q-table>
@@ -30,32 +38,35 @@
 
       <q-separator />
 
-      <q-card-section>
-        <div class="text-subtitle1 q-mb-sm">{{ t('projects.createNew') }}</div>
-        <q-form @submit.prevent="validateAndCreateProject">
+      <!-- Create New Project Section -->
+      <q-card-section class="section-header q-mt-md">
+        <div class="text-subtitle1 text-weight-medium">{{ t('projects.createNew') }}</div>
+      </q-card-section>
+
+      <q-card-section class="q-pt-none">
+        <q-form @submit.prevent="validateAndCreateProject" class="q-gutter-sm">
           <q-input 
             dense 
-            rounded 
             outlined 
             v-model="newProject.name" 
             :label="t('projects.projectName')"
-            class="q-mb-md" 
+            class="modern-input" 
           />
           <q-input 
             dense 
-            rounded 
             outlined 
             v-model="newProject.description" 
             :label="t('projects.description')"
             type="textarea"
-            class="q-mb-md" 
+            rows="3"
+            class="modern-input" 
           />
           <q-btn 
             :label="t('projects.createButton')"
             type="submit" 
             color="primary" 
-            class="q-mt-md full-width" 
-            rounded 
+            class="full-width q-mt-md" 
+            unelevated
           />
         </q-form>
       </q-card-section>
@@ -63,23 +74,28 @@
 
     <!-- Rename Dialog -->
     <q-dialog v-model="showRenameDialog">
-      <q-card style="min-width: 350px">
-        <q-card-section>
+      <q-card class="modern-dialog">
+        <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">{{ t('projects.rename.title') }}</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
-        <q-card-section class="q-pt-none">
+        <q-card-section>
           <q-input 
             v-model="newProjectName" 
             :label="t('projects.rename.newName')"
+            dense
+            outlined
+            class="modern-input"
             autofocus 
             @keyup.enter="renameProject" 
           />
         </q-card-section>
 
-        <q-card-actions align="right" class="text-primary">
+        <q-card-actions align="right">
           <q-btn flat :label="t('projects.buttons.cancel')" v-close-popup />
-          <q-btn flat :label="t('projects.buttons.rename')" @click="renameProject" v-close-popup />
+          <q-btn unelevated color="primary" :label="t('projects.buttons.rename')" @click="renameProject" v-close-popup />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -331,6 +347,7 @@ export default {
 .project-selection-container {
   height: calc(100vh - var(--app-header-height));
   overflow-y: auto;
+  background: #fafafa;
 }
 
 .project-card {
@@ -340,26 +357,124 @@ export default {
   overflow: auto;
   border-radius: 0;
   box-shadow: none;
+  background: white;
 }
 
-.q-table {
-  background-color: transparent;
-}
-
-.project-item {
+.section-header {
+  background: #e8f5e9;
+  padding: 12px 16px;
   border-radius: 8px;
-  margin: 4px;
-  background-color: #f5f5f5;
-  transition: background-color 0.3s;
-
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+  margin: 0 16px;
+  
+  .text-subtitle1 {
+    font-size: 0.85rem;
+    color: var(--q-primary);
+    font-weight: 600;
   }
+}
+
+.modern-table {
+  background-color: transparent;
+  padding: 0 16px;
+  
+  :deep(.q-table__card) {
+    box-shadow: none;
+  }
+
+  :deep(.q-table__container) {
+    background-color: transparent;
+  }
+
+  :deep(.q-table thead tr) {
+    background-color: #f8fafc;
+    font-size: 0.8rem;
+    
+    th:first-child {
+      border-top-left-radius: 8px;
+      border-bottom-left-radius: 8px;
+    }
+    
+    th:last-child {
+      border-top-right-radius: 8px;
+      border-bottom-right-radius: 8px;
+    }
+  }
+
+  :deep(.q-table tbody tr:hover) {
+    background-color: #f1f8f1;
+  }
+
+  :deep(.q-table tbody td) {
+    padding: 4px 8px;
+    height: 32px;
+  }
+}
+
+.actions-container {
+  gap: 2px;
+  
+  .q-btn {
+    margin: 0;
+    padding: 4px;
+    
+    .q-icon {
+      font-size: 1rem;
+    }
+  }
+}
+
+.modern-input {
+  :deep(.q-field__control) {
+    background: white;
+    min-height: 36px;
+  }
+
+  :deep(.q-field__label) {
+    font-size: 0.8rem;
+    top: 8px;
+  }
+}
+
+.modern-dialog {
+  min-width: 400px;
+  border-radius: 8px;
 }
 
 .q-form {
-  .q-input {
-    margin-bottom: 8px;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px;
+
+  .q-btn {
+    height: 32px;
+    font-size: 0.8rem;
+    border-radius: 8px;
   }
+}
+
+// Make buttons and inputs more compact
+:deep(.q-btn) {
+  font-size: 0.8rem;
+  padding: 4px 12px;
+}
+
+:deep(.q-field) {
+  font-size: 0.8rem;
+}
+
+// Improve table typography
+:deep(.q-table) {
+  font-size: 0.8rem;
+  
+  th {
+    font-weight: 500;
+    color: #2c3e50;
+    padding: 8px;
+  }
+}
+
+// Add some breathing room between sections
+.q-separator {
+  margin: 16px 0;
 }
 </style>

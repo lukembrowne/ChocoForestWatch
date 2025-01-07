@@ -482,19 +482,19 @@ export default {
 
     const fundingSources = [
       {
-        name: "Global Forest Watch Small Grants Program",
+        name: "Global Forest Watch Small Grants Program and the World Resources Institute",
         icon: "eco"
       },
       {
-        name: "Yale Environmental Data Science Initiative",
+        name: "Yale Environmental Data Science Initiative (YEDSI)",
         icon: "school"
       },
       {
-        name: "Tulane Center for AI Excellence",
+        name: "Tulane Center of Excellence for Community-Engaged Artificial Intelligence (CEAI)",
         icon: "psychology"
       },
       {
-        name: "Connolly Alexander Institute",
+        name: "The Connolly Alexander Institute for Data Science (CAIDS)",
         icon: "analytics"
       }
     ]
