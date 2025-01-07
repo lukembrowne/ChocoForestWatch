@@ -85,6 +85,8 @@ Click the link below to reset it:
 
 {reset_url}
 
+Your username is: {user.username}
+
 If you did not request this reset, please ignore this email or contact support if you have concerns.
 
 This link will expire in 24 hours.
@@ -134,26 +136,3 @@ def reset_password(request, uidb64, token):
             return Response({'error': 'Invalid reset link'}, status=400)
     except (TypeError, ValueError, User.DoesNotExist):
         return Response({'error': 'Invalid reset link'}, status=400)
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def reset_password_simple(request):
-    email = request.data.get('email')
-    try:
-        user = User.objects.get(email=email)
-        # Generate temporary password
-        temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
-        user.set_password(temp_password)
-        user.save()
-        
-        # Send email with temporary password
-        send_mail(
-            'Password Reset',
-            f'Your temporary password is: {temp_password}\nPlease change it after logging in.',
-            'noreply@yourapp.com',
-            [email],
-            fail_silently=False,
-        )
-        return Response({'message': 'New password sent to your email'})
-    except User.DoesNotExist:
-        return Response({'error': 'No user found with this email'}, status=400)
