@@ -660,7 +660,7 @@
         "description": "Start by creating a new project to organize your work",
         "title": "Create a Project"
       },
-      "feedback": "We value your input! Please use the feedback button in the navigation bar to send bug reports, suggestions, or general feedback. You can also email directly at lukebrowne@fcat-ecuador.org",
+      "feedback": "We value your input! Please use the feedback button in the navigation bar to send bug reports, suggestions, or general feedback. You can also email directly to: lukebrowne - at - fcat-ecuador.org",
       "intro": "Projects help you organize your deforestation monitoring work. Here's how to get started:",
       "landcover": "Currently, the system uses 5 fixed land cover classes: forest, non-forest (agriculture), shadow, cloud, and water. Support for custom land cover classes is planned for future updates.",
       "title": "Welcome to Choco Forest Watch",

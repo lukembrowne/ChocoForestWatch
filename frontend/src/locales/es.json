@@ -290,7 +290,7 @@
       "zoomIn": "Acercar (Z)",
       "zoomOut": "Alejar (X)"
     },
-    "notifications": {
+      "notifications": {
       "dateExcluded": "Fecha ha sido excluida",
       "dateIncluded": "Fecha ha sido incluida",
       "dateToggleError": "Error al cambiar el estado de exclusión de la fecha",
@@ -658,8 +658,8 @@
         "description": "Comienza creando un nuevo proyecto para organizar tu trabajo",
         "title": "Crear un Proyecto"
       },
-      "feedback": "¡Valoramos tu opinión! Por favor, utiliza el botón de comentarios en la barra de navegación para enviar reportes de errores, sugerencias o comentarios generales. También puedes enviar un correo directamente a lukebrowne@fcat-ecuador.org",
-      "intro": "Bienvenido a Choco Forest Watch! Esta herramienta te ayuda a monitorear y analizar la deforestación en tu área de interés.",
+      "feedback": "Valoramos su opinión! Por favor use el botón de comentarios en la barra de navegación para enviar reportes de errores, sugerencias o comentarios generales. También puede enviar un correo electrónico directamente a lukebrowne - at - fcat-ecuador.org",
+      "intro": "Los proyectos le ayudan a organizar su trabajo de monitoreo de deforestación. Aquí le mostramos cómo empezar:",
       "landcover": "Actualmente, el sistema utiliza 5 clases fijas de cobertura terrestre: bosque, no-bosque (agricultura), sombra, nube y agua. El soporte para clases personalizadas de cobertura terrestre está planificado para futuras actualizaciones.",
       "title": "Bienvenido a Choco Forest Watch",
       "train": {
