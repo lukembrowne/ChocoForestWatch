@@ -176,30 +176,23 @@
     </q-dialog>
 
     <q-dialog v-model="showAboutDialog">
-      <q-card style="width: 700px; max-width: 90vw;">
-        <q-card-section class="bg-primary text-white">
+      <q-card class="modern-menu" style="width: 500px">
+        <q-card-section>
           <div class="text-h6">{{ t('about.title') }}</div>
         </q-card-section>
 
         <q-card-section>
-          <div class="q-pa-md">
-            <p class="text-body1">
-              {{ t('about.version') }}: {{ version }}
-            </p>
+          <p>{{ t('about.description') }} 
+            <a href="https://github.com/lukembrowne/chocoforestwatch" target="_blank">{{ t('about.github') }}</a>.
+          </p>
 
-            <p class="text-body1">
-              {{ t('about.description') }}
-              <a href="https://github.com/lukembrowne/chocoforestwatch" target="_blank">
-                {{ t('about.github') }}
-              </a>.
-            </p>
+          <div class="disclaimer q-mt-md">
+            <div class="text-subtitle2 q-mb-sm">{{ t('about.disclaimer.title') }}</div>
+            <p class="text-caption">{{ t('about.disclaimer.text') }}</p>
+          </div>
 
-            <p class="text-body1">
-              {{ t('about.contact') }}
-              <a href="mailto:lukebrowne@fcat-ecuador.org">lukebrowne@fcat-ecuador.org</a>
-            </p>
-
-            <div class="text-h6 q-mt-lg">{{ t('about.creditsTitle') }}</div>
+          <div class="q-mt-md">
+            <div class="text-subtitle2 q-mb-sm">{{ t('about.creditsTitle') }}</div>
             
             <p class="text-body1">
               <strong>{{ t('about.satellite.title') }}:</strong><br>
@@ -229,10 +222,6 @@
             </p>
           </div>
         </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat :label="t('common.close')" color="primary" v-close-popup />
-        </q-card-actions>
       </q-card>
     </q-dialog>
   </q-layout>
@@ -770,6 +759,22 @@ export default {
   
   textarea {
     line-height: 1.4;
+  }
+}
+
+.disclaimer {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 12px;
+  border-left: 4px solid var(--q-primary);
+  
+  .text-subtitle2 {
+    color: var(--q-primary);
+  }
+  
+  .text-caption {
+    color: #475569;
+    line-height: 1.5;
   }
 }
 </style>

@@ -1,5 +1,9 @@
 {
   "about": {
+    "disclaimer": {
+      "title": "Disclaimer",
+      "text": "This platform is provided 'as is' for research and conservation purposes. While we strive for accuracy, we make no warranties about the completeness, reliability, and accuracy of this information. Any action you take upon the information on this website is strictly at your own risk. We will not be liable for any losses and damages in connection with the use of our platform."
+    },
     "alerts": {
       "description": "Global Forest Watch integrated alerts available under",
       "license": "CC BY 4.0 License",

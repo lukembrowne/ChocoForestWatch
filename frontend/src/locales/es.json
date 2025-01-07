@@ -1,5 +1,9 @@
 {
   "about": {
+    "disclaimer": {
+      "title": "Aviso Legal",
+      "text": "Esta plataforma se proporciona 'tal cual' para fines de investigación y conservación. Si bien nos esforzamos por la precisión, no ofrecemos garantías sobre la integridad, fiabilidad y exactitud de esta información. Cualquier acción que tome sobre la información en este sitio web es estrictamente bajo su propio riesgo. No seremos responsables por pérdidas y daños relacionados con el uso de nuestra plataforma."
+    },
     "alerts": {
       "description": "Alertas integradas de Global Forest Watch disponibles bajo",
       "license": "Licencia CC BY 4.0",
