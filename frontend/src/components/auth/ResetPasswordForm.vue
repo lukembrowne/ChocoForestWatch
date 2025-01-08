@@ -65,7 +65,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import axios from 'axios'
+import authService from '../../services/auth'
 
 export default {
   name: 'ResetPasswordForm',
@@ -98,7 +98,7 @@ export default {
       try {
         loading.value = true
         const { uid, token } = route.params
-        
+        console.log("Resetting password with uid: ", uid, "and token: ", token)
         await authService.resetPassword(uid, token, newPassword.value)
 
         $q.notify({
@@ -109,6 +109,7 @@ export default {
 
         router.push('/login')
       } catch (err) {
+        console.log("Error resetting password: ", err)
         error.value = err.response?.data?.error || t('auth.resetPassword.resetFailed')
         $q.notify({
           color: 'negative',

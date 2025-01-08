@@ -59,9 +59,10 @@ class AuthService {
         }
     }
 
-    async resetPassword(token, newPassword) {
+    async resetPassword(uidb64, token, newPassword) {
         try {
-            const response = await axios.post(`${API_URL}/auth/reset-password/`, {
+            console.log("Resetting password with token: ", token)
+            const response = await axios.post(`${API_URL}/auth/reset-password/${uidb64}/${token}/`, {
                 token,
                 new_password: newPassword
             });

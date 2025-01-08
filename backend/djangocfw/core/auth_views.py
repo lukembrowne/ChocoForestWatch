@@ -121,6 +121,7 @@ The Choco Forest Watch Team
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def reset_password(request, uidb64, token):
+    print("Resetting password with uid: ", uidb64, "and token: ", token)
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
