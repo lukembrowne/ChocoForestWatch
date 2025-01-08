@@ -1,9 +1,68 @@
 <template>
   <div class="project-selection-container">
     <q-card class="project-card">
-      <!-- Existing Projects Section -->
+      <!-- Create New Project Section -->
       <q-card-section class="section-header">
-        <div class="text-subtitle1 text-weight-medium">{{ t('projects.existingProjects') }}</div>
+        <div class="row items-center">
+          <div class="text-subtitle1 text-weight-medium">{{ t('projects.createNew') }}</div>
+          <q-btn
+            flat
+            round
+            dense
+            icon="help"
+            size="sm"
+            class="q-ml-sm"
+          >
+            <q-tooltip>{{ t('projects.tooltips.createNewSection') }}</q-tooltip>
+          </q-btn>
+        </div>
+      </q-card-section>
+
+      <q-card-section class="q-pt-none">
+        <q-form @submit.prevent="validateAndCreateProject" class="q-gutter-sm">
+          <q-input 
+            dense 
+            outlined 
+            v-model="newProject.name" 
+            :label="t('projects.projectName')"
+            class="modern-input" 
+          />
+          <q-input 
+            dense 
+            outlined 
+            v-model="newProject.description" 
+            :label="t('projects.description')"
+            type="textarea"
+            rows="3"
+            class="modern-input" 
+          />
+          <q-btn 
+            :label="t('projects.createButton')"
+            type="submit" 
+            color="primary" 
+            class="full-width q-mt-md" 
+            unelevated
+          />
+        </q-form>
+      </q-card-section>
+
+      <q-separator />
+
+      <!-- Existing Projects Section -->
+      <q-card-section class="section-header q-mt-md">
+        <div class="row items-center">
+          <div class="text-subtitle1 text-weight-medium">{{ t('projects.existingProjects') }}</div>
+          <q-btn
+            flat
+            round
+            dense
+            icon="help"
+            size="sm"
+            class="q-ml-sm"
+          >
+            <q-tooltip>{{ t('projects.tooltips.existingSection') }}</q-tooltip>
+          </q-btn>
+        </div>
       </q-card-section>
 
       <q-card-section class="q-pa-none">
@@ -36,71 +95,36 @@
         </q-table>
       </q-card-section>
 
-      <q-separator />
+      <!-- Rename Dialog -->
+      <q-dialog v-model="showRenameDialog">
+        <q-card class="modern-dialog">
+          <q-card-section class="row items-center q-pb-none">
+            <div class="text-h6">{{ t('projects.rename.title') }}</div>
+            <q-space />
+            <q-btn icon="close" flat round dense v-close-popup />
+          </q-card-section>
 
-      <!-- Create New Project Section -->
-      <q-card-section class="section-header q-mt-md">
-        <div class="text-subtitle1 text-weight-medium">{{ t('projects.createNew') }}</div>
-      </q-card-section>
+          <q-card-section>
+            <q-input 
+              v-model="newProjectName" 
+              :label="t('projects.rename.newName')"
+              dense
+              outlined
+              class="modern-input"
+              autofocus 
+              @keyup.enter="renameProject" 
+            />
+          </q-card-section>
 
-      <q-card-section class="q-pt-none">
-        <q-form @submit.prevent="validateAndCreateProject" class="q-gutter-sm">
-          <q-input 
-            dense 
-            outlined 
-            v-model="newProject.name" 
-            :label="t('projects.projectName')"
-            class="modern-input" 
-          />
-          <q-input 
-            dense 
-            outlined 
-            v-model="newProject.description" 
-            :label="t('projects.description')"
-            type="textarea"
-            rows="3"
-            class="modern-input" 
-          />
-          <q-btn 
-            :label="t('projects.createButton')"
-            type="submit" 
-            color="primary" 
-            class="full-width q-mt-md" 
-            unelevated
-          />
-        </q-form>
-      </q-card-section>
+          <q-card-actions align="right">
+            <q-btn flat :label="t('projects.buttons.cancel')" v-close-popup />
+            <q-btn unelevated color="primary" :label="t('projects.buttons.rename')" @click="renameProject" v-close-popup />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
+
+      <projects-welcome-modal />
     </q-card>
-
-    <!-- Rename Dialog -->
-    <q-dialog v-model="showRenameDialog">
-      <q-card class="modern-dialog">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">{{ t('projects.rename.title') }}</div>
-          <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
-        </q-card-section>
-
-        <q-card-section>
-          <q-input 
-            v-model="newProjectName" 
-            :label="t('projects.rename.newName')"
-            dense
-            outlined
-            class="modern-input"
-            autofocus 
-            @keyup.enter="renameProject" 
-          />
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat :label="t('projects.buttons.cancel')" v-close-popup />
-          <q-btn unelevated color="primary" :label="t('projects.buttons.rename')" @click="renameProject" v-close-popup />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <projects-welcome-modal />
   </div>
 </template>
 
@@ -363,13 +387,22 @@ export default {
 .section-header {
   background: #e8f5e9;
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: 10px;
   margin: 0 16px;
   
   .text-subtitle1 {
     font-size: 0.85rem;
     color: var(--q-primary);
     font-weight: 600;
+  }
+
+  .q-btn {
+    color: var(--q-primary);
+    opacity: 0.8;
+    
+    &:hover {
+      opacity: 1;
+    }
   }
 }
 

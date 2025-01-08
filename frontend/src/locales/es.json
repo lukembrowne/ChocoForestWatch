@@ -462,7 +462,9 @@
     "tooltips": {
       "delete": "Eliminar Proyecto",
       "load": "Cargar Proyecto",
-      "rename": "Renombrar Proyecto"
+      "rename": "Renombrar Proyecto",
+      "createNewSection": "Comience aquí para crear un nuevo proyecto para monitorear la deforestación en su área de interés",
+      "existingSection": "Ver y gestionar sus proyectos creados anteriormente"
     },
     "uniqueClasses": "Los nombres de las clases deben ser únicos"
   },

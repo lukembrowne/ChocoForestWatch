@@ -464,7 +464,9 @@
     "tooltips": {
       "delete": "Delete Project",
       "load": "Load Project",
-      "rename": "Rename Project"
+      "rename": "Rename Project",
+      "createNewSection": "Start here to create a new project for monitoring deforestation in your area of interest",
+      "existingSection": "View and manage your previously created projects"
     },
     "uniqueClasses": "Class names must be unique"
   },
