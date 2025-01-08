@@ -367,7 +367,7 @@
     "satellite": "Satellite",
     "switcher": {
       "opacity": "Opacity",
-      "title": "Layers",
+      "title": "Map Layers",
       "tooltips": {
         "remove": "Remove layer",
         "toggleOpacity": "Toggle opacity control"

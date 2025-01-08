@@ -1,7 +1,6 @@
 <template>
   <div class="custom-layer-switcher">
-    <p class="text-subtitle2 q-mb-sm">{{ t('layers.switcher.title') }}</p>
-    <q-separator class="q-mb-sm" />
+    <p class="text-subtitle1 q-mb-sm">{{ t('layers.switcher.title') }}</p>
     <Sortable
       :list="mapLayers"
       item-key="id"
@@ -138,16 +137,10 @@ export default {
   overflow-y: auto;
 }
 
-.text-subtitle2 {
-  font-size: 0.775rem;
-  margin-bottom: 4px;
-}
-
 .layer-item {
-  font-size: 0.7125rem;
   
   .q-checkbox {
-    font-size: 0.7125rem;
+    font-size: .85rem;
   }
   
   .opacity-slider {
@@ -169,10 +162,11 @@ export default {
 
 .layer-item {
   border-bottom: 1px solid #e0e0e0;
-  padding: 4px 0;
-
   &:last-child {
     border-bottom: none;
+  }
+  &:first-child {
+    border-top: 1px solid #e0e0e0;
   }
 }
 

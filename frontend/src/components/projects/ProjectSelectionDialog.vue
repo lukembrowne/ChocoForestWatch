@@ -384,64 +384,7 @@ export default {
   background: white;
 }
 
-.section-header {
-  background: #e8f5e9;
-  padding: 12px 16px;
-  border-radius: 10px;
-  margin: 0 16px;
-  
-  .text-subtitle1 {
-    font-size: 0.85rem;
-    color: var(--q-primary);
-    font-weight: 600;
-  }
 
-  .q-btn {
-    color: var(--q-primary);
-    opacity: 0.8;
-    
-    &:hover {
-      opacity: 1;
-    }
-  }
-}
-
-.modern-table {
-  background-color: transparent;
-  padding: 0 16px;
-  
-  :deep(.q-table__card) {
-    box-shadow: none;
-  }
-
-  :deep(.q-table__container) {
-    background-color: transparent;
-  }
-
-  :deep(.q-table thead tr) {
-    background-color: #f8fafc;
-    font-size: 0.8rem;
-    
-    th:first-child {
-      border-top-left-radius: 8px;
-      border-bottom-left-radius: 8px;
-    }
-    
-    th:last-child {
-      border-top-right-radius: 8px;
-      border-bottom-right-radius: 8px;
-    }
-  }
-
-  :deep(.q-table tbody tr:hover) {
-    background-color: #f1f8f1;
-  }
-
-  :deep(.q-table tbody td) {
-    padding: 4px 8px;
-    height: 32px;
-  }
-}
 
 .actions-container {
   gap: 2px;
@@ -485,29 +428,4 @@ export default {
   }
 }
 
-// Make buttons and inputs more compact
-:deep(.q-btn) {
-  font-size: 0.8rem;
-  padding: 4px 12px;
-}
-
-:deep(.q-field) {
-  font-size: 0.8rem;
-}
-
-// Improve table typography
-:deep(.q-table) {
-  font-size: 0.8rem;
-  
-  th {
-    font-weight: 500;
-    color: #2c3e50;
-    padding: 8px;
-  }
-}
-
-// Add some breathing room between sections
-.q-separator {
-  margin: 16px 0;
-}
 </style>

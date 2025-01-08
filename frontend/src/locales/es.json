@@ -365,7 +365,7 @@
     "satellite": "Satélite",
     "switcher": {
       "opacity": "Opacidad",
-      "title": "Capas",
+      "title": "Capas del Mapa",
       "tooltips": {
         "remove": "Eliminar capa",
         "toggleOpacity": "Alternar control de opacidad"

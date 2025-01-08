@@ -1601,18 +1601,6 @@ export default {
   border-radius: 0;
 }
 
-.section-header {
-  background: #e8f5e9;
-  padding: 12px 16px;
-  border-radius: 8px;
-  flex: 0 0 auto;
-  
-  .text-h6 {
-    font-size: 0.85rem;
-    color: var(--q-primary);
-    font-weight: 600;
-  }
-}
 
 .analysis-content {
   flex: 1 1 auto;
@@ -1628,13 +1616,6 @@ export default {
   }
 }
 
-.section-subheader {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #2c3e50;
-  margin-bottom: 8px;
-}
-
 .analysis-item {
   background-color: #f8fafc;
   border-radius: 8px;
@@ -1648,18 +1629,6 @@ export default {
   &.selected-analysis {
     background: rgba(46, 125, 50, 0.1);
     border-left: 4px solid var(--q-primary);
-  }
-}
-
-.modern-input {
-  :deep(.q-field__control) {
-    height: 36px;
-    min-height: 36px;
-  }
-  
-  :deep(.q-field__label) {
-    font-size: 0.8rem;
-    top: 8px;
   }
 }
 

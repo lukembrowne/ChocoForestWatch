@@ -20,7 +20,6 @@
             :icon="section.icon" 
             :label="$q.screen.gt.xs ? t(`navigation.${section.id}.name`) : ''"
             class="nav-btn"
-            size="sm"
             @click="handleSectionClick(section)">
             <q-tooltip>{{ t(`navigation.${section.id}.tooltip`) }}</q-tooltip>
           </q-btn>
@@ -29,7 +28,6 @@
             icon="feedback"
             :label="$q.screen.gt.xs ? t('feedback.buttonNav') : ''"
             class="nav-btn"
-            size="sm"
             @click="showFeedbackDialog = true"
           >
             <q-tooltip>{{ t('feedback.button') }}</q-tooltip>
@@ -590,14 +588,14 @@ export default {
 
 <style lang="scss">
 .modern-header {
-  background: #2e7d32;
+  background: var(--primary-color);
   color: white;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
   height: var(--app-header-height);
 }
 
 .header-title {
-  font-size: 1.1rem;
+  font-size: var(--font-size-medium);
   font-weight: 600;
   color: white;
   letter-spacing: -0.3px;
@@ -668,11 +666,11 @@ export default {
   :deep(.q-item) {
     min-height: 40px;
     font-size: 0.9rem;
-    color: #2c3e50;
+    color: var(--text-color);
     
     &:hover {
       background: rgba(0, 0, 0, 0.03);
-      color: var(--q-primary);
+      color: var(--primary-color);
     }
     
     .q-icon {
@@ -775,10 +773,10 @@ export default {
   background: #f8fafc;
   border-radius: 8px;
   padding: 12px;
-  border-left: 4px solid var(--q-primary);
+  border-left: 4px solid var(--primary-color);
   
   .text-subtitle2 {
-    color: var(--q-primary);
+    color: var(--primary-color);
   }
   
   .text-caption {

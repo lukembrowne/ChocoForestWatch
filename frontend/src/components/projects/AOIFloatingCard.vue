@@ -2,7 +2,10 @@
   <div class="aoi-container">
     <q-card class="aoi-card">
       <q-card-section>
-        <div class="text-h6">{{ t('projects.aoi.title') }}</div>
+        <div class="section-header q-mb-md">
+          <div class="text-subtitle1">{{ t('projects.aoi.title')}}</div>
+        </div>
+        <div class="text-h6">{{  }}</div>
         
         <!-- Main description -->
         <div class="text-body2 description-text">
@@ -43,7 +46,6 @@
             color="primary" 
             icon="create" 
             @click="startDrawingAOI"
-            class="full-width" 
           >
             <q-tooltip>{{ t('projects.aoi.tooltips.draw') }}</q-tooltip>
           </q-btn>
@@ -52,7 +54,6 @@
             color="secondary" 
             icon="upload_file"
             @click="triggerFileUpload"
-            class="full-width" 
           >
             <q-tooltip>{{ t('projects.aoi.tooltips.upload_aoi') }}</q-tooltip>
           </q-btn>
@@ -61,7 +62,6 @@
             color="negative" 
             icon="clear" 
             @click="clearAOI"
-            class="full-width" 
           >
             <q-tooltip>{{ t('projects.aoi.tooltips.clear') }}</q-tooltip>
           </q-btn>
@@ -71,7 +71,6 @@
             icon="save" 
             @click="saveAOI" 
             :disable="!aoiDrawn"
-            class="full-width" 
           >
             <q-tooltip>{{ t('projects.aoi.tooltips.save') }}</q-tooltip>
           </q-btn>
@@ -469,15 +468,10 @@ export default {
   }
 }
 
-// Make buttons more compact but still readable
-.q-btn {
-  height: 36px;
-  font-size: 0.875rem;
-}
 
 .description-text {
   line-height: 1.5;
-  color: #666;
+  color: #000000;
   margin-top: 8px;
 }
 
@@ -486,31 +480,4 @@ export default {
   font-weight: 500;
 }
 
-.section-header {
-  background: #e8f5e9;
-  padding: 12px;
-  border-radius: 8px;
-  
-  .text-subtitle1 {
-    color: var(--q-primary);
-    font-weight: 600;
-    font-size: 0.85rem;
-  }
-
-  .size-value {
-    color: var(--q-primary);
-    margin-top: 4px;
-  }
-}
-
-.q-btn {
-  height: 36px;
-  font-size: 0.875rem;
-  
-  &:hover {
-    .q-tooltip {
-      font-size: 0.8rem;
-    }
-  }
-}
 </style>

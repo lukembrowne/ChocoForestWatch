@@ -199,7 +199,6 @@ export default {
 }
 
 .content-wrapper {
-    padding: 16px;
     height: 100%;
 }
 
@@ -213,19 +212,6 @@ export default {
     border-radius: 0px;
     background: white;
     box-shadow: none;
-}
-
-.section-header {
-    background: #e8f5e9;
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin: 0 16px;
-    
-    .text-subtitle1 {
-        font-size: 0.85rem;
-        color: var(--q-primary);
-        font-weight: 600;
-    }
 }
 
 .summary-grid {

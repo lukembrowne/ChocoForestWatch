@@ -422,27 +422,6 @@ export default {
   border-radius: 0;
 }
 
-.section-header {
-  background: #e8f5e9;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin: 0 16px;
-  
-  .text-subtitle1 {
-    font-size: 0.85rem;
-    color: var(--q-primary);
-    font-weight: 600;
-  }
-}
-
-.section-subheader {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #2c3e50;
-  margin-bottom: 8px;
-  padding: 0 4px;
-}
-
 .control-header {
   font-size: 0.85rem;
   color: #2c3e50;
@@ -464,37 +443,4 @@ export default {
   transition: all 0.3s ease;
 }
 
-/* Make expansion panels more compact */
-:deep(.q-expansion-item__content) {
-  padding: 0;
-}
-
-:deep(.q-card) {
-  box-shadow: none;
-}
-
-/* Ensure class selection buttons are compact but readable */
-.text-subtitle2 {
-  font-size: 0.85rem;
-  margin-bottom: 4px;
-}
-
-/* Keep polygon management buttons larger */
-.q-expansion-item[label="Polygon Management"] :deep(.q-btn) {
-  padding: 4px 12px;
-  min-height: 32px;
-}
-
-:deep(.q-btn) {
-  font-size: 0.8rem;
-}
-
-:deep(.q-btn-group) {
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-:deep(.q-expansion-item) {
-  margin-bottom: 8px;
-}
 </style>

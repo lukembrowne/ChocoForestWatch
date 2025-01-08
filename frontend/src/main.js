@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/vue"
 import { Quasar, Dialog } from 'quasar'
 import App from './App.vue'
 import router from './router'
+import './css/app.scss'
 
 // Import Quasar css
 import '@quasar/extras/material-icons/material-icons.css'
