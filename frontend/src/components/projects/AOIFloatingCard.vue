@@ -3,10 +3,28 @@
     <q-card class="aoi-card">
       <q-card-section>
         <div class="text-h6">{{ t('projects.aoi.title') }}</div>
-        <p class="text-body2">{{ t('projects.aoi.description') }}</p>
         
-        <div class="text-subtitle2 q-mt-md">{{ t('projects.aoi.currentSize') }}</div>
-        <div class="text-body1">{{ aoiSizeHa.toFixed(2) }} {{ t('projects.aoi.hectares') }}</div>
+        <!-- Main description -->
+        <div class="text-body2 description-text">
+          {{ t('projects.aoi.description') }}
+        </div>
+        
+        <!-- Additional explanation -->
+        <div class="text-body2 description-text q-mt-md">
+          {{ t('projects.aoi.explanation') }}
+        </div>
+        
+        <!-- Size limits warning -->
+        <div class="text-body2 description-text q-mt-md warning-text">
+          {{ t('projects.aoi.limits') }}
+        </div>
+        
+        <!-- Current size section -->
+        <div class="section-header q-mt-lg">
+          <div class="text-subtitle1">{{ t('projects.aoi.currentSize') }}</div>
+          <div class="text-h6 size-value">{{ aoiSizeHa.toFixed(2) }} {{ t('projects.aoi.hectares') }}</div>
+        </div>
+        
         <q-badge v-if="aoiSizeHa > maxAoiSizeHa" color="negative" class="q-mt-sm">
           {{ t('projects.aoi.sizeWarning', { max: maxAoiSizeHa }) }}
         </q-badge>
@@ -15,7 +33,10 @@
       <q-separator />
 
       <q-card-section>
-        <div class="text-subtitle2 q-mb-sm">{{ t('projects.aoi.actions') }}</div>
+        <div class="section-header q-mb-md">
+          <div class="text-subtitle1">{{ t('projects.aoi.actions') }}</div>
+        </div>
+        
         <div class="column q-gutter-y-sm">
           <q-btn 
             :label="t('projects.aoi.buttons.draw')"
@@ -23,7 +44,9 @@
             icon="create" 
             @click="startDrawingAOI"
             class="full-width" 
-          />
+          >
+            <q-tooltip>{{ t('projects.aoi.tooltips.draw') }}</q-tooltip>
+          </q-btn>
           <q-btn 
             :label="t('projects.aoi.buttons.upload')"
             color="secondary" 
@@ -31,7 +54,7 @@
             @click="triggerFileUpload"
             class="full-width" 
           >
-            <q-tooltip>{{ t('projects.aoi.tooltips.upload') }}</q-tooltip>
+            <q-tooltip>{{ t('projects.aoi.tooltips.upload_aoi') }}</q-tooltip>
           </q-btn>
           <q-btn 
             :label="t('projects.aoi.buttons.clear')"
@@ -39,7 +62,9 @@
             icon="clear" 
             @click="clearAOI"
             class="full-width" 
-          />
+          >
+            <q-tooltip>{{ t('projects.aoi.tooltips.clear') }}</q-tooltip>
+          </q-btn>
           <q-btn 
             :label="t('projects.aoi.buttons.save')"
             color="positive" 
@@ -47,7 +72,9 @@
             @click="saveAOI" 
             :disable="!aoiDrawn"
             class="full-width" 
-          />
+          >
+            <q-tooltip>{{ t('projects.aoi.tooltips.save') }}</q-tooltip>
+          </q-btn>
         </div>
       </q-card-section>
 
@@ -76,6 +103,7 @@ import GeoJSON from 'ol/format/GeoJSON'
 import { Style, Fill, Stroke } from 'ol/style'
 import shp from 'shpjs';
 import { getArea } from 'ol/sphere'
+import { transformExtent } from 'ol/proj'
 
 
 
@@ -161,17 +189,33 @@ export default {
 
             drawInteraction.on('drawend', (event) => {
                 const feature = event.feature;
-                const area = getArea(feature.getGeometry()) / 10000;
+                const geometry = feature.getGeometry();
+                
+                // Check if the drawn AOI is within Ecuador
+                if (!isWithinEcuador(geometry)) {
+                    vectorSource.value.clear()
+                    aoiDrawn.value = false
+                    $q.notify({
+                        color: 'negative',
+                        message: t('projects.aoi.notifications.outsideEcuador'),
+                        icon: 'error'
+                    })
+                    return
+                }
+
+                // Calculate area and continue with existing checks
+                const area = getArea(geometry) / 10000;
                 console.log("Area of AOI: ", area)
                 aoiSizeHa.value = area
+                
                 if (area > maxAoiSizeHa.value) {
                     vectorSource.value.clear()
-                    aoiDrawn.value = false;
+                    aoiDrawn.value = false
                     $q.notify({
                         color: 'negative',
                         message: t('projects.aoi.notifications.tooLarge', { max: maxAoiSizeHa.value }),
                         icon: 'error'
-                    });
+                    })
                 } else {
                     isDrawing.value = false;
                     aoiDrawn.value = true;
@@ -322,13 +366,24 @@ export default {
 
             clearAOI();
             if (features.length > 0) {
-                vectorSource.value.addFeature(features[0]);
+                const feature = features[0]
+                
+                // Check if the uploaded AOI is within Ecuador
+                if (!isWithinEcuador(feature.getGeometry())) {
+                    $q.notify({
+                        color: 'negative',
+                        message: t('projects.aoi.notifications.outsideEcuador'),
+                        icon: 'error'
+                    })
+                    return
+                }
 
-                // Add area to aoiSizeHa
-                aoiSizeHa.value = getArea(features[0].getGeometry()) / 10000;
+                // Continue with existing functionality
+                vectorSource.value.addFeature(feature)
+                aoiSizeHa.value = getArea(feature.getGeometry()) / 10000
 
-                const extent = vectorSource.value.getExtent();
-                mapStore.map.getView().fit(extent, { padding: [50, 50, 50, 50] });
+                const extent = vectorSource.value.getExtent()
+                mapStore.map.getView().fit(extent, { padding: [50, 50, 50, 50] })
 
                 if (aoiSizeHa.value > maxAoiSizeHa.value) {
                     aoiDrawn.value = false;
@@ -351,6 +406,29 @@ export default {
             }
         };
 
+        // Define Ecuador's bounding box in WGS84 (EPSG:4326)
+        const ecuadorBounds = {
+            minLon: -81.5,
+            maxLon: -75.0,
+            minLat: -5.0,
+            maxLat: 1.5
+        }
+
+        const isWithinEcuador = (geometry) => {
+            // Get the extent of the drawn feature in map projection (usually EPSG:3857)
+            const extent = geometry.getExtent()
+            
+            // Transform the extent to WGS84 (EPSG:4326) for comparison
+            const wgs84Extent = transformExtent(extent, 'EPSG:3857', 'EPSG:4326')
+            
+            // Check if the extent is within Ecuador's bounds
+            return (
+                wgs84Extent[0] >= ecuadorBounds.minLon &&
+                wgs84Extent[2] <= ecuadorBounds.maxLon &&
+                wgs84Extent[1] >= ecuadorBounds.minLat &&
+                wgs84Extent[3] <= ecuadorBounds.maxLat
+            )
+        }
 
         return {
             isDrawing,
@@ -395,5 +473,44 @@ export default {
 .q-btn {
   height: 36px;
   font-size: 0.875rem;
+}
+
+.description-text {
+  line-height: 1.5;
+  color: #666;
+  margin-top: 8px;
+}
+
+.warning-text {
+  color: #f57c00;
+  font-weight: 500;
+}
+
+.section-header {
+  background: #e8f5e9;
+  padding: 12px;
+  border-radius: 8px;
+  
+  .text-subtitle1 {
+    color: var(--q-primary);
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .size-value {
+    color: var(--q-primary);
+    margin-top: 4px;
+  }
+}
+
+.q-btn {
+  height: 36px;
+  font-size: 0.875rem;
+  
+  &:hover {
+    .q-tooltip {
+      font-size: 0.8rem;
+    }
+  }
 }
 </style>

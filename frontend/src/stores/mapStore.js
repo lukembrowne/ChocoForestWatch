@@ -101,8 +101,8 @@ export const useMapStore = defineStore('map', () => {
         })
       ],
       view: new View({
-        center: fromLonLat([-79.81822466589962, 0.460628082970743]),
-        zoom: 12
+        center: fromLonLat([-79.81822466589962, -0.460628082970743]),
+        zoom: 8
       })
     });
 

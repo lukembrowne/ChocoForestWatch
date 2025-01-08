@@ -418,13 +418,20 @@
         "tooLarge": "AOI is too large. Maximum allowed area is {max} ha",
         "unsupportedFile": "Unsupported file type. Please upload a GeoJSON or a Zipped Shapefile.",
         "uploadFailed": "Failed to parse {fileType}",
-        "uploadSuccess": "File uploaded successfully"
+        "uploadSuccess": "File uploaded successfully",
+        "outsideEcuador": "The AOI must be within Ecuador's boundaries"
       },
       "sizeWarning": "Warning: AOI size exceeds the maximum allowed ({max} ha)",
       "title": "Define Area of Interest",
       "tooltips": {
-        "upload": "Upload .geojson or zipped shapefile"
-      }
+        "upload": "Upload .geojson or zipped shapefile",
+        "draw": "Draw a rectangular AOI on the map",
+        "upload_aoi": "Upload a GeoJSON or zipped Shapefile containing your AOI boundary",
+        "clear": "Remove the current AOI from the map",
+        "save": "Save the current AOI to your project"
+      },
+      "explanation": "The Area of Interest (AOI) defines the region where deforestation alerts will be generated and statistics will be calculated. This could be the boundaries of a protected area or a larger region that includes a buffer zone around the area you want to monitor. Note that once an AOI is saved, it cannot be modified later.",
+      "limits": "Note: During the testing phase, the maximum AOI size is limited to 10,000 hectares and must be within Ecuador. You will receive an error message if these limits are exceeded."
     },
     "buttons": {
       "cancel": "Cancel",
