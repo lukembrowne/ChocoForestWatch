@@ -19,10 +19,8 @@ from .serializers import UserSerializer
 logger = logging.getLogger(__name__)
 
 def get_frontend_url():
-    """Get the frontend URL based on environment"""
-    if settings.DEBUG:
-        return 'http://localhost:9000'
-    return 'https://chocoforestwatch.org'  # Replace with your production URL
+    """Get the frontend URL from environment variable"""
+    return os.getenv('FRONTEND_URL', 'http://localhost:9000')
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
