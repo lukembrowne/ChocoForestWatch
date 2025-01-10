@@ -1,14 +1,30 @@
 <template>
     <div class="basemap-date-slider">
-        <p style="margin: 0; padding: 0;">{{ t('layers.basemapDate.title') }}</p>
+        <!-- <p class="text-subtitle1" style="margin: 0; padding: 0;">{{ t('layers.basemapDate.title') }}</p> -->
         <div class="slider-container">
+            <!-- Add help icon with tooltip -->
+            <div class="help-icon">
+                <q-btn
+                    flat
+                    round
+                    dense
+                    icon="help"
+                    size="sm"
+                    color="primary"
+                >
+                    <q-tooltip>
+                        {{ t('layers.basemapDate.tooltip') }}
+                    </q-tooltip>
+                </q-btn>
+            </div>
+
             <div class="year-markers">
                 <div v-for="year in years" :key="year" class="year-marker"
                     :style="{ left: `${getYearPosition(year)}%` }">
                     {{ year }}
                 </div>
             </div>
-            <q-slider v-model="sliderValue" :min="0" :max="dates.length - 1" :step="1" label label-always
+            <q-slider v-model="sliderValue" :min="0" :max="dates.length - 1" :step="1" label
                 :label-value="formatDate(selectedDate)" @update:model-value="updateSelectedDate">
                 <template v-slot:thumb>
                     <q-icon name="place" color="primary" />
@@ -194,8 +210,8 @@ export default {
 .year-marker {
     position: absolute;
     transform: translateX(-50%);
-    font-size: 0.8em;
-    color: #666;
+    font-size: 0.9em;
+    font-weight: 500;
 }
 
 .month-markers {
@@ -212,8 +228,9 @@ export default {
 }
 
 .month-marker.has-data {
-    font-weight: bold;
+    font-weight: 1000;
     color: #4CAF50;
+    text-decoration: underline;
 }
 
 .month-marker.excluded {
@@ -240,6 +257,13 @@ export default {
 }
 
 .slider-container {
-    padding: 10px 0 0 0;
+    padding: 15px 0 0 0;
+}
+
+.help-icon {
+    position: absolute;
+    top: -10px;
+    right: 0px;
+    z-index: 1;
 }
 </style>

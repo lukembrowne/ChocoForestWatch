@@ -2,7 +2,7 @@ export function getBasemapDateOptions() {
     const options = []
     for (let year = 2022; year <= 2024; year++) {
       for (let month = 1; month <= 12; month++) {
-        if (year === 2024 && month > 6) break
+        if (year === 2024 && month > 12) break // Put last month of imagery here
         const date = new Date(year, month - 1)
         options.push({
           label: date.toLocaleString('default', { month: 'long', year: 'numeric' }),

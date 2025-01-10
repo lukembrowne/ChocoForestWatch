@@ -376,7 +376,8 @@
           "sep": "Sep"
         }
       },
-      "title": "Fecha del Mapa Base"
+      "title": "Fecha de las imágenes",
+      "tooltip": "Seleccione la fecha de las imágenes satelitales. Las fechas subrayadas en verde tienen datos de entrenamiento. Use las teclas de flecha izquierda/derecha para navegar rápidamente entre fechas."
     },
     "satellite": "Satélite",
     "switcher": {
@@ -726,7 +727,7 @@
           "title": "Ejemplo de Datos de Entrenamiento"
         },
         "imagery": {
-          "description": "Explore las imágenes satelitales de alta resolución disponibles usando el selector de fechas. Busque imágenes relativamente libres de nubes. Para mejorar los resultados de detección de deforestación, enfóquese en al menos dos imágenes separadas idealmente por varios meses. El modelo solo generará predicciones para fechas donde haya datos de entrenamiento disponibles.",
+          "description": "Navegue por las imágenes satelitales de alta resolución disponibles usando el selector de fecha en la parte inferior del mapa o usando las teclas de flecha izquierda y derecha. \nBusque imágenes relativamente libres de nubes. \nPara mejorar los resultados de detección de deforestación, céntrese en al menos dos imágenes separadas idealmente por al menos varios meses. \nEl modelo solo generará predicciones para fechas en las que haya datos de entrenamiento disponibles.",
           "title": "Seleccionar Imágenes Satelitales"
         },
         "model": {

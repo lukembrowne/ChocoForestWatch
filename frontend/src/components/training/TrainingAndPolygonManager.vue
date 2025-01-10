@@ -39,7 +39,7 @@
                             </q-item-label>
                         </q-item-section>
                         <q-item-section side>
-                            <q-chip color="primary" text-color="white" size="sm">
+                            <q-chip color="primary" text-color="white">
                                 {{ summary.area.toFixed(2) }} {{ t('training.summary.hectares') }}
                             </q-chip>
                         </q-item-section>
@@ -248,27 +248,24 @@ export default {
     border-radius: 8px;
     padding: 8px;
     width: 100%;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
 
     &:hover {
         background-color: #f1f8f1;
     }
 
     :deep(.q-item__label) {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
     }
 
     :deep(.q-item__label--caption) {
-        font-size: 0.75rem;
+        font-size: 0.85rem;
     }
 }
 
 :deep(.q-chip) {
-    font-size: 0.75rem;
-    padding: 0 8px;
+    font-size: 0.85rem;
+    padding: 0 10px;
 }
 
-.q-separator {
-    margin: 16px 0;
-}
 </style>

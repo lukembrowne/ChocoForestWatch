@@ -376,7 +376,8 @@
           "sep": "Sep"
         }
       },
-      "title": "Basemap Date"
+      "title": "Imagery date",
+      "tooltip": "Select satellite imagery date. Green underlined dates have training data. Use left/right arrow keys to quickly navigate between dates."
     },
     "satellite": "Satellite",
     "switcher": {
@@ -726,7 +727,7 @@
           "title": "Example Training Data"
         },
         "imagery": {
-          "description": "Browse through the available high-resolution satellite imagery using the date selector. Look for relatively cloud-free images. To improve the deforestation detection results, focus on at least two images separated ideally by at least several months. The model will only generate predictions for dates where there is training data available.",
+          "description": "Browse through the available high-resolution satellite imagery using the date selector at the bottom of the map or using the left and right arrow keys. Look for relatively cloud-free images. To improve the deforestation detection results, focus on at least two images separated ideally by at least several months. The model will only generate predictions for dates where there is training data available.",
           "title": "Select Satellite Imagery"
         },
         "model": {
