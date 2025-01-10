@@ -1,9 +1,5 @@
 {
   "about": {
-    "disclaimer": {
-      "title": "Disclaimer",
-      "text": "This platform is provided 'as is' for research and conservation purposes. While we strive for accuracy, we make no warranties about the completeness, reliability, and accuracy of this information. Any action you take upon the information on this website is strictly at your own risk. We will not be liable for any losses and damages in connection with the use of our platform."
-    },
     "alerts": {
       "description": "Global Forest Watch integrated alerts available under",
       "license": "CC BY 4.0 License",
@@ -12,6 +8,10 @@
     "contact": "For questions, concerns, or feedback, please contact:",
     "creditsTitle": "Credits and Data Use",
     "description": "Choco Forest Watch is an open-source project. The code is available on",
+    "disclaimer": {
+      "text": "This platform is provided 'as is' for research and conservation purposes. While we strive for accuracy, we make no warranties about the completeness, reliability, and accuracy of this information. Any action you take upon the information on this website is strictly at your own risk. We will not be liable for any losses and damages in connection with the use of our platform.",
+      "title": "Disclaimer"
+    },
     "funding": {
       "description": "This project was made possible with support from:",
       "sources": {
@@ -207,6 +207,7 @@
         "subtitle": "Free, open-source platform supporting local conservation efforts",
         "tagline": "Deforestation Monitoring for Local Conservation"
       },
+      "languageRequired": "Preferred language is required",
       "loginButton": "Login",
       "loginFailed": "Login failed",
       "loginSuccess": "Successfully logged in",
@@ -217,8 +218,7 @@
       "subtitle": "Monitor and analyze forest cover changes using satellite imagery and machine learning",
       "title": "Choco Forest Watch",
       "username": "Username",
-      "usernameRequired": "Username is required",
-      "languageRequired": "Preferred language is required"
+      "usernameRequired": "Username is required"
     },
     "register": {
       "createButton": "Create Account",
@@ -232,23 +232,26 @@
       "title": "Create Account"
     },
     "resetPassword": {
-      "enterNew": "Enter your new password",
-      "title": "Reset Password",
-      "instructions": "Enter your email address and we'll send you instructions to reset your password.",
+      "cancel": "Cancel",
+      "confirm": "Confirm Password",
+      "confirmPassword": "",
+      "confirmRequired": "Password confirmation is required",
       "email": "Email",
       "emailRequired": "Email is required",
-      "invalidEmail": "Invalid email address",
-      "sendLink": "Send Reset Link",
-      "cancel": "Cancel",
-      "success": "Password reset instructions sent to your email",
+      "enterNew": "Enter your new password",
       "error": "Failed to send reset email",
-      "resetSuccess": "Password reset successful! Please login with your new password.",
-      "resetFailed": "Failed to reset password",
-      "password": "New Password",
-      "confirm": "Confirm Password",
-      "confirmRequired": "Password confirmation is required",
+      "failed": "",
+      "instructions": "Enter your email address and we'll send you instructions to reset your password.",
+      "invalidEmail": "Invalid email address",
       "mismatch": "Passwords do not match",
-      "submit": "Reset Password"
+      "password": "New Password",
+      "passwordRequired": "",
+      "resetFailed": "Failed to reset password",
+      "resetSuccess": "Password reset successful! Please login with your new password.",
+      "sendLink": "Send Reset Link",
+      "submit": "Reset Password",
+      "success": "Password reset instructions sent to your email",
+      "title": "Reset Password"
     }
   },
   "common": {
@@ -270,21 +273,25 @@
       "title": "Select Class"
     },
     "dialogs": {
+      "clear": {
+        "message": "Are you sure you want to clear all drawn polygons? There is no going back from this!",
+        "title": "Delete all drawn polygons"
+      },
       "delete": {
         "message": "Are you sure you want to delete this feature?",
         "title": "Delete Feature"
       }
     },
     "management": {
-      "clear": "Clear",
-      "delete": "Delete (Del)",
-      "download": "Download",
+      "clear": "Clear all drawn polygons - caution!",
+      "delete": "Delete selected polygons (Del)",
+      "download": "Download polygons as .geojson file",
       "excludeDate": "Exclude Date",
       "includeDate": "Include Date",
-      "load": "Load",
-      "save": "Save (Ctrl+S)",
+      "load": "Upload drawn polygons as .geojson file",
+      "save": "Save drawn polygons (Ctrl+S)",
       "title": "Polygon Management",
-      "undo": "Undo (Ctrl+Z)"
+      "undo": "Undo last drawn polygon (Ctrl+Z)"
     },
     "modes": {
       "draw": "Draw (D)",
@@ -302,12 +309,19 @@
       "saveError": "Error saving training polygons"
     },
     "options": {
-      "freehandMode": "Freehand Mode (F)",
-      "polygonSize": "Polygon Size (m)",
-      "squareMode": "Square Mode (F)",
+      "freehandMode": "Freehand Mode (F). Click to change to Square mode.",
+      "polygonSize": "Adjust square size",
+      "squareMode": "Square Mode (F). Click to change to Freehand mode.",
+      "squareSize": "Square Size (width × height)",
       "title": "Drawing Options"
     },
-    "title": "Drawing Controls"
+    "title": "Drawing Controls",
+    "tooltips": {
+      "classes": "Select the land cover class you want to draw. Use number keys 1-5 to quickly switch classes",
+      "controls": "Drawing controls for creating training polygons. Use keyboard shortcuts: Draw (D), Pan (M), Zoom In (Z), Zoom Out (X)",
+      "management": "Tools for managing your drawn polygons",
+      "selectClass": "Select {class} class (shortcut: {number})"
+    }
   },
   "feedback": {
     "button": "Give Feedback",
@@ -409,29 +423,29 @@
       },
       "currentSize": "Current AOI Size",
       "description": "Please draw the Area of Interest (AOI) for your project on the map or upload a GeoJSON file or .zipped Shapefile.",
+      "explanation": "The Area of Interest (AOI) defines the region where deforestation alerts will be generated and statistics will be calculated. This could be the boundaries of a protected area or a larger region that includes a buffer zone around the area you want to monitor. Note that once an AOI is saved, it cannot be modified later.",
       "hectares": "ha",
+      "limits": "Note: During the testing phase, the maximum AOI size is limited to 10,000 hectares and must be within Ecuador. You will receive an error message if these limits are exceeded.",
       "notifications": {
         "noAoi": "No AOI drawn",
         "noFeatures": "No valid features found in the file",
+        "outsideEcuador": "The AOI must be within Ecuador's boundaries",
         "saveFailed": "Failed to save AOI",
         "saved": "AOI saved successfully",
         "tooLarge": "AOI is too large. Maximum allowed area is {max} ha",
         "unsupportedFile": "Unsupported file type. Please upload a GeoJSON or a Zipped Shapefile.",
         "uploadFailed": "Failed to parse {fileType}",
-        "uploadSuccess": "File uploaded successfully",
-        "outsideEcuador": "The AOI must be within Ecuador's boundaries"
+        "uploadSuccess": "File uploaded successfully"
       },
       "sizeWarning": "Warning: AOI size exceeds the maximum allowed ({max} ha)",
       "title": "Define Area of Interest",
       "tooltips": {
-        "upload": "Upload .geojson or zipped shapefile",
-        "draw": "Draw a rectangular AOI on the map",
-        "upload_aoi": "Upload a GeoJSON or zipped Shapefile containing your AOI boundary",
         "clear": "Remove the current AOI from the map",
-        "save": "Save the current AOI to your project"
-      },
-      "explanation": "The Area of Interest (AOI) defines the region where deforestation alerts will be generated and statistics will be calculated. This could be the boundaries of a protected area or a larger region that includes a buffer zone around the area you want to monitor. Note that once an AOI is saved, it cannot be modified later.",
-      "limits": "Note: During the testing phase, the maximum AOI size is limited to 10,000 hectares and must be within Ecuador. You will receive an error message if these limits are exceeded."
+        "draw": "Draw a rectangular AOI on the map",
+        "save": "Save the current AOI to your project",
+        "upload": "Upload .geojson or zipped shapefile",
+        "upload_aoi": "Upload a GeoJSON or zipped Shapefile containing your AOI boundary"
+      }
     },
     "buttons": {
       "cancel": "Cancel",
@@ -469,11 +483,11 @@
       "updated": "Updated"
     },
     "tooltips": {
-      "delete": "Delete Project",
-      "load": "Load Project",
-      "rename": "Rename Project",
       "createNewSection": "Start here to create a new project for monitoring deforestation in your area of interest",
-      "existingSection": "View and manage your previously created projects"
+      "delete": "Delete Project",
+      "existingSection": "View and manage your previously created projects",
+      "load": "Load Project",
+      "rename": "Rename Project"
     },
     "uniqueClasses": "Class names must be unique"
   },
@@ -632,6 +646,11 @@
       "features_plural": "features",
       "hectares": "ha",
       "title": "Training Data Summary"
+    },
+    "tooltips": {
+      "drawingSection": "Draw training polygons using freehand or square mode. Use keyboard shortcuts (D, M, Z, X, F) for faster workflow.",
+      "modelSection": "Train and evaluate your land cover classification model. Review accuracy metrics to assess performance.",
+      "summarySection": "View statistics about your training data. Aim for 30-50 examples of each land cover class for each date."
     }
   },
   "welcome": {
@@ -689,6 +708,36 @@
         "title": "Draw Training Data"
       },
       "intro": "Train your own deforestation detection model using machine learning. Follow these steps:",
+      "sections": {
+        "access": {
+          "description": "The satellite imagery is provided through Planet Lab's NICFI program. For access to the raw imagery or assistance with the platform, contact lukebrowne - at - fcat-ecuador.org.",
+          "title": "Access to Imagery"
+        },
+        "analysis": {
+          "description": "After training, switch to the 'Analysis' tab to apply your model. Compare land cover between different dates to detect changes and generate deforestation alerts. You can verify detected changes and export the results for further analysis.",
+          "title": "Generate Analysis"
+        },
+        "drawing": {
+          "description": "Choose between freehand drawing for precise boundaries or square mode for rapid drawing. Use keyboard shortcuts to quickly switch between drawing (D), pan (M), zoom in (Z), and zoom out (X). Toggle between freehand and square modes with (F). Switch between classes (Forest, non-forest, etc.) with the number keys 1-5.",
+          "title": "Drawing Tools"
+        },
+        "example": {
+          "description": "Example of training polygons drawn on the map",
+          "title": "Example Training Data"
+        },
+        "imagery": {
+          "description": "Browse through the available high-resolution satellite imagery using the date selector. Look for relatively cloud-free images. To improve the deforestation detection results, focus on at least two images separated ideally by at least several months. The model will only generate predictions for dates where there is training data available.",
+          "title": "Select Satellite Imagery"
+        },
+        "model": {
+          "description": "Once you've collected sufficient training data, click 'Fit Model' to train the machine learning classifier. You can customize model parameters or use the default settings. The 'Evaluate Model' option provides detailed accuracy metrics to assess model performance.",
+          "title": "Train Your Model"
+        },
+        "training": {
+          "description": "Draw polygons around areas representing different land cover types: forest, non-forest, cloud, shadow, and water. For accurate model training, ensure each polygon contains only one land cover type. Aim for 30-50 examples of each class, well-distributed across your area of interest.",
+          "title": "Create Training Data"
+        }
+      },
       "title": "Welcome to Model Training",
       "train": {
         "description": "Start training and monitor progress. Review accuracy metrics when complete.",

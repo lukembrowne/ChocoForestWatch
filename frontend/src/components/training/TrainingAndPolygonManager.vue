@@ -7,8 +7,23 @@
             <q-separator class="q-my-md" />
 
             <q-card class="polygon-list-card">
+               
+
+
                 <q-card-section class="section-header">
-                    <div class="text-subtitle1">{{ t('training.summary.title') }}</div>
+                    <div class="row items-center">
+                        <div class="text-subtitle1">{{ t('training.summary.title') }}</div>
+                        <q-btn
+                          flat
+                          round
+                          dense
+                          icon="help"
+                          size="sm"
+                          class="q-ml-sm"
+                        >
+                          <q-tooltip>{{ t('training.tooltips.summarySection') }}</q-tooltip>
+                        </q-btn>
+                    </div>
                 </q-card-section>
 
                 <div class="summary-grid">
@@ -34,7 +49,19 @@
                 <q-separator class="q-my-md" />
 
                 <q-card-section class="section-header">
-                    <div class="text-subtitle1">{{ t('training.model.title') }}</div>
+                    <div class="row items-center">
+                        <div class="text-subtitle1">{{ t('training.model.title') }}</div>
+                        <q-btn
+                          flat
+                          round
+                          dense
+                          icon="help"
+                          size="sm"
+                          class="q-ml-sm"
+                        >
+                          <q-tooltip>{{ t('training.tooltips.modelSection') }}</q-tooltip>
+                        </q-btn>
+                    </div>
                 </q-card-section>
 
                 <q-card-section class="q-pa-md">
@@ -43,15 +70,11 @@
                             :label="t('training.model.fit')" 
                             color="primary" 
                             @click="openModelTrainingDialog"
-                            size="sm"
-                            unelevated 
                         />
                         <q-btn 
                             :label="t('training.model.evaluate')" 
                             color="primary" 
                             @click="openModelEvaluationDialog"
-                            size="sm"
-                            unelevated 
                         />
                     </q-card-actions>
                 </q-card-section>

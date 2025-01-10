@@ -11,32 +11,75 @@
         </div>
 
         <div class="key-features q-gutter-y-md">
-          <!-- Draw Training Data -->
+          <!-- Satellite Imagery Selection -->
           <div class="feature-item">
-            <q-icon name="draw" color="primary" size="sm" class="q-mr-sm" />
+            <q-icon name="map" color="primary" size="sm" class="q-mr-sm" />
             <div>
-              <div class="text-weight-medium">{{ t('welcome.training.draw.title') }}</div>
-              <div class="text-caption">{{ t('welcome.training.draw.description') }}</div>
+              <div class="text-weight-medium">{{ t('welcome.training.sections.imagery.title') }}</div>
+              <div class="text-caption">{{ t('welcome.training.sections.imagery.description') }}</div>
             </div>
           </div>
 
-          <!-- Configure Model -->
+          <!-- Training Data Collection -->
           <div class="feature-item">
-            <q-icon name="tune" color="primary" size="sm" class="q-mr-sm" />
+            <q-icon name="edit" color="primary" size="sm" class="q-mr-sm" />
             <div>
-              <div class="text-weight-medium">{{ t('welcome.training.configure.title') }}</div>
-              <div class="text-caption">{{ t('welcome.training.configure.description') }}</div>
+              <div class="text-weight-medium">{{ t('welcome.training.sections.training.title') }}</div>
+              <div class="text-caption">{{ t('welcome.training.sections.training.description') }}</div>
             </div>
           </div>
 
-          <!-- Train Model -->
+          <!-- Drawing Tools -->
+          <div class="feature-item">
+            <q-icon name="gesture" color="primary" size="sm" class="q-mr-sm" />
+            <div>
+              <div class="text-weight-medium">{{ t('welcome.training.sections.drawing.title') }}</div>
+              <div class="text-caption">{{ t('welcome.training.sections.drawing.description') }}</div>
+            </div>
+          </div>
+
+          <!-- Model Training -->
           <div class="feature-item">
             <q-icon name="school" color="primary" size="sm" class="q-mr-sm" />
             <div>
-              <div class="text-weight-medium">{{ t('welcome.training.train.title') }}</div>
-              <div class="text-caption">{{ t('welcome.training.train.description') }}</div>
+              <div class="text-weight-medium">{{ t('welcome.training.sections.model.title') }}</div>
+              <div class="text-caption">{{ t('welcome.training.sections.model.description') }}</div>
             </div>
           </div>
+
+          <!-- Analysis -->
+          <div class="feature-item">
+            <q-icon name="insights" color="primary" size="sm" class="q-mr-sm" />
+            <div>
+              <div class="text-weight-medium">{{ t('welcome.training.sections.analysis.title') }}</div>
+              <div class="text-caption">{{ t('welcome.training.sections.analysis.description') }}</div>
+            </div>
+          </div>
+
+          <!-- Data Access -->
+          <div class="feature-item">
+            <q-icon name="cloud_download" color="primary" size="sm" class="q-mr-sm" />
+            <div>
+              <div class="text-weight-medium">{{ t('welcome.training.sections.access.title') }}</div>
+              <div class="text-caption">{{ t('welcome.training.sections.access.description') }}</div>
+            </div>
+          </div>
+
+          <!-- Example Screenshot -->
+          <!-- <div class="feature-item">
+            <q-icon name="image" color="primary" size="sm" class="q-mr-sm" />
+            <div>
+              <div class="text-weight-medium">{{ t('welcome.training.sections.example.title') }}</div>
+              <div class="text-caption">
+                <q-img 
+                  src="/images/training-example.jpeg" 
+                  :alt="t('welcome.training.sections.example.description')" 
+                  style="max-width: 100%; border-radius: 4px; margin-top: 8px;" 
+                  class="rounded-borders" 
+                />
+              </div>
+            </div>
+          </div> -->
         </div>
       </q-card-section>
 
@@ -111,7 +154,7 @@ export default {
 
 <style lang="scss" scoped>
 .welcome-modal {
-  width: 500px;
+  width: 750px;
   max-width: 90vw;
 }
 

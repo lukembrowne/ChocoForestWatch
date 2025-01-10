@@ -1,9 +1,5 @@
 {
   "about": {
-    "disclaimer": {
-      "title": "Aviso Legal",
-      "text": "Esta plataforma se proporciona 'tal cual' para fines de investigación y conservación. Si bien nos esforzamos por la precisión, no ofrecemos garantías sobre la integridad, fiabilidad y exactitud de esta información. Cualquier acción que tome sobre la información en este sitio web es estrictamente bajo su propio riesgo. No seremos responsables por pérdidas y daños relacionados con el uso de nuestra plataforma."
-    },
     "alerts": {
       "description": "Alertas integradas de Global Forest Watch disponibles bajo",
       "license": "Licencia CC BY 4.0",
@@ -12,6 +8,10 @@
     "contact": "Para preguntas, inquietudes o comentarios, por favor contacte a:",
     "creditsTitle": "Créditos y Uso de Datos",
     "description": "Choco Forest Watch es un proyecto de código abierto. El código está disponible en",
+    "disclaimer": {
+      "text": "Esta plataforma se proporciona 'tal cual' para fines de investigación y conservación. Si bien nos esforzamos por la precisión, no ofrecemos garantías sobre la integridad, fiabilidad y exactitud de esta información. Cualquier acción que tome sobre la información en este sitio web es estrictamente bajo su propio riesgo. No seremos responsables por pérdidas y daños relacionados con el uso de nuestra plataforma.",
+      "title": "Aviso Legal"
+    },
     "funding": {
       "description": "Este proyecto fue posible gracias al financiamiento de:",
       "sources": {
@@ -207,6 +207,7 @@
         "subtitle": "Plataforma gratuita y de código abierto que apoya los esfuerzos de conservación local",
         "tagline": "Monitoreo de Deforestación para la Conservación Local"
       },
+      "languageRequired": "El idioma preferido es requerido",
       "loginButton": "Iniciar Sesión",
       "loginFailed": "Error al iniciar sesión",
       "loginSuccess": "Sesión iniciada exitosamente",
@@ -217,8 +218,7 @@
       "subtitle": "Monitoree y analice los cambios en la cobertura forestal utilizando imágenes satelitales e inteligencia artificial",
       "title": "Choco Forest Watch",
       "username": "Usuario",
-      "usernameRequired": "El usuario es requerido",
-      "languageRequired": "El idioma preferido es requerido"
+      "usernameRequired": "El usuario es requerido"
     },
     "register": {
       "createButton": "Crear Cuenta",
@@ -233,18 +233,23 @@
     },
     "resetPassword": {
       "cancel": "Cancelar",
+      "confirm": "",
       "confirmPassword": "Confirmar Contraseña",
       "confirmRequired": "La confirmación de contraseña es requerida",
+      "email": "",
+      "emailRequired": "",
       "enterNew": "Ingrese su nueva contraseña",
+      "error": "",
       "failed": "Error al enviar el correo electrónico",
       "instructions": "Ingrese su correo electrónico y le enviaremos instrucciones para restablecer su contraseña.",
+      "invalidEmail": "",
+      "mismatch": "Las contraseñas no coinciden",
       "password": "Nueva Contraseña",
       "passwordRequired": "La contraseña es requerida",
-      "mismatch": "Las contraseñas no coinciden",
-      "submit": "Restablecer Contraseña",
       "resetFailed": "Error al restablecer la contraseña",
       "resetSuccess": "¡Contraseña restablecida exitosamente! Por favor inicie sesión con su nueva contraseña.",
       "sendLink": "Enviar Link",
+      "submit": "Restablecer Contraseña",
       "success": "Instrucciones enviadas a su correo electrónico",
       "title": "Restablecer Contraseña"
     }
@@ -268,21 +273,25 @@
       "title": "Seleccionar Clase"
     },
     "dialogs": {
+      "clear": {
+        "message": "¿Está seguro de que desea borrar todos los polígonos dibujados? \n¡De esto no hay vuelta atrás!",
+        "title": "Eliminar todos los polígonos dibujados"
+      },
       "delete": {
         "message": "¿Está seguro que desea eliminar esta característica?",
         "title": "Eliminar Característica"
       }
     },
     "management": {
-      "clear": "Limpiar",
-      "delete": "Eliminar (Del)",
-      "download": "Descargar",
+      "clear": "Limpia todos los polígonos dibujados: ¡precaución!",
+      "delete": "Eliminar polígonos seleccionados (Del)",
+      "download": "Descargar polígonos como archivo .geojson",
       "excludeDate": "Excluir Fecha",
       "includeDate": "Incluir Fecha",
-      "load": "Cargar",
-      "save": "Guardar (Ctrl+S)",
+      "load": "Cargar polígonos dibujados como archivo .geojson",
+      "save": "Guardar polígonos dibujados (Ctrl S)",
       "title": "Gestión de Polígonos",
-      "undo": "Deshacer (Ctrl+Z)"
+      "undo": "Deshacer el último polígono dibujado (Ctrl Z)"
     },
     "modes": {
       "draw": "Dibujar (D)",
@@ -290,7 +299,7 @@
       "zoomIn": "Acercar (Z)",
       "zoomOut": "Alejar (X)"
     },
-      "notifications": {
+    "notifications": {
       "dateExcluded": "Fecha ha sido excluida",
       "dateIncluded": "Fecha ha sido incluida",
       "dateToggleError": "Error al cambiar el estado de exclusión de la fecha",
@@ -300,12 +309,19 @@
       "saveError": "Error al guardar los polígonos de entrenamiento"
     },
     "options": {
-      "freehandMode": "Modo Mano Libre (F)",
+      "freehandMode": "Modo Mano Alzada (F). \nHaga clic para cambiar al modo Cuadrado.",
       "polygonSize": "Tamaño del Polígono (m)",
-      "squareMode": "Modo Cuadrado (F)",
+      "squareMode": "Modo cuadrado (F). \nHaga clic para cambiar al modo Mano alzada.",
+      "squareSize": "",
       "title": "Opciones de Dibujo"
     },
-    "title": "Controles de Dibujo"
+    "title": "Controles de Dibujo",
+    "tooltips": {
+      "classes": "",
+      "controls": "",
+      "management": "",
+      "selectClass": ""
+    }
   },
   "feedback": {
     "button": "Dar Feedback",
@@ -407,29 +423,29 @@
       },
       "currentSize": "Tamaño Actual del AOI",
       "description": "Por favor dibuje el Área de Interés (AOI) para su proyecto en el mapa o cargue un archivo GeoJSON o Shapefile comprimido.",
+      "explanation": "El Área de Interés (AOI) define la región donde se generarán las alertas de deforestación y se calcularán las estadísticas. Esto puede ser los límites de un área protegida o una región más grande que incluya una zona de amortiguamiento alrededor del área que desea monitorear. Tenga en cuenta que una vez que se guarda un AOI, no se puede modificar posteriormente.",
       "hectares": "ha",
+      "limits": "Nota: Durante la fase de prueba, el tamaño máximo del AOI está limitado a 10,000 hectáreas y debe estar dentro de Ecuador. Recibirá un mensaje de error si se exceden estos límites.",
       "notifications": {
         "noAoi": "No se ha dibujado ningún AOI",
         "noFeatures": "No se encontraron características válidas en el archivo",
+        "outsideEcuador": "El AOI debe estar dentro de los límites de Ecuador",
         "saveFailed": "Error al guardar AOI",
         "saved": "AOI guardado exitosamente",
         "tooLarge": "El AOI es demasiado grande. El área máxima permitida es {max} ha",
         "unsupportedFile": "Tipo de archivo no soportado. Por favor cargue un archivo GeoJSON o Shapefile comprimido.",
         "uploadFailed": "Error al procesar {fileType}",
-        "uploadSuccess": "Archivo cargado exitosamente",
-        "outsideEcuador": "El AOI debe estar dentro de los límites de Ecuador"
+        "uploadSuccess": "Archivo cargado exitosamente"
       },
       "sizeWarning": "Advertencia: El tamaño del AOI excede el máximo permitido ({max} ha)",
       "title": "Definir Área de Interés",
       "tooltips": {
-        "upload": "Cargar archivo .geojson o shapefile comprimido", 
-        "draw": "Dibujar un AOI rectangular en el mapa",
-        "upload_aoi": "Cargar un archivo GeoJSON o Shapefile comprimido que contenga los límites de su AOI",
         "clear": "Eliminar el AOI actual del mapa",
-        "save": "Guardar el AOI actual en su proyecto"
-      },
-      "explanation": "El Área de Interés (AOI) define la región donde se generarán las alertas de deforestación y se calcularán las estadísticas. Esto puede ser los límites de un área protegida o una región más grande que incluya una zona de amortiguamiento alrededor del área que desea monitorear. Tenga en cuenta que una vez que se guarda un AOI, no se puede modificar posteriormente.",
-      "limits": "Nota: Durante la fase de prueba, el tamaño máximo del AOI está limitado a 10,000 hectáreas y debe estar dentro de Ecuador. Recibirá un mensaje de error si se exceden estos límites."
+        "draw": "Dibujar un AOI rectangular en el mapa",
+        "save": "Guardar el AOI actual en su proyecto",
+        "upload": "Cargar archivo .geojson o shapefile comprimido",
+        "upload_aoi": "Cargar un archivo GeoJSON o Shapefile comprimido que contenga los límites de su AOI"
+      }
     },
     "buttons": {
       "cancel": "Cancelar",
@@ -467,11 +483,11 @@
       "updated": "Actualizado"
     },
     "tooltips": {
-      "delete": "Eliminar Proyecto",
-      "load": "Cargar Proyecto",
-      "rename": "Renombrar Proyecto",
       "createNewSection": "Comience aquí para crear un nuevo proyecto para monitorear la deforestación en su área de interés",
-      "existingSection": "Ver y gestionar sus proyectos creados anteriormente"
+      "delete": "Eliminar Proyecto",
+      "existingSection": "Ver y gestionar sus proyectos creados anteriormente",
+      "load": "Cargar Proyecto",
+      "rename": "Renombrar Proyecto"
     },
     "uniqueClasses": "Los nombres de las clases deben ser únicos"
   },
@@ -630,67 +646,102 @@
       "features_plural": "características",
       "hectares": "ha",
       "title": "Resumen de Datos de Entrenamiento"
+    },
+    "tooltips": {
+      "drawingSection": "",
+      "modelSection": "",
+      "summarySection": ""
     }
   },
   "welcome": {
     "analysis": {
-      "intro": "Analiza patrones de deforestación y verifica cambios en tu área de interés:",
+      "intro": "",
       "review": {
-        "description": "Examina posibles áreas de deforestación identificadas por el modelo.",
-        "title": "Revisar Puntos Críticos"
+        "description": "",
+        "title": ""
       },
       "run": {
-        "description": "Genera predicciones y compara cambios de cobertura entre dos fechas.",
-        "title": "Ejecutar Análisis"
+        "description": "",
+        "title": ""
       },
-      "title": "Bienvenido al Análisis",
+      "title": "",
       "verify": {
-        "description": "Confirma o rechaza los cambios detectados y exporta tus hallazgos.",
-        "title": "Verificar Cambios"
+        "description": "",
+        "title": ""
       }
     },
-    "dontShowAgain": "No mostrar de nuevo",
+    "dontShowAgain": "",
     "projects": {
       "analysis": {
-        "description": "Obtén estadísticas de deforestación y configura alertas",
-        "title": "Generar Análisis"
+        "description": "",
+        "title": ""
       },
       "aoi": {
-        "description": "Dibuja o sube los límites de tu área de estudio",
-        "title": "Definir Área de Interés"
+        "description": "",
+        "title": ""
       },
       "configure": {
         "description": "",
         "title": ""
       },
       "create": {
-        "description": "Comienza creando un nuevo proyecto para organizar tu trabajo",
-        "title": "Crear un Proyecto"
+        "description": "",
+        "title": ""
       },
-      "feedback": "Valoramos su opinión! Por favor use el botón de comentarios en la barra de navegación para enviar reportes de errores, sugerencias o comentarios generales. También puede enviar un correo electrónico directamente a lukebrowne - at - fcat-ecuador.org",
-      "intro": "Los proyectos le ayudan a organizar su trabajo de monitoreo de deforestación. Aquí le mostramos cómo empezar:",
-      "landcover": "Actualmente, el sistema utiliza 5 clases fijas de cobertura terrestre: bosque, no-bosque (agricultura), sombra, nube y agua. El soporte para clases personalizadas de cobertura terrestre está planificado para futuras actualizaciones.",
-      "title": "Bienvenido a Choco Forest Watch",
+      "feedback": "",
+      "intro": "",
+      "landcover": "",
+      "title": "",
       "train": {
-        "description": "Usa nuestras herramientas interactivas para entrenar un modelo de clasificación terrestre",
-        "title": "Entrenar tu Modelo"
+        "description": "",
+        "title": ""
       },
-      "workflow": "El flujo de trabajo es simple: Primero, crea un proyecto y define tu área de interés. Luego entrenarás tu propio modelo de clasificación de cobertura terrestre usando nuestras herramientas interactivas. Finalmente, podrás generar estadísticas y recibir alertas sobre deforestación en tu área."
+      "workflow": ""
     },
     "training": {
       "configure": {
-        "description": "Elige los parámetros del modelo y la configuración de validación para optimizar el rendimiento.",
-        "title": "Configurar Ajustes del Modelo"
+        "description": "",
+        "title": ""
       },
       "draw": {
-        "description": "Dibuja o carga polígonos de entrenamiento para identificar bosque, no-bosque y otros tipos de cobertura.",
-        "title": "Dibujar Datos de Entrenamiento"
+        "description": "",
+        "title": ""
       },
-      "intro": "Entrena tu propio modelo de detección de deforestación usando aprendizaje automático. Sigue estos pasos:",
+      "intro": "Aprenda cómo entrenar su modelo de detección de deforestación:",
+      "sections": {
+        "access": {
+          "description": "Las imágenes satelitales se proporcionan a través del programa NICFI de Planet Lab. Para acceder a las imágenes sin procesar o recibir asistencia con la plataforma, contacte a lukebrowne - at - fcat-ecuador.org.",
+          "title": "Acceso a las Imágenes"
+        },
+        "analysis": {
+          "description": "Después del entrenamiento, cambie a la pestaña 'Análisis' para aplicar su modelo. Compare la cobertura terrestre entre diferentes fechas para detectar cambios y generar alertas de deforestación. Puede verificar los cambios detectados y exportar los resultados para un análisis más detallado.",
+          "title": "Generar Análisis"
+        },
+        "drawing": {
+          "description": "Elija entre dibujo a mano alzada para límites precisos o modo cuadrado para dibujo rápido. \nUtilice atajos de teclado para cambiar rápidamente entre dibujar (D), desplazarse (M), acercar (Z) y alejar (X). \nCambie entre los modos de mano alzada y cuadrado con (F). \nCambie entre clases (bosque, no bosque, etc.) con las teclas numéricas del 1 al 5.",
+          "title": "Herramientas de Dibujo"
+        },
+        "example": {
+          "description": "Ejemplo de polígonos de entrenamiento dibujados en el mapa",
+          "title": "Ejemplo de Datos de Entrenamiento"
+        },
+        "imagery": {
+          "description": "Explore las imágenes satelitales de alta resolución disponibles usando el selector de fechas. Busque imágenes relativamente libres de nubes. Para mejorar los resultados de detección de deforestación, enfóquese en al menos dos imágenes separadas idealmente por varios meses. El modelo solo generará predicciones para fechas donde haya datos de entrenamiento disponibles.",
+          "title": "Seleccionar Imágenes Satelitales"
+        },
+        "model": {
+          "description": "Una vez que haya recolectado suficientes datos de entrenamiento, haga clic en 'Ajustar Modelo' para entrenar el clasificador de aprendizaje automático. Puede personalizar los parámetros del modelo o usar la configuración predeterminada. La opción 'Evaluar Modelo' proporciona métricas detalladas de precisión para evaluar el rendimiento.",
+          "title": "Entrenar su Modelo"
+        },
+        "training": {
+          "description": "Dibuje polígonos alrededor de áreas que representen diferentes tipos de cobertura terrestre: bosque, no-bosque, nubes, sombras y agua. Para un entrenamiento preciso del modelo, asegúrese de que cada polígono contenga solo un tipo de cobertura terrestre. Procure tener 30-50 ejemplos de cada clase, bien distribuidos en su área de interés.",
+          "title": "Crear Datos de Entrenamiento"
+        }
+      },
       "title": "Bienvenido al Entrenamiento del Modelo",
       "train": {
-        "description": "Inicia el entrenamiento y monitorea el progreso. Revisa las métricas de precisión al finalizar.",
-        "title": "Entrenar y Evaluar"
+        "description": "",
+        "title": ""
       }
     }
   }
