@@ -300,8 +300,8 @@
       "zoomOut": "Alejar (X)"
     },
     "notifications": {
-      "dateExcluded": "Fecha ha sido excluida",
-      "dateIncluded": "Fecha ha sido incluida",
+      "dateExcluded": "Fecha excluida de entrenamiento",
+      "dateIncluded": "Fecha incluida en entrenamiento",
       "dateToggleError": "Error al cambiar el estado de exclusión de la fecha",
       "loadError": "Error al cargar polígonos desde el archivo",
       "noFeatureSelected": "Ninguna característica seleccionada",
@@ -559,7 +559,7 @@
         "percentage": "%",
         "totalArea": "Área Total",
         "totalSets": "Total de Conjuntos de Entrenamiento",
-        "trainingDates": "Fechas de datos de entrenamiento:"
+        "trainingDates": "Fechas de datos de entrenamiento"
       },
       "parameters": {
         "caption": "Haga clic para personalizar los parámetros del modelo",
@@ -601,9 +601,9 @@
           "feature": "Basado en características",
           "featureDescription": "La división basada en características asegura la independencia entre los datos de entrenamiento y prueba al dividir polígonos completos. La división basada en píxeles puede mezclar píxeles del mismo polígono en ambos conjuntos.",
           "pixel": "Basado en píxeles",
-          "title": "Elija el método de división:"
+          "title": "Elija el método de entrenamiento/prueba:"
         },
-        "title": "Parámetros del Modelo",
+        "title": "Ajustar los parámetros del modelo (opcional)",
         "trainTest": {
           "description": "Esto determina la proporción de datos utilizada para pruebas. Un valor de {value} significa que el {percent}% de los datos se utilizará para pruebas y el {remaining}% para entrenamiento. Porcentajes más altos de prueba proporcionan estimaciones de precisión más confiables pero dejan menos datos para el entrenamiento.",
           "title": "Ajustar la división entrenamiento/prueba:"

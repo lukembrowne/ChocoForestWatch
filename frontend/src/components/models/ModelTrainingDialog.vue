@@ -1,7 +1,7 @@
 <template>
   <q-dialog ref="dialogRef" @hide="onDialogHide">
-    <q-card class="q-dialog-plugin" style="width: 800px; max-width: 90vw;">
-      <q-card-section class="row items-center justify-between">
+    <q-card class="q-dialog-plugin" style="width: 1000px; max-width: 90vw;">
+      <q-card-section class="row items-center justify-between section-header">
         <div class="text-h6">{{ t(`training.modelTraining.title.${existingModel ? 'update' : 'train'}`) }}</div>
         <div class="row items-center q-gutter-sm">
           <span v-if="!isValidConfiguration" class="text-negative text-caption">
@@ -24,8 +24,8 @@
       </q-card-section>
 
       <q-card-section v-if="trainingDataSummary" class="q-pa-sm">
-        <div class="row q-col-gutter-sm">
-          <div class="col-12 col-md-6">
+        <div class="row q-col-gutter-md justify-center items-center">
+          <div class="col-3">
             <q-card class="bg-primary text-white">
               <q-card-section class="q-pa-sm">
                 <div class="text-h6">{{ trainingDataSummary.totalSets }}</div>
@@ -33,7 +33,7 @@
               </q-card-section>
             </q-card>
           </div>
-          <div class="col-12 col-md-6">
+          <div class="col-3">
             <q-card class="bg-secondary text-white">
               <q-card-section class="q-pa-sm">
                 <div class="text-h6">{{ totalArea.toFixed(2) }} ha</div>
@@ -41,9 +41,8 @@
               </q-card-section>
             </q-card>
           </div>
-        </div>
 
-        <q-markup-table flat bordered dense class="q-mt-sm">
+        <q-markup-table flat bordered dense class="q-ma-lg">
           <thead>
             <tr>
               <th class="text-left">{{ t('training.modelTraining.dataSummary.class') }}</th>
@@ -65,33 +64,33 @@
             </tr>
           </tbody>
         </q-markup-table>
+        </div>
+      </q-card-section>
 
         <div class="q-mt-sm">
-          <div class="text-caption">{{ t('training.modelTraining.dataSummary.trainingDates') }}</div>
-          <div class="row q-gutter-xs">
+          <div class="section-header">
+            <div class="text-h6">{{ t('training.modelTraining.dataSummary.trainingDates') }}</div>
+          </div>
+          <div class="row q-gutter-xs q-ma-sm">
             <q-chip
               v-for="date in basemapOptions"
               :key="date['value']"
               :color="getChipColor(date['value'])"
               :text-color="getChipTextColor(date['value'])"
               dense
-              size="sm"
             >
               {{ date['label'] }}
             </q-chip>
           </div>
         </div>
+
+      <q-card-section class="section-header q-pa-sm">
+        <div class="text-h6">{{ t('training.modelTraining.parameters.title')  }}</div>
       </q-card-section>
 
       <q-card-section>
-        <q-expansion-item
-          expand-separator
-          :label="t('training.modelTraining.parameters.title')"
-          :caption="t('training.modelTraining.parameters.caption')"
-          :default-opened="!isValidConfiguration"
-        >
-          <div class="row q-col-gutter-md">
-            <div class="col-12">
+          <div class="row q-col-gutter-md q-ma-sm">
+            <div class="col-3">
               <p>{{ t('training.modelTraining.parameters.splitMethod.title') }}</p>
               <q-radio v-model="splitMethod" val="feature" 
                 :label="t('training.modelTraining.parameters.splitMethod.feature')" color="primary" />
@@ -101,8 +100,8 @@
                 {{ t('training.modelTraining.parameters.splitMethod.featureDescription') }}
               </p>
             </div>
-            <div class="col-12">
-              <p>{{ t('training.modelTraining.parameters.trainTest.title') }}</p>
+            <div class="col-3">
+              <p class="q-mb-lg">{{ t('training.modelTraining.parameters.trainTest.title') }}</p>
               <q-slider v-model="trainTestSplit" :min="0.1" :max="0.5" :step="0.05" label label-always
                 color="primary" />
               <p class="text-caption">
@@ -113,53 +112,52 @@
                 }) }}
               </p>
             </div>
-            <div class="col-12 col-md-6">
-              <p>{{ t('training.modelTraining.parameters.modelParams.estimators.title') }}:</p>
+            <div class="col-12 col-md-3">
+              <p class="q-mb-lg">{{ t('training.modelTraining.parameters.modelParams.estimators.title') }}:</p>
               <q-slider v-model="options.n_estimators" :min="10" :max="1000" :step="10" label label-always
                 color="primary" />
               <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.estimators.description') }}</p>
             </div>
-            <div class="col-12 col-md-6">
-              <p>{{ t('training.modelTraining.parameters.modelParams.maxDepth.title') }}:</p>
+            <div class="col-12 col-md-3">
+              <p class="q-mb-lg">{{ t('training.modelTraining.parameters.modelParams.maxDepth.title') }}:</p>
               <q-slider v-model="options.max_depth" :min="1" :max="10" :step="1" label label-always color="primary" />
               <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.maxDepth.description') }}</p>
             </div>
-            <div class="col-12 col-md-6">
-              <p>{{ t('training.modelTraining.parameters.modelParams.learningRate.title') }}:</p>
+            <div class="col-12 col-md-3">
+              <p class="q-mb-lg">{{ t('training.modelTraining.parameters.modelParams.learningRate.title') }}:</p>
               <q-slider v-model="options.learning_rate" :min="0.01" :max="0.3" :step="0.01" label label-always
                 color="primary" />
               <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.learningRate.description') }}</p>
             </div>
-            <div class="col-12 col-md-6">
-              <p>{{ t('training.modelTraining.parameters.modelParams.minChildWeight.title') }}:</p>
+            <div class="col-12 col-md-3">
+              <p class="q-mb-lg">{{ t('training.modelTraining.parameters.modelParams.minChildWeight.title') }}:</p>
               <q-slider v-model="options.min_child_weight" :min="1" :max="10" :step="1" label label-always
                 color="primary" />
               <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.minChildWeight.description') }}</p>
             </div>
-            <div class="col-12 col-md-6">
-              <p>{{ t('training.modelTraining.parameters.modelParams.gamma.title') }}:</p>
+            <div class="col-12 col-md-3">
+              <p class="q-mb-lg">{{ t('training.modelTraining.parameters.modelParams.gamma.title') }}:</p>
               <q-slider v-model="options.gamma" :min="0" :max="1" :step="0.1" label label-always color="primary" />
               <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.gamma.description') }}</p>
             </div>
-            <div class="col-12 col-md-6">
-              <p>{{ t('training.modelTraining.parameters.modelParams.subsample.title') }}:</p>
+            <div class="col-12 col-md-3">
+              <p class="q-mb-lg">{{ t('training.modelTraining.parameters.modelParams.subsample.title') }}:</p>
               <q-slider v-model="options.subsample" :min="0.5" :max="1" :step="0.1" label label-always
                 color="primary" />
               <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.subsample.description') }}</p>
             </div>
-            <div class="col-12 col-md-6">
-              <p>{{ t('training.modelTraining.parameters.modelParams.colsample.title') }}:</p>
+            <div class="col-12 col-md-3">
+              <p class="q-mb-lg">{{ t('training.modelTraining.parameters.modelParams.colsample.title') }}:</p>
               <q-slider v-model="options.colsample_bytree" :min="0.5" :max="1" :step="0.1" label label-always
                 color="primary" />
               <p class="text-caption">{{ t('training.modelTraining.parameters.modelParams.colsample.description') }}</p>
             </div>
-            <div class="col-12 col-md-6">
-              <p>{{ t('training.modelTraining.parameters.sieveFilter.title') }}</p>
+            <div class="col-12 col-md-3">
+              <p class="q-mb-lg">{{ t('training.modelTraining.parameters.sieveFilter.title') }}</p>
               <q-slider v-model="options.sieve_size" :min="0" :max="100" :step="5" label label-always color="primary" />
               <p class="text-caption">{{ t('training.modelTraining.parameters.sieveFilter.description') }}</p>
             </div>
           </div>
-        </q-expansion-item>
       </q-card-section>
     </q-card>
   </q-dialog>

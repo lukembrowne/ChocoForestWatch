@@ -301,7 +301,7 @@
     },
     "notifications": {
       "dateExcluded": "Date has been excluded",
-      "dateIncluded": "Date has been included",
+      "dateIncluded": "Date has been included in training data",
       "dateToggleError": "Error toggling date exclusion status",
       "loadError": "Failed to load polygons from file",
       "noFeatureSelected": "No feature selected",
@@ -559,7 +559,7 @@
         "percentage": "%",
         "totalArea": "Total Area",
         "totalSets": "Total Training Sets",
-        "trainingDates": "Training data dates:"
+        "trainingDates": "Training data dates"
       },
       "parameters": {
         "caption": "Click to customize model parameters",
@@ -601,9 +601,9 @@
           "feature": "Feature-based",
           "featureDescription": "Feature-based split ensures independence between training and testing data by splitting entire polygons. Pixel-based split may mix pixels from the same polygon in both training and testing sets.",
           "pixel": "Pixel-based",
-          "title": "Choose split method:"
+          "title": "Choose training/testing split method:"
         },
-        "title": "Model Parameters",
+        "title": "Adjust Model Parameters (optional)",
         "trainTest": {
           "description": "This determines the proportion of data used for testing. A value of {value} means {percent}% of the data will be used for testing and {remaining}% for training. Higher test percentages provide more reliable accuracy estimates but leave less data for training, which may lead to overfitting.",
           "title": "Adjust the train/test split:"
