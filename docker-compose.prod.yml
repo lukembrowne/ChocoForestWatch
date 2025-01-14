@@ -59,4 +59,5 @@ services:
       - TZ=America/New_York
       
 volumes:
-  postgres_data:  planet_data:
+  postgres_data:  
+  planet_data:
