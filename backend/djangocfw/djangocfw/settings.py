@@ -182,7 +182,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/New_York'
+USE_TZ = True
 
 USE_I18N = True
 
@@ -273,6 +274,7 @@ LOGGING = {
         'verbose': {
             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S %Z',  # Add timezone to timestamp
         },
     },
     'handlers': {

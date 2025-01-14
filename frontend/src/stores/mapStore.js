@@ -1050,7 +1050,7 @@ export const useMapStore = defineStore('map', () => {
             await api.updateTrainingPolygons(
                 existingSet.id,  // Pass the ID separately
                 {
-                    project_id: projectStore.currentProject.id,
+                    project: projectStore.currentProject.id,
                     basemap_date: date,
                     polygons: polygons,
                     name: `Training_Set_${date}`
@@ -1061,7 +1061,7 @@ export const useMapStore = defineStore('map', () => {
             console.log("Creating new training set for date:", date);
             // Create new training set
             await api.saveTrainingPolygons({
-                project_id: projectStore.currentProject.id,
+                project: projectStore.currentProject.id,
                 basemap_date: date,
                 polygons: polygons,
                 name: `Training_Set_${date}`
