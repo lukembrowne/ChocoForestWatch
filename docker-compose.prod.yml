@@ -27,9 +27,9 @@ services:
       context: ./backend/djangocfw
       dockerfile: Dockerfile
     volumes:
-      - ./data/planet_quads:/app/djangocfw/data/planet_quads
-      - ./data/predictions:/app/djangocfw/data/predictions
-      - ./data/models:/app/djangocfw/data/models
+      - ./data/planet_quads:/app/data/planet_quads
+      - ./data/predictions:/app/data/predictions
+      - ./data/models:/app/data/models
       - ./media:/app/media
       - ./logs:/app/logs
     ports:
@@ -60,4 +60,3 @@ services:
       
 volumes:
   postgres_data:  
-  planet_data:
