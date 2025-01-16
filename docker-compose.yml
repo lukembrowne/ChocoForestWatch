@@ -38,14 +38,19 @@ services:
       context: ./backend/djangocfw
       dockerfile: Dockerfile
     volumes:
-      - ./backend/djangocfw/core:/app/core
-      - ./backend/djangocfw/djangocfw:/app/djangocfw
-      - ./backend/djangocfw/manage.py:/app/manage.py
-      - ./backend/djangocfw/wait_for_db.py:/app/wait_for_db.py
-      - ./backend/djangocfw/entrypoint.sh:/app/entrypoint.sh
+      # - ./backend/djangocfw/core:/app/core
+      # - ./backend/djangocfw/djangocfw:/app/djangocfw
+      # - ./backend/djangocfw/manage.py:/app/manage.py
+      # - ./backend/djangocfw/wait_for_db.py:/app/wait_for_db.py
+      # - ./backend/djangocfw/entrypoint.sh:/app/entrypoint.sh
+      # - ./data/planet_quads:/app/data/planet_quads
+      # - ./data/predictions:/app/data/predictions
+      # - ./data/models:/app/data/models
+      # - ./media:/app/media
+      # - ./logs:/app/logs
+      - ./backend/djangocfw:/app
       - planet_data:/app/djangocfw/data/planet_quads
-      - ./media:/app/media
-      - ./logs:/app/logs
+      
     ports:
       - "8000:8000"
       - "5678:5678"
