@@ -52,6 +52,10 @@ services:
       target: "production"       # Use 'development' or 'production'
     ports:
       - "9000:9000"
+    volumes:
+      - ./data/predictions:/app/data/predictions:ro
+      - ./data/planet_quads:/app/data/planet_quads:ro
+      - ./data/models:/app/data/models:ro
     env_file:
       - ./.env.prod
     restart: always
