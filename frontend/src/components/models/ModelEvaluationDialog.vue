@@ -19,8 +19,113 @@
       </q-card-section>
 
       <template v-if="metrics">
-        <!-- Model Parameters Section -->
+       
+
+        <!-- Performance Metrics Section -->
         <q-card-section>
+          <div class="text-h6 q-mb-md">{{ t('training.evaluation.metrics.title') }}</div>
+          <div class="row q-col-gutter-md">
+            <div class="col-12">
+              <q-card class="bg-primary text-white">
+                <q-card-section>
+                  <div class="text-h4 text-center">{{ (metrics.accuracy * 100).toFixed(1) }}%</div>
+                  <div class="text-subtitle2 text-center">{{ t('training.evaluation.metrics.overallAccuracy') }}</div>
+                </q-card-section>
+              </q-card>
+            </div>
+            
+            <div class="col-12">
+              <q-table
+                flat
+                bordered
+                :rows="classMetricsRows"
+                :columns="classMetricsColumns"
+                hide-bottom
+              >
+                <template v-slot:body="props">
+                  <q-tr :props="props">
+                    <q-td key="class" :props="props">
+                      <q-chip :color="getClassColor(props.row.class)" text-color="black" square>
+                        {{ props.row.class }}
+                      </q-chip>
+                    </q-td>
+                    <q-td key="precision" :props="props">{{ props.row.precision }}%</q-td>
+                    <q-td key="recall" :props="props">{{ props.row.recall }}%</q-td>
+                    <q-td key="f1" :props="props">{{ props.row.f1 }}%</q-td>
+                  </q-tr>
+                </template>
+              </q-table>
+            </div>
+          </div>
+        </q-card-section>
+
+        <!-- Interpretation Section -->
+        <q-card-section>
+          <div class="text-h6 q-mb-md">{{ t('training.evaluation.interpretation.title') }}</div>
+          <p>{{ t('training.evaluation.interpretation.accuracy', { accuracy: (metrics.accuracy * 100).toFixed(1) }) }}</p>
+          <p>{{ t('training.evaluation.interpretation.keyFindings') }}</p>
+          <ul>
+            <li v-for="(classMetrics, className) in metrics.class_metrics" :key="className">
+              <strong>{{ className }}</strong>:
+              <ul>
+                <li>{{ t('training.evaluation.interpretation.classMetrics.precision', { 
+                  value: (classMetrics.precision * 100).toFixed(1),
+                  class: className 
+                }) }}</li>
+                <li>{{ t('training.evaluation.interpretation.classMetrics.recall', {
+                  value: (classMetrics.recall * 100).toFixed(1),
+                  class: className
+                }) }}</li>
+                <li>{{ t('training.evaluation.interpretation.classMetrics.f1', {
+                  value: (classMetrics.f1 * 100).toFixed(1)
+                }) }}</li>
+              </ul>
+            </li>
+          </ul>
+        </q-card-section>
+
+        <!-- Confusion Matrix Section -->
+        <q-card-section>
+          <div class="text-h6 q-mb-md">{{ t('training.evaluation.confusionMatrix.title') }}</div>
+          <q-table
+            flat
+            bordered
+            :rows="confusionMatrixRows"
+            :columns="confusionMatrixColumns"
+            hide-bottom
+            :hide-header="confusionMatrixColumns.length === 0"
+          >
+            <template v-slot:body="props">
+              <q-tr :props="props">
+                <q-td key="predicted" :props="props">
+                  <q-chip :color="getClassColor(props.row.predicted)" text-color="black" square>
+                    {{ props.row.predicted }}
+                  </q-chip>
+                </q-td>
+                <q-td
+                  v-for="column in confusionMatrixColumns.slice(1)"
+                  :key="column.name"
+                  :props="props"
+                  :class="{'bg-green-1': isHighlightCell(props.row.predicted, column.label, props.row[column.name])}"
+                >
+                  {{ props.row[column.name] }}
+                  <q-badge
+                    v-if="isClassInTraining(column.label) && isClassInTraining(props.row.predicted)"
+                    :color="getCellColor(props.row[column.name], getClassTotal(props.row.predicted))"
+                    floating
+                  >
+                    {{ ((props.row[column.name] / getClassTotal(props.row.predicted)) * 100).toFixed(1) }}%
+                  </q-badge>
+                </q-td>
+              </q-tr>
+            </template>
+          </q-table>
+        </q-card-section>
+
+        
+
+         <!-- Model Parameters Section -->
+         <q-card-section>
           <div class="text-h6 q-mb-md">{{ t('training.evaluation.parameters.title') }}</div>
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
@@ -82,106 +187,7 @@
           </div>
         </q-card-section>
 
-        <!-- Performance Metrics Section -->
-        <q-card-section>
-          <div class="text-h6 q-mb-md">{{ t('training.evaluation.metrics.title') }}</div>
-          <div class="row q-col-gutter-md">
-            <div class="col-12">
-              <q-card class="bg-primary text-white">
-                <q-card-section>
-                  <div class="text-h4 text-center">{{ (metrics.accuracy * 100).toFixed(1) }}%</div>
-                  <div class="text-subtitle2 text-center">{{ t('training.evaluation.metrics.overallAccuracy') }}</div>
-                </q-card-section>
-              </q-card>
-            </div>
-            
-            <div class="col-12">
-              <q-table
-                flat
-                bordered
-                :rows="classMetricsRows"
-                :columns="classMetricsColumns"
-                hide-bottom
-              >
-                <template v-slot:body="props">
-                  <q-tr :props="props">
-                    <q-td key="class" :props="props">
-                      <q-chip :color="getClassColor(props.row.class)" text-color="black" square>
-                        {{ props.row.class }}
-                      </q-chip>
-                    </q-td>
-                    <q-td key="precision" :props="props">{{ props.row.precision }}%</q-td>
-                    <q-td key="recall" :props="props">{{ props.row.recall }}%</q-td>
-                    <q-td key="f1" :props="props">{{ props.row.f1 }}%</q-td>
-                  </q-tr>
-                </template>
-              </q-table>
-            </div>
-          </div>
-        </q-card-section>
 
-        <!-- Confusion Matrix Section -->
-        <q-card-section>
-          <div class="text-h6 q-mb-md">{{ t('training.evaluation.confusionMatrix.title') }}</div>
-          <q-table
-            flat
-            bordered
-            :rows="confusionMatrixRows"
-            :columns="confusionMatrixColumns"
-            hide-bottom
-            :hide-header="confusionMatrixColumns.length === 0"
-          >
-            <template v-slot:body="props">
-              <q-tr :props="props">
-                <q-td key="predicted" :props="props">
-                  <q-chip :color="getClassColor(props.row.predicted)" text-color="black" square>
-                    {{ props.row.predicted }}
-                  </q-chip>
-                </q-td>
-                <q-td
-                  v-for="column in confusionMatrixColumns.slice(1)"
-                  :key="column.name"
-                  :props="props"
-                  :class="{'bg-green-1': isHighlightCell(props.row.predicted, column.label, props.row[column.name])}"
-                >
-                  {{ props.row[column.name] }}
-                  <q-badge
-                    v-if="isClassInTraining(column.label) && isClassInTraining(props.row.predicted)"
-                    :color="getCellColor(props.row[column.name], getClassTotal(props.row.predicted))"
-                    floating
-                  >
-                    {{ ((props.row[column.name] / getClassTotal(props.row.predicted)) * 100).toFixed(1) }}%
-                  </q-badge>
-                </q-td>
-              </q-tr>
-            </template>
-          </q-table>
-        </q-card-section>
-
-        <!-- Interpretation Section -->
-        <q-card-section>
-          <div class="text-h6 q-mb-md">{{ t('training.evaluation.interpretation.title') }}</div>
-          <p>{{ t('training.evaluation.interpretation.accuracy', { accuracy: (metrics.accuracy * 100).toFixed(1) }) }}</p>
-          <p>{{ t('training.evaluation.interpretation.keyFindings') }}</p>
-          <ul>
-            <li v-for="(classMetrics, className) in metrics.class_metrics" :key="className">
-              <strong>{{ className }}</strong>:
-              <ul>
-                <li>{{ t('training.evaluation.interpretation.classMetrics.precision', { 
-                  value: (classMetrics.precision * 100).toFixed(1),
-                  class: className 
-                }) }}</li>
-                <li>{{ t('training.evaluation.interpretation.classMetrics.recall', {
-                  value: (classMetrics.recall * 100).toFixed(1),
-                  class: className
-                }) }}</li>
-                <li>{{ t('training.evaluation.interpretation.classMetrics.f1', {
-                  value: (classMetrics.f1 * 100).toFixed(1)
-                }) }}</li>
-              </ul>
-            </li>
-          </ul>
-        </q-card-section>
       </template>
 
       <q-card-actions align="right">
