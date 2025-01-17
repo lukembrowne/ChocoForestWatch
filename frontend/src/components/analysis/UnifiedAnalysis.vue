@@ -4,255 +4,175 @@
     <div class="analysis-controls-container">
       <q-card class="analysis-card">
 
-        <!-- New Analysis Section -->
-        <div class="section q-mb-md">
-          <q-card-section class="section-header">{{ t('analysis.unified.deforestation.new.title') }}</q-card-section>
+        <!-- Combined Analysis Section -->
+        <!-- <div class="section q-mb-md"> -->
+        <q-card-section class="section-header">
+          <div class="row items-center">
 
-          <q-card-section class="q-pa-md">
-            {{ t('analysis.unified.deforestation.new.description') }}
-          </q-card-section>
+            <div class="text-subtitle1 text-weight-medium">{{ t('analysis.unified.deforestation.title') }}</div>
 
+            <!-- Button to start new analysis -->
+            <q-btn flat round dense icon="add_circle" size="sm" class="q-ml-sm" @click="toggleDateSelection">
+              <q-tooltip>{{ t('analysis.unified.deforestation.new.addDates') }}</q-tooltip>
+            </q-btn>
+            <!-- Help button -->
+            <q-btn flat round dense icon="help" size="sm" class="q-ml-sm">
+              <q-tooltip>{{ t('analysis.unified.deforestation.tooltips.help') }}</q-tooltip>
+            </q-btn>
+
+
+          </div>
+        </q-card-section>
+
+        <q-card-section>
+          <div class="text-subtitle text-weight-medium">{{t('analysis.unified.deforestation.new.description')}}</div>
           <div class="row q-col-gutter-md">
-            <q-select
-              v-model="startDate"
-              :options="predictionDates"
-              :label="t('analysis.unified.deforestation.new.startDate')"
-              class="col modern-input"
-              dense
-              outlined
-            />
-            <q-select
-              v-model="endDate"
-              :options="predictionDates"
-              :label="t('analysis.unified.deforestation.new.endDate')"
-              class="col modern-input"
-              dense
-              outlined
-            />
+            <q-select v-model="startDate" :options="predictionDates"
+            :label="t('analysis.unified.deforestation.new.startDate')" class="col modern-input" dense outlined />
+            <q-select v-model="endDate" :options="predictionDates"
+            :label="t('analysis.unified.deforestation.new.endDate')" class="col modern-input" dense outlined />
           </div>
-          <div class="row justify-center q-mt-sm">
-            <q-btn 
-              :label="t('analysis.unified.deforestation.new.analyze')"
-              color="primary"
-              @click="analyzeDeforestation"
-              :disable="!startDate || !endDate"
-              :loading="loading"
-              unelevated
-            />
-          </div>
-        </div>
-
-        <!-- Previous Deforestation Analyses Section -->
-        <q-card-section class="analysis-content">
-          <div class="section q-mb-md">
-            <div class="section-header">
-              <div class="row items-center">
-                <div>{{ t('analysis.unified.deforestation.previous.title') }}</div>
-                <q-btn
-                  flat
-                  round
-                  dense
-                  icon="help"
-                  size="sm"
-                  class="q-ml-sm"
-                >
-                  <q-tooltip>{{ t('analysis.unified.deforestation.previous.tooltips.help') }}</q-tooltip>
-                </q-btn>
-              </div>
-            </div>
-            <q-scroll-area style="height: 150px" v-if="deforestationMaps.length">
-              <q-list separator dense>
-                <q-item 
-                  v-for="map in deforestationMaps" 
-                  :key="map.id"
-                  clickable
-                  v-ripple
-                  @click="loadExistingAnalysis(map)"
-                  :class="{'selected-analysis': selectedDeforestationMap?.id === map.id}"
-                  class="analysis-item"
-                >
-                  <q-item-section>
-                    <div class="row items-center justify-between">
-                      <div class="text-weight-medium">{{ map.name }}</div>
-                      <div class="text-caption">
-                        {{ formatDateRange(map.summary_statistics.prediction1_date, map.summary_statistics.prediction2_date) }}
-                      </div>
-                    </div>
-                  </q-item-section>
-                  
-                  <!-- Add delete button -->
-                  <q-item-section side>
-                    <q-btn
-                      flat
-                      round
-                      size="sm"
-                      color="negative"
-                      icon="delete"
-                      @click.stop="confirmDeleteAnalysis(map)"
-                    >
-                      <q-tooltip>{{ t('analysis.unified.deforestation.previous.tooltips.delete') }}</q-tooltip>
-                    </q-btn>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-scroll-area>
-            <div v-else class="text-caption q-pa-md text-center">
-              {{ t('analysis.unified.deforestation.previous.empty') }}
-            </div>
+          <div class="row justify-center q-py-sm">
+            <q-btn :label="t('analysis.unified.deforestation.new.analyze')" color="primary"
+              @click="analyzeDeforestation" :disable="!startDate || !endDate" :loading="loading" unelevated />
           </div>
 
-          <!-- Detected Hotspots Section -->
-          <div class="section q-mb-md">
-            <div class="section-header">
-              {{ t('analysis.unified.hotspots.title') }}
+          <!-- Area to load previous analysis -->
+           <q-separator/>
+           <div class="text-subtitle text-weight-medium">{{t('analysis.unified.deforestation.previous.title')}}</div>
+          <q-select v-model="selectedDeforestationMap" :options="deforestationMaps" option-label="name"
+            option-value="id" class="col modern-input" dense
+            outlined @update:model-value="loadExistingAnalysis" />
+
+        </q-card-section>
+        <!-- </div> -->
+
+        <q-separator />
+
+        <!-- Detected Hotspots Section -->
+        <!-- <q-card-section class="analysis-content"> -->
+        <div class="section q-mb-md">
+          <q-card-section class="section-header">
+            <div class="row items-center">
+
+              <div class="text-subtitle1 text-weight-medium">{{ t('analysis.unified.hotspots.title') }}</div>
               <q-badge color="primary" class="q-ml-sm">
                 {{ hotspots.length }} {{ t('analysis.unified.hotspots.count', hotspots.length) }}
               </q-badge>
-              <q-btn
-                flat
-                round
-                dense
-                icon="help"
-                size="sm"
-                class="q-ml-sm"
-              >
+              <q-btn flat round dense icon="help" size="sm" class="q-ml-sm">
                 <q-tooltip>{{ t('analysis.unified.hotspots.tooltips.help') }}</q-tooltip>
               </q-btn>
             </div>
-            <div v-if="hotspots?.length">
-              <div class="row q-gutter-sm q-mb-sm">
-                <q-btn 
-                  flat
-                  dense
-                  color="primary" 
-                  icon="analytics" 
-                  :label="t('analysis.unified.stats.title')"
-                  @click="showStats = true"
-                />
-                <q-btn 
-                  flat
-                  dense
-                  color="primary" 
-                  icon="download" 
-                  :label="t('analysis.unified.hotspots.export.title')"
-                  @click="exportHotspots('all')"
-                >
-                  <q-menu>
-                    <q-list dense style="min-width: 100px">
-                      <q-item clickable v-close-popup @click="exportHotspots('all')">
-                        <q-item-section>{{ t('analysis.unified.hotspots.export.all') }}</q-item-section>
-                      </q-item>
-                      <q-item clickable v-close-popup @click="exportHotspots('verified')">
-                        <q-item-section>{{ t('analysis.unified.hotspots.export.verifiedOnly') }}</q-item-section>
-                      </q-item>
-                    </q-list>
-                  </q-menu>
-                </q-btn>
-              </div>
+          </q-card-section>
 
-              <!-- Filtering controls -->
-              <div class="row q-col-gutter-sm q-mb-md">
-                <div class="col-6">
-                  <q-input
-                    v-model.number="minAreaHa"
-                    type="number"
-                    :label="t('analysis.unified.hotspots.filters.minArea')"
-                    dense
-                    outlined
-                    class="modern-input"
-                    @update:model-value="loadHotspots"
-                  >
-                    <template v-slot:append>
-                      <q-icon name="filter_alt" />
-                    </template>
-                  </q-input>
-                </div>
-                <div class="col-6">
-                  <q-select
-                    v-model="selectedSource"
-                    :options="sourceOptions"
-                    :label="t('analysis.unified.hotspots.filters.source')"
-                    dense
-                    outlined
-                    class="modern-input"
-                    @update:model-value="loadHotspots"
-                  />
-                </div>
-              </div>
-
-              <!-- Hotspots list -->
-              <q-scroll-area ref="scrollArea" class="hotspots-scroll-area">
-                <q-list separator dense>
-                  <q-item 
-                    v-for="(hotspot, index) in hotspots" 
-                    :key="index" 
-                    :class="[
-                      'hotspot-item',
-                      hotspot.properties.source === 'gfw' ? 'gfw-alert' : 'local-alert',
-                      {
-                        'selected-hotspot': selectedHotspot === hotspot,
-                        'verified': hotspot.properties.verification_status === 'verified',
-                        'rejected': hotspot.properties.verification_status === 'rejected',
-                        'unsure': hotspot.properties.verification_status === 'unsure'
-                      }
-                    ]" 
-                    clickable 
-                    v-ripple 
-                    @click="selectHotspot(hotspot)"
-                  >
-                    <q-item-section>
-                      <div class="row items-center no-wrap">
-                        <div class="text-weight-medium">
-                          #{{ index + 1 }}
-                          <q-badge :color="hotspot.properties.source === 'gfw' ? 'purple' : 'primary'">
-                            {{ hotspot.properties.source.toUpperCase() }}
-                          </q-badge>
-                          <q-badge 
-                            v-if="hotspot.properties.source === 'gfw'"
-                            :color="getConfidenceColor(hotspot.properties.confidence)"
-                            class="q-ml-xs"
-                          >
-                            {{ getConfidenceLabel(hotspot.properties.confidence) }}
-                          </q-badge>
-                        </div>
-                        <div class="q-ml-sm">
-                          {{ hotspot.properties.area_ha.toFixed(1) }} ha
-                        </div>
-                        <div class="q-ml-auto" :class="{
-                          'text-green': hotspot.properties.verification_status === 'verified',
-                          'text-blue-grey': hotspot.properties.verification_status === 'rejected',
-                          'text-amber': hotspot.properties.verification_status === 'unsure'
-                        }">
-                          {{ hotspot.properties.verification_status || 'Unverified' }}
-                        </div>
-                      </div>
-                    </q-item-section>
-
-                    <q-item-section side>
-                      <div class="row q-gutter-xs verification-buttons">
-                        <q-btn flat round size="sm" color="green" icon="check_circle"
-                          @click.stop="verifyHotspot(hotspot, 'verified')">
-                          <q-tooltip>Verify Deforestation (1)</q-tooltip>
-                        </q-btn>
-                        <q-btn flat round size="sm" color="amber" icon="help"
-                          @click.stop="verifyHotspot(hotspot, 'unsure')">
-                          <q-tooltip>Mark as Unsure (2)</q-tooltip>
-                        </q-btn>
-                        <q-btn flat round size="sm" color="blue-grey" icon="cancel"
-                          @click.stop="verifyHotspot(hotspot, 'rejected')">
-                          <q-tooltip>Reject Alert (3)</q-tooltip>
-                        </q-btn>
-                      </div>
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-              </q-scroll-area>
+          <!-- Filtering controls -->
+          <div class="row q-col-gutter-sm q-pa-md">
+            <div class="col-6">
+              <q-input v-model.number="minAreaHa" type="number" :label="t('analysis.unified.hotspots.filters.minArea')"
+                dense outlined class="modern-input" @update:model-value="loadHotspots">
+                <template v-slot:append>
+                  <q-icon name="filter_alt" />
+                </template>
+              </q-input>
             </div>
-            <div v-else class="text-caption q-pa-md text-center">
-              {{ t('analysis.unified.hotspots.empty') }}
+            <div class="col-6">
+              <q-select v-model="selectedSource" :options="sourceOptions"
+                :label="t('analysis.unified.hotspots.filters.source')" dense outlined class="modern-input"
+                @update:model-value="loadHotspots" />
             </div>
           </div>
-        </q-card-section>
+
+          <!-- Hotspots list -->
+          <q-scroll-area ref="scrollArea" class="hotspots-scroll-area">
+            <q-list separator dense>
+              <q-item v-for="(hotspot, index) in hotspots" :key="index" :class="[
+                'hotspot-item',
+                hotspot.properties.source === 'gfw' ? 'gfw-alert' : 'local-alert',
+                {
+                  'selected-hotspot': selectedHotspot === hotspot,
+                  'verified': hotspot.properties.verification_status === 'verified',
+                  'rejected': hotspot.properties.verification_status === 'rejected',
+                  'unsure': hotspot.properties.verification_status === 'unsure'
+                }
+              ]" clickable v-ripple @click="selectHotspot(hotspot)">
+                <q-item-section>
+                  <div class="row items-center no-wrap">
+                    <div class="text-weight-medium">
+                      #{{ index + 1 }}
+                      <q-badge :color="hotspot.properties.source === 'gfw' ? 'purple' : 'primary'">
+                        {{ hotspot.properties.source.toUpperCase() }}
+                      </q-badge>
+                      <!-- <q-badge v-if="hotspot.properties.source === 'gfw'"
+                          :color="getConfidenceColor(hotspot.properties.confidence)" class="q-ml-xs">
+                          {{ getConfidenceLabel(hotspot.properties.confidence) }}
+                        </q-badge> -->
+                    </div>
+                    <div class="q-ml-sm">
+                      {{ hotspot.properties.area_ha.toFixed(1) }} ha
+                    </div>
+                    <div class="q-ml-auto" :class="{
+                      'text-green': hotspot.properties.verification_status === 'verified',
+                      'text-blue-grey': hotspot.properties.verification_status === 'rejected',
+                      'text-amber': hotspot.properties.verification_status === 'unsure'
+                    }">
+                      {{ hotspot.properties.verification_status || 'Unverified' }}
+                    </div>
+                  </div>
+                </q-item-section>
+
+                <q-item-section side>
+                  <div class="row q-gutter-xs verification-buttons">
+                    <q-btn flat round size="sm" color="green" icon="check_circle"
+                      @click.stop="verifyHotspot(hotspot, 'verified')">
+                      <q-tooltip>{{ t('analysis.unified.hotspots.tooltips.verify') }}</q-tooltip>
+                    </q-btn>
+                    <q-btn flat round size="sm" color="amber" icon="help"
+                      @click.stop="verifyHotspot(hotspot, 'unsure')">
+                      <q-tooltip>{{ t('analysis.unified.hotspots.tooltips.unsure') }}</q-tooltip>
+                    </q-btn>
+                    <q-btn flat round size="sm" color="blue-grey" icon="cancel"
+                      @click.stop="verifyHotspot(hotspot, 'rejected')">
+                      <q-tooltip>{{ t('analysis.unified.hotspots.tooltips.reject') }}</q-tooltip>
+                    </q-btn>
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-scroll-area>
+
+          <q-separator />
+
+          <!-- Buttons to show statistics and export -->
+          <div v-if="hotspots?.length">
+            <div class="row q-gutter-sm q-mb-sm">
+              <q-btn flat color="primary" icon="analytics" :label="t('analysis.unified.stats.title')"
+                @click="showStats = true" />
+              <q-btn flat color="primary" icon="download" :label="t('analysis.unified.hotspots.export.title')"
+                @click="exportHotspots('all')">
+                <q-menu>
+                  <q-list style="min-width: 100px">
+                    <q-item clickable v-close-popup @click="exportHotspots('all')">
+                      <q-item-section>{{ t('analysis.unified.hotspots.export.all') }}</q-item-section>
+                    </q-item>
+                    <q-item clickable v-close-popup @click="exportHotspots('verified')">
+                      <q-item-section>{{ t('analysis.unified.hotspots.export.verifiedOnly') }}</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
+            </div>
+
+
+
+
+
+
+          </div>
+          <div v-else class="text-caption q-pa-md text-center">
+            {{ t('analysis.unified.hotspots.empty') }}
+          </div>
+        </div>
+        <!-- </q-card-section> -->
       </q-card>
     </div>
 
@@ -263,7 +183,7 @@
           <div ref="primaryMap" class="comparison-map"></div>
           <div class="map-label">{{ getPrimaryMapLabel }}</div>
           <CustomLayerSwitcher mapId="primary" />
-          
+
           <!-- Add legend -->
           <div class="map-legend">
             <div class="legend-title">{{ t('analysis.unified.maps.legend.title') }}</div>
@@ -319,7 +239,10 @@
             <q-card class="source-stats-card local-stats">
               <q-card-section>
                 <div class="text-h6 q-mb-md">{{ t('analysis.unified.stats.overview.localAlerts') }}</div>
-                <div class="text-caption q-mb-sm">{{ t('analysis.unified.stats.overview.showing', { minArea: minAreaHa }) }}</div>
+                <div class="text-caption q-mb-sm">{{ t('analysis.unified.stats.overview.showing', {
+                  minArea: minAreaHa
+                })
+                  }}</div>
                 <div class="row q-col-gutter-md">
                   <div class="col-4">
                     <div class="text-subtitle2">{{ t('analysis.unified.stats.overview.hotspots') }}</div>
@@ -328,11 +251,15 @@
                   <div class="col-4">
                     <div class="text-subtitle2">{{ t('analysis.unified.stats.overview.totalArea') }}</div>
                     <div class="text-h5">{{ sourceStats.local.area.toFixed(1) }} ha</div>
-                    <div class="text-caption">{{ t('analysis.unified.stats.overview.percentOfAoi', { percent: (sourceStats.local.area / projectStore.aoiAreaHa * 100).toFixed(1) }) }}</div>
+                    <div class="text-caption">{{ t('analysis.unified.stats.overview.percentOfAoi', {
+                      percent:
+                        (sourceStats.local.area / projectStore.aoiAreaHa * 100).toFixed(1)
+                    }) }}</div>
                   </div>
                   <div class="col-4">
                     <div class="text-subtitle2">{{ t('analysis.unified.stats.overview.annualRate') }}</div>
-                    <div class="text-h5">{{ sourceStats.local.rate.toFixed(1) }} {{ t('analysis.unified.stats.overview.haPerYear') }}</div>
+                    <div class="text-h5">{{ sourceStats.local.rate.toFixed(1) }} {{
+                      t('analysis.unified.stats.overview.haPerYear') }}</div>
                   </div>
                 </div>
               </q-card-section>
@@ -344,7 +271,10 @@
             <q-card class="source-stats-card gfw-stats">
               <q-card-section>
                 <div class="text-h6 q-mb-md">{{ t('analysis.unified.stats.overview.gfwAlerts') }}</div>
-                <div class="text-caption q-mb-sm">{{ t('analysis.unified.stats.overview.showing', { minArea: minAreaHa }) }}</div>
+                <div class="text-caption q-mb-sm">{{ t('analysis.unified.stats.overview.showing', {
+                  minArea: minAreaHa
+                })
+                  }}</div>
                 <div class="row q-col-gutter-md">
                   <div class="col-4">
                     <div class="text-subtitle2">{{ t('analysis.unified.stats.overview.hotspots') }}</div>
@@ -353,11 +283,15 @@
                   <div class="col-4">
                     <div class="text-subtitle2">{{ t('analysis.unified.stats.overview.totalArea') }}</div>
                     <div class="text-h5">{{ sourceStats.gfw.area.toFixed(1) }} ha</div>
-                    <div class="text-caption">{{ t('analysis.unified.stats.overview.percentOfAoi', { percent: (sourceStats.gfw.area / projectStore.aoiAreaHa * 100).toFixed(1) }) }}</div>
+                    <div class="text-caption">{{ t('analysis.unified.stats.overview.percentOfAoi', {
+                      percent:
+                        (sourceStats.gfw.area / projectStore.aoiAreaHa * 100).toFixed(1)
+                    }) }}</div>
                   </div>
                   <div class="col-4">
                     <div class="text-subtitle2">{{ t('analysis.unified.stats.overview.annualRate') }}</div>
-                    <div class="text-h5">{{ sourceStats.gfw.rate.toFixed(1) }} {{ t('analysis.unified.stats.overview.haPerYear') }}</div>
+                    <div class="text-h5">{{ sourceStats.gfw.rate.toFixed(1) }} {{
+                      t('analysis.unified.stats.overview.haPerYear') }}</div>
                   </div>
                 </div>
               </q-card-section>
@@ -366,7 +300,8 @@
         </div>
 
         <!-- Status Breakdown Section -->
-        <div class="text-h6 q-mt-lg q-mb-md">{{ t('analysis.unified.stats.breakdown.title', { minArea: minAreaHa }) }}</div>
+        <div class="text-h6 q-mt-lg q-mb-md">{{ t('analysis.unified.stats.breakdown.title', { minArea: minAreaHa }) }}
+        </div>
         <div class="row q-col-gutter-md">
           <!-- Local Status Breakdown -->
           <div class="col-6">
@@ -376,12 +311,24 @@
                 <div class="row q-col-gutter-md">
                   <div v-for="status in localStatusBreakdown" :key="status.name" class="col-6">
                     <div :class="`text-${status.color}`">
-                      <div class="text-subtitle2">{{ t(`analysis.unified.stats.breakdown.status.${status.name.toLowerCase()}`) }}</div>
-                      <div class="text-h6">{{ t('analysis.unified.stats.breakdown.hotspotCount', { count: status.count }) }}</div>
-                      <div class="text-caption">{{ t('analysis.unified.stats.breakdown.percentOfSource', { percent: status.percentage.toFixed(1), source: t('analysis.unified.stats.overview.localAlerts') }) }}</div>
+                      <div class="text-subtitle2">{{
+                        t(`analysis.unified.stats.breakdown.status.${status.name.toLowerCase()}`) }}</div>
+                      <div class="text-h6">{{ t('analysis.unified.stats.breakdown.hotspotCount', {
+                        count: status.count
+                      })
+                        }}</div>
+                      <div class="text-caption">{{ t('analysis.unified.stats.breakdown.percentOfSource', {
+                        percent:
+                          status.percentage.toFixed(1), source: t('analysis.unified.stats.overview.localAlerts')
+                      }) }}
+                      </div>
                       <div class="text-subtitle2 q-mt-sm">{{ status.area.toFixed(1) }} ha</div>
-                      <div class="text-caption">{{ t('analysis.unified.stats.overview.percentOfAoi', { percent: status.areaPercentageOfAOI.toFixed(1) }) }}</div>
-                      <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} {{ t('analysis.unified.stats.overview.haPerYear') }}</div>
+                      <div class="text-caption">{{ t('analysis.unified.stats.overview.percentOfAoi', {
+                        percent:
+                          status.areaPercentageOfAOI.toFixed(1)
+                      }) }}</div>
+                      <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} {{
+                        t('analysis.unified.stats.overview.haPerYear') }}</div>
                     </div>
                   </div>
                 </div>
@@ -397,12 +344,23 @@
                 <div class="row q-col-gutter-md">
                   <div v-for="status in gfwStatusBreakdown" :key="status.name" class="col-6">
                     <div :class="`text-${status.color}`">
-                      <div class="text-subtitle2">{{ t(`analysis.unified.stats.breakdown.status.${status.name.toLowerCase()}`) }}</div>
-                      <div class="text-h6">{{ t('analysis.unified.stats.breakdown.hotspotCount', { count: status.count }) }}</div>
-                      <div class="text-caption">{{ t('analysis.unified.stats.breakdown.percentOfSource', { percent: status.percentage.toFixed(1), source: t('analysis.unified.stats.overview.gfwAlerts') }) }}</div>
+                      <div class="text-subtitle2">{{
+                        t(`analysis.unified.stats.breakdown.status.${status.name.toLowerCase()}`) }}</div>
+                      <div class="text-h6">{{ t('analysis.unified.stats.breakdown.hotspotCount', {
+                        count: status.count
+                      })
+                        }}</div>
+                      <div class="text-caption">{{ t('analysis.unified.stats.breakdown.percentOfSource', {
+                        percent:
+                          status.percentage.toFixed(1), source: t('analysis.unified.stats.overview.gfwAlerts')
+                      }) }}</div>
                       <div class="text-subtitle2 q-mt-sm">{{ status.area.toFixed(1) }} ha</div>
-                      <div class="text-caption">{{ t('analysis.unified.stats.overview.percentOfAoi', { percent: status.areaPercentageOfAOI.toFixed(1) }) }}</div>
-                      <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} {{ t('analysis.unified.stats.overview.haPerYear') }}</div>
+                      <div class="text-caption">{{ t('analysis.unified.stats.overview.percentOfAoi', {
+                        percent:
+                          status.areaPercentageOfAOI.toFixed(1)
+                      }) }}</div>
+                      <div class="text-subtitle2 q-mt-sm">{{ status.rate.toFixed(1) }} {{
+                        t('analysis.unified.stats.overview.haPerYear') }}</div>
                     </div>
                   </div>
                 </div>
@@ -424,13 +382,19 @@
           <div class="col-6">
             <q-card class="land-cover-stats shadow-2">
               <q-card-section>
-                <div class="text-h6 q-mb-md">{{ formatDate(selectedDeforestationMap.summary_statistics.prediction1_date) }}</div>
+                <div class="text-h6 q-mb-md">{{ formatDate(selectedDeforestationMap.summary_statistics.prediction1_date)
+                  }}</div>
                 <div class="row q-col-gutter-md">
                   <template v-for="type in ['Forest', 'Non-Forest', 'Water', 'Cloud', 'Shadow']" :key="type">
                     <div class="col-6">
-                      <div class="text-subtitle2">{{ t(`analysis.unified.stats.landCover.types.${type.toLowerCase()}`) }}</div>
-                      <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time1?.[type]?.toFixed(1) || 'NaN' }}%</div>
-                      <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time1_ha?.[type]?.toFixed(1) || 'NaN' }} ha</div>
+                      <div class="text-subtitle2">{{ t(`analysis.unified.stats.landCover.types.${type.toLowerCase()}`)
+                        }}</div>
+                      <div class="text-h6">{{
+                        selectedDeforestationMap.summary_statistics.percentages_time1?.[type]?.toFixed(1) || 'NaN' }}%
+                      </div>
+                      <div class="text-caption">{{
+                        selectedDeforestationMap.summary_statistics.areas_time1_ha?.[type]?.toFixed(1) || 'NaN' }} ha
+                      </div>
                     </div>
                   </template>
                 </div>
@@ -442,13 +406,19 @@
           <div class="col-6">
             <q-card class="land-cover-stats shadow-2">
               <q-card-section>
-                <div class="text-h6 q-mb-md">{{ formatDate(selectedDeforestationMap.summary_statistics.prediction2_date) }}</div>
+                <div class="text-h6 q-mb-md">{{ formatDate(selectedDeforestationMap.summary_statistics.prediction2_date)
+                  }}</div>
                 <div class="row q-col-gutter-md">
                   <template v-for="type in ['Forest', 'Non-Forest', 'Water', 'Cloud', 'Shadow']" :key="type">
                     <div class="col-6">
-                      <div class="text-subtitle2">{{ t(`analysis.unified.stats.landCover.types.${type.toLowerCase()}`) }}</div>
-                      <div class="text-h6">{{ selectedDeforestationMap.summary_statistics.percentages_time2?.[type]?.toFixed(1) || 'NaN' }}%</div>
-                      <div class="text-caption">{{ selectedDeforestationMap.summary_statistics.areas_time2_ha?.[type]?.toFixed(1) || 'NaN' }} ha</div>
+                      <div class="text-subtitle2">{{ t(`analysis.unified.stats.landCover.types.${type.toLowerCase()}`)
+                        }}</div>
+                      <div class="text-h6">{{
+                        selectedDeforestationMap.summary_statistics.percentages_time2?.[type]?.toFixed(1) || 'NaN' }}%
+                      </div>
+                      <div class="text-caption">{{
+                        selectedDeforestationMap.summary_statistics.areas_time2_ha?.[type]?.toFixed(1) || 'NaN' }} ha
+                      </div>
                     </div>
                   </template>
                 </div>
@@ -460,13 +430,7 @@
 
       <q-card-actions align="right">
         <q-btn flat :label="t('common.close')" color="primary" v-close-popup />
-        <q-btn 
-          flat 
-          :label="t('common.export')"
-          color="primary" 
-          icon="download"
-          @click="exportStats" 
-        />
+        <q-btn flat :label="t('common.export')" color="primary" icon="download" @click="exportStats" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -521,6 +485,7 @@ export default {
     const selectedHotspot = ref(null);
     const hotspotLayers = ref({ primary: null, secondary: null });
     const showStats = ref(false);
+    const showDateSelection = ref(false);
 
     // Add to setup() after other state declarations
     const sourceOptions = [
@@ -547,16 +512,16 @@ export default {
           color: 'warning',
           icon: 'folder',
           actions: [
-            { 
+            {
               label: t('analysis.unified.notifications.selectProject'),
-              color: 'white', 
+              color: 'white',
               handler: () => router.push('/')
             }
           ]
         });
         return;
       }
-      
+
       mapStore.initDualMaps(primaryMap.value, secondaryMap.value);
       loadInitialData();
 
@@ -598,7 +563,7 @@ export default {
         // Get all layers except OSM
         const layersToRemove = map.getLayers().getArray()
           .filter(layer => layer.get('id') !== 'osm');
-        
+
         // Remove each layer properly
         layersToRemove.forEach(layer => {
           map.removeLayer(layer);
@@ -610,12 +575,12 @@ export default {
     };
 
     const setupDeforestationMaps = async () => {
-        console.log("Setting up deforestation maps...");
+      console.log("Setting up deforestation maps...");
       if (!mapStore.maps.primary || !mapStore.maps.secondary) {
         console.error("Maps not properly initialized!");
         return;
       }
-      
+
       try {
         loading.value = true;
         clearMapLayers();
@@ -623,12 +588,12 @@ export default {
         // Add AOI layers if project has AOI
         if (projectStore.currentProject?.aoi) {
           console.log("Setting up AOI layers...");
-          
+
           // Parse AOI if it's a string
-          const aoiGeojson = typeof projectStore.currentProject.aoi === 'string' 
-            ? JSON.parse(projectStore.currentProject.aoi) 
+          const aoiGeojson = typeof projectStore.currentProject.aoi === 'string'
+            ? JSON.parse(projectStore.currentProject.aoi)
             : projectStore.currentProject.aoi;
-          
+
           console.log("AOI GeoJSON:", aoiGeojson);
 
           // Create AOI layers with proper projection handling
@@ -644,7 +609,7 @@ export default {
           const extent = aoiFeature.getGeometry().getExtent();
           console.log("AOI extent:", extent);
 
-    
+
           // Fit both maps to AOI extent
           mapStore.maps.primary.getView().fit(extent);
 
@@ -705,7 +670,7 @@ export default {
               <div class="opacity-label">Satellite Opacity</div>
               <input type="range" min="0" max="100" value="70" />
             `;
-            
+
             const input = control.querySelector('input');
             input.addEventListener('input', (e) => {
               const opacity = parseInt(e.target.value) / 100;
@@ -776,7 +741,7 @@ export default {
       };
 
       const getHotspotStyle = (feature) => {
-        const isSelected = selectedHotspot.value && 
+        const isSelected = selectedHotspot.value &&
           selectedHotspot.value.properties.id === feature.getProperties().id;
         const source = feature.getProperties().source;
         const status = feature.getProperties().verification_status;
@@ -852,7 +817,7 @@ export default {
     const verifyHotspot = async (hotspot, status) => {
       try {
         await api.verifyHotspot(hotspot.properties.id, status);
-        
+
         // Update local state
         hotspot.properties.verification_status = status;
 
@@ -862,7 +827,7 @@ export default {
           ['primary', 'secondary'].forEach(mapId => {
             const layer = hotspotLayers.value[mapId];
             const features = layer.getSource().getFeatures();
-            const feature = features.find(f => 
+            const feature = features.find(f =>
               f.getProperties().id === hotspot.properties.id
             );
             if (feature) {
@@ -918,7 +883,7 @@ export default {
           throw new Error('Could not find predictions for the selected dates.');
         }
 
-        const aoiShape = typeof projectStore.currentProject.aoi === 'string' 
+        const aoiShape = typeof projectStore.currentProject.aoi === 'string'
           ? JSON.parse(projectStore.currentProject.aoi)
           : projectStore.currentProject.aoi;
 
@@ -951,7 +916,7 @@ export default {
           minAreaHa.value,
           selectedSource.value.value
         );
-        
+
         hotspots.value = hotspotsResponse.data.features;
 
         // Display the hotspots on the maps
@@ -1053,7 +1018,7 @@ export default {
           minAreaHa.value,
           selectedSource.value.value
         );
-        
+
         hotspots.value = hotspotsResponse.data.features;
 
         // Clear existing layers
@@ -1061,13 +1026,13 @@ export default {
 
         // Add AOI layer first
         if (projectStore.currentProject?.aoi) {
-          const aoiGeojson = typeof projectStore.currentProject.aoi === 'string' 
-            ? JSON.parse(projectStore.currentProject.aoi) 
+          const aoiGeojson = typeof projectStore.currentProject.aoi === 'string'
+            ? JSON.parse(projectStore.currentProject.aoi)
             : projectStore.currentProject.aoi;
-          
+
           const { layer: primaryAOILayer } = mapStore.createAOILayer(aoiGeojson);
           const { layer: secondaryAOILayer } = mapStore.createAOILayer(aoiGeojson);
-          
+
           mapStore.maps.primary.addLayer(primaryAOILayer);
           mapStore.maps.secondary.addLayer(secondaryAOILayer);
         }
@@ -1171,17 +1136,17 @@ export default {
     // Add to setup()
     const updateHotspotFilters = async () => {
       if (!selectedDeforestationMap.value) return;
-      
+
       try {
         loading.value = true;
-        
+
         // Load hotspots with new filters
         const hotspotsResponse = await api.getDeforestationHotspots(
           selectedDeforestationMap.value.id,
           minAreaHa.value,
           selectedSource.value.value
         );
-        
+
         hotspots.value = hotspotsResponse.data.features;
 
         // Update map display
@@ -1387,11 +1352,11 @@ export default {
           ['Total AOI Area (ha)', projectStore.aoiAreaHa.toFixed(1)],
           ['Minimum Hotspot Size (ha)', minAreaHa.value],
           [''],  // Empty row for spacing
-          
+
           // Hotspot Stats by Source
           ['Hotspot Statistics by Source (Hotspots ≥ ' + minAreaHa.value + ' ha)'],
           ['Source', 'Count', 'Area (ha)', 'Annual Rate (ha/year)', '% of AOI'],
-          ['Local Alerts', 
+          ['Local Alerts',
             sourceStats.value.local.count,
             sourceStats.value.local.area.toFixed(1),
             sourceStats.value.local.rate.toFixed(1),
@@ -1416,7 +1381,7 @@ export default {
           // Hotspot Stats by Source
           ['Hotspot Statistics by Source (Hotspots ≥ ' + minAreaHa.value + ' ha)'],
           ['Source', 'Count', 'Area (ha)', 'Annual Rate (ha/year)', '% of AOI'],
-          ['Local Alerts', 
+          ['Local Alerts',
             sourceStats.value.local.count,
             sourceStats.value.local.area.toFixed(1),
             sourceStats.value.local.rate.toFixed(1),
@@ -1434,13 +1399,13 @@ export default {
           ['Status Breakdown'],
           ['Status', 'Count', 'Area (ha)', 'Annual Rate (ha/year)', '% of AOI'],
           ...['Verified', 'Unsure', 'Rejected', 'Unverified'].map(status => {
-            const hotspotsWithStatus = hotspots.value.filter(h => 
+            const hotspotsWithStatus = hotspots.value.filter(h =>
               status === 'Unverified' ? !h.properties.verification_status : h.properties.verification_status === status.toLowerCase()
             );
             const area = hotspotsWithStatus.reduce((sum, h) => sum + h.properties.area_ha, 0);
-            const yearsDiff = (new Date(selectedDeforestationMap.value.summary_statistics.prediction2_date) - 
-                              new Date(selectedDeforestationMap.value.summary_statistics.prediction1_date)) / 
-                              (1000 * 60 * 60 * 24 * 365.25);
+            const yearsDiff = (new Date(selectedDeforestationMap.value.summary_statistics.prediction2_date) -
+              new Date(selectedDeforestationMap.value.summary_statistics.prediction1_date)) /
+              (1000 * 60 * 60 * 24 * 365.25);
             const rate = area / yearsDiff;
             return [
               status,
@@ -1559,6 +1524,10 @@ export default {
       return date.formatDate(dateString, 'MMMM YYYY');
     };
 
+    const toggleDateSelection = () => {
+      showDateSelection.value = !showDateSelection.value;
+    };
+
     return {
       // State
       primaryMap,
@@ -1576,6 +1545,7 @@ export default {
       selectedHotspot,
       hotspotLayers,
       showStats,
+      showDateSelection,
       // Computed
       getPrimaryMapLabel,
       getSecondaryMapLabel,
@@ -1607,7 +1577,8 @@ export default {
       gfwStatusBreakdown,
       exportHotspots,
       formatDate,
-      t
+      t,
+      toggleDateSelection
     };
   }
 };
@@ -1631,10 +1602,10 @@ export default {
 .analysis-content {
   flex: 1 1 auto;
   overflow-y: auto;
-  
-  > .section {
+
+  >.section {
     margin-bottom: 16px;
-    
+
     &:last-child {
       margin-bottom: 0;
     }
@@ -1646,11 +1617,11 @@ export default {
   border-radius: 8px;
   margin: 4px 0;
   font-size: 0.8rem;
-  
+
   &:hover {
     background-color: #f1f8f1;
   }
-  
+
   &.selected-analysis {
     background: rgba(46, 125, 50, 0.1);
     border-left: 4px solid var(--q-primary);
@@ -1684,7 +1655,7 @@ export default {
   border-radius: 8px;
   overflow: hidden;
   background: white;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .comparison-map {
@@ -1718,47 +1689,47 @@ export default {
   background: white;
   padding: 10px;
   border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   font-size: 12px;
   z-index: 1000;
-  
+
   .legend-title {
     font-weight: 600;
     margin-bottom: 5px;
     font-size: 0.8rem;
   }
-  
+
   .mt-2 {
     margin-top: 8px;
   }
-  
+
   .legend-item {
     display: flex;
     align-items: center;
     margin: 4px 0;
-    
+
     .legend-line {
       width: 20px;
       height: 2px;
       margin-right: 8px;
     }
-    
+
     .local-line {
       background: #1976D2;
     }
-    
+
     .gfw-line {
       background: #9C27B0;
     }
-    
+
     .verified-line {
       background: #4CAF50;
     }
-    
+
     .unsure-line {
       background: #FFC107;
     }
-    
+
     .rejected-line {
       background: #607D8B;
     }
@@ -1773,11 +1744,12 @@ export default {
     background: rgba(25, 118, 210, 0.1) !important;
     border-left-color: var(--q-primary);
     font-weight: 500;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   }
 
   &.local-alert {
     border-left-color: #1976D2;
+
     &.selected-hotspot {
       background: rgba(25, 118, 210, 0.1) !important;
     }
@@ -1785,6 +1757,7 @@ export default {
 
   &.gfw-alert {
     border-left-color: #9C27B0;
+
     &.selected-hotspot {
       background: rgba(156, 39, 176, 0.1) !important;
     }
@@ -1792,6 +1765,7 @@ export default {
 
   &.verified {
     background: rgba(76, 175, 80, 0.05);
+
     &.selected-hotspot {
       background: rgba(76, 175, 80, 0.15) !important;
     }
@@ -1799,6 +1773,7 @@ export default {
 
   &.rejected {
     background: rgba(96, 125, 139, 0.05);
+
     &.selected-hotspot {
       background: rgba(96, 125, 139, 0.15) !important;
     }
@@ -1806,6 +1781,7 @@ export default {
 
   &.unsure {
     background: rgba(255, 193, 7, 0.05);
+
     &.selected-hotspot {
       background: rgba(255, 193, 7, 0.15) !important;
     }
@@ -1814,7 +1790,7 @@ export default {
 
 .verification-buttons {
   gap: 2px !important;
-  
+
   .q-btn {
     padding: 4px;
     margin: 0;
@@ -1829,5 +1805,4 @@ export default {
 .land-cover-stats {
   height: 100%;
 }
-</style> 
-
+</style>

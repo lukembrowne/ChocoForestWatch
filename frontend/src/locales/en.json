@@ -49,20 +49,26 @@
           }
         },
         "new": {
+          "addDates": "Start New Deforestation Analysis",
           "analyze": "Start Deforestation Analysis",
           "description": "Select two dates to start a new deforestation analysis.",
           "endDate": "End Date",
           "startDate": "Start Date",
-          "title": "New Deforestation Analysis"
+          "title": "New Deforestation Analysis",
+          "toggleDates": "Toggle Date Selection"
+        },
+        "previous": {
+          "empty": "No previous deforestation analyses available. Create a new analysis above.",
+          "title": "Load Previous Deforestation Analyses",
+          "tooltips": {
+            "delete": "Delete this analysis",
+            "help": "This section lists all previous deforestation analyses. Click on an analysis to view details or delete it."
+          }
         },
         "title": "Deforestation Analysis",
-        "previous": {
-          "title": "Previous Deforestation Analyses",
-          "tooltips": {
-            "help": "This section lists all previous deforestation analyses. Click on an analysis to view details or delete it.",
-            "delete": "Delete this analysis"
-          },
-          "empty": "No previous deforestation analyses available. Create a new analysis above."
+        "tooltips": {
+          "help": "Select a previous deforestation analysis from the dropdown or choose two dates to generate a new deforestation analysis.",
+          "addDates": "Click to start a new deforestation analysis by selecting two dates."
         }
       },
       "dialogs": {
@@ -90,15 +96,15 @@
           "medium": "Medium"
         },
         "count": "hotspot | hotspots",
-        "empty": "No hotspots detected yet. Run an analysis to see results.",
+        "empty": "No hotspots detected yet. Start a new analysis or load a previous analysis to see results.",
         "export": {
           "all": "All Hotspots",
-          "title": "Export Hotspots",
+          "title": "Export Hotspots to File",
           "verifiedOnly": "Verified Only"
         },
         "filters": {
-          "minArea": "Min Area (ha)",
-          "source": "Alert Source",
+          "minArea": "Filter by minimum area (ha)",
+          "source": "Filter by source",
           "sources": {
             "all": "All Sources",
             "gfw": "Global Forest Watch",
@@ -111,12 +117,12 @@
           "unverified": "Unverified",
           "verified": "Verified"
         },
-        "title": "Detected Hotspots",
+        "title": "Deforestation Hotspots",
         "tooltips": {
-          "reject": "Reject Alert",
-          "unsure": "Mark as Unsure",
-          "verify": "Verify Deforestation",
-          "help": "Click on a hotspot to zoom in. Use the buttons or keyboard shortcuts (1, 2, 3) to change the verification status based on your visual assessment."
+          "help": "Click on a hotspot to zoom in. Use the buttons or keyboard shortcuts (1, 2, 3) to change the verification status based on your visual assessment.",
+          "reject": "Reject Alert (3)",
+          "unsure": "Mark as Unsure (2)",
+          "verify": "Verify Deforestation (1)"
         }
       },
       "maps": {
@@ -181,7 +187,7 @@
           "totalArea": "Total Area"
         },
         "subtitle": "{start} to {end}",
-        "title": "Analysis Statistics"
+        "title": "Deforestation Statistics"
       }
     }
   },

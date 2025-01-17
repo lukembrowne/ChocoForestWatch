@@ -49,21 +49,27 @@
           }
         },
         "new": {
+          "addDates": "Iniciar un nuevo análisis de deforestación",
           "analyze": "Iniciar análisis de deforestación",
           "description": "Seleccione dos fechas para iniciar un nuevo análisis de deforestación.",
           "endDate": "Fecha Final",
           "startDate": "Fecha de Inicio",
-          "title": "Nuevo análisis de deforestación"
+          "title": "Nuevo análisis de deforestación",
+          "toggleDates": "Alternar Selección de Fechas"
         },
         "previous": {
           "empty": "No hay análisis de deforestación anteriores disponibles. Cree un nuevo análisis arriba.",
-          "title": "Análisis de Deforestación Anteriores",
+          "title": "Cargar análisis de deforestación anteriores",
           "tooltips": {
             "delete": "Eliminar este análisis",
             "help": "Esta sección enumera todos los análisis de deforestación anteriores. Haga clic en un análisis para ver detalles o eliminarlo."
           }
         },
-        "title": "Análisis de Deforestación"
+        "title": "Análisis de Deforestación",
+        "tooltips": {
+          "help": "Seleccione un análisis de deforestación anterior del menú desplegable o elija dos fechas para generar un nuevo análisis de deforestación.",
+          "addDates": "Haga clic para iniciar un nuevo análisis de deforestación seleccionando dos fechas."
+        }
       },
       "dialogs": {
         "delete": {
@@ -90,15 +96,15 @@
           "medium": "Media"
         },
         "count": "punto crítico | puntos críticos",
-        "empty": "No se encontraron puntos críticos en el área seleccionada.",
+        "empty": "Aún no se han detectado puntos de acceso. \nInicie un nuevo análisis o cargue un análisis anterior para ver los resultados.",
         "export": {
           "all": "Todos los Puntos Críticos",
-          "title": "Exportar Puntos Críticos",
+          "title": "Exportar puntos de acceso a un archivo",
           "verifiedOnly": "Solo Verificados"
         },
         "filters": {
-          "minArea": "Área Mínima (ha)",
-          "source": "Fuente de Alerta",
+          "minArea": "Filtrar por área mínima (ha)",
+          "source": "Filtrar por fuente",
           "sources": {
             "all": "Todas las Fuentes",
             "gfw": "Global Forest Watch",
@@ -111,12 +117,12 @@
           "unverified": "Sin Verificar",
           "verified": "Verificado"
         },
-        "title": "Puntos Críticos Detectados",
+        "title": "Puntos críticos de deforestación",
         "tooltips": {
           "help": "Haga clic en un punto de acceso para ampliarlo. Utilice los botones o los atajos de teclado (1, 2, 3) para cambiar el estado de verificación según su evaluación visual.",
-          "reject": "Rechazar Alerta",
-          "unsure": "Marcar como Incierto",
-          "verify": "Verificar Deforestación"
+          "reject": "Rechazar Alerta (3)",
+          "unsure": "Marcar como Incierto (2)",
+          "verify": "Verificar Deforestación (1)"
         }
       },
       "maps": {
@@ -181,7 +187,7 @@
           "totalArea": "Área Total"
         },
         "subtitle": "{start} a {end}",
-        "title": "Estadísticas de Análisis"
+        "title": "Estadísticas de Deforestación"
       }
     }
   },
