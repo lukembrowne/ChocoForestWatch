@@ -11,6 +11,15 @@
         </div>
 
         <div class="key-features q-gutter-y-md">
+          <!-- Choose Dates -->
+          <div class="feature-item">
+            <q-icon name="date_range" color="primary" size="sm" class="q-mr-sm" />
+            <div>
+              <div class="text-weight-medium">{{ t('welcome.analysis.chooseDates.title') }}</div>
+              <div class="text-caption">{{ t('welcome.analysis.chooseDates.description') }}</div>
+            </div>
+          </div>
+
           <!-- Run Analysis -->
           <div class="feature-item">
             <q-icon name="analytics" color="primary" size="sm" class="q-mr-sm" />
@@ -20,21 +29,21 @@
             </div>
           </div>
 
-          <!-- Review Hotspots -->
-          <div class="feature-item">
-            <q-icon name="location_on" color="primary" size="sm" class="q-mr-sm" />
-            <div>
-              <div class="text-weight-medium">{{ t('welcome.analysis.review.title') }}</div>
-              <div class="text-caption">{{ t('welcome.analysis.review.description') }}</div>
-            </div>
-          </div>
-
-          <!-- Verify Changes -->
+          <!-- Verify Hotspots -->
           <div class="feature-item">
             <q-icon name="check_circle" color="primary" size="sm" class="q-mr-sm" />
             <div>
               <div class="text-weight-medium">{{ t('welcome.analysis.verify.title') }}</div>
               <div class="text-caption">{{ t('welcome.analysis.verify.description') }}</div>
+            </div>
+          </div>
+
+          <!-- View Summary and Export -->
+          <div class="feature-item">
+            <q-icon name="insert_chart" color="primary" size="sm" class="q-mr-sm" />
+            <div>
+              <div class="text-weight-medium">{{ t('welcome.analysis.summary.title') }}</div>
+              <div class="text-caption">{{ t('welcome.analysis.summary.description') }}</div>
             </div>
           </div>
         </div>
@@ -111,7 +120,7 @@ export default {
 
 <style lang="scss" scoped>
 .welcome-modal {
-  width: 500px;
+  width: 800px;
   max-width: 90vw;
 }
 

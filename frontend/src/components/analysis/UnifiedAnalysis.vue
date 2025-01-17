@@ -3,15 +3,63 @@
     <!-- Left Panel - Analysis Controls -->
     <div class="analysis-controls-container">
       <q-card class="analysis-card">
-        <q-card-section class="section-header">
-          <div class="text-h6">{{ t('analysis.unified.deforestation.title') }}</div>
-        </q-card-section>
 
-        <!-- Wrap the scrollable content -->
+        <!-- New Analysis Section -->
+        <div class="section q-mb-md">
+          <q-card-section class="section-header">{{ t('analysis.unified.deforestation.new.title') }}</q-card-section>
+
+          <q-card-section class="q-pa-md">
+            {{ t('analysis.unified.deforestation.new.description') }}
+          </q-card-section>
+
+          <div class="row q-col-gutter-md">
+            <q-select
+              v-model="startDate"
+              :options="predictionDates"
+              :label="t('analysis.unified.deforestation.new.startDate')"
+              class="col modern-input"
+              dense
+              outlined
+            />
+            <q-select
+              v-model="endDate"
+              :options="predictionDates"
+              :label="t('analysis.unified.deforestation.new.endDate')"
+              class="col modern-input"
+              dense
+              outlined
+            />
+          </div>
+          <div class="row justify-center q-mt-sm">
+            <q-btn 
+              :label="t('analysis.unified.deforestation.new.analyze')"
+              color="primary"
+              @click="analyzeDeforestation"
+              :disable="!startDate || !endDate"
+              :loading="loading"
+              unelevated
+            />
+          </div>
+        </div>
+
+        <!-- Previous Deforestation Analyses Section -->
         <q-card-section class="analysis-content">
-          <!-- Existing Analyses Section -->
           <div class="section q-mb-md">
-            <div class="section-subheader">{{ t('analysis.unified.deforestation.existing.title') }}</div>
+            <div class="section-header">
+              <div class="row items-center">
+                <div>{{ t('analysis.unified.deforestation.previous.title') }}</div>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="help"
+                  size="sm"
+                  class="q-ml-sm"
+                >
+                  <q-tooltip>{{ t('analysis.unified.deforestation.previous.tooltips.help') }}</q-tooltip>
+                </q-btn>
+              </div>
+            </div>
             <q-scroll-area style="height: 150px" v-if="deforestationMaps.length">
               <q-list separator dense>
                 <q-item 
@@ -42,61 +90,37 @@
                       icon="delete"
                       @click.stop="confirmDeleteAnalysis(map)"
                     >
-                      <q-tooltip>{{ t('analysis.unified.deforestation.existing.tooltips.delete') }}</q-tooltip>
+                      <q-tooltip>{{ t('analysis.unified.deforestation.previous.tooltips.delete') }}</q-tooltip>
                     </q-btn>
                   </q-item-section>
                 </q-item>
               </q-list>
             </q-scroll-area>
             <div v-else class="text-caption q-pa-md text-center">
-              {{ t('analysis.unified.deforestation.existing.empty') }}
+              {{ t('analysis.unified.deforestation.previous.empty') }}
             </div>
           </div>
 
-          <!-- New Analysis Section -->
+          <!-- Detected Hotspots Section -->
           <div class="section q-mb-md">
-            <div class="section-subheader">{{ t('analysis.unified.deforestation.new.title') }}</div>
-            <div class="row q-col-gutter-md">
-              <q-select
-                v-model="startDate"
-                :options="predictionDates"
-                :label="t('analysis.unified.deforestation.new.startDate')"
-                class="col modern-input"
+            <div class="section-header">
+              {{ t('analysis.unified.hotspots.title') }}
+              <q-badge color="primary" class="q-ml-sm">
+                {{ hotspots.length }} {{ t('analysis.unified.hotspots.count', hotspots.length) }}
+              </q-badge>
+              <q-btn
+                flat
+                round
                 dense
-                outlined
-              />
-              <q-select
-                v-model="endDate"
-                :options="predictionDates"
-                :label="t('analysis.unified.deforestation.new.endDate')"
-                class="col modern-input"
-                dense
-                outlined
-              />
-            </div>
-            <div class="row justify-end q-mt-sm">
-              <q-btn 
-                :label="t('analysis.unified.deforestation.new.analyze')"
-                color="primary"
-                @click="analyzeDeforestation"
-                :disable="!startDate || !endDate"
-                :loading="loading"
+                icon="help"
                 size="sm"
-                unelevated
-              />
+                class="q-ml-sm"
+              >
+                <q-tooltip>{{ t('analysis.unified.hotspots.tooltips.help') }}</q-tooltip>
+              </q-btn>
             </div>
-          </div>
-
-          <!-- Hotspots Section -->
-          <div class="section" v-if="hotspots?.length">
-            <div class="row items-center justify-between q-mb-sm">
-              <div class="section-subheader">
-                {{ t('analysis.unified.hotspots.title') }}
-                <q-badge color="primary" class="q-ml-sm">
-                  {{ hotspots.length }} {{ t('analysis.unified.hotspots.count', hotspots.length) }}
-                </q-badge>
-              </div>
-              <div class="row q-gutter-sm">
+            <div v-if="hotspots?.length">
+              <div class="row q-gutter-sm q-mb-sm">
                 <q-btn 
                   flat
                   dense
@@ -125,105 +149,108 @@
                   </q-menu>
                 </q-btn>
               </div>
-            </div>
 
-            <!-- Filtering controls -->
-            <div class="row q-col-gutter-sm q-mb-md">
-              <div class="col-6">
-                <q-input
-                  v-model.number="minAreaHa"
-                  type="number"
-                  :label="t('analysis.unified.hotspots.filters.minArea')"
-                  dense
-                  outlined
-                  class="modern-input"
-                  @update:model-value="loadHotspots"
-                >
-                  <template v-slot:append>
-                    <q-icon name="filter_alt" />
-                  </template>
-                </q-input>
+              <!-- Filtering controls -->
+              <div class="row q-col-gutter-sm q-mb-md">
+                <div class="col-6">
+                  <q-input
+                    v-model.number="minAreaHa"
+                    type="number"
+                    :label="t('analysis.unified.hotspots.filters.minArea')"
+                    dense
+                    outlined
+                    class="modern-input"
+                    @update:model-value="loadHotspots"
+                  >
+                    <template v-slot:append>
+                      <q-icon name="filter_alt" />
+                    </template>
+                  </q-input>
+                </div>
+                <div class="col-6">
+                  <q-select
+                    v-model="selectedSource"
+                    :options="sourceOptions"
+                    :label="t('analysis.unified.hotspots.filters.source')"
+                    dense
+                    outlined
+                    class="modern-input"
+                    @update:model-value="loadHotspots"
+                  />
+                </div>
               </div>
-              <div class="col-6">
-                <q-select
-                  v-model="selectedSource"
-                  :options="sourceOptions"
-                  :label="t('analysis.unified.hotspots.filters.source')"
-                  dense
-                  outlined
-                  class="modern-input"
-                  @update:model-value="loadHotspots"
-                />
-              </div>
+
+              <!-- Hotspots list -->
+              <q-scroll-area ref="scrollArea" class="hotspots-scroll-area">
+                <q-list separator dense>
+                  <q-item 
+                    v-for="(hotspot, index) in hotspots" 
+                    :key="index" 
+                    :class="[
+                      'hotspot-item',
+                      hotspot.properties.source === 'gfw' ? 'gfw-alert' : 'local-alert',
+                      {
+                        'selected-hotspot': selectedHotspot === hotspot,
+                        'verified': hotspot.properties.verification_status === 'verified',
+                        'rejected': hotspot.properties.verification_status === 'rejected',
+                        'unsure': hotspot.properties.verification_status === 'unsure'
+                      }
+                    ]" 
+                    clickable 
+                    v-ripple 
+                    @click="selectHotspot(hotspot)"
+                  >
+                    <q-item-section>
+                      <div class="row items-center no-wrap">
+                        <div class="text-weight-medium">
+                          #{{ index + 1 }}
+                          <q-badge :color="hotspot.properties.source === 'gfw' ? 'purple' : 'primary'">
+                            {{ hotspot.properties.source.toUpperCase() }}
+                          </q-badge>
+                          <q-badge 
+                            v-if="hotspot.properties.source === 'gfw'"
+                            :color="getConfidenceColor(hotspot.properties.confidence)"
+                            class="q-ml-xs"
+                          >
+                            {{ getConfidenceLabel(hotspot.properties.confidence) }}
+                          </q-badge>
+                        </div>
+                        <div class="q-ml-sm">
+                          {{ hotspot.properties.area_ha.toFixed(1) }} ha
+                        </div>
+                        <div class="q-ml-auto" :class="{
+                          'text-green': hotspot.properties.verification_status === 'verified',
+                          'text-blue-grey': hotspot.properties.verification_status === 'rejected',
+                          'text-amber': hotspot.properties.verification_status === 'unsure'
+                        }">
+                          {{ hotspot.properties.verification_status || 'Unverified' }}
+                        </div>
+                      </div>
+                    </q-item-section>
+
+                    <q-item-section side>
+                      <div class="row q-gutter-xs verification-buttons">
+                        <q-btn flat round size="sm" color="green" icon="check_circle"
+                          @click.stop="verifyHotspot(hotspot, 'verified')">
+                          <q-tooltip>Verify Deforestation (1)</q-tooltip>
+                        </q-btn>
+                        <q-btn flat round size="sm" color="amber" icon="help"
+                          @click.stop="verifyHotspot(hotspot, 'unsure')">
+                          <q-tooltip>Mark as Unsure (2)</q-tooltip>
+                        </q-btn>
+                        <q-btn flat round size="sm" color="blue-grey" icon="cancel"
+                          @click.stop="verifyHotspot(hotspot, 'rejected')">
+                          <q-tooltip>Reject Alert (3)</q-tooltip>
+                        </q-btn>
+                      </div>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-scroll-area>
             </div>
-
-            <!-- Hotspots list -->
-            <q-scroll-area ref="scrollArea" class="hotspots-scroll-area">
-              <q-list separator dense>
-                <q-item 
-                  v-for="(hotspot, index) in hotspots" 
-                  :key="index" 
-                  :class="[
-                    'hotspot-item',
-                    hotspot.properties.source === 'gfw' ? 'gfw-alert' : 'local-alert',
-                    {
-                      'selected-hotspot': selectedHotspot === hotspot,
-                      'verified': hotspot.properties.verification_status === 'verified',
-                      'rejected': hotspot.properties.verification_status === 'rejected',
-                      'unsure': hotspot.properties.verification_status === 'unsure'
-                    }
-                  ]" 
-                  clickable 
-                  v-ripple 
-                  @click="selectHotspot(hotspot)"
-                >
-                  <q-item-section>
-                    <div class="row items-center no-wrap">
-                      <div class="text-weight-medium">
-                        #{{ index + 1 }}
-                        <q-badge :color="hotspot.properties.source === 'gfw' ? 'purple' : 'primary'">
-                          {{ hotspot.properties.source.toUpperCase() }}
-                        </q-badge>
-                        <q-badge 
-                          v-if="hotspot.properties.source === 'gfw'"
-                          :color="getConfidenceColor(hotspot.properties.confidence)"
-                          class="q-ml-xs"
-                        >
-                          {{ getConfidenceLabel(hotspot.properties.confidence) }}
-                        </q-badge>
-                      </div>
-                      <div class="q-ml-sm">
-                        {{ hotspot.properties.area_ha.toFixed(1) }} ha
-                      </div>
-                      <div class="q-ml-auto" :class="{
-                        'text-green': hotspot.properties.verification_status === 'verified',
-                        'text-blue-grey': hotspot.properties.verification_status === 'rejected',
-                        'text-amber': hotspot.properties.verification_status === 'unsure'
-                      }">
-                        {{ hotspot.properties.verification_status || 'Unverified' }}
-                      </div>
-                    </div>
-                  </q-item-section>
-
-                  <q-item-section side>
-                    <div class="row q-gutter-xs verification-buttons">
-                      <q-btn flat round size="sm" color="green" icon="check_circle"
-                        @click.stop="verifyHotspot(hotspot, 'verified')">
-                        <q-tooltip>Verify Deforestation</q-tooltip>
-                      </q-btn>
-                      <q-btn flat round size="sm" color="amber" icon="help"
-                        @click.stop="verifyHotspot(hotspot, 'unsure')">
-                        <q-tooltip>Mark as Unsure</q-tooltip>
-                      </q-btn>
-                      <q-btn flat round size="sm" color="blue-grey" icon="cancel"
-                        @click.stop="verifyHotspot(hotspot, 'rejected')">
-                        <q-tooltip>Reject Alert</q-tooltip>
-                      </q-btn>
-                    </div>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-scroll-area>
+            <div v-else class="text-caption q-pa-md text-center">
+              {{ t('analysis.unified.hotspots.empty') }}
+            </div>
           </div>
         </q-card-section>
       </q-card>
@@ -1601,11 +1628,9 @@ export default {
   border-radius: 0;
 }
 
-
 .analysis-content {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 16px;
   
   > .section {
     margin-bottom: 16px;

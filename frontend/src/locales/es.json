@@ -49,10 +49,19 @@
           }
         },
         "new": {
-          "analyze": "Analizar",
+          "analyze": "Iniciar análisis de deforestación",
+          "description": "Seleccione dos fechas para iniciar un nuevo análisis de deforestación.",
           "endDate": "Fecha Final",
           "startDate": "Fecha de Inicio",
-          "title": "Nuevo Análisis"
+          "title": "Nuevo análisis de deforestación"
+        },
+        "previous": {
+          "empty": "No hay análisis de deforestación anteriores disponibles. Cree un nuevo análisis arriba.",
+          "title": "Análisis de Deforestación Anteriores",
+          "tooltips": {
+            "delete": "Eliminar este análisis",
+            "help": "Esta sección enumera todos los análisis de deforestación anteriores. Haga clic en un análisis para ver detalles o eliminarlo."
+          }
         },
         "title": "Análisis de Deforestación"
       },
@@ -104,6 +113,7 @@
         },
         "title": "Puntos Críticos Detectados",
         "tooltips": {
+          "help": "Haga clic en un punto de acceso para ampliarlo. Utilice los botones o los atajos de teclado (1, 2, 3) para cambiar el estado de verificación según su evaluación visual.",
           "reject": "Rechazar Alerta",
           "unsure": "Marcar como Incierto",
           "verify": "Verificar Deforestación"
@@ -656,19 +666,23 @@
   },
   "welcome": {
     "analysis": {
-      "intro": "",
-      "review": {
-        "description": "",
-        "title": ""
+      "chooseDates": {
+        "description": "El primer paso es seleccionar dos fechas con polígonos de entrenamiento disponibles para comenzar tu análisis.",
+        "title": "Elegir Fechas"
       },
+      "intro": "En este módulo, realizamos un análisis de deforestación seleccionando dos fechas con polígonos de entrenamiento disponibles en la barra lateral de la izquierda. \nLuego, Choco Forest Watch comparará los cambios en el uso de la tierra a lo largo del tiempo e identificará posibles puntos críticos de deforestación.",
       "run": {
-        "description": "",
-        "title": ""
+        "description": "Haga clic en 'Analizar' para calcular el cambio de uso de suelo a lo largo del tiempo y detectar posibles puntos críticos de deforestación.",
+        "title": "Ejecutar análisis de deforestación"
       },
-      "title": "",
+      "summary": {
+        "description": "Revise las estadísticas resumidas y exporte los puntos críticos detectados para un análisis más detallado.",
+        "title": "Ver Resumen y Exportar"
+      },
+      "title": "Bienvenido al Módulo de Análisis de Deforestación",
       "verify": {
-        "description": "",
-        "title": ""
+        "description": "Dado que muchos puntos críticos de deforestación detectados pueden ser falsos positivos, luego verificamos manualmente los puntos críticos de deforestación generados por Choco Forest Watch, junto con los detectados por el sistema de alerta de Global Forest Watch.",
+        "title": "Verificar Puntos Críticos"
       }
     },
     "dontShowAgain": "",
