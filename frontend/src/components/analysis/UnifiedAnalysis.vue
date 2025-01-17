@@ -220,7 +220,7 @@
   </div>
 
 
-  <!-- Add at the end of the template, before closing div -->
+  <!-- Deforestation statistics modal -->
   <q-dialog v-model="showStats">
     <q-card class="stats-dialog">
       <q-card-section class="bg-primary text-white">
