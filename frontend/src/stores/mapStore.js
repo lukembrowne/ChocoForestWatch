@@ -30,6 +30,10 @@ export const useMapStore = defineStore('map', () => {
   // State
   const aoi = ref(null);
   const map = ref(null);
+  const maps = ref({
+    primary: null,
+    secondary: null
+  });
   const mapInitialized = ref(false);
   const isLoading = ref(false);
   const isDrawing = ref(false);
@@ -88,36 +92,50 @@ export const useMapStore = defineStore('map', () => {
 
   // Actions
   const initMap = (target) => {
-    map.value = new Map({
-      target: target,
-      layers: [
-        new TileLayer({
-          source: new OSM(),
-          name: 'baseMap',
-          title: 'OpenStreetMap',
-          visible: true,
-          id: 'osm',
-          zIndex: 0
+    if (!map.value) {
+      map.value = new Map({
+        target: target,
+        layers: [
+          new TileLayer({
+            source: new OSM(),
+            name: 'baseMap',
+            title: 'OpenStreetMap',
+            visible: true,
+            id: 'osm',
+            zIndex: 0
+          })
+        ],
+        view: new View({
+          center: fromLonLat([-79.81822466589962, -0.460628082970743]),
+          zoom: 8
         })
-      ],
-      view: new View({
-        center: fromLonLat([-79.81822466589962, -0.460628082970743]),
-        zoom: 8
-      })
-    });
+      });
 
-    initTrainingLayer();
-    initInteractions();
+      initTrainingLayer();
+      initInteractions();
 
-    // Initialize layers
-    updateLayers();
+      // Initialize layers
+      updateLayers();
 
-    // Watch for changes in the map's layers
-    map.value.getLayers().on(['add', 'remove'], updateLayers);
+      // Watch for changes in the map's layers
+      map.value.getLayers().on(['add', 'remove'], updateLayers);
 
-    console.log('Map initialized in MapStore...');
-    mapInitialized.value = true;
+      console.log('Map initialized in MapStore...');
+      mapInitialized.value = true;
+    }
   };
+
+  function showSingleMap(targetId) {
+    initMap()
+    // Attach single map
+    map.value.setTarget(targetId)
+  }
+
+  function hideSingleMap() {
+    if (map.value) {
+      map.value.setTarget(null)
+    }
+  }
 
   const setAOI = (geometry) => {
     aoi.value = geometry;
@@ -154,7 +172,7 @@ export const useMapStore = defineStore('map', () => {
     if (maps.value.primary || maps.value.secondary) {
       // Dual map mode
       const allLayers = [];
-      
+
       if (maps.value.primary) {
         const primaryLayers = maps.value.primary.getLayers().getArray()
           .map(layer => ({
@@ -168,7 +186,7 @@ export const useMapStore = defineStore('map', () => {
           }));
         allLayers.push(...primaryLayers);
       }
-      
+
       if (maps.value.secondary) {
         const secondaryLayers = maps.value.secondary.getLayers().getArray()
           .map(layer => ({
@@ -182,7 +200,7 @@ export const useMapStore = defineStore('map', () => {
           }));
         allLayers.push(...secondaryLayers);
       }
-      
+
       layers.value = allLayers.sort((a, b) => b.zIndex - a.zIndex);
     } else if (map.value) {
       // Single map mode - existing behavior
@@ -275,7 +293,7 @@ export const useMapStore = defineStore('map', () => {
     const vectorSource = new VectorSource({
       features: [feature]
     });
-    
+
     const aoiLayer = new VectorLayer({
       source: vectorSource,
       title: "Area of Interest",
@@ -330,7 +348,7 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
-  
+
   // Function to create a Planet Basemap layer for a given date
   const createPlanetBasemap = (date) => {
     // Retrieve the Planet API key from the environment variables
@@ -342,12 +360,12 @@ export const useMapStore = defineStore('map', () => {
       // Return null if the API key is not defined
       return null;
     }
-  
+
     // Create a new XYZ source for the Planet Basemap
     const source = new XYZ({
       url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
     });
-  
+
     // Return a new TileLayer for the Planet Basemap
     return new TileLayer({
       source: source,
@@ -395,7 +413,7 @@ export const useMapStore = defineStore('map', () => {
   const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'landcover', mapId = null) => {
     console.log(`Displaying ${mode} on map:`, mapId);
     console.log('Prediction file path:', predictionFilePath);
-    
+
     try {
       // Check if predictionFilePath is valid
       if (!predictionFilePath) {
@@ -407,13 +425,13 @@ export const useMapStore = defineStore('map', () => {
       //   throw new Error(`Failed to load TIFF file: ${error.message}`);
       // });
 
-          const response = await fetch(predictionFilePath, { cache: 'no-store' });
+      const response = await fetch(predictionFilePath, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(`Failed to fetch TIFF file: ${response.statusText}`);
       }
       const arrayBuffer = await response.arrayBuffer();
       const tiff = await fromArrayBuffer(arrayBuffer);
-      
+
       const image = await tiff.getImage();
       const width = image.getWidth();
       const height = image.getHeight();
@@ -495,13 +513,13 @@ export const useMapStore = defineStore('map', () => {
         map.value.addLayer(newLayer);
 
 
-      // Get current number of layers
-      const numLayers = map.value.getLayers().getArray().length;
+        // Get current number of layers
+        const numLayers = map.value.getLayers().getArray().length;
 
-      // Reorder layers to make sure the new layer is above the AOI layer
-      // This takes the last layer and moves it to the top
-      // Need to do numLayers - 1 because of 0 based indexing
-      reorderLayers(numLayers - 1, 0) // This also updates the layers
+        // Reorder layers to make sure the new layer is above the AOI layer
+        // This takes the last layer and moves it to the top
+        // Need to do numLayers - 1 because of 0 based indexing
+        reorderLayers(numLayers - 1, 0) // This also updates the layers
       }
     } catch (error) {
       console.error(`Error displaying ${mode}:`, error);
@@ -747,7 +765,7 @@ export const useMapStore = defineStore('map', () => {
     if (!map.value) return;
 
     isDrawing.value = false;
-    
+
     // Remove click listener (for square mode)
     if (map.value.clickListener) {
       map.value.un('click', map.value.clickListener);
@@ -1039,43 +1057,43 @@ export const useMapStore = defineStore('map', () => {
     const projectStore = useProjectStore();
     const polygons = getDrawnPolygonsGeoJSON();
     try {
-        console.log("Saving current training polygons for date:", date, polygons);
-        // First, check if a training set for this date already exists
-        const response = await api.getTrainingPolygons(projectStore.currentProject.id);
-        const existingSet = response.data.find(set => set.basemap_date === date);
+      console.log("Saving current training polygons for date:", date, polygons);
+      // First, check if a training set for this date already exists
+      const response = await api.getTrainingPolygons(projectStore.currentProject.id);
+      const existingSet = response.data.find(set => set.basemap_date === date);
 
-        if (existingSet) {
-            console.log("Updating existing training set for date:", date);
-            // Update existing training set - Pass id and data separately
-            await api.updateTrainingPolygons(
-                existingSet.id,  // Pass the ID separately
-                {
-                    project: projectStore.currentProject.id,
-                    basemap_date: date,
-                    polygons: polygons,
-                    name: `Training_Set_${date}`
-                }
-            );
-            console.log("Training set updated successfully for date:", date);
-        } else {
-            console.log("Creating new training set for date:", date);
-            // Create new training set
-            await api.saveTrainingPolygons({
-                project: projectStore.currentProject.id,
-                basemap_date: date,
-                polygons: polygons,
-                name: `Training_Set_${date}`
-            });
-            console.log("Training set created successfully for date:", date);
-        }
-        hasUnsavedChanges.value = false;
+      if (existingSet) {
+        console.log("Updating existing training set for date:", date);
+        // Update existing training set - Pass id and data separately
+        await api.updateTrainingPolygons(
+          existingSet.id,  // Pass the ID separately
+          {
+            project: projectStore.currentProject.id,
+            basemap_date: date,
+            polygons: polygons,
+            name: `Training_Set_${date}`
+          }
+        );
+        console.log("Training set updated successfully for date:", date);
+      } else {
+        console.log("Creating new training set for date:", date);
+        // Create new training set
+        await api.saveTrainingPolygons({
+          project: projectStore.currentProject.id,
+          basemap_date: date,
+          polygons: polygons,
+          name: `Training_Set_${date}`
+        });
+        console.log("Training set created successfully for date:", date);
+      }
+      hasUnsavedChanges.value = false;
 
-        // Re-fetch training dates to update the UI
-        await projectStore.fetchTrainingDates();
+      // Re-fetch training dates to update the UI
+      await projectStore.fetchTrainingDates();
 
     } catch (error) {
-        console.error('Error saving training polygons:', error);
-        throw error;
+      console.error('Error saving training polygons:', error);
+      throw error;
     }
   };
 
@@ -1152,7 +1170,7 @@ export const useMapStore = defineStore('map', () => {
         color: 'rgba(255, 68, 68, 0.2)'
       }),
       stroke: new Stroke({
-        color:  '#FF4444',
+        color: '#FF4444',
         width: 2
       })
     });
@@ -1201,116 +1219,129 @@ export const useMapStore = defineStore('map', () => {
   // Getters
   const getMap = computed(() => map.value);
 
-  // Add to existing state
-  const maps = ref({
-    primary: null,
-    secondary: null
-  });
+
 
   // Add new methods
   const initDualMaps = (primaryTarget, secondaryTarget) => {
-    console.log('Initializing dual maps');
     console.log('Primary target:', primaryTarget);
     console.log('Secondary target:', secondaryTarget);
 
-    nextTick(async () => {
-      // Create maps
-      maps.value.primary = new Map({
-        target: primaryTarget,
-        layers: [
-          new TileLayer({
-            source: new OSM(),
-            name: 'baseMap',
-            title: 'OpenStreetMap',
-            visible: true,
-            id: 'osm',
-            zIndex: 0
+    // Initialize maps if they don't exist
+    if (!maps.value.primary || !maps.value.secondary) {
+      console.log('Initializing dual maps!');
+
+      nextTick(async () => {
+        // Create maps
+        maps.value.primary = new Map({
+          target: primaryTarget,
+          layers: [
+            new TileLayer({
+              source: new OSM(),
+              name: 'baseMap',
+              title: 'OpenStreetMap',
+              visible: true,
+              id: 'osm',
+              zIndex: 0
+            })
+          ],
+          view: new View({
+            center: fromLonLat([-79.81822466589962, 0.460628082970743]),
+            zoom: 12
           })
-        ],
-        view: new View({
-          center: fromLonLat([-79.81822466589962, 0.460628082970743]),
-          zoom: 12
-        })
-      });
+        });
 
-      maps.value.secondary = new Map({
-        target: secondaryTarget,
-        layers: [
-          new TileLayer({
-            source: new OSM(),
-            name: 'baseMap',
-            title: 'OpenStreetMap',
-            visible: true,
-            id: 'osm',
-            zIndex: 0
+        maps.value.secondary = new Map({
+          target: secondaryTarget,
+          layers: [
+            new TileLayer({
+              source: new OSM(),
+              name: 'baseMap',
+              title: 'OpenStreetMap',
+              visible: true,
+              id: 'osm',
+              zIndex: 0
+            })
+          ],
+          view: new View({
+            center: fromLonLat([-79.81822466589962, 0.460628082970743]),
+            zoom: 12
           })
-        ],
-        view: new View({
-          center: fromLonLat([-79.81822466589962, 0.460628082970743]),
-          zoom: 12
-        })
+        });
+
+        // Force a redraw
+        maps.value.primary.updateSize();
+        maps.value.secondary.updateSize();
+
+        // Add AOI layers if project has AOI
+        const projectStore = useProjectStore();
+        if (projectStore.currentProject?.aoi) {
+          console.log("Setting up AOI layers in dual maps...");
+
+          // Create AOI layers
+          const { layer: primaryAOILayer, source: aoiSource } = createAOILayer(
+            projectStore.currentProject.aoi
+          );
+          const { layer: secondaryAOILayer } = createAOILayer(
+            projectStore.currentProject.aoi
+          );
+
+          // Add layers
+          maps.value.primary.addLayer(primaryAOILayer);
+          maps.value.secondary.addLayer(secondaryAOILayer);
+
+          // Get AOI extent and fit both maps
+          const extent = aoiSource.getExtent();
+          console.log('Fitting to AOI extent:', extent);
+
+          maps.value.primary.getView().fit(extent);
+          maps.value.secondary.getView().fit(extent);
+
+          // Secondary map will sync automatically due to view synchronization
+        }
+
+        // Sync map movements
+        const primaryView = maps.value.primary.getView();
+        const secondaryView = maps.value.secondary.getView();
+
+        // Sync center changes
+        primaryView.on('change:center', () => {
+          secondaryView.setCenter(primaryView.getCenter());
+        });
+        secondaryView.on('change:center', () => {
+          primaryView.setCenter(secondaryView.getCenter());
+        });
+
+        // Sync zoom changes
+        primaryView.on('change:resolution', () => {
+          secondaryView.setResolution(primaryView.getResolution());
+        });
+        secondaryView.on('change:resolution', () => {
+          primaryView.setResolution(secondaryView.getResolution());
+        });
+
+        // Sync rotation changes
+        primaryView.on('change:rotation', () => {
+          secondaryView.setRotation(primaryView.getRotation());
+        });
+        secondaryView.on('change:rotation', () => {
+          primaryView.setRotation(secondaryView.getRotation());
+        });
       });
+    } // End if
+    // Attach them
+    // maps.value.primary.setTarget(primaryTarget)
+    // maps.value.secondary.setTarget(secondaryTarget)
 
-      // Force a redraw
-      maps.value.primary.updateSize();
-      maps.value.secondary.updateSize();
-
-      // Add AOI layers if project has AOI
-      const projectStore = useProjectStore();
-      if (projectStore.currentProject?.aoi) {
-        console.log("Setting up AOI layers in dual maps...");
-        
-        // Create AOI layers
-        const { layer: primaryAOILayer, source: aoiSource } = createAOILayer(
-          projectStore.currentProject.aoi
-        );
-        const { layer: secondaryAOILayer } = createAOILayer(
-          projectStore.currentProject.aoi
-        );
-
-        // Add layers
-        maps.value.primary.addLayer(primaryAOILayer);
-        maps.value.secondary.addLayer(secondaryAOILayer);
-
-        // Get AOI extent and fit both maps
-        const extent = aoiSource.getExtent();
-        console.log('Fitting to AOI extent:', extent);
-        
-        maps.value.primary.getView().fit(extent);
-        maps.value.secondary.getView().fit(extent);
-        
-        // Secondary map will sync automatically due to view synchronization
-      }
-
-      // Sync map movements
-      const primaryView = maps.value.primary.getView();
-      const secondaryView = maps.value.secondary.getView();
-
-      // Sync center changes
-      primaryView.on('change:center', () => {
-        secondaryView.setCenter(primaryView.getCenter());
-      });
-      secondaryView.on('change:center', () => {
-        primaryView.setCenter(secondaryView.getCenter());
-      });
-
-      // Sync zoom changes
-      primaryView.on('change:resolution', () => {
-        secondaryView.setResolution(primaryView.getResolution());
-      });
-      secondaryView.on('change:resolution', () => {
-        primaryView.setResolution(secondaryView.getResolution());
-      });
-
-      // Sync rotation changes
-      primaryView.on('change:rotation', () => {
-        secondaryView.setRotation(primaryView.getRotation());
-      });
-      secondaryView.on('change:rotation', () => {
-        primaryView.setRotation(secondaryView.getRotation());
-      });
-    });
   };
+
+  function hideDualMaps() {
+    if (maps.value.primary) {
+      maps.value.primary.setTarget(null)
+    }
+    if (maps.value.secondary) {
+      maps.value.secondary.setTarget(null)
+    }
+  }
 
   // Add methods for managing layers on dual maps
   const addLayerToDualMaps = (layer, mapId) => {
@@ -1409,6 +1440,9 @@ export const useMapStore = defineStore('map', () => {
     addGeoJSON,
     createPlanetBasemap,
     createAOILayer,
+    showSingleMap,
+    hideSingleMap,
+    hideDualMaps,
     // Getters
     getMap,
     maps,

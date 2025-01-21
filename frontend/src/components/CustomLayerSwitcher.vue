@@ -1,12 +1,7 @@
 <template>
   <div class="custom-layer-switcher">
     <p class="text-subtitle1 q-mb-sm">{{ t('layers.switcher.title') }}</p>
-    <Sortable
-      :list="mapLayers"
-      item-key="id"
-      @end="onDragEnd"
-      :options="{ handle: '.drag-handle' }"
-    >
+    <Sortable :list="mapLayers" item-key="id" @end="onDragEnd" :options="{ handle: '.drag-handle' }">
       <template #item="{ element }">
         <div class="layer-item q-mb-xs">
           <div class="row items-center no-wrap">
@@ -16,32 +11,15 @@
             <q-btn flat round dense icon="tune" size="sm" @click="element.showOpacity = !element.showOpacity">
               <q-tooltip>{{ t('layers.switcher.tooltips.toggleOpacity') }}</q-tooltip>
             </q-btn>
-            <q-btn
-              v-if="element.id.includes('prediction') || element.id.includes('deforestation')"
-              flat
-              round
-              dense
-              icon="delete"
-              color="negative"
-              size="sm"
-              @click="removeLayer(element.id)"
-            >
+            <q-btn v-if="element.id.includes('prediction') || element.id.includes('deforestation')" flat round dense
+              icon="delete" color="negative" size="sm" @click="removeLayer(element.id)">
               <q-tooltip>{{ t('layers.switcher.tooltips.remove') }}</q-tooltip>
             </q-btn>
           </div>
           <q-slide-transition>
             <div v-show="element.showOpacity" class="opacity-slider q-mt-xs">
-              <q-slider
-                v-model="element.opacity"
-                :min="0"
-                :max="1"
-                :step="0.1"
-                label
-                label-always
-                color="primary"
-                @update:model-value="updateLayerOpacity(element.id, $event)"
-                dense
-              />
+              <q-slider v-model="element.opacity" :min="0" :max="1" :step="0.1" label label-always color="primary"
+                @update:model-value="updateLayerOpacity(element.id, $event)" dense />
             </div>
           </q-slide-transition>
         </div>
@@ -73,24 +51,41 @@ export default {
     const { t } = useI18n();
 
     const mapLayers = computed(() => {
-      if(props.mapId === 'training') {
-        return mapStore.layers;
+      if (props.mapId === 'training') {
+        console.log("mapLayers in training", mapStore.layers)
+        if (mapStore.map) {
+          console.log("Mapstores dirctly from mapStore", mapStore.map.getLayers().getArray())
+          return mapStore.map.getLayers().getArray()
+            .map(layer => ({
+              id: layer.get('id'),
+              title: layer.get('title'),
+              zIndex: layer.getZIndex(),
+              visible: layer.getVisible(),
+              opacity: layer.getOpacity(),
+              showOpacity: false,
+              layer: layer
+            }))
+            .sort((a, b) => b.zIndex - a.zIndex);
+        }
+        return [];
       } else {
 
-      const map = mapStore.maps[props.mapId];
-      if (!map) return [];
+        const map = mapStore.maps[props.mapId];
+        if (!map) return [];
 
-      return map.getLayers().getArray()
-        .map(layer => ({
-          id: layer.get('id'),
-          title: layer.get('title'),
-          zIndex: layer.getZIndex(),
-          visible: layer.getVisible(),
-          opacity: layer.getOpacity(),
-          showOpacity: false,
-          layer: layer
-        }))
-        .sort((a, b) => b.zIndex - a.zIndex);
+        console.log("mapLayers", map.getLayers().getArray())
+
+        return map.getLayers().getArray()
+          .map(layer => ({
+            id: layer.get('id'),
+            title: layer.get('title'),
+            zIndex: layer.getZIndex(),
+            visible: layer.getVisible(),
+            opacity: layer.getOpacity(),
+            showOpacity: false,
+            layer: layer
+          }))
+          .sort((a, b) => b.zIndex - a.zIndex);
       }
     });
 
@@ -138,11 +133,11 @@ export default {
 }
 
 .layer-item {
-  
+
   .q-checkbox {
     font-size: .85rem;
   }
-  
+
   .opacity-slider {
     padding-left: 24px;
   }
@@ -150,7 +145,7 @@ export default {
 
 .q-btn {
   padding: 4px;
-  
+
   .q-icon {
     font-size: 0.8rem;
   }
@@ -162,9 +157,11 @@ export default {
 
 .layer-item {
   border-bottom: 1px solid #e0e0e0;
+
   &:last-child {
     border-bottom: none;
   }
+
   &:first-child {
     border-top: 1px solid #e0e0e0;
   }

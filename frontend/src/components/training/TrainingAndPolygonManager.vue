@@ -118,12 +118,18 @@ export default {
             if (mapStore.map) {
                 mapStore.map.on('click', handleFeatureClick);
             }
+            console.log("Showing single map")
+            mapStore.showSingleMap('map')
         });
 
         onUnmounted(() => {
             if (mapStore.map) {
                 mapStore.map.un('click', handleFeatureClick);
             }
+
+            console.log("Unmounting TrainingAndPolygonManager")
+            console.log("Hiding single map")
+            mapStore.hideSingleMap()
         });
 
         const openModelEvaluationDialog = async () => {

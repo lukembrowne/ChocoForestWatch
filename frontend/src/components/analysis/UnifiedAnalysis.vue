@@ -527,6 +527,7 @@ export default {
         return;
       }
 
+      console.log("Showing dual maps")
       mapStore.initDualMaps(primaryMap.value, secondaryMap.value);
       loadInitialData();
 
@@ -536,8 +537,8 @@ export default {
       // Clean up on unmount
       onUnmounted(() => {
         cleanup();
-        if (mapStore.maps.primary) mapStore.maps.primary.setTarget(null);
-        if (mapStore.maps.secondary) mapStore.maps.secondary.setTarget(null);
+        console.log("Hiding dual maps")
+        mapStore.hideDualMaps()
       });
     });
 
