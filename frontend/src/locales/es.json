@@ -65,10 +65,11 @@
             "help": "Esta sección enumera todos los análisis de deforestación anteriores. Haga clic en un análisis para ver detalles o eliminarlo."
           }
         },
+        "reload": "Recargar analysis",
         "title": "Análisis de Deforestación",
         "tooltips": {
-          "help": "Seleccione un análisis de deforestación anterior del menú desplegable o elija dos fechas para generar un nuevo análisis de deforestación.",
-          "addDates": "Haga clic para iniciar un nuevo análisis de deforestación seleccionando dos fechas."
+          "addDates": "Haga clic para iniciar un nuevo análisis de deforestación seleccionando dos fechas.",
+          "help": "Seleccione un análisis de deforestación anterior del menú desplegable o elija dos fechas para generar un nuevo análisis de deforestación."
         }
       },
       "dialogs": {

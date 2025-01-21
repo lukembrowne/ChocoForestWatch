@@ -65,10 +65,11 @@
             "help": "This section lists all previous deforestation analyses. Click on an analysis to view details or delete it."
           }
         },
+        "reload": "Reload analysis\n",
         "title": "Deforestation Analysis",
         "tooltips": {
-          "help": "Select a previous deforestation analysis from the dropdown or choose two dates to generate a new deforestation analysis.",
-          "addDates": "Click to start a new deforestation analysis by selecting two dates."
+          "addDates": "Click to start a new deforestation analysis by selecting two dates.",
+          "help": "Select a previous deforestation analysis from the dropdown or choose two dates to generate a new deforestation analysis."
         }
       },
       "dialogs": {

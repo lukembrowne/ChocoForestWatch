@@ -29,8 +29,29 @@
 
             <q-separator class="q-my-sm"/>
             <div class="text-subtitle2">{{t('analysis.unified.deforestation.previous.title')}}</div>
-            <q-select v-model="selectedDeforestationMap" :options="deforestationMaps" option-label="name"
-              option-value="id" class="col modern-input" dense outlined @update:model-value="loadExistingAnalysis" />
+            <div class="row q-col-gutter-sm">
+              <q-select 
+                v-model="selectedDeforestationMap" 
+                :options="deforestationMaps" 
+                option-label="name"
+                option-value="id" 
+                class="col modern-input" 
+                dense 
+                outlined 
+                @update:model-value="loadExistingAnalysis"
+                @option-click="loadExistingAnalysis" />
+                <div class="row justify-center q-py-sm">
+              <q-btn 
+                icon="refresh" 
+                color="primary" 
+                dense 
+                :disable="!selectedDeforestationMap"
+                @click="loadExistingAnalysis(selectedDeforestationMap)"
+                class="q-ml-sm">
+                <q-tooltip>{{ t('analysis.unified.deforestation.reload') }}</q-tooltip>
+              </q-btn>
+              </div>
+            </div>
           </q-card-section>
         </div>
 
@@ -539,8 +560,11 @@ export default {
       }
     };
 
-    const clearMapLayers = () => {
-      ['primary', 'secondary'].forEach(mapId => {
+    const clearMapLayers = (targetMapId) => {
+      // If no specific map ID is provided, clear both maps (maintaining backward compatibility)
+      const mapIds = targetMapId ? [targetMapId] : ['primary', 'secondary'];
+      
+      mapIds.forEach(mapId => {
         const map = mapStore.maps[mapId];
         if (!map) return;
 
@@ -551,140 +575,13 @@ export default {
         // Remove each layer properly
         layersToRemove.forEach(layer => {
           map.removeLayer(layer);
-          if (layer.getSource()) {
-            layer.getSource().clear();
+          // Only try to clear vector sources
+          const source = layer.getSource();
+          if (source && typeof source.clear === 'function') {
+            source.clear();
           }
         });
       });
-    };
-
-    const setupDeforestationMaps = async () => {
-      console.log("Setting up deforestation maps...");
-      if (!mapStore.maps.primary || !mapStore.maps.secondary) {
-        console.error("Maps not properly initialized!");
-        return;
-      }
-
-      try {
-        loading.value = true;
-        clearMapLayers();
-
-        // Add AOI layers if project has AOI
-        if (projectStore.currentProject?.aoi) {
-          console.log("Setting up AOI layers...");
-
-          // Parse AOI if it's a string
-          const aoiGeojson = typeof projectStore.currentProject.aoi === 'string'
-            ? JSON.parse(projectStore.currentProject.aoi)
-            : projectStore.currentProject.aoi;
-
-          console.log("AOI GeoJSON:", aoiGeojson);
-
-          // Create AOI layers with proper projection handling
-          const { layer: primaryAOILayer, source: aoiSource } = mapStore.createAOILayer(aoiGeojson);
-          const { layer: secondaryAOILayer } = mapStore.createAOILayer(aoiGeojson);
-
-          // Add layers
-          mapStore.maps.primary.addLayer(primaryAOILayer);
-          mapStore.maps.secondary.addLayer(secondaryAOILayer);
-
-          // Get AOI extent
-          const aoiFeature = new GeoJSON().readFeature(projectStore.currentProject.aoi);
-          const extent = aoiFeature.getGeometry().getExtent();
-          console.log("AOI extent:", extent);
-
-
-          // Fit both maps to AOI extent
-          mapStore.maps.primary.getView().fit(extent);
-
-        }
-
-        // Handle primary map (start date)
-        if (startDate.value) {
-          const pred1 = predictions.value.find(p => p.basemap_date === startDate.value.value);
-          if (pred1) {
-            // Add Planet basemap
-            console.log("Adding Planet basemap for start date:", startDate.value.value);
-            const beforeBasemap = mapStore.createPlanetBasemap(startDate.value.value);
-            mapStore.addLayerToDualMaps(beforeBasemap, 'primary');
-
-            // Add land cover prediction
-            console.log("Adding land cover prediction for start date:", pred1.name);
-            await mapStore.displayPrediction(
-              pred1.file,
-              `prediction-${pred1.id}`,
-              pred1.name,
-              'prediction',
-              'primary'
-            );
-          }
-        }
-
-        // Handle secondary map (end date)
-        if (endDate.value) {
-          const pred2 = predictions.value.find(p => p.basemap_date === endDate.value.value);
-          if (pred2) {
-            // Add Planet basemap
-            const afterBasemap = mapStore.createPlanetBasemap(endDate.value.value);
-            mapStore.addLayerToDualMaps(afterBasemap, 'secondary');
-
-            // Add land cover prediction
-            await mapStore.displayPrediction(
-              pred2.file,
-              `prediction-${pred2.id}`,
-              pred2.name,
-              'prediction',
-              'secondary'
-            );
-          }
-        }
-
-        // Add opacity controls
-        if (startDate.value || endDate.value) {
-          const addOpacityControl = (map, position) => {
-            // Remove existing control if it exists
-            const existingControl = map.getViewport().querySelector('.opacity-control');
-            if (existingControl) {
-              existingControl.remove();
-            }
-
-            const control = document.createElement('div');
-            control.className = 'opacity-control';
-            control.innerHTML = `
-              <div class="opacity-label">Satellite Opacity</div>
-              <input type="range" min="0" max="100" value="70" />
-            `;
-
-            const input = control.querySelector('input');
-            input.addEventListener('input', (e) => {
-              const opacity = parseInt(e.target.value) / 100;
-              const basemapLayer = map.getLayers().getArray().find(l => l.get('id') === 'planet-basemap');
-              if (basemapLayer) {
-                basemapLayer.setOpacity(opacity);
-              }
-            });
-
-            map.getViewport().appendChild(control);
-          };
-
-          if (startDate.value) {
-            addOpacityControl(mapStore.maps.primary, 'left');
-          }
-          if (endDate.value) {
-            addOpacityControl(mapStore.maps.secondary, 'right');
-          }
-        }
-
-      } catch (error) {
-        console.error('Error setting up deforestation maps:', error);
-        $q.notify({
-          color: 'negative',
-          message: 'Failed to load maps',
-          icon: 'error'
-        });
-      } finally {
-        loading.value = false;
-      }
     };
 
     const loadHotspots = async () => {
@@ -937,6 +834,10 @@ export default {
         }
 
         if (!date) return;
+
+        // Clear the map layers
+        clearMapLayers(mapId);
+
 
         const prediction = predictions.value.find(p => p.basemap_date === date.value.value);
         if (prediction) {
@@ -1826,7 +1727,7 @@ export default {
   z-index: 1000;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
+  transition: opacity 1.0s ease, visibility 1.0s ease;
   pointer-events: none;
 
   .text-caption {
