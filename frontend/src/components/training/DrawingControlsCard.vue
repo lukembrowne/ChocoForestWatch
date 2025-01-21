@@ -115,7 +115,7 @@
               <div 
                 v-for="(className, index) in projectClasses"
                 :key="className"
-                class="col-6"
+                class="col-4"
               >
                 <q-btn
                   :label="`${className} (${index + 1})`"
@@ -479,10 +479,6 @@ export default {
   border-radius: 0;
 }
 
-.section-header {
-  padding: 8px 16px;
-  background: #f8fafc;
-}
 
 .q-btn {
   min-height: 32px;

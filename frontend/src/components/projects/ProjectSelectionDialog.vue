@@ -74,7 +74,6 @@
           @row-click="onRowClick"
           dense
           flat
-          class="modern-table"
           :style="{ fontSize: '0.8rem' }"
         >
           <template v-slot:body-cell-actions="props">
