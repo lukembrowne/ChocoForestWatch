@@ -3,58 +3,41 @@
     <!-- Left Panel - Analysis Controls -->
     <div class="analysis-controls-container">
       <q-card class="analysis-card">
-
-        <!-- Combined Analysis Section -->
-        <!-- <div class="section q-mb-md"> -->
-        <q-card-section class="section-header">
-          <div class="row items-center">
-
-            <div class="text-subtitle1 text-weight-medium">{{ t('analysis.unified.deforestation.title') }}</div>
-
-            <!-- Button to start new analysis -->
-            <q-btn flat round dense icon="add_circle" size="sm" class="q-ml-sm" @click="toggleDateSelection">
-              <q-tooltip>{{ t('analysis.unified.deforestation.new.addDates') }}</q-tooltip>
-            </q-btn>
-            <!-- Help button -->
-            <q-btn flat round dense icon="help" size="sm" class="q-ml-sm">
-              <q-tooltip>{{ t('analysis.unified.deforestation.tooltips.help') }}</q-tooltip>
-            </q-btn>
-
-
-          </div>
-        </q-card-section>
-
-        <q-card-section>
-          <div class="text-subtitle text-weight-medium">{{t('analysis.unified.deforestation.new.description')}}</div>
-          <div class="row q-col-gutter-md">
-            <q-select v-model="startDate" :options="predictionDates"
-            :label="t('analysis.unified.deforestation.new.startDate')" class="col modern-input" dense outlined />
-            <q-select v-model="endDate" :options="predictionDates"
-            :label="t('analysis.unified.deforestation.new.endDate')" class="col modern-input" dense outlined />
-          </div>
-          <div class="row justify-center q-py-sm">
-            <q-btn :label="t('analysis.unified.deforestation.new.analyze')" color="primary"
-              @click="analyzeDeforestation" :disable="!startDate || !endDate" :loading="loading" unelevated />
-          </div>
-
-          <!-- Area to load previous analysis -->
-           <q-separator/>
-           <div class="text-subtitle text-weight-medium">{{t('analysis.unified.deforestation.previous.title')}}</div>
-          <q-select v-model="selectedDeforestationMap" :options="deforestationMaps" option-label="name"
-            option-value="id" class="col modern-input" dense
-            outlined @update:model-value="loadExistingAnalysis" />
-
-        </q-card-section>
-        <!-- </div> -->
-
-        <q-separator />
-
-        <!-- Detected Hotspots Section -->
-        <!-- <q-card-section class="analysis-content"> -->
-        <div class="section q-mb-md">
+        <!-- Analysis Header Section - Fixed height -->
+        <div class="analysis-header-section">
           <q-card-section class="section-header">
             <div class="row items-center">
+              <div class="text-subtitle1 text-weight-medium">{{ t('analysis.unified.deforestation.title') }}</div>
+              <q-btn flat round dense icon="help" size="sm" class="q-ml-sm">
+                <q-tooltip>{{ t('analysis.unified.deforestation.tooltips.help') }}</q-tooltip>
+              </q-btn>
+            </div>
+          </q-card-section>
 
+          <!-- Date Selection and Previous Analysis -->
+          <q-card-section class="q-pa-sm">
+            <div class="row q-col-gutter-sm">
+              <q-select v-model="startDate" :options="predictionDates"
+                :label="t('analysis.unified.deforestation.new.startDate')" class="col modern-input" dense outlined />
+              <q-select v-model="endDate" :options="predictionDates"
+                :label="t('analysis.unified.deforestation.new.endDate')" class="col modern-input" dense outlined />
+                <div class="row justify-center q-py-sm">
+                  <q-btn icon="add_circle" color="primary"
+                  @click="analyzeDeforestation" :disable="!startDate || !endDate" :loading="loading" unelevated />
+                </div>
+              </div>
+
+            <q-separator class="q-my-sm"/>
+            <div class="text-subtitle2">{{t('analysis.unified.deforestation.previous.title')}}</div>
+            <q-select v-model="selectedDeforestationMap" :options="deforestationMaps" option-label="name"
+              option-value="id" class="col modern-input" dense outlined @update:model-value="loadExistingAnalysis" />
+          </q-card-section>
+        </div>
+
+        <!-- Hotspots Section - Flexible height with scroll -->
+        <div class="analysis-hotspots-section">
+          <q-card-section class="section-header">
+            <div class="row items-center">
               <div class="text-subtitle1 text-weight-medium">{{ t('analysis.unified.hotspots.title') }}</div>
               <q-badge color="primary" class="q-ml-sm">
                 {{ hotspots.length }} {{ t('analysis.unified.hotspots.count', hotspots.length) }}
@@ -66,24 +49,26 @@
           </q-card-section>
 
           <!-- Filtering controls -->
-          <div class="row q-col-gutter-sm q-pa-md">
-            <div class="col-6">
-              <q-input v-model.number="minAreaHa" type="number" :label="t('analysis.unified.hotspots.filters.minArea')"
-                dense outlined class="modern-input" @update:model-value="loadHotspots">
-                <template v-slot:append>
-                  <q-icon name="filter_alt" />
-                </template>
-              </q-input>
+          <q-card-section class="q-pa-sm">
+            <div class="row q-col-gutter-sm">
+              <div class="col-6">
+                <q-input v-model.number="minAreaHa" type="number" :label="t('analysis.unified.hotspots.filters.minArea')"
+                  dense outlined class="modern-input" @update:model-value="loadHotspots">
+                  <template v-slot:append>
+                    <q-icon name="filter_alt" />
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-6">
+                <q-select v-model="selectedSource" :options="sourceOptions"
+                  :label="t('analysis.unified.hotspots.filters.source')" dense outlined class="modern-input"
+                  @update:model-value="loadHotspots" />
+              </div>
             </div>
-            <div class="col-6">
-              <q-select v-model="selectedSource" :options="sourceOptions"
-                :label="t('analysis.unified.hotspots.filters.source')" dense outlined class="modern-input"
-                @update:model-value="loadHotspots" />
-            </div>
-          </div>
+          </q-card-section>
 
-          <!-- Hotspots list -->
-          <q-scroll-area ref="scrollArea" class="hotspots-scroll-area">
+          <!-- Scrollable hotspots list -->
+          <q-scroll-area class="hotspots-scroll-area">
             <q-list separator dense>
               <q-item v-for="(hotspot, index) in hotspots" :key="index" :class="[
                 'hotspot-item',
@@ -102,10 +87,6 @@
                       <q-badge :color="hotspot.properties.source === 'gfw' ? 'purple' : 'primary'">
                         {{ hotspot.properties.source.toUpperCase() }}
                       </q-badge>
-                      <!-- <q-badge v-if="hotspot.properties.source === 'gfw'"
-                          :color="getConfidenceColor(hotspot.properties.confidence)" class="q-ml-xs">
-                          {{ getConfidenceLabel(hotspot.properties.confidence) }}
-                        </q-badge> -->
                     </div>
                     <div class="q-ml-sm">
                       {{ hotspot.properties.area_ha.toFixed(1) }} ha
@@ -139,12 +120,13 @@
               </q-item>
             </q-list>
           </q-scroll-area>
+        </div>
 
+        <!-- Actions Footer - Fixed height -->
+        <div class="analysis-footer-section">
           <q-separator />
-
-          <!-- Buttons to show statistics and export -->
-          <div v-if="hotspots?.length">
-            <div class="row q-gutter-sm q-mb-sm">
+          <q-card-section class="q-pa-sm">
+            <div v-if="hotspots?.length" class="row q-col-gutter-sm">
               <q-btn flat color="primary" icon="analytics" :label="t('analysis.unified.stats.title')"
                 @click="showStats = true" />
               <q-btn flat color="primary" icon="download" :label="t('analysis.unified.hotspots.export.title')"
@@ -161,18 +143,11 @@
                 </q-menu>
               </q-btn>
             </div>
-
-
-
-
-
-
-          </div>
-          <div v-else class="text-caption q-pa-md text-center">
-            {{ t('analysis.unified.hotspots.empty') }}
-          </div>
+            <div v-else class="text-caption text-center">
+              {{ t('analysis.unified.hotspots.empty') }}
+            </div>
+          </q-card-section>
         </div>
-        <!-- </q-card-section> -->
       </q-card>
     </div>
 
@@ -218,7 +193,6 @@
       </div>
     </div>
   </div>
-
 
   <!-- Deforestation statistics modal -->
   <q-dialog v-model="showStats">
@@ -1524,10 +1498,6 @@ export default {
       return date.formatDate(dateString, 'MMMM YYYY');
     };
 
-    const toggleDateSelection = () => {
-      showDateSelection.value = !showDateSelection.value;
-    };
-
     return {
       // State
       primaryMap,
@@ -1578,7 +1548,6 @@ export default {
       exportHotspots,
       formatDate,
       t,
-      toggleDateSelection
     };
   }
 };
@@ -1586,7 +1555,7 @@ export default {
 <style lang="scss" scoped>
 .analysis-controls-container {
   width: var(--app-sidebar-width);
-  height: 100vh;
+  height: calc(100vh - var(--app-header-height));
   background: #fafafa;
 }
 
@@ -1597,41 +1566,47 @@ export default {
   background: white;
   box-shadow: none;
   border-radius: 0;
+  overflow: hidden;
 }
 
-.analysis-content {
+/* Header section - Fixed height */
+.analysis-header-section {
+  flex: 0 0 auto;
+  min-height: 220px;
+}
+
+/* Hotspots section - Flexible height */
+.analysis-hotspots-section {
   flex: 1 1 auto;
-  overflow-y: auto;
-
-  >.section {
-    margin-bottom: 16px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.analysis-item {
-  background-color: #f8fafc;
-  border-radius: 8px;
-  margin: 4px 0;
-  font-size: 0.8rem;
-
-  &:hover {
-    background-color: #f1f8f1;
-  }
-
-  &.selected-analysis {
-    background: rgba(46, 125, 50, 0.1);
-    border-left: 4px solid var(--q-primary);
-  }
+/* Footer section - Fixed height */
+.analysis-footer-section {
+  flex: 0 0 auto;
+  min-height: 60px;
+  background: white;
+  z-index: 1;
 }
 
+/* Adjust the hotspots scroll area to fill available space */
 .hotspots-scroll-area {
-  height: calc(100vh - 300px);
-  min-height: 200px;
-  max-height: 600px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Make the card sections more compact */
+.q-card-section {
+  padding: 8px 16px;
+}
+
+/* Adjust input spacing */
+.modern-input {
+  margin-bottom: 4px;
 }
 
 .comparison-container {
