@@ -125,6 +125,7 @@
           "verify": "Verify Deforestation (1)"
         }
       },
+      "loading": "Loading map...",
       "maps": {
         "legend": {
           "gfw": "GFW Alert",

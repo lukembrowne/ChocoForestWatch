@@ -158,6 +158,10 @@
           <div ref="primaryMap" class="comparison-map"></div>
           <div class="map-label">{{ getPrimaryMapLabel }}</div>
           <CustomLayerSwitcher mapId="primary" />
+          <div class="map-loading-overlay" :class="{ active: primaryMapLoading }">
+            <q-spinner-dots color="primary" size="100px" />
+            <div class="text-h6 q-mt-sm">{{ t('analysis.unified.loading') }}</div>
+          </div>
 
           <!-- Add legend -->
           <div class="map-legend">
@@ -189,6 +193,10 @@
           <div ref="secondaryMap" class="comparison-map"></div>
           <div class="map-label">{{ getSecondaryMapLabel }}</div>
           <CustomLayerSwitcher mapId="secondary" />
+          <div class="map-loading-overlay" :class="{ active: secondaryMapLoading }">
+            <q-spinner-dots color="primary" size="100px" />
+            <div class="text-h6 q-mt-sm">{{ t('analysis.unified.loading') }}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -460,6 +468,8 @@ export default {
     const hotspotLayers = ref({ primary: null, secondary: null });
     const showStats = ref(false);
     const showDateSelection = ref(false);
+    const primaryMapLoading = ref(false);
+    const secondaryMapLoading = ref(false);
 
     // Add to setup() after other state declarations
     const sourceOptions = [
@@ -848,7 +858,8 @@ export default {
       if (!startDate.value || !endDate.value) return;
 
       try {
-        loading.value = true;
+        primaryMapLoading.value = true;
+        secondaryMapLoading.value = true;
 
         const pred1 = predictions.value.find(p => p.basemap_date === startDate.value.value);
         const pred2 = predictions.value.find(p => p.basemap_date === endDate.value.value);
@@ -910,7 +921,8 @@ export default {
           message: t('analysis.unified.notifications.analysisError')
         });
       } finally {
-        loading.value = false;
+        primaryMapLoading.value = false;
+        secondaryMapLoading.value = false;
       }
     };
 
@@ -918,6 +930,12 @@ export default {
     // Replace updatePrimaryMap and updateSecondaryMap with this single function
     const updateMap = async (mapId, date) => {
       try {
+        if (mapId === 'primary') {
+          primaryMapLoading.value = true;
+        } else {
+          secondaryMapLoading.value = true;
+        }
+
         if (!date) return;
 
         const prediction = predictions.value.find(p => p.basemap_date === date.value.value);
@@ -965,6 +983,12 @@ export default {
       } catch (error) {
         console.error(`Error updating ${mapId} map:`, error);
         throw error;
+      } finally {
+        if (mapId === 'primary') {
+          primaryMapLoading.value = false;
+        } else {
+          secondaryMapLoading.value = false;
+        }
       }
     };
 
@@ -984,6 +1008,8 @@ export default {
     const loadExistingAnalysis = async (map) => {
       try {
         loading.value = true;
+        primaryMapLoading.value = true;
+        secondaryMapLoading.value = true;
         selectedDeforestationMap.value = map;
 
         // Load hotspots for the selected analysis
@@ -1069,6 +1095,8 @@ export default {
         });
       } finally {
         loading.value = false;
+        primaryMapLoading.value = false;
+        secondaryMapLoading.value = false;
       }
     };
 
@@ -1516,6 +1544,8 @@ export default {
       hotspotLayers,
       showStats,
       showDateSelection,
+      primaryMapLoading,
+      secondaryMapLoading,
       // Computed
       getPrimaryMapLabel,
       getSecondaryMapLabel,
@@ -1779,5 +1809,35 @@ export default {
 
 .land-cover-stats {
   height: 100%;
+}
+
+/* Add loading overlay styles */
+.map-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  pointer-events: none;
+
+  .text-caption {
+    margin-top: 1rem;
+    font-weight: 500;
+  }
+
+  &.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
 }
 </style>
