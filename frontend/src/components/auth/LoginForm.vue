@@ -24,81 +24,75 @@
       </div>
     </div>
 
+    <!-- Main Content Section -->
     <div class="content-wrapper">
-      <!-- Hero Section -->
-      <div class="hero-section row items-center">
-        <div class="col-12 col-md-6 q-pr-md">
-          <h1 class="text-h3 text-weight-bold q-mb-md">{{ t('auth.login.landing.tagline') }}</h1>
-          <p class="text-h6 q-mb-lg">{{ t('auth.login.landing.subtitle') }}</p>
-          <p class="text-body1 q-mb-lg">{{ t('auth.login.landing.motivation') }}</p>
-          <div class="row q-gutter-md">
-            <q-btn
-              color="primary"
-              size="lg"
-              :label="t('auth.login.landing.cta.createAccount')"
-              @click="registerDialogOpen = true"
+      <!-- Hero Section with Integrated Features -->
+      <div class="hero-section">
+        <div class="row items-center justify-between q-pl-xl q-pr-xl">
+          <!-- Left Column: Hero Content -->
+          <div class="col-12 col-md-6 hero-content q-pr-md">
+            <h1 class="text-h3 text-weight-bold q-mb-md">{{ t('auth.login.landing.tagline') }}</h1>
+            <p class="text-h6 q-mb-lg">{{ t('auth.login.landing.subtitle') }}</p>
+            <p class="text-body1 q-mb-lg">{{ t('auth.login.landing.motivation') }}</p>
+            <div class="row q-gutter-md q-mb-xl justify-center">
+              <q-btn
+                color="primary"
+                size="lg"
+                :label="t('auth.login.landing.cta.createAccount')"
+                @click="registerDialogOpen = true"
+              />
+            </div>
+
+            <!-- Feature Cards -->
+            <div class="row q-col-gutter-md features-grid">
+              <div class="col-12 col-sm-4" v-for="(feature, index) in features" :key="index">
+                <q-card flat bordered class="feature-card">
+                  <q-card-section class="text-center">
+                    <q-icon :name="feature.icon" size="2.5rem" color="primary" class="q-mb-sm" />
+                    <div class="text-subtitle1 text-weight-bold q-mb-xs">{{ t(feature.title) }}</div>
+                    <p class="text-caption">{{ t(feature.description) }}</p>
+                  </q-card-section>
+                </q-card>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Image -->
+          <div class="col-12 col-md-6 hero-image">
+            <q-img 
+              src="/images/app-screenshot.jpeg" 
+              class="rounded-borders"
+              style="box-shadow: 0 8px 30px rgba(0,0,0,0.12);"
             />
-          </div>
-        </div>
-        <div class="col-12 col-md-6">
-          <q-img src="/images/app-screenshot.jpeg" class="rounded-borders" />
-        </div>
-      </div>
-
-      <!-- Features and Funding Section -->
-      <div class="info-section row q-col-gutter-xl">
-        <!-- Features Section -->
-        <div class="col-12 col-md-8">
-          <h2 class="text-h4 q-mb-lg">{{ t('auth.login.landing.features.title') }}</h2>
-          <div class="row q-col-gutter-md">
-            <div class="col-12 col-md-4">
-              <q-card class="feature-card">
-                <q-card-section class="text-center">
-                  <q-icon name="satellite_alt" size="3rem" color="primary" class="q-mb-md" />
-                  <div class="text-h6 q-mb-sm">{{ t('auth.login.landing.features.satellite.title') }}</div>
-                  <p class="text-body2">{{ t('auth.login.landing.features.satellite.description') }}</p>
-                </q-card-section>
-              </q-card>
-            </div>
-            <div class="col-12 col-md-4">
-              <q-card class="feature-card">
-                <q-card-section class="text-center">
-                  <q-icon name="psychology" size="3rem" color="primary" class="q-mb-md" />
-                  <div class="text-h6 q-mb-sm">{{ t('auth.login.landing.features.ml.title') }}</div>
-                  <p class="text-body2">{{ t('auth.login.landing.features.ml.description') }}</p>
-                </q-card-section>
-              </q-card>
-            </div>
-            <div class="col-12 col-md-4">
-              <q-card class="feature-card">
-                <q-card-section class="text-center">
-                  <q-icon name="monitoring" size="3rem" color="primary" class="q-mb-md" />
-                  <div class="text-h6 q-mb-sm">{{ t('auth.login.landing.features.monitoring.title') }}</div>
-                  <p class="text-body2">{{ t('auth.login.landing.features.monitoring.description') }}</p>
-                </q-card-section>
-              </q-card>
-            </div>
-          </div>
-        </div>
-
-        <!-- Funding Section -->
-        <div class="col-12 col-md-4">
-          <h2 class="text-h4 q-mb-lg">{{ t('auth.login.landing.funding.title') }}</h2>
-          <div class="funding-list q-gutter-y-md">
-            <div v-for="source in fundingSources" :key="source.name" class="funding-item">
-              <q-item>
-                <q-item-section avatar>
-                  <q-icon :name="source.icon" color="primary" size="sm" />
-                </q-item-section>
-                <q-item-section>
-                  <q-item-label>{{ source.name }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Footer -->
+    <footer class="footer-section q-px-sm">
+      <div class="row">
+        <div class="col-12">
+          <h5 class="text-h6 text-weight-bold q-mb-md">{{ t('auth.login.landing.funding.title') }}</h5>
+          <div class="row q-col-gutter-md">
+            <div v-for="source in fundingSources" :key="source.name" class="col-12 col-sm-6 col-md-3">
+              <div class="funding-item">
+                <q-item dense class="q-pa-md">
+                  <q-item-section avatar>
+                    <q-icon :name="source.icon" color="primary" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label>{{ source.name }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </div>
+            </div>
+          </div>
+          <div class="text-center q-mt-lg text-caption text-grey">
+          </div>
+        </div>
+      </div>
+    </footer>
 
     <!-- Login Dialog -->
     <q-dialog v-model="loginDialogOpen">
@@ -536,6 +530,24 @@ export default {
       }
     ]
 
+    const features = [
+      {
+        icon: 'satellite_alt',
+        title: 'auth.login.landing.features.satellite.title',
+        description: 'auth.login.landing.features.satellite.description'
+      },
+      {
+        icon: 'psychology',
+        title: 'auth.login.landing.features.ml.title',
+        description: 'auth.login.landing.features.ml.description'
+      },
+      {
+        icon: 'monitoring',
+        title: 'auth.login.landing.features.monitoring.title',
+        description: 'auth.login.landing.features.monitoring.description'
+      }
+    ]
+
     return {
       username,
       password,
@@ -559,7 +571,8 @@ export default {
       handleResetPassword,
       t,
       loginDialogOpen,
-      fundingSources
+      fundingSources,
+      features
     }
   }
 }
@@ -568,97 +581,92 @@ export default {
 <style lang="scss" scoped>
 .landing-container {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: white;
-  overflow: hidden;
 }
 
 .content-wrapper {
-  height: 100vh;
-  padding-top: 48px; // Reduced space below navbar
-  display: flex;
-  flex-direction: column;
-  gap: 2rem; // Control spacing between sections
+  flex: 1;
 }
 
 .hero-section {
-  padding: 1rem 4rem;
-  background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  min-height: calc(100vh - 64px - 200px); // Viewport height minus header and footer
   display: flex;
   align-items: center;
-  min-height: 400px; // Set a minimum height instead of flex: 1
-
-  h1.text-h3 {
-    margin-bottom: 0.5rem;
-  }
-  
-  .text-h6 {
-    margin-bottom: 1rem;
-  }
-  
-  .text-body1 {
-    margin-bottom: 1.5rem;
-  }
 }
 
-.info-section {
-  padding: 1rem 4rem 2rem;
-  background: white;
-}
+.hero-content {
+  .feature-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
 
-.feature-card {
-  height: 100%;
-  transition: all 0.3s ease;
-  border-radius: 12px;
-  overflow: hidden;
-  
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-  }
-}
-
-.funding-list {
-  .funding-item {
-    border-radius: 8px;
-    transition: background-color 0.2s;
-    
     &:hover {
-      background: rgba(0,0,0,0.03);
+      transform: translateY(-5px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
     }
   }
 }
 
-// Responsive adjustments
+.hero-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.footer-section {
+  background: #f8f9fa;
+  border-top: 1px solid rgba(0,0,0,0.1);
+  margin-top: auto;
+
+  .funding-item {
+    background: white;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    height: 100%;
+
+    &:hover {
+      background: #f1f1f1;
+      transform: translateY(-2px);
+    }
+
+    .q-item {
+      min-height: unset;
+    }
+
+    .q-item-label {
+      font-size: 0.875rem;
+      line-height: 1.4;
+    }
+  }
+}
+
+.register-dialog {
+  min-width: 500px;
+}
+
 @media (max-width: 1023px) {
-  .content-wrapper {
-    height: auto;
-    gap: 1rem;
-  }
-  
   .hero-section {
-    min-height: 300px;
+    min-height: auto;
+    padding: 2rem 0;
   }
-  
-  .hero-section,
-  .info-section {
-    padding: 1rem 2rem;
+
+  .hero-content {
+    order: 1;
+  }
+
+  .hero-image {
+    order: 0;
+    margin-bottom: 2rem;
   }
 }
 
 @media (max-width: 599px) {
-  .hero-section,
-  .info-section {
-    padding: 1rem;
-  }
-
-  .hero-section {
-    h1.text-h3 {
-      font-size: 1.75rem;
-    }
-    
-    .text-h6 {
-      font-size: 1.1rem;
-    }
+  .features-grid {
+    margin-top: 2rem;
   }
 }
 </style> 
