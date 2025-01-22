@@ -413,6 +413,10 @@
       "name": "Análisis",
       "tooltip": "Analizar y verificar"
     },
+    "admin": {
+      "name": "Admin",
+      "tooltip": "Admin"
+    },
     "projects": {
       "name": "Proyectos",
       "tooltip": "Seleccionar o crear proyecto"

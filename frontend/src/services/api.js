@@ -206,6 +206,10 @@ const api = {
     getVersion() {
         return apiClient.get('/version/');
     },
+
+    getSystemStatistics() {
+        return apiClient.get('/api/statistics/system/');
+    },
 };
 
 // Initialize function for boot

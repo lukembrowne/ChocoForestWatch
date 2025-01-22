@@ -266,3 +266,19 @@ class Feedback(models.Model):
     page_url = models.CharField(max_length=255)
     browser_info = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+class SystemStatistics(models.Model):
+    total_users = models.IntegerField(default=0)
+    total_projects = models.IntegerField(default=0)
+    total_models = models.IntegerField(default=0)
+    total_area_ha = models.FloatField(default=0)
+    total_hotspots = models.IntegerField(default=0)
+    active_users_30d = models.IntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'System Statistics'
+        verbose_name_plural = 'System Statistics'
+
+    def __str__(self):
+        return f"System Statistics - {self.updated_at}"

@@ -34,6 +34,7 @@
           </q-btn>
         </div>
 
+        <!-- User menu -->
         <q-btn-dropdown 
           flat 
           :icon="currentUser ? 'account_circle' : 'login'"
@@ -42,12 +43,14 @@
           size="sm"
         >
           <q-list class="modern-menu">
-            <q-item class="text-center q-py-md">
+            <q-item class="text-center">
               <q-item-section>
-                <q-avatar size="48px" color="primary" text-color="white">
-                  {{ currentUser.user.username.charAt(0).toUpperCase() }}
-                </q-avatar>
-                <div class="text-subtitle2 q-mt-sm">{{ currentUser.user.username }}</div>
+                <div class="row items-center">
+                  <q-avatar size="48px" color="primary" text-color="white">
+                    {{ currentUser.user.username.charAt(0).toUpperCase() }}
+                  </q-avatar>
+                  <div class="text-subtitle2 q-ml-sm">{{ currentUser.user.username }}</div>
+                </div>
               </q-item-section>
             </q-item>
 
@@ -107,8 +110,8 @@
     <q-page-container class="q-pa-none">
       <q-page class="relative-position">
         <div class="z-layers">
-          <div id="map" class="map-container" :class="{ 'with-sidebar': showAnyPanel || showAOICard }" v-if="!showUnifiedAnalysis"></div>
-          <div class="sidebar-container" v-if="(showAnyPanel || showAOICard) && !showUnifiedAnalysis">
+          <div id="map" class="map-container" :class="{ 'with-sidebar': showAnyPanel || showAOICard }" v-if="!showUnifiedAnalysis && !showAdminDashboard"></div>
+          <div class="sidebar-container" v-if="(showAnyPanel || showAOICard) && !showUnifiedAnalysis && !showAdminDashboard">
             <ProjectSelection 
               v-if="showProjectSelection" 
               @project-selected="selectProject"
@@ -120,10 +123,11 @@
             <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
           </div>
           <UnifiedAnalysis v-if="showUnifiedAnalysis" />
-          <div class="floating-elements">
-            <BasemapDateSlider v-if="!showAOICard && !showUnifiedAnalysis" class="date-slider" />
+          <SystemDashboard v-if="showAdminDashboard" />
+          <div class="floating-elements" v-if="!showAOICard && !showUnifiedAnalysis && !showAdminDashboard">
+            <BasemapDateSlider class="date-slider" />
           </div>
-          <custom-layer-switcher v-if="!showUnifiedAnalysis" mapId="training" />
+          <custom-layer-switcher v-if="!showUnifiedAnalysis && !showAdminDashboard" mapId="training" />
         </div>
       </q-page>
     </q-page-container>
@@ -245,6 +249,7 @@ import api from '../services/api'
 import { GeoJSON } from 'ol/format'
 import { useI18n } from 'vue-i18n'
 import { useWelcomeStore } from 'src/stores/welcomeStore'
+import SystemDashboard from 'src/components/admin/SystemDashboard.vue'
 
 
 export default {
@@ -256,6 +261,7 @@ export default {
     BasemapDateSlider,
     ProjectSelection,
     UnifiedAnalysis,
+    SystemDashboard
   },
   setup() {
     const $q = useQuasar()
@@ -270,15 +276,30 @@ export default {
     const showHotspotVerification = ref(false)
     const showProjectSelection = ref(false)
     const showUnifiedAnalysis = ref(false)
-    const sections = [
-      { id: 'projects', name: 'projects', icon: 'folder', component: null },
-      { id: 'training', name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager },
-      { id: 'analysis', name: 'Analysis', icon: 'analytics', component: UnifiedAnalysis }
-    ]
+    const showAdminDashboard = ref(false)
+    const sections = computed(() => {
+      const baseSections = [
+        { id: 'projects', name: 'projects', icon: 'folder', component: null },
+        { id: 'training', name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager },
+        { id: 'analysis', name: 'Analysis', icon: 'analytics', component: UnifiedAnalysis }
+      ];
+
+      // Add admin dashboard for superusers
+      if (currentUser.value?.user?.is_superuser) {
+        baseSections.push({
+          id: 'admin',
+          name: 'Admin Dashboard',
+          icon: 'dashboard',
+          component: SystemDashboard
+        });
+      }
+
+      return baseSections;
+    })
 
     const sidebarWidth = computed(() => isExpanded.value ? 300 : 60)
     const currentSectionComponent = computed(() =>
-      sections.find(s => s.name === currentSection.value)?.component
+      sections.value.find(s => s.name === currentSection.value)?.component
     )
 
     const router = useRouter()
@@ -290,7 +311,8 @@ export default {
       showUnifiedAnalysis.value || 
       showLandCoverAnalysis.value || 
       showDeforestationAnalysis.value || 
-      showHotspotVerification.value
+      showHotspotVerification.value ||
+      showAdminDashboard.value
     )
 
     const { t, locale } = useI18n()
@@ -349,6 +371,7 @@ export default {
       showLandCoverAnalysis.value = false;
       showDeforestationAnalysis.value = false;
       showHotspotVerification.value = false;
+      showAdminDashboard.value = false;
 
       if (section.name === 'projects') {
         showProjectSelection.value = true;
@@ -356,6 +379,8 @@ export default {
         showTrainingAndPolygonManager.value = true;
       } else if (section.name === 'Analysis') {
         showUnifiedAnalysis.value = true;
+      } else if (section.name === 'Admin Dashboard') {
+        showAdminDashboard.value = true;
       } else if (section.name === 'Land Cover') {
         showLandCoverAnalysis.value = true;
       } else if (section.name === 'Deforestation') {
@@ -580,7 +605,8 @@ export default {
       submitFeedback,
       version,
       showAboutDialog,
-      testSentryError
+      testSentryError,
+      showAdminDashboard
     }
   }
 }
@@ -680,7 +706,6 @@ export default {
   }
 
   .q-item.text-center {
-    padding: 24px 0;
     background: #f8fafc;
     border-top-left-radius: 12px;
     border-top-right-radius: 12px;

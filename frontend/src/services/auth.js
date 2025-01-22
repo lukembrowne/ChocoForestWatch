@@ -41,7 +41,7 @@ class AuthService {
 
     getCurrentUser() {
         const user = localStorage.getItem('user') || sessionStorage.getItem('user');
-        // console.log('User information: ', user)
+        console.log('User information from storage: ', user);
         return user ? JSON.parse(user) : null;
     }
 
@@ -70,6 +70,11 @@ class AuthService {
         } catch (error) {
             throw error.response?.data || { error: 'Failed to reset password' };
         }
+    }
+
+    setUser(userData, rememberMe = false) {
+        const storage = rememberMe ? localStorage : sessionStorage;
+        storage.setItem('user', JSON.stringify(userData));
     }
 }
 

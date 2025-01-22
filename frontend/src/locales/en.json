@@ -420,6 +420,10 @@
     "training": {
       "name": "Train Model",
       "tooltip": "Train Model"
+    },
+    "admin": {
+      "name": "Admin",
+      "tooltip": "Admin"
     }
   },
   "notifications": {

@@ -23,6 +23,9 @@ from django.core.mail import send_mail
 from djangocfw.version import __version__
 from rest_framework.permissions import AllowAny
 from sentry_sdk import capture_message, capture_exception
+from django.db.models import Sum, Count
+from datetime import timedelta
+from django.contrib.auth.decorators import user_passes_test
 
 @api_view(['GET'])
 def health_check(request):
@@ -503,7 +506,13 @@ def register(request):
             preferred_language=request.data.get('preferred_language', 'en')
         )
         return Response({
-            'user': UserSerializer(user).data,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'is_superuser': user.is_superuser,
+                'preferred_language': request.data.get('preferred_language', 'en')
+            },
             'message': 'User Created Successfully'
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -524,6 +533,7 @@ def login(request):
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
+                'is_superuser': user.is_superuser,
                 'preferred_language': settings.preferred_language
             }
         })
@@ -601,3 +611,62 @@ def test_sentry(request):
     except Exception as e:
         capture_exception(e)
         return JsonResponse({"status": "error sent to sentry"}, status=500)
+
+def is_superuser(user):
+    return user.is_superuser
+
+@api_view(['GET'])
+@user_passes_test(is_superuser)
+def get_system_statistics(request):
+    """Get system-wide statistics (superuser only)"""
+    try:
+        # Calculate current statistics
+        now = timezone.now()
+        thirty_days_ago = now - timedelta(days=30)
+        
+        # Exclude example projects
+        real_projects = Project.objects.exclude(name='Example Project')
+
+        stats = {
+            'total_users': User.objects.filter(is_active=True).count(),
+            'total_projects': real_projects.count(),
+            'total_models': TrainedModel.objects.count(),
+            'total_area_ha': real_projects.aggregate(Sum('aoi_area_ha'))['aoi_area_ha__sum'] or 0,
+            'total_hotspots': DeforestationHotspot.objects.count(),
+            'active_users_30d': User.objects.filter(last_login__gte=thirty_days_ago).count(),
+            'projects_by_class': real_projects.values('classes__name').annotate(count=Count('id')),
+            'hotspots_by_status': DeforestationHotspot.objects.values('verification_status').annotate(count=Count('id')),
+            'models_by_date': TrainedModel.objects.extra(
+                select={'date': 'date(created_at)'}
+            ).values('date').annotate(count=Count('id')).order_by('-date')[:30],
+            'hotspots_by_source': DeforestationHotspot.objects.values('source').annotate(count=Count('id')),
+            'hotspots_by_source_and_status': DeforestationHotspot.objects.values(
+                'source', 
+                'verification_status'
+            ).annotate(count=Count('id')),
+            'total_deforestation_area': DeforestationHotspot.objects.aggregate(
+                total_area=Sum('area_ha')
+            )['total_area'] or 0,
+            'deforestation_by_status': DeforestationHotspot.objects.values(
+                'verification_status'
+            ).annotate(
+                area=Sum('area_ha'),
+                count=Count('id')
+            ),
+            'recent_activity': {
+                'models_trained': TrainedModel.objects.filter(
+                    updated_at__gte=thirty_days_ago
+                ).count(),
+                'hotspots_verified': DeforestationHotspot.objects.filter(
+                    verification_status__isnull=False,
+                    created_at__gte=thirty_days_ago
+                ).count(),
+                'new_projects': real_projects.filter(
+                    created_at__gte=thirty_days_ago
+                ).count(),
+            }
+        }
+        
+        return Response(stats)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
