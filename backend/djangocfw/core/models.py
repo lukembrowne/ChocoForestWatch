@@ -31,9 +31,87 @@ class Project(models.Model):
         related_name='projects',
         null=True
     )
+    is_template = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        # Add this to ensure we can query efficiently
+        indexes = [
+            models.Index(fields=['is_template']),
+        ]
+
+    @classmethod
+    def create_from_template(cls, user):
+        """Creates a new project for the user based on the template"""
+        # Find template project (owned by a superuser and marked as template)
+        template = cls.objects.filter(
+            is_template=True,
+            owner__is_superuser=True
+        ).first()
+        
+        if not template:
+            raise ValueError("Template project not found")
+
+        # Create new project
+        new_project = cls.objects.create(
+            name=f"{template.name}",
+            description=template.description,
+            aoi=template.aoi,
+            classes=template.classes,
+            owner=user,
+            aoi_area_ha=template.aoi_area_ha
+        )
+
+        # Copy training sets
+        training_set_map = {}  # Keep track of old ID to new ID mapping
+        for training_set in template.training_polygon_sets.all():
+            new_training_set = TrainingPolygonSet.objects.create(
+                project=new_project,
+                name=training_set.name,
+                basemap_date=training_set.basemap_date,
+                polygons=training_set.polygons,
+                feature_count=training_set.feature_count
+            )
+            training_set_map[training_set.id] = new_training_set.id
+
+        # Copy trained models
+        model_map = {}  # Keep track of old ID to new ID mapping
+        for model in template.trained_models.all():
+            # Update training_set_ids to use new IDs
+            new_training_set_ids = [
+                training_set_map[old_id] 
+                for old_id in model.training_set_ids 
+                if old_id in training_set_map
+            ]
+            
+            new_model = TrainedModel.objects.create(
+                name=model.name,
+                project=new_project,
+                description=model.description,
+                training_set_ids=new_training_set_ids,
+                training_periods=model.training_periods,
+                num_training_samples=model.num_training_samples,
+                model_parameters=model.model_parameters,
+                metrics=model.metrics,
+                encoders=model.encoders,
+                all_class_names=model.all_class_names
+            )
+            model_map[model.id] = new_model.id
+
+        # Copy predictions
+        for prediction in template.predictions.all():
+            Prediction.objects.create(
+                project=new_project,
+                model_id=model_map.get(prediction.model_id),  # Use new model ID
+                type=prediction.type,
+                name=prediction.name,
+                basemap_date=prediction.basemap_date,
+                summary_statistics=prediction.summary_statistics
+            )
+
+        return new_project
 
 class TrainingPolygonSet(models.Model):
     name = models.CharField(max_length=100)
