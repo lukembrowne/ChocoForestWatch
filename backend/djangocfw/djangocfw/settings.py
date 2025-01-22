@@ -194,7 +194,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -259,13 +259,11 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-        'rest_framework.throttling.AdminRateThrottle'
+        'rest_framework.throttling.UserRateThrottle'
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/minute',
-        'user': '1000/minute',
-        'admin_login': '5/minute',
+        'user': '1000/minute'
     }
 }
 
@@ -345,6 +343,10 @@ SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
+# # Whitenoise settings
+# STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Where static files will be collected
+
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -392,6 +394,3 @@ sentry_sdk.init(
 
 # Frontend URL Configuration
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:9000')
-
-# Admin security settings
-ADMIN_URL = os.getenv('DJANGO_ADMIN_URL', 'admin/')  # Change default admin URL

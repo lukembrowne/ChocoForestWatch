@@ -28,10 +28,6 @@ else:
     print('Superuser already exists.')
 END
 
-# Create example project
-echo "Creating example project..."
-python manage.py create_template_project
-
 # Start server
 echo "Starting server..."
 python manage.py runserver 0.0.0.0:8000 
