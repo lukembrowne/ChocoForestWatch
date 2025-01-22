@@ -7,35 +7,25 @@
             <q-separator class="q-my-md" />
 
             <q-card class="polygon-list-card">
-               
+
 
 
                 <q-card-section class="section-header">
                     <div class="row items-center">
                         <div class="text-subtitle1">{{ t('training.summary.title') }}</div>
-                        <q-btn
-                          flat
-                          round
-                          dense
-                          icon="help"
-                          size="sm"
-                          class="q-ml-sm"
-                        >
-                          <q-tooltip>{{ t('training.tooltips.summarySection') }}</q-tooltip>
+                        <q-btn flat round dense icon="help" size="sm" class="q-ml-sm">
+                            <q-tooltip>{{ t('training.tooltips.summarySection') }}</q-tooltip>
                         </q-btn>
                     </div>
                 </q-card-section>
 
                 <div class="summary-grid">
-                    <q-item v-for="(summary, className) in classSummary" 
-                        :key="className" 
-                        class="summary-item"
-                        dense
-                    >
+                    <q-item v-for="(summary, className) in classSummary" :key="className" class="summary-item" dense>
                         <q-item-section>
                             <q-item-label class="text-weight-medium">{{ className }}</q-item-label>
                             <q-item-label caption>
-                                {{ summary.count }} {{ summary.count === 1 ? t('training.summary.features') : t('training.summary.features_plural') }}
+                                {{ summary.count }} {{ summary.count === 1 ? t('training.summary.features') :
+                                    t('training.summary.features_plural') }}
                             </q-item-label>
                         </q-item-section>
                         <q-item-section side>
@@ -51,31 +41,21 @@
                 <q-card-section class="section-header">
                     <div class="row items-center">
                         <div class="text-subtitle1">{{ t('training.model.title') }}</div>
-                        <q-btn
-                          flat
-                          round
-                          dense
-                          icon="help"
-                          size="sm"
-                          class="q-ml-sm"
-                        >
-                          <q-tooltip>{{ t('training.tooltips.modelSection') }}</q-tooltip>
+                        <q-btn flat round dense icon="help" size="sm" class="q-ml-sm">
+                            <q-tooltip>{{ t('training.tooltips.modelSection') }}</q-tooltip>
                         </q-btn>
                     </div>
                 </q-card-section>
 
                 <q-card-section class="q-pa-md">
                     <q-card-actions align="center" class="q-gutter-sm">
-                        <q-btn 
-                            :label="t('training.model.fit')" 
-                            color="primary" 
-                            @click="openModelTrainingDialog"
-                        />
-                        <q-btn 
-                            :label="t('training.model.evaluate')" 
-                            color="primary" 
-                            @click="openModelEvaluationDialog"
-                        />
+                        <q-btn :label="t('training.model.fit')" color="primary" @click="openModelTrainingDialog" />
+                        <q-btn :label="t('training.model.evaluate')" color="primary"
+                            @click="openModelEvaluationDialog" />
+                        <q-btn :label="t('training.model.loadprediction')" color="primary" @click="loadPredictionToMap"
+                            :disable="!basemapDateHasPrediction">
+                            <q-tooltip>{{ t('training.tooltips.loadPrediction') }}</q-tooltip>
+                        </q-btn>
                     </q-card-actions>
                 </q-card-section>
             </q-card>
@@ -97,6 +77,8 @@ import DrawingControlsCard from './DrawingControlsCard.vue'
 import ModelTrainingDialog from 'components/models/ModelTrainingDialog.vue'
 import ModelEvaluationDialog from 'components/models/ModelEvaluationDialog.vue'
 import TrainingWelcomeModal from 'components/welcome/TrainingWelcomeModal.vue'
+import api from 'src/services/api';
+
 
 
 export default {
@@ -112,6 +94,9 @@ export default {
         const { t } = useI18n()
         const selectedBasemapDate = computed(() => mapStore.selectedBasemapDate)
         const drawnPolygons = computed(() => mapStore.drawnPolygons)
+        const prediction = ref(null)
+        const predictions = ref([])
+        const basemapDateHasPrediction = ref(false)
 
 
         onMounted(() => {
@@ -120,6 +105,7 @@ export default {
             }
             console.log("Showing single map")
             mapStore.showSingleMap('map')
+            loadPredictionsFromDatabase()
         });
 
         onUnmounted(() => {
@@ -206,6 +192,63 @@ export default {
             })
         }
 
+        const loadPredictionsFromDatabase = async () => {
+            try {
+                const response = await api.getPredictions(projectStore.currentProject.id);
+                console.log("Predictions fetched:", response.data);
+                predictions.value = response.data
+                    .filter(p => p.type === "land_cover")
+                    .sort((a, b) => new Date(a.basemap_date) - new Date(b.basemap_date));
+            } catch (error) {
+                console.error('Error loading initial data:', error);
+                $q.notify({
+                    color: 'negative',
+                    message: 'Failed to load analysis data',
+                    icon: 'error'
+                });
+            }
+        };
+
+        const loadPredictionToMap = () => {
+
+            // Check to see if layer is already added to map
+
+            console.log("Layers in map", mapStore.map.getLayers().getArray())
+            const layer = mapStore.map.getLayers().getArray().find(l => l.get('id') === `landcover-${prediction.value.id}`);
+            if(layer){
+                console.log("Layer already added to map")
+                return
+            }
+
+            
+
+            console.log(`Adding land cover prediction for `, prediction.value);
+
+            // Prediction is not null
+            if(prediction.value){
+
+                mapStore.displayPrediction(
+                    prediction.value.file,
+                    `landcover-${prediction.value.id}`,
+                    prediction.value.name,
+                    'landcover',
+                    null,
+                    true
+                );
+            }
+        }
+
+        watch(selectedBasemapDate, (newBasemapDate) => {
+            console.log("selectedBasemapDate", newBasemapDate)
+
+            prediction.value = predictions.value.find(p => p.basemap_date === newBasemapDate)
+            console.log("Found prediction for basemap date", prediction.value)
+            basemapDateHasPrediction.value = prediction.value ? true : false
+
+        })
+
+
+
         return {
             selectedBasemapDate,
             drawnPolygons,
@@ -214,7 +257,10 @@ export default {
             getClassColor,
             openModelTrainingDialog,
             openModelEvaluationDialog,
-            t
+            t,
+            loadPredictionsFromDatabase,
+            basemapDateHasPrediction,
+            loadPredictionToMap
         }
     }
 }
@@ -273,5 +319,4 @@ export default {
     font-size: 0.85rem;
     padding: 0 10px;
 }
-
 </style>

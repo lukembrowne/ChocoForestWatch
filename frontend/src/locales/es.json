@@ -558,6 +558,7 @@
     "model": {
       "evaluate": "Evaluar Modelo",
       "fit": "Ajustar Modelo",
+      "loadprediction": "Cargar mapa de cobertura terrestre",
       "notifications": {
         "initiated": "Entrenamiento del modelo iniciado exitosamente"
       },
@@ -668,6 +669,7 @@
     },
     "tooltips": {
       "drawingSection": "",
+      "loadPrediction": "Cargue en el mapa una predicción de cobertura terrestre generada previamente para esta fecha.",
       "modelSection": "",
       "summarySection": ""
     }

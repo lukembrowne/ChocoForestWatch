@@ -410,7 +410,7 @@ export const useMapStore = defineStore('map', () => {
 
 
   // Display predictions or deforesation maps
-  const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'landcover', mapId = null) => {
+  const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'landcover', mapId = null, visible = false) => {
     console.log(`Displaying ${mode} on map:`, mapId);
     console.log('Prediction file path:', predictionFilePath);
 
@@ -499,7 +499,7 @@ export const useMapStore = defineStore('map', () => {
         }),
         title: layerName,
         id: layerId,
-        visible: false,
+        visible: visible,
         zIndex: 1,
         opacity: 0.7
       });

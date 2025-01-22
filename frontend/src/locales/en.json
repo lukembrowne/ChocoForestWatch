@@ -558,6 +558,7 @@
     "model": {
       "evaluate": "Evaluate Model",
       "fit": "Fit Model",
+      "loadprediction": "Load Land Cover Map",
       "notifications": {
         "initiated": "Model training initiated successfully"
       },
@@ -668,6 +669,7 @@
     },
     "tooltips": {
       "drawingSection": "Draw training polygons using freehand or square mode. Use keyboard shortcuts (D, M, Z, X, F) for faster workflow.",
+      "loadPrediction": "Load a previously generated land cover prediction for this date onto the map.",
       "modelSection": "Train and evaluate your land cover classification model. Review accuracy metrics to assess performance.",
       "summarySection": "View statistics about your training data. Aim for 30-50 examples of each land cover class for each date."
     }
