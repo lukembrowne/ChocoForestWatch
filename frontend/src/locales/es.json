@@ -9,7 +9,7 @@
     "creditsTitle": "Créditos y Uso de Datos",
     "description": "Choco Forest Watch es un proyecto de código abierto. El código está disponible en",
     "disclaimer": {
-      "text": "Esta plataforma se proporciona 'tal cual' para fines de investigación y conservación. Si bien nos esforzamos por la precisión, no ofrecemos garantías sobre la integridad, fiabilidad y exactitud de esta información. Cualquier acción que tome sobre la información en este sitio web es estrictamente bajo su propio riesgo. No seremos responsables por pérdidas y daños relacionados con el uso de nuestra plataforma.",
+      "text": "Esta plataforma se proporciona \"tal cual\" para fines de investigación y conservación. \nSi bien nos esforzamos por lograr la precisión, no ofrecemos garantías sobre la integridad, confiabilidad y exactitud de esta información. \nCualquier acción que realice sobre la información de este sitio web es bajo su propio riesgo.",
       "title": "Aviso Legal"
     },
     "funding": {
@@ -409,13 +409,13 @@
     "terrain": "Terreno"
   },
   "navigation": {
-    "analysis": {
-      "name": "Análisis",
-      "tooltip": "Analizar y verificar"
-    },
     "admin": {
       "name": "Admin",
       "tooltip": "Admin"
+    },
+    "analysis": {
+      "name": "Análisis",
+      "tooltip": "Analizar y verificar"
     },
     "projects": {
       "name": "Proyectos",

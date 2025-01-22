@@ -181,7 +181,7 @@
     </q-dialog>
 
     <q-dialog v-model="showAboutDialog">
-      <q-card class="modern-menu" style="width: 500px">
+      <q-card class="modern-menu" style="width: 700px">
         <q-card-section>
           <div class="text-h6">{{ t('about.title') }}</div>
         </q-card-section>
