@@ -12,8 +12,10 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR('No superuser found. Please create a superuser first.'))
             return
 
-        # Delete any existing template projects
-        Project.objects.filter(is_template=True).delete()
+        # Check if a template project already exists
+        if Project.objects.filter(is_template=True).exists():
+            self.stdout.write(self.style.WARNING('Template project already exists. No action taken.'))
+            return
 
         # Create basic template project
         template = Project.objects.create(
