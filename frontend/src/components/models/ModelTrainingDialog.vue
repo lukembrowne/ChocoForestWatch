@@ -219,8 +219,8 @@ export default {
     const trainTestSplit = ref(0.2)
 
     const options = ref({
-      n_estimators: 100,
-      max_depth: 3,
+      n_estimators: 500,
+      max_depth: 6,
       learning_rate: 0.1,
       min_child_weight: 1,
       gamma: 0,

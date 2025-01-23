@@ -21,6 +21,8 @@ import pickle
 import base64
 from ..storage import PlanetQuadStorage
 from django.core.files.base import ContentFile
+from rasterio.features import sieve
+
 
 class PredictionService:
     def __init__(self, model_id, project_id):
@@ -83,9 +85,12 @@ class PredictionService:
                     month_column = np.full((reshaped_data.shape[0], 1), encoded_month)
                     prediction_data = np.hstack((reshaped_data, date_column, month_column))
                     
-                    # Make prediction
+                    # Make prediction with consecutive integers
                     predictions = model.predict(prediction_data)
-                    prediction_map = predictions.reshape(data.shape[1], data.shape[2])
+                    
+                    # Map predictions back to global indices
+                    global_predictions = np.array([model.consecutive_to_global[pred] for pred in predictions])
+                    prediction_map = global_predictions.reshape(data.shape[1], data.shape[2])
                     
                     # Save to temporary file
                     temp_filename = f'temp_prediction_{uuid.uuid4().hex}.tif'
@@ -101,7 +106,6 @@ class PredictionService:
             # Apply sieve filter if specified
             sieve_size = model_record.model_parameters.get('sieve_size', 0)
             if sieve_size > 0:
-                from rasterio.features import sieve
                 sieved_mosaic = sieve(mosaic[0], size=sieve_size)
                 mosaic = np.expand_dims(sieved_mosaic, 0)
             

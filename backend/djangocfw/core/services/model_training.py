@@ -245,31 +245,37 @@ class ModelTrainingService:
             'train_test_split': model_params['train_test_split']
         }
         
-        # Remove sieve_size if present (not used by XGBoost)
-        # model_params.pop('sieve_size', None)
-        
         # Get project and classes
         project = Project.objects.get(id=self.project_id)
         all_class_names = [cls['name'] for cls in project.classes]
 
-        # Define the desired class order
+        # Define the desired class order with fixed indices
         desired_class_order = ['Forest', 'Non-Forest', 'Cloud', 'Shadow', 'Water']
+        global_class_to_int = {class_name: idx for idx, class_name in enumerate(desired_class_order)}
         
-        # Create custom mapping dictionary
-        class_to_int = {class_name: idx for idx, class_name in enumerate(desired_class_order)}
-
-        # Transform labels using the mapping
-        y_encoded = np.array([class_to_int[label] for label in y])
+        # Get classes actually present in training data
+        classes_in_training = np.unique(y).tolist()
+        
+        # Create mapping for XGBoost that uses consecutive integers
+        present_classes = [c for c in desired_class_order if c in classes_in_training]
+        training_class_to_int = {class_name: idx for idx, class_name in enumerate(present_classes)}
+        
+        # Create reverse mapping from consecutive to global indices
+        consecutive_to_global = {
+            training_class_to_int[class_name]: global_class_to_int[class_name]
+            for class_name in present_classes
+        }
+        
+        # Transform labels using consecutive integers for training
+        y_encoded = np.array([training_class_to_int[label] for label in y])
 
         # Create a custom LabelEncoder that remembers the mapping
         le = LabelEncoder()
-        le.classes_ = np.array(desired_class_order)
+        le.classes_ = np.array(all_class_names)
         
         ## Get classes actually present in training data
         ## classes_in_training = le.classes_.tolist()
 
-        classes_in_training = np.unique(y).tolist()
-        
         # Create date and month encoders
         date_encoder = LabelEncoder()
         encoded_dates = date_encoder.fit_transform([d.split('-')[0] for d in dates])
@@ -311,14 +317,19 @@ class ModelTrainingService:
             # For multi-class, we need to set objective
             model_params['objective'] = 'multi:softmax'
         else:
-            # For binary classification, remove num_class if present
+            # For binary classification, remove num_class if present ##
             model_params.pop('num_class', None)
             # For binary classification, we can use binary:logistic
             model_params['objective'] = 'binary:logistic'
+
+
+        # Add random seed and early stopping
+        model_params['random_state'] = 42
+        model_params['early_stopping_rounds'] = 10
         
         # Now create and train the model
         model = XGBClassifier(**model_params)
-        model.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=False)
+        model.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=True)
         
         # Get predictions and metrics
         y_pred = model.predict(X_test)
@@ -352,6 +363,9 @@ class ModelTrainingService:
                     'recall': None,
                     'f1': None
                 }
+
+        # Get feature importance scores
+        importance_scores = model.feature_importances_
         
         # Prepare metrics
         metrics = {
@@ -359,7 +373,8 @@ class ModelTrainingService:
             "class_metrics": class_metrics,
             "confusion_matrix": full_conf_matrix.tolist(),
             "class_names": all_class_names,
-            "classes_in_training": classes_in_training
+            "classes_in_training": classes_in_training,
+            "feature_importance": importance_scores.tolist()
         }
         
         encoders = {
@@ -367,6 +382,13 @@ class ModelTrainingService:
             'month_encoder': month_encoder,
             'label_encoder': le
         }
+        
+        # After getting predictions, map them back to global indices
+        y_pred_global = np.array([consecutive_to_global[pred] for pred in y_pred])
+        
+        # Store both mappings in the model for use during prediction
+        model.training_class_to_int = training_class_to_int
+        model.consecutive_to_global = consecutive_to_global
         
         return model, metrics, encoders, all_class_names
 

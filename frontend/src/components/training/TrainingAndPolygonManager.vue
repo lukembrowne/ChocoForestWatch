@@ -105,7 +105,9 @@ export default {
             }
             console.log("Showing single map")
             mapStore.showSingleMap('map')
-            loadPredictionsFromDatabase()
+            loadPredictionsFromDatabase().then(() => {
+                checkPredictionForDate(selectedBasemapDate.value);
+            })
         });
 
         onUnmounted(() => {
@@ -182,6 +184,11 @@ export default {
             $q.dialog({
                 component: ModelTrainingDialog
             }).onOk((response) => {
+
+                // Load predictions from database after model training is complete
+                loadPredictionsFromDatabase().then(() => {
+                    checkPredictionForDate(selectedBasemapDate.value);
+                })
                 // Handle the response from model training
                 console.log('Model training completed:', response)
                 $q.notify({
@@ -215,17 +222,22 @@ export default {
 
             console.log("Layers in map", mapStore.map.getLayers().getArray())
             const layer = mapStore.map.getLayers().getArray().find(l => l.get('id') === `landcover-${prediction.value.id}`);
-            if(layer){
+            if (layer) {
                 console.log("Layer already added to map")
+                $q.notify({
+                    color: 'warning',
+                    message: 'Land cover prediction already loaded',
+                    icon: 'warning'
+                });
                 return
             }
 
-            
+
 
             console.log(`Adding land cover prediction for `, prediction.value);
 
             // Prediction is not null
-            if(prediction.value){
+            if (prediction.value) {
 
                 mapStore.displayPrediction(
                     prediction.value.file,
@@ -238,16 +250,36 @@ export default {
             }
         }
 
+        const checkPredictionForDate = (date) => {
+            if (!date) {
+                basemapDateHasPrediction.value = false;
+                prediction.value = null;
+                return;
+            }
+
+            prediction.value = predictions.value.find(p => p.basemap_date === date);
+            console.log("Found prediction for basemap date", prediction.value);
+            basemapDateHasPrediction.value = !!prediction.value;
+
+            // If prediction exists but layer isn't on map, remove any existing prediction layers
+            if (prediction.value) {
+                const layers = mapStore.map.getLayers().getArray();
+                const predictionLayers = layers.filter(l => l.get('id')?.startsWith('landcover-'));
+                predictionLayers.forEach(layer => {
+                    if (layer.get('id') !== `landcover-${prediction.value.id}`) {
+                        mapStore.map.removeLayer(layer);
+                    }
+                });
+            }
+        };
+
+        // Watch for basemap date changes
         watch(selectedBasemapDate, (newBasemapDate) => {
-            console.log("selectedBasemapDate", newBasemapDate)
-
-            prediction.value = predictions.value.find(p => p.basemap_date === newBasemapDate)
-            console.log("Found prediction for basemap date", prediction.value)
-            basemapDateHasPrediction.value = prediction.value ? true : false
-
-        })
-
-
+            console.log("selectedBasemapDate changed to:", newBasemapDate);
+            loadPredictionsFromDatabase().then(() => {
+                checkPredictionForDate(newBasemapDate);
+            })
+        });
 
         return {
             selectedBasemapDate,
@@ -260,7 +292,8 @@ export default {
             t,
             loadPredictionsFromDatabase,
             basemapDateHasPrediction,
-            loadPredictionToMap
+            loadPredictionToMap,
+            checkPredictionForDate
         }
     }
 }

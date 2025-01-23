@@ -8,20 +8,20 @@
             <q-icon name="drag_indicator" class="drag-handle cursor-move q-mr-sm" />
             <q-checkbox v-model="element.visible" :label="element.title"
               @update:model-value="toggleLayerVisibility(element.id)" dense class="col" />
-            <q-btn flat round dense icon="tune" size="sm" @click="element.showOpacity = !element.showOpacity">
+            <!-- <q-btn flat round dense icon="tune" size="sm" @click="element.showOpacity = !element.showOpacity">
               <q-tooltip>{{ t('layers.switcher.tooltips.toggleOpacity') }}</q-tooltip>
-            </q-btn>
-            <q-btn v-if="element.id.includes('prediction') || element.id.includes('deforestation')" flat round dense
+            </q-btn> -->
+            <q-btn v-if="element.id.includes('landcover') || element.id.includes('deforestation')" flat round dense
               icon="delete" color="negative" size="sm" @click="removeLayer(element.id)">
               <q-tooltip>{{ t('layers.switcher.tooltips.remove') }}</q-tooltip>
             </q-btn>
           </div>
-          <q-slide-transition>
+          <!-- <q-slide-transition>
             <div v-show="element.showOpacity" class="opacity-slider q-mt-xs">
               <q-slider v-model="element.opacity" :min="0" :max="1" :step="0.1" label label-always color="primary"
                 @update:model-value="updateLayerOpacity(element.id, $event)" dense />
             </div>
-          </q-slide-transition>
+          </q-slide-transition> -->
         </div>
       </template>
     </Sortable>
@@ -157,6 +157,8 @@ export default {
 
 .layer-item {
   border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 4px;
+  padding-top: 4px;
 
   &:last-child {
     border-bottom: none;
