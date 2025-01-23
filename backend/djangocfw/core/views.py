@@ -130,7 +130,7 @@ class TrainingPolygonSetViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Optionally restricts the returned training sets by filtering against
-        project_id query parameter in the URL.
+        project_id or set_id query parameters in the URL.
         """
         queryset = TrainingPolygonSet.objects.all()
         project_id = self.request.query_params.get('project_id', None)
@@ -143,7 +143,21 @@ class TrainingPolygonSetViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        """
+        Override the create method to set feature_count based on polygons provided.
+        """
+        polygons = request.data.get('polygons', {})
+        feature_count = len(polygons.get('features', []))
+        request.data['feature_count'] = feature_count
+        logger.debug(f"Setting feature_count to {feature_count} for new TrainingPolygonSet")
+
+        return super().create(request, *args, **kwargs)
+
     def update(self, request, *args, **kwargs):
+        """
+        Existing update method that sets feature_count when polygons are updated.
+        """
         try:
             instance = self.get_object()
             logger.debug(f"Updating training set {instance.id} with data: {request.data}")
