@@ -104,6 +104,7 @@ export default {
                 mapStore.map.on('click', handleFeatureClick);
             }
             console.log("Showing single map")
+            mapStore.initMap('map')
             mapStore.showSingleMap('map')
             loadPredictionsFromDatabase().then(() => {
                 checkPredictionForDate(selectedBasemapDate.value);

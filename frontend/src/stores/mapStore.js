@@ -91,8 +91,8 @@ export const useMapStore = defineStore('map', () => {
   });
 
   // Actions
-  const initMap = (target) => {
-    if (!map.value) {
+  const initMap = (target, force = false) => {
+    if (!map.value || force) {
       map.value = new Map({
         target: target,
         layers: [
@@ -122,6 +122,7 @@ export const useMapStore = defineStore('map', () => {
 
       console.log('Map initialized in MapStore...');
       mapInitialized.value = true;
+      map.value.setTarget(target)
     }
   };
 

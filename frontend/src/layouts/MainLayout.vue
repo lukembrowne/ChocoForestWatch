@@ -341,6 +341,7 @@ export default {
     const showAboutDialog = ref(false)
 
     onMounted(async () => {
+      console.log("Mounted MainLayout")
       try {
         // Get version
         const versionResponse = await api.getVersion()
@@ -358,8 +359,10 @@ export default {
 
       // Standard loading sequence
       // Initialize map
-      mapStore.initMap('map')
+      console.log("Initializing map")
+      mapStore.initMap('map', true)
       mapStore.initializeBasemapDates()
+      // mapStore.showSingleMap('map')
       showProjectSelection.value = true
     })
 
