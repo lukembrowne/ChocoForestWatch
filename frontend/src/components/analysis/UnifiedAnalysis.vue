@@ -21,35 +21,23 @@
                 :label="t('analysis.unified.deforestation.new.startDate')" class="col modern-input" dense outlined />
               <q-select v-model="endDate" :options="predictionDates"
                 :label="t('analysis.unified.deforestation.new.endDate')" class="col modern-input" dense outlined />
-                <div class="row justify-center q-py-sm">
-                  <q-btn icon="add_circle" color="primary"
-                  @click="analyzeDeforestation" :disable="!startDate || !endDate" :loading="loading" unelevated />
-                </div>
+              <div class="row justify-center q-py-sm">
+                <q-btn icon="add_circle" color="primary" @click="analyzeDeforestation" :disable="!startDate || !endDate"
+                  :loading="loading" unelevated />
               </div>
+            </div>
 
-            <q-separator class="q-my-sm"/>
-            <div class="text-subtitle2">{{t('analysis.unified.deforestation.previous.title')}}</div>
+            <q-separator class="q-my-sm" />
+            <div class="text-subtitle2">{{ t('analysis.unified.deforestation.previous.title') }}</div>
             <div class="row q-col-gutter-sm">
-              <q-select 
-                v-model="selectedDeforestationMap" 
-                :options="deforestationMaps" 
-                option-label="name"
-                option-value="id" 
-                class="col modern-input" 
-                dense 
-                outlined 
-                @update:model-value="loadExistingAnalysis"
+              <q-select v-model="selectedDeforestationMap" :options="deforestationMaps" option-label="name"
+                option-value="id" class="col modern-input" dense outlined @update:model-value="loadExistingAnalysis"
                 @option-click="loadExistingAnalysis" />
-                <div class="row justify-center q-py-sm">
-              <q-btn 
-                icon="refresh" 
-                color="primary" 
-                dense 
-                :disable="!selectedDeforestationMap"
-                @click="loadExistingAnalysis(selectedDeforestationMap)"
-                class="q-ml-sm">
-                <q-tooltip>{{ t('analysis.unified.deforestation.reload') }}</q-tooltip>
-              </q-btn>
+              <div class="row justify-center q-py-sm">
+                <q-btn icon="refresh" color="primary" dense :disable="!selectedDeforestationMap"
+                  @click="loadExistingAnalysis(selectedDeforestationMap)" class="q-ml-sm">
+                  <q-tooltip>{{ t('analysis.unified.deforestation.reload') }}</q-tooltip>
+                </q-btn>
               </div>
             </div>
           </q-card-section>
@@ -73,8 +61,9 @@
           <q-card-section class="q-pa-sm">
             <div class="row q-col-gutter-sm">
               <div class="col-6">
-                <q-input v-model.number="minAreaHa" type="number" :label="t('analysis.unified.hotspots.filters.minArea')"
-                  dense outlined class="modern-input" @update:model-value="loadHotspots">
+                <q-input v-model.number="minAreaHa" type="number"
+                  :label="t('analysis.unified.hotspots.filters.minArea')" dense outlined class="modern-input"
+                  @update:model-value="loadHotspots">
                   <template v-slot:append>
                     <q-icon name="filter_alt" />
                   </template>
@@ -564,7 +553,7 @@ export default {
     const clearMapLayers = (targetMapId) => {
       // If no specific map ID is provided, clear both maps (maintaining backward compatibility)
       const mapIds = targetMapId ? [targetMapId] : ['primary', 'secondary'];
-      
+
       mapIds.forEach(mapId => {
         const map = mapStore.maps[mapId];
         if (!map) return;
@@ -623,38 +612,69 @@ export default {
       };
 
       const getHotspotStyle = (feature) => {
-        const isSelected = selectedHotspot.value &&
-          selectedHotspot.value.properties.id === feature.getProperties().id;
-        const source = feature.getProperties().source;
-        const status = feature.getProperties().verification_status;
+        // Identify if the feature is currently selected
+        const isSelected = (
+          selectedHotspot.value &&
+          selectedHotspot.value.properties.id === feature.getProperties().id
+        );
 
-        const style = {
-          strokeColor: source === 'gfw' ? '#9C27B0' : '#1976D2', // Purple for GFW, Blue for ML
-          strokeWidth: isSelected ? 3 : 1.5,
-          lineDash: isSelected ? [10, 10] : []
-        };
+        // Get properties
+        const source = feature.getProperties().source; // 'gfw' or 'local'
+        const status = feature.getProperties().verification_status; // 'verified', 'rejected', 'unsure', etc.
 
-        if (status) {
-          switch (status) {
-            case 'verified':
-              style.strokeColor = '#4CAF50';  // Green
-              break;
-            case 'rejected':
-              style.strokeColor = '#607D8B';  // Grey
-              break;
-            case 'unsure':
-              style.strokeColor = '#FFC107';  // Amber
-              break;
-          }
+        // Inner stroke color (based on source) 
+        // (Purple for GFW, Blue for Local)
+        const innerColor = (source === 'gfw') ? '#9C27B0' : '#1976D2';
+
+        // Outer stroke color (based on status)
+        // More intuitive color for 'rejected' is red (#F44336),
+        // while green (#4CAF50) and amber (#FFC107) remain
+        // for 'verified' and 'unsure', respectively.
+        let outerColor;
+        switch (status) {
+          case 'verified':
+            // Green 500
+            outerColor = '#4CAF50';
+            break;
+          case 'rejected':
+            outerColor = '#607D8B';
+            break;
+          case 'unsure':
+            // Amber 500
+            outerColor = '#FFC107';
+            break;
+          default:
+            // No status => transparent or a subtle grey if desired
+            outerColor = 'rgba(0,0,0,0)';
+            break;
         }
 
-        return new Style({
-          stroke: new Stroke({
-            color: style.strokeColor,
-            width: style.strokeWidth,
-            lineDash: style.lineDash
+        // Adjust widths if selected, to emphasize
+        const outerStrokeWidth = isSelected ? 4 : 4;
+        const innerStrokeWidth = isSelected ? 1.5 : 1.5;
+
+        // Optionally apply dashed lines to highlight selected
+        const dashPattern = isSelected ? [3, 3] : [];
+
+        // Return an array of two styles (outer stroke first, inner stroke second)
+        return [
+          // Outer stroke for Source
+          new Style({
+            stroke: new Stroke({
+              color: outerColor,
+              width: outerStrokeWidth,
+              lineDash: dashPattern
+            })
+          }),
+          // Inner stroke for Status
+          new Style({
+            stroke: new Stroke({
+              color: innerColor,
+              width: innerStrokeWidth,
+              lineDash: dashPattern
+            })
           })
-        });
+        ];
       };
 
       // Create and add layers to both maps
@@ -1431,11 +1451,11 @@ export default {
 
     const formatDate = (dateStr) => {
       if (!dateStr) return '';
-      
+
       // Add day to the partial date string
       const [year, month] = dateStr.split('-');
       const dateObj = new Date(year, parseInt(month) - 1, 1);  // month is 0-based in JS
-      
+
       return date.formatDate(dateObj, 'MMMM YYYY');
     };
 
