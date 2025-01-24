@@ -746,10 +746,16 @@ export default {
 
     // Add to setup()
     const predictionDates = computed(() => {
-      return predictions.value.map(p => ({
-        label: date.formatDate(p.basemap_date, 'MMMM YYYY'),
-        value: p.basemap_date
-      }));
+      return predictions.value.map(p => {
+        // Create a date object for the first day of the month
+        const [year, month] = p.basemap_date.split('-');
+        const dateObj = new Date(year, parseInt(month) - 1, 1);  // month is 0-based in JS
+
+        return {
+          label: date.formatDate(dateObj, 'MMMM YYYY'),
+          value: p.basemap_date
+        };
+      });
     });
 
     const analyzeDeforestation = async () => {

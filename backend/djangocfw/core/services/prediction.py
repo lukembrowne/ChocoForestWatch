@@ -106,10 +106,11 @@ class PredictionService:
             # Apply sieve filter if specified
             sieve_size = model_record.model_parameters.get('sieve_size', 0)
             if sieve_size > 0:
+                logger.info(f"Applying sieve filter with size {sieve_size}")
                 sieved_mosaic = sieve(mosaic[0], size=sieve_size)
                 mosaic = np.expand_dims(sieved_mosaic, 0)
             
-            # Create output file
+            # Create output file 
             output_dir = './predictions'
             os.makedirs(output_dir, exist_ok=True)
             output_file = os.path.join(output_dir, f"landcover_prediction_{uuid.uuid4().hex}.tif")
