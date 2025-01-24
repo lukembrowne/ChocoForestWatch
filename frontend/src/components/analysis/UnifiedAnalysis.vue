@@ -1429,9 +1429,14 @@ export default {
       });
     };
 
-    const formatDate = (dateString) => {
-      if (!dateString) return '';
-      return date.formatDate(dateString, 'MMMM YYYY');
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '';
+      
+      // Add day to the partial date string
+      const [year, month] = dateStr.split('-');
+      const dateObj = new Date(year, parseInt(month) - 1, 1);  // month is 0-based in JS
+      
+      return date.formatDate(dateObj, 'MMMM YYYY');
     };
 
     return {
