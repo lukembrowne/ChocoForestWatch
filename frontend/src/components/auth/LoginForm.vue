@@ -60,7 +60,7 @@
           <!-- Right Column: Image -->
           <div class="col-12 col-md-6 hero-image">
             <q-img 
-              src="/images/app-screenshot.jpeg" 
+              src="/images/SCR-20250124-iyyd.png" 
               class="rounded-borders"
               style="box-shadow: 0 8px 30px rgba(0,0,0,0.12);"
             />

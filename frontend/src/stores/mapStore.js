@@ -1223,14 +1223,15 @@ export const useMapStore = defineStore('map', () => {
 
   // Add new methods
   const initDualMaps = (primaryTarget, secondaryTarget) => {
-    console.log('Primary target:', primaryTarget);
-    console.log('Secondary target:', secondaryTarget);
 
-    // Initialize maps if they don't exist
-    if (!maps.value.primary || !maps.value.secondary) {
+    // console.log('Primary target:', primaryTarget);
+    // console.log('Secondary target:', secondaryTarget);
+
+    // Initialize maps no matter what
+    // if (!maps.value.primary || !maps.value.secondary) {
       console.log('Initializing dual maps!');
 
-      nextTick(async () => {
+      // nextTick(async () => {
         // Create maps
         maps.value.primary = new Map({
           target: primaryTarget,
@@ -1326,11 +1327,13 @@ export const useMapStore = defineStore('map', () => {
         secondaryView.on('change:rotation', () => {
           primaryView.setRotation(secondaryView.getRotation());
         });
-      });
-    } // End if
+      // });
+
+    // } // End if
+
     // Attach them
-    // maps.value.primary.setTarget(primaryTarget)
-    // maps.value.secondary.setTarget(secondaryTarget)
+    maps.value.primary.setTarget(primaryTarget)
+    maps.value.secondary.setTarget(secondaryTarget)
 
   };
 

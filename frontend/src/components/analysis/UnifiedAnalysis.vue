@@ -134,7 +134,6 @@
 
         <!-- Actions Footer - Fixed height -->
         <div class="analysis-footer-section">
-          <q-separator />
           <q-card-section class="q-pa-sm">
             <div v-if="hotspots?.length" class="row q-col-gutter-sm">
               <q-btn flat color="primary" icon="analytics" :label="t('analysis.unified.stats.title')"
@@ -517,19 +516,24 @@ export default {
       }
 
       console.log("Showing dual maps")
+      console.log("Primary map", primaryMap.value)
+      console.log("Secondary map", secondaryMap.value)
       mapStore.initDualMaps(primaryMap.value, secondaryMap.value);
       loadInitialData();
 
       // Setup keyboard shortcuts
-      const cleanup = setupKeyboardShortcuts();
+      setupKeyboardShortcuts();
+      
+    });
 
       // Clean up on unmount
       onUnmounted(() => {
-        cleanup();
-        console.log("Hiding dual maps")
-        mapStore.hideDualMaps()
+        console.log("Unmounting UnifiedAnalysis")
+        // console.log("Hiding dual maps")
+        // mapStore.hideDualMaps()
+        if (mapStore.maps.primary) mapStore.maps.primary.setTarget(null);
+        if (mapStore.maps.secondary) mapStore.maps.secondary.setTarget(null);
       });
-    });
 
     // Methods
     const loadInitialData = async () => {
@@ -1545,6 +1549,7 @@ export default {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  padding-top: 0px;
 }
 
 /* Footer section - Fixed height */

@@ -62,9 +62,9 @@ export default {
 
     const mapLayers = computed(() => {
       if (props.mapId === 'training') {
-        console.log("mapLayers in training", mapStore.layers)
+        // console.log("mapLayers in training", mapStore.layers)
         if (mapStore.map) {
-          console.log("Mapstores dirctly from mapStore", mapStore.map.getLayers().getArray())
+          // console.log("Mapstores dirctly from mapStore", mapStore.map.getLayers().getArray())
           return mapStore.map.getLayers().getArray()
             .map(layer => ({
               id: layer.get('id'),
@@ -83,7 +83,7 @@ export default {
         const map = mapStore.maps[props.mapId];
         if (!map) return [];
 
-        console.log("mapLayers", map.getLayers().getArray())
+        // console.log("mapLayers", map.getLayers().getArray())
 
         return map.getLayers().getArray()
           .map(layer => ({
