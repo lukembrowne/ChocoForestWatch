@@ -107,6 +107,7 @@ class Project(models.Model):
                 model_id=model_map.get(prediction.model_id),  # Use new model ID
                 type=prediction.type,
                 name=prediction.name,
+                file=prediction.file,
                 basemap_date=prediction.basemap_date,
                 summary_statistics=prediction.summary_statistics
             )
