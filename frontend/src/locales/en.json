@@ -402,6 +402,8 @@
       "opacity": "Opacity",
       "title": "Map Layers",
       "tooltips": {
+        "collapse": "Collapse layer list",
+        "expand": "Expand layer list",
         "remove": "Remove layer",
         "toggleOpacity": "Toggle opacity control"
       }

@@ -1,30 +1,39 @@
 <template>
   <div class="custom-layer-switcher">
-    <p class="text-subtitle1 q-mb-sm">{{ t('layers.switcher.title') }}</p>
-    <Sortable :list="mapLayers" item-key="id" @end="onDragEnd" :options="{ handle: '.drag-handle' }">
-      <template #item="{ element }">
-        <div class="layer-item q-mb-xs">
-          <div class="row items-center no-wrap">
-            <q-icon name="drag_indicator" class="drag-handle cursor-move q-mr-sm" />
-            <q-checkbox v-model="element.visible" :label="element.title"
-              @update:model-value="toggleLayerVisibility(element.id)" dense class="col" />
-            <!-- <q-btn flat round dense icon="tune" size="sm" @click="element.showOpacity = !element.showOpacity">
-              <q-tooltip>{{ t('layers.switcher.tooltips.toggleOpacity') }}</q-tooltip>
-            </q-btn> -->
-            <q-btn v-if="element.id.includes('landcover') || element.id.includes('deforestation')" flat round dense
-              icon="delete" color="negative" size="sm" @click="removeLayer(element.id)">
-              <q-tooltip>{{ t('layers.switcher.tooltips.remove') }}</q-tooltip>
-            </q-btn>
-          </div>
-          <!-- <q-slide-transition>
-            <div v-show="element.showOpacity" class="opacity-slider q-mt-xs">
-              <q-slider v-model="element.opacity" :min="0" :max="1" :step="0.1" label label-always color="primary"
-                @update:model-value="updateLayerOpacity(element.id, $event)" dense />
+    <div class="row items-center justify-between q-mb-sm">
+      <p class="text-subtitle1 q-mb-none">{{ t('layers.switcher.title') }}</p>
+      <q-btn flat round dense :icon="isExpanded ? 'expand_less' : 'expand_more'" size="sm" @click="isExpanded = !isExpanded">
+        <q-tooltip>{{ isExpanded ? t('layers.switcher.tooltips.collapse') : t('layers.switcher.tooltips.expand') }}</q-tooltip>
+      </q-btn>
+    </div>
+    <q-slide-transition>
+      <div v-show="isExpanded">
+        <Sortable :list="mapLayers" item-key="id" @end="onDragEnd" :options="{ handle: '.drag-handle' }">
+          <template #item="{ element }">
+            <div class="layer-item q-mb-xs">
+              <div class="row items-center no-wrap">
+                <q-icon name="drag_indicator" class="drag-handle cursor-move q-mr-sm" />
+                <q-checkbox v-model="element.visible" :label="element.title"
+                  @update:model-value="toggleLayerVisibility(element.id)" dense class="col" />
+                <!-- <q-btn flat round dense icon="tune" size="sm" @click="element.showOpacity = !element.showOpacity">
+                  <q-tooltip>{{ t('layers.switcher.tooltips.toggleOpacity') }}</q-tooltip>
+                </q-btn> -->
+                <q-btn v-if="element.id.includes('landcover') || element.id.includes('deforestation')" flat round dense
+                  icon="delete" color="negative" size="sm" @click="removeLayer(element.id)">
+                  <q-tooltip>{{ t('layers.switcher.tooltips.remove') }}</q-tooltip>
+                </q-btn>
+              </div>
+              <!-- <q-slide-transition>
+                <div v-show="element.showOpacity" class="opacity-slider q-mt-xs">
+                  <q-slider v-model="element.opacity" :min="0" :max="1" :step="0.1" label label-always color="primary"
+                    @update:model-value="updateLayerOpacity(element.id, $event)" dense />
+                </div>
+              </q-slide-transition> -->
             </div>
-          </q-slide-transition> -->
-        </div>
-      </template>
-    </Sortable>
+          </template>
+        </Sortable>
+      </div>
+    </q-slide-transition>
   </div>
 </template>
 
@@ -49,6 +58,7 @@ export default {
   setup(props) {
     const mapStore = useMapStore();
     const { t } = useI18n();
+    const isExpanded = ref(true);
 
     const mapLayers = computed(() => {
       if (props.mapId === 'training') {
@@ -111,7 +121,8 @@ export default {
       toggleLayerVisibility,
       updateLayerOpacity,
       removeLayer,
-      t
+      t,
+      isExpanded,
     };
   }
 };
@@ -130,6 +141,10 @@ export default {
   width: 250px;
   max-height: 80vh;
   overflow-y: auto;
+
+  .text-subtitle1 {
+    margin: 0;
+  }
 }
 
 .layer-item {

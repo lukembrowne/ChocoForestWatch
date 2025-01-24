@@ -402,6 +402,8 @@
       "opacity": "Opacidad",
       "title": "Capas del Mapa",
       "tooltips": {
+        "collapse": "Lista de capa de colapso",
+        "expand": "Expandir la lista de capas",
         "remove": "Eliminar capa",
         "toggleOpacity": "Alternar control de opacidad"
       }
