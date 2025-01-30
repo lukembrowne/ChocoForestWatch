@@ -107,3 +107,4 @@ deploy_docker.sh
 backup-*.sql
 version.txt
 .env.prod
+backend/download_planet_mosaics.py
