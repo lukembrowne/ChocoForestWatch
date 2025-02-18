@@ -1,9 +1,9 @@
 {
   "name": "frontend",
   "version": "0.0.1",
-  "description": "A Quasar Project",
+  "description": "Localized deforestation monitoring",
   "productName": "Choco Forest Watch",
-  "author": "Luke Browne <lukembrowne@gmail.com>",
+  "author": "Luke Browne <lukebrowne@fcat-ecuador.org.com>",
   "private": true,
   "scripts": {
     "lint": "eslint --ext .js,.vue ./",
