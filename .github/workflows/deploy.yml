@@ -20,14 +20,14 @@ jobs:
 
             # 1. Make sure the repo is present
             cd /root/opt || mkdir -p /root/opt && cd /root/opt
-            if [ -d chocoforestwatch/.git ]; then
+            if [ -d ChocoForestWatch/.git ]; then
               echo "Repo exists – pulling latest commit"
-              cd chocoforestwatch
+              cd ChocoForestWatch
               git pull --ff-only
             else
               echo "Cloning repo for the first time"
-              git clone --depth 1 git@github.com:YOURNAME/chocoforestwatch.git
-              cd chocoforestwatch
+              git clone --depth 1 git@github.com:lukembrowne/ChocoForestWatch.git
+              cd ChocoForestWatch
             fi
 
             # 2. Load environment file (already on server) – optional sanity check
