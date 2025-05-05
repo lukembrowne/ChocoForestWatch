@@ -1,0 +1,50 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t cfw:${{ github.sha }} .
+          docker save cfw:${{ github.sha }} | gzip > image.tar.gz
+
+      - name: Deploy to DigitalOcean
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: root
+          key: ${{ secrets.DO_SSH_KEY }}
+          source: "image.tar.gz"
+          target: "/root/opt/chocoforestwatch/"
+          strip_components: 0
+
+      - name: Load and run container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: root
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            cd /root/opt/chocoforestwatch
+            docker load < image.tar.gz
+            docker stop cfw || true
+            docker rm cfw || true
+            docker run -d \
+              --name cfw \
+              --restart unless-stopped \
+              --env-file .env.prod \
+              -p 80:80 \
+              cfw:${{ github.sha }}
+            rm image.tar.gz 
