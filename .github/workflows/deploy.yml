@@ -44,7 +44,7 @@ jobs:
             docker compose -f docker-compose.prod.yml build \
             --build-arg VITE_API_URL="${VITE_API_URL}" \
             --build-arg VUE_APP_PLANET_API_KEY="${VUE_APP_PLANET_API_KEY}" \
-            --build-arg VITE_SENTRY_DSN="${VITE_SENTRY_DSN}"\
+            --build-arg VITE_SENTRY_DSN="${VITE_SENTRY_DSN}" \
             --build-arg DJANGO_DEBUG="${DJANGO_DEBUG}" 
             docker compose -f docker-compose.prod.yml up -d --build
 
