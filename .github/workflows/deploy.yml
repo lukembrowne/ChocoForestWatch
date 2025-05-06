@@ -33,12 +33,20 @@ jobs:
             # 2. Load environment file (already on server) – optional sanity check
             test -f .env.prod || { echo ".env.prod missing!"; exit 1; }
 
-            # 3. Build the images locally on the droplet
-            docker compose -f docker-compose.prod.yml build --pull
+            # 3. Source .env.prod to load environment variables into this script
+            set -a
+            source .env.prod
+            set +a
 
-            # 4. Restart containers with the new images
+            # 3. Build the images locally on the droplet
+            # Always use production settings when deploying
             docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml build \
+            --build-arg VITE_API_URL="${VITE_API_URL}" \
+            --build-arg VUE_APP_PLANET_API_KEY="${VUE_APP_PLANET_API_KEY}" \
+            --build-arg VITE_SENTRY_DSN="${VITE_SENTRY_DSN}"\
+            --build-arg DJANGO_DEBUG="${DJANGO_DEBUG}" 
+            docker compose -f docker-compose.prod.yml up -d --build
 
             # 5. Optional: prune dangling images to save disk
             docker image prune -f
