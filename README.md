@@ -1,6 +1,6 @@
 # Choco Forest Watch
 
-A full-stack application for monitoring and managing forest resources, built with Quasar (Vue.js) frontend and a robust backend system.
+A full-stack application for deforestation monitoring, built with Quasar (Vue.js) frontend and a robust backend system.
 
 ## Project Overview
 
@@ -86,8 +86,6 @@ Choco Forest Watch is a comprehensive forest monitoring system that helps track 
      - `issue-123/hotfix-name` for urgent production fixes
 
 3. **Development**
-   - Make your changes following the project's coding standards
-   - Write tests for new features
    - Update documentation as needed
    - Commit your changes with conventional commits:
      ```bash
@@ -127,10 +125,73 @@ Choco Forest Watch is a comprehensive forest monitoring system that helps track 
 ### Branch Strategy
 
 - `main`: Production-ready code
+  - Should never receive direct commits
+  - Only receives changes through merges from `dev`
+  - Protected branch with required reviews
 - `dev`: Development branch for integrating features
+  - Main integration branch for all features
+  - Protected branch with required reviews
+  - Should be kept up to date with `main` through regular merges
 - `issue-*/*`: Feature/fix branches for specific issues
 - `release/*`: Release preparation branches (if needed)
 - `hotfix/*`: Urgent production fixes
+  - Branch from `main`
+  - Must be merged back to both `main` and `dev`
+
+### Branch Synchronization
+
+1. **Regular Dev-Main Sync**
+   ```bash
+   # Keep dev up to date with main
+   git checkout dev
+   git pull origin dev
+   git merge main
+   git push origin dev
+   ```
+
+2. **Hotfix Process**
+   ```bash
+   # Create hotfix branch from main
+   git checkout main
+   git pull origin main
+   git checkout -b hotfix/urgent-fix
+
+   # After fixing, merge to both main and dev
+   git checkout main
+   git merge hotfix/urgent-fix
+   git push origin main
+
+   git checkout dev
+   git merge hotfix/urgent-fix
+   git push origin dev
+   ```
+
+3. **Release Process**
+   ```bash
+   # Create release branch from dev
+   git checkout dev
+   git pull origin dev
+   git checkout -b release/v1.0.0
+
+   # After testing, merge to main and back to dev
+   git checkout main
+   git merge release/v1.0.0
+   git tag -a v1.0.0 -m "Release v1.0.0"
+   git push origin main --tags
+
+   git checkout dev
+   git merge release/v1.0.0
+   git push origin dev
+   ```
+
+### Important Notes
+
+1. Never make direct commits to `main` or `dev`
+2. Always create feature branches from `dev`
+3. Keep `dev` synchronized with `main` regularly
+4. Use hotfix branches for urgent production fixes
+5. Tag all releases in `main`
+6. Ensure CI passes before merging to any protected branch
 
 ### Deployment Process
 
@@ -170,8 +231,8 @@ ChocoForestWatch/
 
 ## License
 
-[Add your license information here]
+....
 
 ## Support
 
-For support, please [add contact information or support process] 
+....
