@@ -223,7 +223,11 @@
         },
         "motivation": "While global deforestation monitoring initiatives are invaluable, they often face challenges at local scales where most on-the-ground conservation work happens. Choco Forest Watch bridges this gap by enabling custom machine learning models trained with local expertise.",
         "subtitle": "Free, open-source platform supporting local conservation efforts",
-        "tagline": "Deforestation Monitoring for Local Conservation"
+        "tagline": "Deforestation Monitoring for Local Conservation",
+        "planetWarning": {
+          "title": "Important Notice: Planet Imagery Access Changes",
+          "message": "As of April 1, 2025, Planet imagery is no longer available through the NICFI program. This affects our ability to provide high-resolution satellite imagery. We are working to secure alternative imagery sources. The core functionality of Choco Forest Watch may be limited until we implement a new solution."
+        }
       },
       "languageRequired": "Preferred language is required",
       "loginButton": "Login",
