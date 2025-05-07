@@ -24,6 +24,18 @@
       </div>
     </div>
 
+    <!-- Planet Imagery Warning Banner -->
+    <q-banner
+      class="bg-warning text-black q-px-lg q-py-md"
+      rounded
+    >
+      <template v-slot:avatar>
+        <q-icon name="warning" color="black" />
+      </template>
+      <div class="text-weight-bold q-mb-xs">{{ t('auth.login.landing.planetWarning.title') }}</div>
+      <div>{{ t('auth.login.landing.planetWarning.message') }}</div>
+    </q-banner>
+
     <!-- Main Content Section -->
     <div class="content-wrapper">
       <!-- Hero Section with Integrated Features -->
