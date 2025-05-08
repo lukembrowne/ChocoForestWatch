@@ -352,20 +352,23 @@ export const useMapStore = defineStore('map', () => {
 
   // Function to create a Planet Basemap layer for a given date
   const createPlanetBasemap = (date) => {
-    // Retrieve the Planet API key from the environment variables
-    const apiKey = process.env.VUE_APP_PLANET_API_KEY;
-    // Check if the API key is defined
-    if (!apiKey) {
-      // Log an error if the API key is not defined
-      console.error('API key is not defined. Please check your .env file.');
-      // Return null if the API key is not defined
-      return null;
-    }
 
-    // Create a new XYZ source for the Planet Basemap
+
+    // Create a new XYZ source for titiler from single tile - works
+    // const source = new XYZ({
+    //   url: `http://localhost:8080/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2Fdata%2F2022%2F01%2F570-1025_2022_01.tif&bidx=3&bidx=2&bidx=1&rescale=0,2500`,
+    // });
+
+    
+    // Create a new XYZ source for titiler from mosaic - this works!
     const source = new XYZ({
-      url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
+      url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2Fmosaics%2F${date}.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
     });
+
+    // Old planet imagery tile
+    // url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
+
+
 
     // Return a new TileLayer for the Planet Basemap
     return new TileLayer({
