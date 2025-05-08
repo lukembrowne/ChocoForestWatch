@@ -61,6 +61,37 @@ services:
     restart: always
     environment:
       - TZ=America/New_York
-      
+titiler:
+    image: ghcr.io/developmentseed/titiler:latest
+    platform: linux/amd64
+    ports:
+      - "8080:80"
+    volumes:
+      - ./titiler/cogs:/data
+      - ./titiler/mosaics:/mosaics
+      - ./titiler/scripts:/scripts
+    # environment:
+    #   - TILER_CACHE_DISABLE=true
+    #   - TILER_CACHE_TYPE=null
+    #   - TILER_CACHE_HOST=null
+    #   - TILER_CACHE_PORT=null
+    #   - TILER_CACHE_USERNAME=null
+    #   - TILER_CACHE_PASSWORD=null
+    #   - TILER_API_CORS_ORIGINS=["*"]
+    #   - TILER_API_CORS_METHODS=["GET"]
+    #   - TILER_API_CORS_HEADERS=["*"]
+    #   - TZ=America/New_York
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-network
+    command: >
+      bash -c "chmod +x /scripts/build_all_mosaics.sh &&
+              /scripts/build_all_mosaics.sh &&
+              uvicorn titiler.application.main:app --host 0.0.0.0 --port 80"
+
 volumes:
   postgres_data:  
