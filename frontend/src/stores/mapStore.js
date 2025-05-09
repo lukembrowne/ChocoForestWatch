@@ -361,9 +361,14 @@ export const useMapStore = defineStore('map', () => {
 
     
     // Create a new XYZ source for titiler from mosaic - this works!
-    const source = new XYZ({
-      url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2Fmosaics%2F${date}.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
-    });
+    // const source = new XYZ({
+    //   url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2Fmosaics%2F${date}.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+    // });
+
+      // Testing out with mosaicJsons locally
+      const source = new XYZ({
+        url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+      });
 
     // Old planet imagery tile
     // url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
