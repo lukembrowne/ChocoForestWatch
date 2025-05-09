@@ -107,3 +107,6 @@ version.txt
 .env.prod
 backend/download_planet_mosaics.py
 beta testing/Beta invites 2025_02_03.gsheet
+
+# MosaicJsons
+mosaicJsons/
