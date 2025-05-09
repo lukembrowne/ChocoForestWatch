@@ -61,6 +61,7 @@ services:
     restart: always
     environment:
       - TZ=America/New_York
+
 titiler:
     image: ghcr.io/developmentseed/titiler:latest
     platform: linux/amd64
@@ -68,19 +69,10 @@ titiler:
       - "8080:80"
     volumes:
       - ./titiler/cogs:/data
-      - ./titiler/mosaics:/mosaics
+      - ./titiler/mosaicJsons:/mosaicJsons
       - ./titiler/scripts:/scripts
-    # environment:
-    #   - TILER_CACHE_DISABLE=true
-    #   - TILER_CACHE_TYPE=null
-    #   - TILER_CACHE_HOST=null
-    #   - TILER_CACHE_PORT=null
-    #   - TILER_CACHE_USERNAME=null
-    #   - TILER_CACHE_PASSWORD=null
-    #   - TILER_API_CORS_ORIGINS=["*"]
-    #   - TILER_API_CORS_METHODS=["GET"]
-    #   - TILER_API_CORS_HEADERS=["*"]
-    #   - TZ=America/New_York
+    env_file:
+      - ./.env.prod
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/healthz"]
       interval: 30s
@@ -89,9 +81,25 @@ titiler:
     networks:
       - app-network
     command: >
-      bash -c "chmod +x /scripts/build_all_mosaics.sh &&
-              /scripts/build_all_mosaics.sh &&
-              uvicorn titiler.application.main:app --host 0.0.0.0 --port 80"
+      bash -c "
+        # Install rclone
+        curl https://rclone.org/install.sh | bash &&
+        # Configure rclone with DO Spaces
+        mkdir -p /root/.config/rclone &&
+        echo '[do-spaces]
+        type = s3
+        provider = DigitalOcean
+        region = ${AWS_REGION}
+        access_key_id = ${AWS_ACCESS_KEY_ID}
+        secret_access_key = ${AWS_SECRET_ACCESS_KEY}
+        endpoint = ${AWS_S3_ENDPOINT}' > /root/.config/rclone/rclone.conf &&
+        # Run the mosaic script
+        chmod +x /scripts/build_all_mosaics.sh &&
+        cd /scripts &&
+        ./build_all_mosaics.sh &&
+        # Start the titiler server
+        cd ../ &&
+        uvicorn titiler.application.main:app --host 0.0.0.0 --port 80"
 
 volumes:
   postgres_data:  
