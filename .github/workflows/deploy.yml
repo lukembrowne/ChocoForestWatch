@@ -50,8 +50,8 @@ jobs:
             --build-arg AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
             --build-arg AWS_S3_ENDPOINT="${AWS_S3_ENDPOINT}" \
             --build-arg AWS_REGION="${AWS_REGION}" \
-            --build-arg VUE_APP_PLANET_API_KEY="${VUE_APP_PLANET_API_KEY}" 
-
+            --build-arg VUE_APP_PLANET_API_KEY="${VUE_APP_PLANET_API_KEY}" \
+            --build-arg VITE_TITILER_URL="${VITE_TITILER_URL}"
             docker compose -f docker-compose.prod.yml up -d --build
 
             # 5. Optional: prune dangling images to save disk
