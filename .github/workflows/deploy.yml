@@ -3,6 +3,7 @@ name: Deploy (build on droplet)
 on:
   push:
     branches: [main]          # production branch
+  workflow_dispatch:          # allows manual triggering
 
 jobs:
   deploy:
