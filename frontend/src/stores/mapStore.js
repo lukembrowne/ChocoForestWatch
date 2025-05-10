@@ -353,6 +353,10 @@ export const useMapStore = defineStore('map', () => {
   // Function to create a Planet Basemap layer for a given date
   const createPlanetBasemap = (date) => {
 
+    //
+    // Retrieve the Planet API key from the environment variables
+    const titilerURL = import.meta.env.VITE_TITILER_URL;
+    console.log("Titiler URL: ", titilerURL)
 
     // Create a new XYZ source for titiler from single tile - works
     // const source = new XYZ({
@@ -365,9 +369,14 @@ export const useMapStore = defineStore('map', () => {
     //   url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2Fmosaics%2F${date}.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
     // });
 
-      // Testing out with mosaicJsons locally
+      // Testing out with mosaicJsons locally - this works!
+      // const source = new XYZ({
+      //   url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+      // });
+
+      // Testing out with mosaicJsons on server - this works!
       const source = new XYZ({
-        url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+        url: `${titilerURL}/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
       });
 
     // Old planet imagery tile
