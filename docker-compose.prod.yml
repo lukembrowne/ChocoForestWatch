@@ -49,6 +49,7 @@ services:
         VUE_APP_PLANET_API_KEY: ${VUE_APP_PLANET_API_KEY}
         VITE_SENTRY_DSN: ${VITE_SENTRY_DSN}
         DJANGO_DEBUG: "False"  # Default to production
+        VITE_TITILER_URL: ${VITE_TITILER_URL}
       target: "production"       # Use 'development' or 'production'
     ports:
       - "9000:9000"
