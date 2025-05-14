@@ -1,12 +1,20 @@
 services:
   db:
-    image: postgis/postgis:15-3.3
+    image: ghcr.io/stac-utils/pgstac:v${PGSTAC_VERSION-0.9.2}
+    container_name: stac-db
     env_file:
       - ./.env
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./.pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=cfwuser
+      - POSTGRES_PASS=1234
+      - POSTGRES_DB=cfwdb
+      - PGUSER=cfwuser
+      - PGDATABASE=cfwdb
     ports:
       - "5432:5432"
+    command: postgres -N 500
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U cfwuser -d cfwdb"]
       interval: 10s
@@ -15,8 +23,6 @@ services:
       start_period: 10s
     networks:
       - app-network
-    environment:
-      - TZ=America/New_York
 
   redis:
     image: redis:latest
@@ -31,46 +37,6 @@ services:
       - app-network
     environment:
       - TZ=America/New_York
-
-  titiler:
-    image: ghcr.io/developmentseed/titiler:latest
-    platform: linux/amd64
-    ports:
-      - "8080:80"
-    volumes:
-      - ./titiler/cogs:/data
-      - ./titiler/mosaicJsons:/mosaicJsons
-      - ./titiler/scripts:/scripts
-    env_file:
-      - ./.env
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - app-network
-    command: >
-      bash -c "
-        # Install rclone
-        curl https://rclone.org/install.sh | bash &&
-        # Configure rclone with DO Spaces
-        mkdir -p /root/.config/rclone &&
-        echo '[do-spaces]
-        type = s3
-        provider = DigitalOcean
-        region = ${AWS_REGION}
-        access_key_id = ${AWS_ACCESS_KEY_ID}
-        secret_access_key = ${AWS_SECRET_ACCESS_KEY}
-        endpoint = ${AWS_S3_ENDPOINT}' > /root/.config/rclone/rclone.conf &&
-        # Run the mosaic script
-        chmod +x /scripts/build_all_mosaics.sh &&
-        cd /scripts &&
-        ./build_all_mosaics.sh &&
-        # Start the titiler server
-        cd ../ &&
-        uvicorn titiler.application.main:app --host 0.0.0.0 --port 80"
-
   backend:
     build: 
       context: ./backend/djangocfw
@@ -127,6 +93,91 @@ services:
       - app-network
     environment:
       - TZ=America/New_York
+
+  tiler:
+    container_name: tiler-pgstac
+    # At the time of writing, rasterio and psycopg wheels are not available for arm64 arch
+    # so we force the image to be built with linux/amd64
+    platform: linux/amd64
+    build:
+      context: ./titiler-pgstac
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "titiler.pgstac.main:app", "--bind", "0.0.0.0:8081", "--workers", "1"]
+    environment:
+      # Postgres connection
+      - POSTGRES_USER=cfwuser
+      - POSTGRES_PASS=1234
+      - POSTGRES_DBNAME=cfwdb
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      # PG connection
+      - DB_MIN_CONN_SIZE=1
+      - DB_MAX_CONN_SIZE=1
+      # - DB_MAX_QUERIES=10
+      # - DB_MAX_IDLE=10
+      # GDAL Config
+      # This option controls the default GDAL raster block cache size.
+      # If its value is small (less than 100000), it is assumed to be measured in megabytes, otherwise in bytes.
+      - GDAL_CACHEMAX=200
+      - GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR
+      - GDAL_INGESTED_BYTES_AT_OPEN=32768
+      - GDAL_HTTP_MERGE_CONSECUTIVE_RANGES=YES
+      - GDAL_HTTP_MULTIPLEX=YES
+      - GDAL_HTTP_VERSION=2
+      # The file can be cached in RAM by setting the configuration option VSI_CACHE to TRUE.
+      # The cache size defaults to 25 MB, but can be modified by setting the configuration option VSI_CACHE_SIZE (in bytes).
+      # Content in that cache is discarded when the file handle is closed.
+      - VSI_CACHE=TRUE
+      - VSI_CACHE_SIZE=536870912
+      # In addition, a global least-recently-used cache of 16 MB shared among all downloaded content is enabled by default,
+      # and content in it may be reused after a file handle has been closed and reopen,
+      # during the life-time of the process or until VSICurlClearCache() is called.
+      # Starting with GDAL 2.3, the size of this global LRU cache can be modified by
+      # setting the configuration option CPL_VSIL_CURL_CACHE_SIZE (in bytes).
+      - CPL_VSIL_CURL_CACHE_SIZE=200000000
+      # TiTiler Config
+      - MOSAIC_CONCURRENCY=5
+      # AWS S3 endpoint config
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_ENDPOINT=nyc3.digitaloceanspaces.com
+      - AWS_REGION=nyc3
+    volumes:
+      - ./benchmark:/tmp/benchmark
+      - ./titiler-pgstac/scripts:/app/scripts
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  tiler-uvicorn:
+    container_name: tiler-pgstac-uvicorn
+    extends:
+      service: tiler
+    ports:
+      - "8083:8083"
+    command: ["uvicorn", "titiler.pgstac.main:app", "--host", "0.0.0.0", "--port", "8083", "--workers", "1"]
+    networks:
+          - app-network
+
+  nginx:
+    image: nginx
+    ports:
+      - 8080:80
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - app-nginx
+    command: [ "nginx-debug", "-g", "daemon off;" ]
+    networks:
+      - app-network
+
+  app-nginx:
+    extends:
+      service: tiler
+    command: bash -c "uvicorn titiler.pgstac.main:app --host 0.0.0.0 --port 8082 --proxy-headers --forwarded-allow-ips='*' --root-path=/api/v1/titiler"
 
 networks:
   app-network:
