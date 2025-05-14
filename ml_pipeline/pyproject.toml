@@ -29,7 +29,12 @@ dependencies = [
     "rio-stac (>=0.11.0,<0.12.0)",
     "pypgstac (>=0.9.6,<0.10.0)",
     "psycopg (>=3.2.9,<4.0.0)",
-    "psycopg-pool (>=3.2.6,<4.0.0)"
+    "psycopg-pool (>=3.2.6,<4.0.0)",
+    "requests (>=2.32.3,<3.0.0)",
+    "leafmap (>=0.45.0,<0.46.0)",
+    "xarray (>=2025.4.0,<2026.0.0)",
+    "localtileserver (>=0.10.6,<0.11.0)",
+    "setuptools (>=80.4.0,<81.0.0)"
 ]
 
 [project.optional-dependencies]

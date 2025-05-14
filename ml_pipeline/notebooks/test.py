@@ -14,6 +14,12 @@ from rio_tiler.mosaic.methods import FirstMethod
 from shapely.geometry import mapping
 import rasterio
 from rasterio.mask import mask
+import requests
+import leafmap
+from rasterio.transform import from_origin
+import tempfile
+import leafmap
+from localtileserver import get_leaflet_tile_layer, TileClient
 
 # Load environment variables
 load_dotenv('../.env')
@@ -140,12 +146,10 @@ indexes = (1, 2, 3, 4)  # Adjust these band indexes as needed
 
 print(f"Testing with COG: {cog_url}")
 
-#%% 
 # Step 3: Initialize storage for pixels and labels
 all_pixels = []
 all_labels = []
 
-#%% 
 # Step 4: Process first polygon as a test
 test_row = gdf.iloc[0]
 print(f"\nProcessing polygon with class label: {test_row['class_label']}")
@@ -216,64 +220,101 @@ print(f"Shape of X: {X.shape}")
 print(f"Shape of y: {y.shape}")
 
 #%% 
-from cogeo_mosaic.backends import MosaicBackend
-from shapely.geometry import mapping
+# Testing out using titiler-pgstac to get the assets for a polygon
 
-# Point this at your existing MosaicJSON (the same one Titiler is serving):
-mosaic_url = "file:///titiler/mosaicJsons/mosaicjson/2022-01.json"
+# Convert to WGS84 for the titiler-pgstac API request
+gdf_wgs84 = gdf.to_crs("EPSG:4326")
 
-mosaic_url = "file:///Users/luke/apps/ChocoForestWatch/titiler/mosaicJsons/2022-01-mosaic.json"
+# Get the first polygon
+polygon_wgs84 = gdf_wgs84.iloc[0].geometry
 
+# Get the assets for the polygon
+minx, miny, maxx, maxy = polygon_wgs84.bounds
+print("Bounds: ", minx, miny, maxx, maxy)
 
-gdf = gdf.to_crs("EPSG:4326")
+titiler_url = "http://localhost:8083"
 
-# Open the mosaic
-with MosaicBackend(mosaic_url) as mosaic:
-    # For each training polygon:
-    for idx, row in gdf.iterrows():
-        geom = row.geometry
-        lng, lat = geom.centroid.x, geom.centroid.y
-        # You can either:
-        #  • ask for all COGs overlapping the polygon's bounding box:
-        minx, miny, maxx, maxy = geom.bounds
-        print("Bounds: ", minx, miny, maxx, maxy)
-        assets = mosaic.assets_for_bbox(minx, miny, maxx, maxy)
+# Make the request to titiler-pgstac API
 
-        mosaic.assets_for_point(lng, lat)              # method - Find assets for a specific point
+# Format the bbox string
+bbox_str = f"{minx},{miny},{maxx},{maxy}"
 
+# Make the request to get assets
+response = requests.get(
+    f"{titiler_url}/collections/nicfi-2022/bbox/{bbox_str}/assets",
+    headers={"accept": "application/json"}
+)
 
-        #  • or ask for all COGs overlapping a point (for very small features):
-        # lon, lat = geom.centroid.x, geom.centroid.y
-        # assets = mosaic.assets_for_point(lon, lat)
+# Check if request was successful
+if response.status_code == 200:
+    assets = response.json()
+    print(f"Found {len(assets)} assets:")
+    for asset in assets:
+        print(f"  {asset}")
+else:
+    print(f"Error: {response.status_code}")
+    print(response.text)
 
-        print(f"Polygon {idx} overlaps {len(assets)} assets:")
-        for url in assets:
-            print("  ", url)
+cog_url = assets[0]['assets']['data']['href']
 
-        # Then do your masking exactly as before:
-        for cog_url in assets:
-            with rasterio.open(cog_url) as src:
-                out_image, out_transform = mask(
-                    src, [mapping(geom)], crop=True, indexes=(1,2,3,4)
-                )
-                # … process the pixels …
+# Get the original polygon in Web Mercator
+polygon_web_mercator = gdf.iloc[0].geometry
 
-# Pre-extract the footprints & hrefs
-mosaic = MosaicBackend(mosaic_url)
+# Now you can use these assets for further processing
+with rasterio.open(cog_url) as src:
+    # Print bounds of the raster
+    print(src.bounds)
 
-tiles = mosaic.mosaic_def["features"]
-footprints = [
-    (shape(feat["geometry"]), feat["properties"]["location"])
-    for feat in tiles
-]
+    # Convert the raster to Web Mercator if needed
+    if src.crs != "EPSG:3857":
+        print("Converting raster to Web Mercator...")
+        # You might need to add transformation logic here if the raster needs to be reprojected
 
-for idx, row in gdf.iterrows():
-    poly = row.geometry  # in EPSG:4326
+    out_image, out_transform = mask(
+        src, [mapping(polygon_web_mercator)], crop=True, indexes=(1,2,3,4)
+    )
+    print(out_image.shape)
+    print(out_transform)
 
-    # Only keep those whose actual polygon footprint intersects
-    hits = [href for fp, href in footprints if fp.intersects(poly)]
+#%% 
+# Display the masked raster using localtileserver
 
-    print(f"Polygon {idx} → {len(hits)} true overlaps:")
-    for url in hits:
-        print("   ", url)
-    # …then mask against each url as before…
+# Create a temporary file
+temp_dir = tempfile.mkdtemp()
+temp_file = os.path.join(temp_dir, 'masked_raster.tif')
+
+# Save the masked raster as a GeoTIFF
+with rasterio.open(
+    temp_file,
+    'w',
+    driver='GTiff',
+    height=out_image.shape[1],
+    width=out_image.shape[2],
+    count=out_image.shape[0],
+    dtype=out_image.dtype,
+    crs=src.crs,
+    transform=out_transform,
+) as dst:
+    dst.write(out_image)
+
+# Create a tile server from the temporary file
+client = TileClient(temp_file)
+
+# Create ipyleaflet tile layer from the server
+t = get_leaflet_tile_layer(client)
+
+# Create a map centered on the raster
+m = leafmap.Map(center=client.center(), zoom=client.default_zoom)
+m.add(t)
+
+# Add the polygon to the map
+m.add_gdf(gdf.iloc[[0]], layer_name='Polygon')
+
+# Display the map
+m
+
+# Clean up the temporary file
+os.remove(temp_file)
+os.rmdir(temp_dir)
+
+#%% 
