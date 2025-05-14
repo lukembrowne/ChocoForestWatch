@@ -374,9 +374,14 @@ export const useMapStore = defineStore('map', () => {
       //   url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
       // });
 
-      // Testing out with mosaicJsons on server - this works!
-      const source = new XYZ({
-        url: `${titilerURL}/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+      // Testing out with mosaicJsons on server with base titiler - this works!
+      // const source = new XYZ({
+      //   url: `${titilerURL}/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+      // });
+
+       // Testing out with titiler-pgstac - this works!!
+       const source = new XYZ({
+        url: `http://localhost:8083/collections/nicfi-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
       });
 
     // Old planet imagery tile
