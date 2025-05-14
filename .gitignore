@@ -37,6 +37,8 @@ data/
 
 predictions/
 trained_models/
+*/.pgdata/*
+.pgdata/
 
 # IDE
 .idea/
@@ -110,3 +112,4 @@ beta testing/Beta invites 2025_02_03.gsheet
 
 # MosaicJsons
 mosaicJsons/
+ml_pipeline/notebooks/stac_catalog/*
