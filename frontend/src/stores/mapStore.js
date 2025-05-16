@@ -380,9 +380,27 @@ export const useMapStore = defineStore('map', () => {
       // });
 
        // Testing out with titiler-pgstac - this works!!
-       const source = new XYZ({
-        url: `http://localhost:8083/collections/nicfi-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
-      });
+      //  const source = new XYZ({
+      //   url: `http://localhost:8083/collections/nicfi-2022-01/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
+      // });
+
+       // Testing out loading predictions from Spaces - this works!!
+
+       // Python palette to JSON palette - need to find a better way to do this..
+      // import urllib.parse, json
+      // palette = { "1":[0,128,0], "2":[255,255,0], "3":[255,255,255],
+      //             "4":[0,0,0], "5":[0,0,255] }
+      // colormap_param = urllib.parse.quote(json.dumps(palette))
+
+      const colormap =
+  '%7B%220%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%221%22%3A%20%5B255%2C%20255%2C%200%5D%2C%20%222%22%3A%20%5B255%2C%20255%2C%20255%5D%2C%20%223%22%3A%20%5B0%2C%200%2C%200%5D%2C%20%224%22%3A%20%5B0%2C%200%2C%20255%5D%7D';
+
+    const source = new XYZ({
+      url: `http://localhost:8083/collections/nicfi-pred-rf-v1/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=pred&colormap=${colormap}`,
+      maxZoom: 14,
+    });
+    
+    
 
     // Old planet imagery tile
     // url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
