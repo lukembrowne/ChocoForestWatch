@@ -90,7 +90,11 @@ export default {
                 await mapStore.promptSaveChanges();
             }
 
-            mapStore.updateBasemap(dates.value[value]);
+            // Update the Planet basemap to the selected date
+            mapStore.updateBasemap(dates.value[value], 'planet');
+
+            // Update the predictions basemap to the selected date
+            mapStore.updateBasemap(dates.value[value], 'predictions');
 
             // Load training polygons for the selected date
             console.log("Loading training polygons for date:", dates.value[value]);

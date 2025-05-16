@@ -6,7 +6,7 @@ authors = [
     {name = "Luke Browne",email = "lukembrowne@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<4"
 dependencies = [
     "scikit-learn",
     "pandas",
@@ -35,7 +35,8 @@ dependencies = [
     "xarray (>=2025.4.0,<2026.0.0)",
     "localtileserver (>=0.10.6,<0.11.0)",
     "setuptools (>=80.4.0,<81.0.0)",
-    "xgboost (>=3.0.1,<4.0.0)"
+    "xgboost (>=3.0.1,<4.0.0)",
+    "typer (>=0.15.4,<0.16.0)"
 ]
 
 [project.optional-dependencies]

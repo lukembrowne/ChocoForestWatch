@@ -884,7 +884,7 @@ export default {
 
           // Add Planet basemap first (so it's at the bottom)
           console.log(`Adding Planet basemap for ${mapId} date:`, date.value.value);
-          const basemap = mapStore.createPlanetBasemap(date.value.value);
+          const basemap = mapStore.createBasemap(date.value.value);
           basemap.setVisible(true);
           basemap.setZIndex(1); // Set lower z-index for basemap
           mapStore.addLayerToDualMaps(basemap, mapId);
@@ -970,8 +970,8 @@ export default {
         }
 
         // Add basemaps (visible by default)
-        const beforeBasemap = mapStore.createPlanetBasemap(map.summary_statistics.prediction1_date);
-        const afterBasemap = mapStore.createPlanetBasemap(map.summary_statistics.prediction2_date);
+        const beforeBasemap = mapStore.createBasemap(map.summary_statistics.prediction1_date);
+        const afterBasemap = mapStore.createBasemap(map.summary_statistics.prediction2_date);
         beforeBasemap.setOpacity(1.0);
         afterBasemap.setOpacity(1.0);
         mapStore.addLayerToDualMaps(beforeBasemap, 'primary');

@@ -351,7 +351,13 @@ export const useMapStore = defineStore('map', () => {
 
 
   // Function to create a Planet Basemap layer for a given date
-  const createPlanetBasemap = (date) => {
+  const createBasemap = (date, type) => {
+
+    // Type shoudl be either 'planet' or 'predictions'
+    // Check to make sure type is valid
+    if (type !== 'planet' && type !== 'predictions') {
+      throw new Error('Invalid basemap type');
+    }
 
     //
     // Retrieve the Planet API key from the environment variables
@@ -363,77 +369,111 @@ export const useMapStore = defineStore('map', () => {
     //   url: `http://localhost:8080/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2Fdata%2F2022%2F01%2F570-1025_2022_01.tif&bidx=3&bidx=2&bidx=1&rescale=0,2500`,
     // });
 
-    
+
     // Create a new XYZ source for titiler from mosaic - this works!
     // const source = new XYZ({
     //   url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2Fmosaics%2F${date}.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
     // });
 
-      // Testing out with mosaicJsons locally - this works!
-      // const source = new XYZ({
-      //   url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
-      // });
+    // Testing out with mosaicJsons locally - this works!
+    // const source = new XYZ({
+    //   url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+    // });
 
-      // Testing out with mosaicJsons on server with base titiler - this works!
-      // const source = new XYZ({
-      //   url: `${titilerURL}/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
-      // });
+    // Testing out with mosaicJsons on server with base titiler - this works!
+    // const source = new XYZ({
+    //   url: `${titilerURL}/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+    // });
 
-       // Testing out with titiler-pgstac - this works!!
-      //  const source = new XYZ({
-      //   url: `http://localhost:8083/collections/nicfi-2022-01/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
-      // });
+    // Testing out with titiler-pgstac - this works!!
+    //  const source = new XYZ({
+    //   url: `http://localhost:8083/collections/nicfi-2022-01/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
+    // });
 
-       // Testing out loading predictions from Spaces - this works!!
+    // Testing out loading predictions from Spaces - this works!!
 
-       // Python palette to JSON palette - need to find a better way to do this..
-      // import urllib.parse, json
-      // palette = { "1":[0,128,0], "2":[255,255,0], "3":[255,255,255],
-      //             "4":[0,0,0], "5":[0,0,255] }
-      // colormap_param = urllib.parse.quote(json.dumps(palette))
+    // Python palette to JSON palette - need to find a better way to do this..
+    // import urllib.parse, json
+    // palette = { "1":[0,128,0], "2":[255,255,0], "3":[255,255,255],
+    //             "4":[0,0,0], "5":[0,0,255] }
+    // colormap_param = urllib.parse.quote(json.dumps(palette))
+
+
+    // If planet imagery
+
+    let source;
+
+    if (type === 'planet') {
+      source = new XYZ({
+        url: `http://localhost:8083/collections/nicfi-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
+        maxZoom: 14,
+          });
+    }
+
+
+    // Create a new XYZ source for predictions
+    if (type === 'predictions') {
 
       const colormap =
-  '%7B%220%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%221%22%3A%20%5B255%2C%20255%2C%200%5D%2C%20%222%22%3A%20%5B255%2C%20255%2C%20255%5D%2C%20%223%22%3A%20%5B0%2C%200%2C%200%5D%2C%20%224%22%3A%20%5B0%2C%200%2C%20255%5D%7D';
+        '%7B%220%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%221%22%3A%20%5B255%2C%20255%2C%200%5D%2C%20%222%22%3A%20%5B255%2C%20255%2C%20255%5D%2C%20%223%22%3A%20%5B0%2C%200%2C%200%5D%2C%20%224%22%3A%20%5B0%2C%200%2C%20255%5D%7D';
 
-    const source = new XYZ({
-      url: `http://localhost:8083/collections/nicfi-pred-rf-v1/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=pred&colormap=${colormap}`,
-      maxZoom: 14,
-    });
-    
-    
+      source = new XYZ({
+        url: `http://localhost:8083/collections/nicfi-pred-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=pred&colormap=${colormap}`,
+        maxZoom: 14,
+      });
+    }
+
+
 
     // Old planet imagery tile
     // url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
 
 
+    // Return a new TileLayer for basemap
 
-    // Return a new TileLayer for the Planet Basemap
+    const title = type === 'planet' ? `Planet Basemap ${date}` : `Predictions ${date}`;
+    const id = type === 'planet' ? `planet-basemap` : `predictions`;
+    const zIndex = type === 'planet' ? 1 : 2;
+    const opacity = type === 'planet' ? 1 : 0.7;
+
     return new TileLayer({
       source: source,
-      title: `Planet Basemap ${date}`, // Set the layer title to include the date
+      title: title,
       type: 'base', // Set the layer type to 'base'
       visible: true, // Make the layer visible by default
-      id: `planet-basemap`, // Set a unique ID for the layer
-      zIndex: 1 // Set the layer's z-index to 1
+      id: id, // Set a unique ID for the layer
+      zIndex: zIndex, // Set the layer's z-index to 1
+      opacity: opacity // Set the layer's opacity to 0.7
     });
   };
-  // Function to update the basemap layer with a new date
-  const updateBasemap = (date) => {
-    // Create a new Planet Basemap layer for the given date
-    const planetBasemap = createPlanetBasemap(date);
 
-    // Find the existing Planet Basemap layer by its ID
-    let existingBasemap = map.value.getLayers().getArray().find(layer => layer.get('id') === 'planet-basemap');
+
+  // Function to update the basemap layer with a new date
+  const updateBasemap = (date, type) => {
+
+    // Check to make sure type is valid
+    if (type !== 'planet' && type !== 'predictions') {
+      throw new Error('Invalid basemap type');
+    }
+
+    // Create a new Planet Basemap layer for the given date
+    const basemap = createBasemap(date, type);
+
+    const id = type === 'planet' ? `planet-basemap` : `predictions`;
+    const title = type === 'planet' ? `Planet Basemap ${date}` : `Predictions ${date}`;
+
+    // Find the existing  Basemap layer by its ID
+    let existingBasemap = map.value.getLayers().getArray().find(layer => layer.get('id') === id);
 
     // If an existing layer is found, update it with the new basemap
     if (existingBasemap) {
-      console.log("Updating existing planet basemap layer...");
-      existingBasemap.setSource(planetBasemap.getSource());
-      existingBasemap.set('title', `Planet Basemap ${date}`);
+      console.log("Updating existing basemap layer...");
+      existingBasemap.setSource(basemap.getSource());
+      existingBasemap.set('title', title);
     } else {
       // If no existing layer is found, create a new one and insert it at a specific position
-      console.log("Creating new planet basemap layer...");
-      map.value.getLayers().insertAt(2, planetBasemap);
+      console.log("Creating new basemap layer...");
+      map.value.getLayers().insertAt(2, basemap);
     }
 
     // Update the slider value to match the new basemap date
@@ -1032,7 +1072,8 @@ export const useMapStore = defineStore('map', () => {
 
   const setSelectedBasemapDate = async (date) => {
     selectedBasemapDate.value = date;
-    await updateBasemap(date);
+    await updateBasemap(date, 'planet');
+    await updateBasemap(date, 'predictions');
     await loadTrainingPolygonsForDate(date);
   };
 
@@ -1270,105 +1311,105 @@ export const useMapStore = defineStore('map', () => {
 
     // Initialize maps no matter what
     // if (!maps.value.primary || !maps.value.secondary) {
-      console.log('Initializing dual maps!');
+    console.log('Initializing dual maps!');
 
-      // nextTick(async () => {
-        // Create maps
-        maps.value.primary = new Map({
-          target: primaryTarget,
-          layers: [
-            new TileLayer({
-              source: new OSM(),
-              name: 'baseMap',
-              title: 'OpenStreetMap',
-              visible: true,
-              id: 'osm',
-              zIndex: 0
-            })
-          ],
-          view: new View({
-            center: fromLonLat([-79.81822466589962, 0.460628082970743]),
-            zoom: 12
-          })
-        });
+    // nextTick(async () => {
+    // Create maps
+    maps.value.primary = new Map({
+      target: primaryTarget,
+      layers: [
+        new TileLayer({
+          source: new OSM(),
+          name: 'baseMap',
+          title: 'OpenStreetMap',
+          visible: true,
+          id: 'osm',
+          zIndex: 0
+        })
+      ],
+      view: new View({
+        center: fromLonLat([-79.81822466589962, 0.460628082970743]),
+        zoom: 12
+      })
+    });
 
-        maps.value.secondary = new Map({
-          target: secondaryTarget,
-          layers: [
-            new TileLayer({
-              source: new OSM(),
-              name: 'baseMap',
-              title: 'OpenStreetMap',
-              visible: true,
-              id: 'osm',
-              zIndex: 0
-            })
-          ],
-          view: new View({
-            center: fromLonLat([-79.81822466589962, 0.460628082970743]),
-            zoom: 12
-          })
-        });
+    maps.value.secondary = new Map({
+      target: secondaryTarget,
+      layers: [
+        new TileLayer({
+          source: new OSM(),
+          name: 'baseMap',
+          title: 'OpenStreetMap',
+          visible: true,
+          id: 'osm',
+          zIndex: 0
+        })
+      ],
+      view: new View({
+        center: fromLonLat([-79.81822466589962, 0.460628082970743]),
+        zoom: 12
+      })
+    });
 
-        // Force a redraw
-        maps.value.primary.updateSize();
-        maps.value.secondary.updateSize();
+    // Force a redraw
+    maps.value.primary.updateSize();
+    maps.value.secondary.updateSize();
 
-        // Add AOI layers if project has AOI
-        const projectStore = useProjectStore();
-        if (projectStore.currentProject?.aoi) {
-          console.log("Setting up AOI layers in dual maps...");
+    // Add AOI layers if project has AOI
+    const projectStore = useProjectStore();
+    if (projectStore.currentProject?.aoi) {
+      console.log("Setting up AOI layers in dual maps...");
 
-          // Create AOI layers
-          const { layer: primaryAOILayer, source: aoiSource } = createAOILayer(
-            projectStore.currentProject.aoi
-          );
-          const { layer: secondaryAOILayer } = createAOILayer(
-            projectStore.currentProject.aoi
-          );
+      // Create AOI layers
+      const { layer: primaryAOILayer, source: aoiSource } = createAOILayer(
+        projectStore.currentProject.aoi
+      );
+      const { layer: secondaryAOILayer } = createAOILayer(
+        projectStore.currentProject.aoi
+      );
 
-          // Add layers
-          maps.value.primary.addLayer(primaryAOILayer);
-          maps.value.secondary.addLayer(secondaryAOILayer);
+      // Add layers
+      maps.value.primary.addLayer(primaryAOILayer);
+      maps.value.secondary.addLayer(secondaryAOILayer);
 
-          // Get AOI extent and fit both maps
-          const extent = aoiSource.getExtent();
-          console.log('Fitting to AOI extent:', extent);
+      // Get AOI extent and fit both maps
+      const extent = aoiSource.getExtent();
+      console.log('Fitting to AOI extent:', extent);
 
-          maps.value.primary.getView().fit(extent);
-          maps.value.secondary.getView().fit(extent);
+      maps.value.primary.getView().fit(extent);
+      maps.value.secondary.getView().fit(extent);
 
-          // Secondary map will sync automatically due to view synchronization
-        }
+      // Secondary map will sync automatically due to view synchronization
+    }
 
-        // Sync map movements
-        const primaryView = maps.value.primary.getView();
-        const secondaryView = maps.value.secondary.getView();
+    // Sync map movements
+    const primaryView = maps.value.primary.getView();
+    const secondaryView = maps.value.secondary.getView();
 
-        // Sync center changes
-        primaryView.on('change:center', () => {
-          secondaryView.setCenter(primaryView.getCenter());
-        });
-        secondaryView.on('change:center', () => {
-          primaryView.setCenter(secondaryView.getCenter());
-        });
+    // Sync center changes
+    primaryView.on('change:center', () => {
+      secondaryView.setCenter(primaryView.getCenter());
+    });
+    secondaryView.on('change:center', () => {
+      primaryView.setCenter(secondaryView.getCenter());
+    });
 
-        // Sync zoom changes
-        primaryView.on('change:resolution', () => {
-          secondaryView.setResolution(primaryView.getResolution());
-        });
-        secondaryView.on('change:resolution', () => {
-          primaryView.setResolution(secondaryView.getResolution());
-        });
+    // Sync zoom changes
+    primaryView.on('change:resolution', () => {
+      secondaryView.setResolution(primaryView.getResolution());
+    });
+    secondaryView.on('change:resolution', () => {
+      primaryView.setResolution(secondaryView.getResolution());
+    });
 
-        // Sync rotation changes
-        primaryView.on('change:rotation', () => {
-          secondaryView.setRotation(primaryView.getRotation());
-        });
-        secondaryView.on('change:rotation', () => {
-          primaryView.setRotation(secondaryView.getRotation());
-        });
-      // });
+    // Sync rotation changes
+    primaryView.on('change:rotation', () => {
+      secondaryView.setRotation(primaryView.getRotation());
+    });
+    secondaryView.on('change:rotation', () => {
+      primaryView.setRotation(secondaryView.getRotation());
+    });
+    // });
 
     // } // End if
 
@@ -1482,7 +1523,7 @@ export const useMapStore = defineStore('map', () => {
     toggleDrawingMode,
     fitBounds,
     addGeoJSON,
-    createPlanetBasemap,
+    createBasemap,
     createAOILayer,
     showSingleMap,
     hideSingleMap,

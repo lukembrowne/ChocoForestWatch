@@ -114,3 +114,4 @@ beta testing/Beta invites 2025_02_03.gsheet
 mosaicJsons/
 ml_pipeline/notebooks/stac_catalog/*
 ml_pipeline/notebooks/saved_models/*
+saved_models/*
