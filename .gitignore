@@ -116,3 +116,5 @@ ml_pipeline/notebooks/stac_catalog/*
 ml_pipeline/notebooks/saved_models/*
 saved_models/*
 ml_pipeline/notebooks/*.xml
+ml_pipeline/notebooks/data_cache/*
+ml_pipeline/notebooks/prediction_cogs/*
