@@ -11,6 +11,7 @@ services:
       - "8081:8081"
     command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "titiler.pgstac.main:app", "--bind", "0.0.0.0:8081", "--workers", "1"]
     environment:
+      - LOG_LEVEL=debug
       # Postgres connection
       - POSTGRES_USER=cfwuser
       - POSTGRES_PASS=1234

@@ -23,6 +23,10 @@ from shapely.geometry import shape, mapping
 
 from tqdm import tqdm
 
+from osgeo import gdal, gdalconst
+import tempfile
+import shutil
+
 # ---------------------------------------------------------------------------
 #  Predictor configuration
 # ---------------------------------------------------------------------------
@@ -179,7 +183,7 @@ class ModelPredictor:
 
             # build output filename
             tile_id = Path(cog_url).stem
-            out_path = pred_dir / f"{tile_id}.tif"
+            out_path = pred_dir / f"{tile_id}.tiff"
 
             with rasterio.open(out_path, "w", **profile) as dst:
                 # iterate by window to keep memory small
@@ -212,12 +216,52 @@ class ModelPredictor:
 
                     dst.write(preds.reshape(1, h, w), window=window)
 
+
+            # ➊ run sieve
+            self._sieve_inplace(out_path, min_pixels=10)
+
+
             # Upload to Spaces if configured after iterating through all the windows
             if self.s3:
                 self._upload_to_spaces(out_path, basemap_date)
 
         return out_path
     
+
+    # ------------------------------------------------------------------
+    # helper inside ModelPredictor
+    # ------------------------------------------------------------------
+    def _sieve_inplace(self, tif_path: Path, min_pixels: int) -> None:
+        """
+        In-place GDAL sieve: remove connected components smaller than *min_pixels*.
+        Keeps compression and nodata tags.
+        """
+        print(f"Applying sieve filter with {min_pixels} pixels")
+
+        gdal.UseExceptions()
+
+        # open in UPDATE mode
+        ds = gdal.Open(str(tif_path), gdalconst.GA_Update)
+        if ds is None:
+            raise RuntimeError(f"GDAL failed to open {tif_path!s}")
+
+        band = ds.GetRasterBand(1)
+        nodata = band.GetNoDataValue()
+
+        # run sieve: dest == src for in-place, mask = None, 8-connected
+        gdal.SieveFilter(srcBand=band,
+                        maskBand=None,
+                        dstBand=band,
+                        threshold=min_pixels,
+                        connectedness=8)
+
+        # restore nodata (GDAL sometimes drops it)
+        if nodata is not None:
+            band.SetNoDataValue(nodata)
+
+        band.FlushCache()
+        ds = None  # close dataset
+        
 # ..............................................................
     def _upload_to_spaces(self, local_path: Path, basemap_date: str) -> None:
         """Upload a COG to DigitalOcean Spaces using cfg.key_template."""

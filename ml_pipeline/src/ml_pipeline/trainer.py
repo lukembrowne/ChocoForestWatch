@@ -1,12 +1,19 @@
 """
 ml_pipeline.trainer
 ~~~~~~~~~~~~~~~~~~~
-Fit an XGBoost land-cover classifier from pixel samples delivered by
+Fit an XGBoost land‑cover classifier from pixel samples delivered by
 ml_pipeline.extractor.TitilerExtractor.
+
+New in this version
+-------------------
+* **Data/fit decoupling** – you can now run `prepare_training_data()` once to
+  extract & cache pixel arrays (`*.npz`) and then call `fit_prepared_data()`
+  repeatedly without hitting Titiler again.
+* Convenience `train()` still exists and simply chains the two steps.
 
 Dependencies
 ------------
-pip install xgboost scikit-learn numpy
+``pip install xgboost scikit-learn numpy``
 """
 
 from __future__ import annotations
@@ -14,28 +21,51 @@ from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime
 import pickle
+import logging
+import hashlib
+import json
 
 import numpy as np
 from xgboost import XGBClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import (
+    train_test_split,
+    GroupKFold,
+    cross_val_score,
+)
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import (
     accuracy_score,
     precision_recall_fscore_support,
     confusion_matrix,
 )
+from sklearn.utils.class_weight import compute_sample_weight
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # ---------------------------------------------------------------------------
-#  Config & default hyper-parameters
+#  Config & default hyper‑parameters
 # ---------------------------------------------------------------------------
 
 
 @dataclass
 class TrainerConfig:
-    split_method: str = "feature"   # "feature" or "pixel"
-    test_fraction: float = 0.2
+    # Splitting strategy
+    split_method: str = "feature"  # "feature" or "pixel"
+    test_fraction: float = 0.2      # portion held out as TEST (never seen)
+    val_fraction: float = 0.1       # portion of training set for VAL/early‑stop
+
+    # Model and training
     random_state: int = 42
     early_stopping_rounds: int = 10
+
+    # Class imbalance
+    class_weighting: str | None = None  # None or "balanced"
+
+    # Cross‑validation
+    cv_folds: int = 5   # set to 1 to disable
+
+    # Class order (fixed index mapping)
     class_order: tuple[str, ...] = (
         "Forest",
         "Non-Forest",
@@ -44,6 +74,8 @@ class TrainerConfig:
         "Water",
     )
 
+    # Data cache directory (optional)
+    cache_dir: Path | str | None = "data_cache"  # where *.npz arrays live
 
 # ---------------------------------------------------------------------------
 #  Model training class
@@ -51,16 +83,28 @@ class TrainerConfig:
 
 
 class ModelTrainer:
+    """Train an XGBoost classifier with optional caching of extracted arrays.
+
+    Workflow options
+    ----------------
+    1. **One‑shot** (old behaviour)
+       ```python
+       trainer = ModelTrainer(extractor)
+       trainer.train(training_sets, "model_name")
+       ```
+    2. **Decoupled**
+       ```python
+       # First run once – heavy I/O
+       npz = trainer.prepare_training_data(training_sets, "arrays_2022_02.npz")
+       # Iterate experiments quickly
+       trainer.fit_prepared_data(npz, model_name="runA", model_params={...})
+       trainer.fit_prepared_data(npz, model_name="runB", model_params={...})
+       ```
     """
-    Parameters
-    ----------
-    extractor
-        An instance of TitilerExtractor (already written).
-    out_dir
-        Folder where *.pkl files will be stored.
-    cfg
-        TrainerConfig with default hyper-parameters.
-    """
+
+    # ------------------------------------------------------------------
+    #  construction
+    # ------------------------------------------------------------------
 
     def __init__(
         self,
@@ -72,41 +116,77 @@ class ModelTrainer:
         self.cfg = cfg
         self.out_dir = Path(out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
-        self.last_saved_model_path = None  # Track the last saved model path
+        self.last_saved_model_path: Path | None = None
+
+        # ensure cache dir exists
+        if self.cfg.cache_dir:
+            Path(self.cfg.cache_dir).mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
-    #  Public entry point
+    #  PUBLIC API – STEP 1: extract & cache pixel arrays
     # ------------------------------------------------------------------
 
-    def train(
+    def prepare_training_data(
         self,
         training_sets: list[dict],
-        model_name: str = "landcover_xgb",
+        cache_name: str | Path | None = None,
+        overwrite: bool = False,
+    ) -> Path:
+        """Extract pixels, save them to a ``.npz`` file, and return its path.
+
+        If *cache_name* is **None** the file name is an SHA‑1 hash of the
+        training‑set metadata so the same inputs always map to the same cache
+        file.
+        """
+        if cache_name is None:
+            meta_hash = hashlib.sha1(json.dumps([
+                {"len": len(ts["gdf"]), "date": ts.get("basemap_date", "")}
+                for ts in training_sets
+            ], sort_keys=True).encode()).hexdigest()[:10]
+            cache_name = f"train_{meta_hash}.npz"
+
+        cache_path = Path(self.cfg.cache_dir) / cache_name
+        if cache_path.exists() and not overwrite:
+            logger.info(f"Using cached arrays → {cache_path}")
+            return cache_path
+
+        logger.info("[ 0%] Extracting pixels…")
+        X, y, fids, dates = self._assemble_arrays(training_sets)
+        np.savez_compressed(cache_path, X=X, y=y, fids=fids, dates=dates)
+        logger.info(f"Pixel arrays cached at {cache_path}")
+        return cache_path
+
+    # ------------------------------------------------------------------
+    #  PUBLIC API – STEP 2: fit from cached arrays
+    # ------------------------------------------------------------------
+
+    def fit_prepared_data(
+        self,
+        npz_path: str | Path,
+        model_name: str,
         model_description: str = "",
         model_params: dict | None = None,
     ) -> tuple[Path, dict]:
-        """
-        Parameters
-        ----------
-        training_sets
-            List of dicts, each with keys:
-              * 'gdf'           – GeoPandas GeoDataFrame with polygons
-              * 'basemap_date'  – string "YYYY-MM"  (optional, used for year/month features)
-        """
-        print("[ 0%] Extracting pixels…")
-        X, y, fids, dates = self._assemble_arrays(training_sets)
+        """Load arrays from *npz_path* and train a model."""
+        data = np.load(npz_path, allow_pickle=True)
+        X, y, fids, dates = data["X"], data["y"], data["fids"], data["dates"]
 
-        print("[45%] Fitting XGBoost model…")
-        model, metrics = self._fit_model(X, y, fids, dates, model_params or {})
+        logger.info("[40%] Fitting XGBoost model…")
+        model, metrics = self._fit_model(
+            X,
+            y,
+            fids,
+            dates,
+            model_params or {},
+        )
 
-        print("[90%] Saving model to disk…")
+        logger.info("[90%] Saving model…")
         path = self._save_model(model_name, model_description, model)
-        print(f"[100%] Done ➜ {path}")
-
+        logger.info(f"[100%] Done ➜ {path}")
         return path, metrics
 
     # ------------------------------------------------------------------
-    #  Internal helpers
+    #  INTERNAL helpers – assemble arrays
     # ------------------------------------------------------------------
 
     def _assemble_arrays(self, training_sets):
@@ -128,10 +208,14 @@ class ModelTrainer:
             np.concatenate(ds),
         )
 
+    # ------------------------------------------------------------------
+    #  INTERNAL helpers – core training routine (unchanged logic)
+    # ------------------------------------------------------------------
+
     def _fit_model(self, X, y, feature_ids, dates, model_params):
         cfg = self.cfg
 
-        # ---- encode class labels -----------------------------------------
+         # ---- encode class labels -----------------------------------------
         desired = cfg.class_order
         present = np.unique(y).tolist()
         
@@ -147,7 +231,7 @@ class ModelTrainer:
             train_map[class_name]: global_class_to_int[class_name]
             for class_name in present_classes
         }
-        
+
         # Transform labels using consecutive integers for training
         y_enc = np.array([train_map[c] for c in y])
         
@@ -155,65 +239,121 @@ class ModelTrainer:
         cfg.global_class_to_int = global_class_to_int
         cfg.consecutive_to_global = consecutive_to_global
 
-        # ---- temporal features -------------------------------------------
+        # ---- optional temporal features ------------------------------
         years = np.array([d.split("-")[0] if d else "" for d in dates])
         months = np.array([int(d.split("-")[1]) if d else 0 for d in dates])
+        le_year, le_month = LabelEncoder().fit(years), LabelEncoder().fit(months)
+        X_feat = X  # placeholder – add cyclical encodings if desired
 
-        le_year = LabelEncoder().fit(years)
-        le_month = LabelEncoder().fit(months)
-
-        # If using dates - add them to the feature set
-        # X_feat = np.column_stack(
-        #     [X, le_year.transform(years), le_month.transform(months)]
-        # )
-
-        # Not using dates during model training
-        X_feat = X
-
-        # ---- train/test split --------------------------------------------
+        # ---- outer TEST split ---------------------------------------
         if cfg.split_method == "feature":
             uniq_f, uniq_idx = np.unique(feature_ids, return_index=True)
             strat = y_enc[uniq_idx]
-            train_f, test_f = train_test_split(
+            trainval_f, test_f = train_test_split(
                 uniq_f,
                 test_size=cfg.test_fraction,
                 random_state=cfg.random_state,
                 stratify=strat,
             )
-            tr_mask = np.isin(feature_ids, train_f)
-            te_mask = np.isin(feature_ids, test_f)
-            X_tr, X_te, y_tr, y_te = (
-                X_feat[tr_mask],
-                X_feat[te_mask],
-                y_enc[tr_mask],
-                y_enc[te_mask],
-            )
-        else:  # pixel-level split
-            X_tr, X_te, y_tr, y_te = train_test_split(
-                X_feat,
-                y_enc,
+            test_mask = np.isin(feature_ids, test_f)
+            trval_mask = np.isin(feature_ids, trainval_f)
+        else:
+            trval_mask, test_mask = train_test_split(
+                np.arange(len(y_enc)),
                 test_size=cfg.test_fraction,
                 random_state=cfg.random_state,
+                stratify=y_enc,
             )
 
-        # ---- choose proper objective -------------------------------------
-        params = dict(model_params)  # copy
+        X_trval, y_trval, fid_trval = (
+            X_feat[trval_mask],
+            y_enc[trval_mask],
+            feature_ids[trval_mask],
+        )
+        X_te, y_te = X_feat[test_mask], y_enc[test_mask]
+
+        # ---- inner VAL split ----------------------------------------
+        if cfg.split_method == "feature":
+            uniq_tr_f, uniq_tr_idx = np.unique(fid_trval, return_index=True)
+            strat_tr = y_trval[uniq_tr_idx]
+            train_f, val_f = train_test_split(
+                uniq_tr_f,
+                test_size=cfg.val_fraction,
+                random_state=cfg.random_state,
+                stratify=strat_tr,
+            )
+            tr_mask = np.isin(fid_trval, train_f)
+            val_mask = np.isin(fid_trval, val_f)
+        else:
+            tr_mask, val_mask = train_test_split(
+                np.arange(len(y_trval)),
+                test_size=cfg.val_fraction,
+                random_state=cfg.random_state,
+                stratify=y_trval,
+            )
+
+        X_tr, y_tr = X_trval[tr_mask], y_trval[tr_mask]
+        X_val, y_val = X_trval[val_mask], y_trval[val_mask]
+
+        # ---- class imbalance ----------------------------------------
+        sample_weight_tr = sample_weight_val = None
+        if cfg.class_weighting == "balanced":
+            sample_weight_tr = compute_sample_weight("balanced", y_tr)
+            sample_weight_val = compute_sample_weight("balanced", y_val)
+
+        # ---- choose objective ---------------------------------------
+        params = dict(model_params)
         if len(present) > 2:
             params["num_class"] = len(present)
             params["objective"] = "multi:softmax"
         else:
             params["objective"] = "binary:logistic"
             params.pop("num_class", None)
-
         params.setdefault("random_state", cfg.random_state)
         params.setdefault("early_stopping_rounds", cfg.early_stopping_rounds)
 
-        # ---- fit ---------------------------------------------------------
-        model = XGBClassifier(**params)
-        model.fit(X_tr, y_tr, eval_set=[(X_te, y_te)], verbose=True)
+        # ---- models for CV and final fit ----------------------------
+        model_final = XGBClassifier(**params)
+        cv_scores = None
+        if cfg.cv_folds > 1:
+            print(f"Cross-validating model with {cfg.cv_folds} folds")
+            params_cv = dict(params)
+            params_cv.pop("early_stopping_rounds", None)  # disable ES inside CV
+            model_cv = XGBClassifier(**params_cv)
+            if cfg.split_method == "feature":
+                gkf = GroupKFold(n_splits=cfg.cv_folds)
+                cv_scores = cross_val_score(
+                    model_cv,
+                    X_tr,
+                    y_tr,
+                    groups=fid_trval[tr_mask],
+                    cv=gkf,
+                    scoring="accuracy",
+                    n_jobs=-1,
+                )
+            else:
+                cv_scores = cross_val_score(
+                    model_cv,
+                    X_tr,
+                    y_tr,
+                    cv=cfg.cv_folds,
+                    scoring="accuracy",
+                    n_jobs=-1,
+                )
 
-        # ---- metrics -----------------------------------------------------
-        y_pred = model.predict(X_te)
+        # ---- final training ----------------------------------------
+        print(f"Final training model with {X_tr.shape[0]} training samples and {X_val.shape[0]} validation samples")
+        model_final.fit(
+            X_tr,
+            y_tr,
+            sample_weight=sample_weight_tr,
+            eval_set=[(X_val, y_val)],
+            sample_weight_eval_set=[sample_weight_val] if sample_weight_val is not None else None,
+            verbose=True,
+        )
+
+        # ---- unseen TEST metrics -----------------------------------
+        y_pred = model_final.predict(X_te)
         acc = accuracy_score(y_te, y_pred)
         pr, rc, f1, _ = precision_recall_fscore_support(
             y_te, y_pred, average=None, zero_division=0
@@ -226,33 +366,32 @@ class ModelTrainer:
             "f1": [float(v) for v in f1],
             "confusion_matrix": confusion_matrix(y_te, y_pred).tolist(),
             "classes_present": present,
+            "cv_accuracy": cv_scores.tolist() if cv_scores is not None else None,
         }
 
-        # keep encoders on the model object
-        model.train_map = train_map
-        model.year_encoder = le_year
-        model.month_encoder = le_month
-        model.global_class_to_int = global_class_to_int
-        model.consecutive_to_global = consecutive_to_global
+        # ---- stash encoders & mappings -----------------------------
+        model_final.train_map = train_map
+        model_final.year_encoder = le_year
+        model_final.month_encoder = le_month
+        model_final.global_class_to_int = global_class_to_int
+        model_final.consecutive_to_global = consecutive_to_global
 
-        return model, metrics
+        return model_final, metrics
+
+    # ------------------------------------------------------------------
+    #  persistence helpers
+    # ------------------------------------------------------------------
 
     def _save_model(self, name, desc, model):
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         path = self.out_dir / f"{name}_{ts}.pkl"
         meta = {"name": name, "description": desc, "saved_utc": ts}
-
         with open(path, "wb") as f:
             pickle.dump({"meta": meta, "model": model}, f)
-
-        self.last_saved_model_path = path  # Store the path
+        self.last_saved_model_path = path
         return path
 
     @property
-    def saved_model_path(self):
-        """Get the path to the most recently saved model.
-        
-        Returns:
-            Path: Path to the last saved model file, or None if no model has been saved yet.
-        """
+    def saved_model_path(self) -> Path | None:
+        """Return path of the most recently saved model, if any."""
         return self.last_saved_model_path

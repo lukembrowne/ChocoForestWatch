@@ -1256,6 +1256,20 @@ files = [
 ]
 
 [[package]]
+name = "gdal"
+version = "3.11.0"
+description = "GDAL: Geospatial Data Abstraction Library"
+optional = false
+python-versions = ">=3.8.0"
+groups = ["main"]
+files = [
+    {file = "gdal-3.11.0.tar.gz", hash = "sha256:ac59ccfe291d3ce4f6a9a3eed17da3777bc3bae970ce27217d4fa85db98650f8"},
+]
+
+[package.extras]
+numpy = ["numpy (>1.0.0)"]
+
+[[package]]
 name = "gdown"
 version = "5.2.0"
 description = "Google Drive Public File/Folder Downloader"
@@ -4470,6 +4484,29 @@ tilebench = ["pytest", "tilebench"]
 xarray = ["rioxarray", "xarray"]
 
 [[package]]
+name = "rioxarray"
+version = "0.19.0"
+description = "geospatial xarray extension powered by rasterio"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "rioxarray-0.19.0-py3-none-any.whl", hash = "sha256:494ee4fff1781072d55ee5276f5d07b63d93b05093cb33b926a12186ba5bb8ef"},
+    {file = "rioxarray-0.19.0.tar.gz", hash = "sha256:7819a0036fd874c8c8e280447cbbe43d8dc72fc4a14ac7852a665b1bdb7d4b04"},
+]
+
+[package.dependencies]
+numpy = ">=1.23"
+packaging = "*"
+pyproj = ">=3.3"
+rasterio = ">=1.4.3"
+xarray = ">=2024.7.0"
+
+[package.extras]
+all = ["scipy"]
+interp = ["scipy"]
+
+[[package]]
 name = "rpds-py"
 version = "0.24.0"
 description = "Python bindings to Rust's persistent data structures (rpds)"
@@ -5693,4 +5730,4 @@ dev = ["ipykernel", "jupyterlab"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4"
-content-hash = "394ba42fdf676036af985254851bacb83170231a027205a559cc4331bed4a437"
+content-hash = "f78e6c890233c804501e43bd5c575d779b45f056790699765bc8426dda4d9795"
