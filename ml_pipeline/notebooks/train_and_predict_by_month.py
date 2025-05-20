@@ -11,26 +11,9 @@ from ml_pipeline.trainer import ModelTrainer
 from ml_pipeline.predictor import ModelPredictor
 from ml_pipeline.stac_builder import STACBuilder
 
+from ml_pipeline.db_utils import get_db_connection
 
-# Load environment variables
-load_dotenv('../.env')
-
-# Database connection parameters
-DB_HOST = "localhost"
-DB_PORT = os.getenv('DB_PORT')
-POSTGRES_DB = os.getenv('POSTGRES_DB')
-POSTGRES_USER = os.getenv('POSTGRES_USER')
-POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
-
-print(f"DB_HOST: {DB_HOST}")
-print(f"DB_PORT: {DB_PORT}")
-print(f"POSTGRES_DB: {POSTGRES_DB}")
-print(f"POSTGRES_USER: {POSTGRES_USER}")
-print(f"POSTGRES_PASSWORD: {POSTGRES_PASSWORD}")
-
-# Create database connection
-db_url = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{DB_HOST}:{DB_PORT}/{POSTGRES_DB}"
-engine = create_engine(db_url)
+engine = get_db_connection()
 
 
 #%% 

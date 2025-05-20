@@ -1,34 +1,27 @@
 #%% 
-import os
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
 from ml_pipeline.polygon_loader import load_training_polygons
 import pandas as pd
 from sklearn.metrics import accuracy_score, classification_report
 from ml_pipeline.extractor import TitilerExtractor
 import numpy as np
+from ml_pipeline.benchmark_metrics_io import (
+    save_metrics_csv,
+    load_all_metrics,
+    show_accuracy_table,
+    plot_accuracy,
+)
+
+from ml_pipeline.s3_utils import upload_file
+from pathlib import Path
+from ml_pipeline.db_utils import get_db_connection
+from ml_pipeline.stac_builder import STACBuilder
+
+
 
 
 #%% 
-# Load environment variables
-load_dotenv('../.env')
+engine = get_db_connection()
 
-# Database connection parameters
-DB_HOST = "localhost"
-DB_PORT = os.getenv('DB_PORT')
-POSTGRES_DB = os.getenv('POSTGRES_DB')
-POSTGRES_USER = os.getenv('POSTGRES_USER')
-POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
-
-print(f"DB_HOST: {DB_HOST}")
-print(f"DB_PORT: {DB_PORT}")
-print(f"POSTGRES_DB: {POSTGRES_DB}")
-print(f"POSTGRES_USER: {POSTGRES_USER}")
-print(f"POSTGRES_PASSWORD: {POSTGRES_PASSWORD}")
-
-# Create database connection
-db_url = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{DB_HOST}:{DB_PORT}/{POSTGRES_DB}"
-engine = create_engine(db_url)
 
 # %%
 
@@ -36,9 +29,10 @@ engine = create_engine(db_url)
 
 # Should maybe move this elsewhere since only have to do it once?
 
-from ml_pipeline.s3_utils import upload_file
-from pathlib import Path
-tif_path = "./benchmarks/TreeCover2022-Hansen_wec.tif"
+
+
+# Hansen Tree Cover 2022
+tif_path = "./benchmark_rasters/TreeCover2022-Hansen_wec.tif"
 remote_key = f"benchmarks/HansenTreeCover/2022/{Path(tif_path).name}"
 upload_file(Path(tif_path), remote_key)
 
@@ -55,7 +49,97 @@ builder.process_year(
     asset_title="Hansen Tree Cover 2022",
 )
 
+# Ecuador MapBiomes 2022
+# MapBiomes Ecuador from Ecociencia 2022
+# Download Tif directly here - https://ecuador.mapbiomas.org/mapas-de-cobertura-y-uso/
+# Legend for values - https://ecuador.mapbiomas.org/wp-content/uploads/sites/7/2023/12/Ecuador_Legend-Code-Col-1.pdf
+# 3 = Forest, 4 = open forest
+# 21 = agriculture mosaic
+# 27 = not observed
+tif_path = "./benchmark_rasters/ecuador_coverage_2022_wec.tif"
+remote_key = f"benchmarks/MapBiomes/2022/{Path(tif_path).name}"
+upload_file(Path(tif_path), remote_key)
 
+
+builder = STACBuilder()
+
+builder.process_year(
+    year=2022,
+    prefix="benchmarks/MapBiomes",
+    collection_id="benchmarks-mapbiomes-2022",
+    asset_key="data",
+    asset_roles=["benchmark"],
+    asset_title="MapBiomes 2022",
+)
+
+
+# ESA Land Cover 2020
+tif_path = "./benchmark_rasters/LandCover2020-ESA_wec_merged.tif"
+remote_key = f"benchmarks/ESA-Landcover/2020/{Path(tif_path).name}"
+upload_file(Path(tif_path), remote_key)
+
+builder = STACBuilder()
+
+builder.process_year(
+    year=2020,
+    prefix="benchmarks/ESA-Landcover",
+    collection_id="benchmarks-esa-landcover-2020",
+    asset_key="data",
+    asset_roles=["benchmark"],
+    asset_title="ESA Land Cover 2020",
+)
+
+# JRC Forest Cover 2020
+tif_path = "./benchmark_rasters/ForestCover2020-JRC_wec_merged.tif"
+remote_key = f"benchmarks/JRC-ForestCover/2020/{Path(tif_path).name}"
+upload_file(Path(tif_path), remote_key)
+
+builder = STACBuilder()
+
+builder.process_year(
+    year=2020,
+    prefix="benchmarks/JRC-ForestCover",
+    collection_id="benchmarks-jrc-forestcover-2020",
+    asset_key="data",
+    asset_roles=["benchmark"],
+    asset_title="JRC Forest Cover 2020",
+)
+
+# PALSAR-2 2020
+# PALSAR-2 - Global 4-class PALSAR-2/PALSAR Forest/Non-Forest Map 
+# https://developers.google.com/earth-engine/datasets/catalog/JAXA_ALOS_PALSAR_YEARLY_FNF4#description
+tif_path = "./benchmark_rasters/PALSAR2020_wec.tif"
+remote_key = f"benchmarks/PALSAR/2020/{Path(tif_path).name}"
+upload_file(Path(tif_path), remote_key)
+
+builder = STACBuilder()
+
+builder.process_year(
+    year=2020,
+    prefix="benchmarks/PALSAR",
+    collection_id="benchmarks-palsar-2020",
+    asset_key="data",
+    asset_roles=["benchmark"],
+    asset_title="PALSAR 2020",
+)
+
+
+
+# WRI Tree Cover 2020
+tif_path = "./benchmark_rasters/TreeCover2020-WRI_wec_merged.tif"
+remote_key = f"benchmarks/WRI-TreeCover/2020/{Path(tif_path).name}"
+upload_file(Path(tif_path), remote_key)
+
+builder = STACBuilder()
+
+builder.process_year(
+    year=2020,
+    prefix="benchmarks/WRI-TreeCover",
+    collection_id="benchmarks-wri-treecover-2020",
+    asset_key="data",
+    asset_roles=["benchmark"],
+    asset_title="WRI Tree Cover 2020",
+)
 
 #%% 
 # Loop over all months in 2022 and combine results
@@ -97,10 +181,14 @@ else:
 
 #%% Benchmark forest‑cover predictions
 
-collection = "benchmarks-hansen-tree-cover-2022" # "nicfi-pred-composite-2022"
-
-# pred_extractor  = TitilerExtractor(base_url="http://localhost:8083", 
-#                                    collection=collection)
+# collection
+# collection = "nicfi-pred-composite-2022"
+# collection = "benchmarks-hansen-tree-cover-2022"
+# collection = "benchmarks-mapbiomes-2022"
+#collection = "benchmarks-esa-landcover-2020"
+#collection = "benchmarks-jrc-forestcover-2020"
+#collection = "benchmarks-palsar-2020"
+collection = "benchmarks-wri-treecover-2020"
 
 pred_extractor  = TitilerExtractor(base_url="http://localhost:8083", 
                                    collection=collection)
@@ -137,7 +225,36 @@ for month in months_sorted:
         y_pred = np.where(pixels == 0, "Non-Forest", "Forest")
 
     elif(collection == "benchmarks-hansen-tree-cover-2022"):
-        y_pred = np.where(pixels < 90, "Non-Forest", "Forest") # Set threshold to 90% tree cover
+        y_pred = np.where(pixels >= 90, "Forest", "Non-Forest") # Set threshold to 90% tree cover
+
+    elif(collection == "benchmarks-mapbiomes-2022"):
+        # # Legend for values - https://ecuador.mapbiomas.org/wp-content/uploads/sites/7/2023/12/Ecuador_Legend-Code-Col-1.pdf
+        y_pred = np.where(
+            np.logical_or.reduce([
+                pixels == 3,
+                pixels == 4,
+                pixels == 5,
+                pixels == 6
+            ]),
+            "Forest",
+            "Non-Forest"
+        )
+
+    elif(collection == "benchmarks-esa-landcover-2020"):
+        y_pred = np.where(pixels == 10, "Forest", "Non-Forest")
+
+    elif(collection == "benchmarks-jrc-forestcover-2020"):
+        y_pred = np.where(pixels == 1, "Forest", "Non-Forest")
+
+    elif(collection == "benchmarks-palsar-2020"):
+        y_pred = np.where(
+            np.logical_or.reduce([
+                pixels == 1,
+                pixels == 2,
+            ]), "Forest", "Non-Forest")
+        
+    elif(collection == "benchmarks-wri-treecover-2020"):
+        y_pred = np.where(pixels >= 90, "Forest", "Non-Forest")
 
     else:
         raise ValueError(f"Unknown collection: {collection}")
@@ -184,9 +301,6 @@ for month in months_sorted:
     print(f"Number of null predictions in gdf_month: {null_count}")
     print(f"Percentage of null predictions in gdf_month: {(null_count/len(gdf_month))*100:.2f}%")
 
-    # Filter to just nas
-    gdf_month_na = gdf_month[gdf_month['predicted_label'].isna()]
-
     # Drop rows with null predictions
     # Double check why this is happening
     gdf_month = gdf_month[gdf_month['predicted_label'].notna()]
@@ -196,6 +310,7 @@ for month in months_sorted:
     
     # Calculate accuracy
     acc = accuracy_score(y_true, y_pred)
+    print(f"Accuracy: {acc:.3f}")
     
     # Optionally, you can also analyze results by feature ID if needed
     # unique_fids = np.unique(fids)
@@ -213,6 +328,7 @@ for month in months_sorted:
     )
 
     print(report)
+
     metrics_rows.append(
         {
             "month": month,
@@ -258,4 +374,15 @@ metrics_rows.append(
 metrics_df = pd.DataFrame(metrics_rows)
 
 print(metrics_df)
+
+
+
+# %%
+save_metrics_csv(metrics_df, benchmark_name=collection)
+
+show_accuracy_table(metrics_df)
+
+
+plot_accuracy(metrics_df)
+
 # %%
