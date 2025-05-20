@@ -37,7 +37,7 @@ engine = create_engine(db_url)
 
 # Set year and month
 year = "2022"
-month = "02"
+month = "06"
 
 
 #%% 
@@ -74,8 +74,6 @@ extractor = TitilerExtractor(base_url="http://localhost:8083",
 
 #%% 
 # Train model
-
-# Extract pixels and set up Trainer
 trainer = ModelTrainer(
     extractor=extractor,
     out_dir=Path("saved_models"),
@@ -83,14 +81,14 @@ trainer = ModelTrainer(
 
 # %% 
 # Train model
-trainer.train(
-    training_sets=[{"gdf": gdf, "basemap_date": f"{year}-{month}"}],
-    model_name="landcover_demo",
-    model_description=f"First run with NICFI {year}-{month} imagery",
-    model_params={"max_depth": 6, "n_estimators": 300},
-)
+npz = trainer.prepare_training_data(training_sets = [{"gdf": gdf, "basemap_date": f"{year}-{month}"}], 
+                                    cache_name = f"pixels_{year}_{month}.npz")
 
 
+#%% 
+model_path, metrics = trainer.fit_prepared_data(npz, model_name=f"nicfi-{year}-{month}")  
+
+print(metrics)
 # %% 
 
 # import importlib
@@ -98,14 +96,11 @@ trainer.train(
 # importlib.reload(ml_pipeline.predictor)
 # from ml_pipeline.predictor import ModelPredictor
 
-
 predictor = ModelPredictor(
     model_path=trainer.saved_model_path,
     extractor=extractor,
     upload_to_spaces=True,
 )
-
-predictor.model.consecutive_to_global
 
 #%% 
 
@@ -115,6 +110,9 @@ predictor.predict_collection(
     collection=f"nicfi-{year}-{month}",
     pred_dir=f"prediction_cogs/{year}/{month}",
 )
+
+
+
 # %%
 
 # Testing out adding predictions to the pgstac database
@@ -128,7 +126,7 @@ builder.process_month(
     month=month,
     prefix="predictions/model", ## do not need year and month here
     collection_id=f"nicfi-pred-{year}-{month}",
-    asset_key="pred",
+    asset_key="data",
     asset_roles=["classification"],
     asset_title="Land‑cover classes (RF v1)",
     extra_asset_fields={

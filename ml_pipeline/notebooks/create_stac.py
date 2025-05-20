@@ -226,9 +226,10 @@ builder = STACBuilder()
 builder.list_cogs(prefix="NICFI Monthly Mosaics/2022/01")
 builder.list_cogs(prefix="NICFI Monthly Mosaics/2022/02")
 builder.list_cogs(prefix="NICFI Monthly Mosaics/2022/03")
+builder.list_cogs(prefix="NICFI Monthly Mosaics/2022/04")
 
 for year in (["2022"]):      
-    for month in range(1, 4):
+    for month in range(1, 13):
         print(f"Processing {year}-{month:02d}")
         builder.process_month(
             year=year,

@@ -29,17 +29,27 @@ class TitilerExtractor:
         return [a["assets"]["data"]["href"] for a in r.json()]
 
     def extract_pixels(self, gdf) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Extract pixels from a raster for a given polygon."""
         gdf_wgs84 = gdf.to_crs("EPSG:4326")
         gdf_3857  = gdf.to_crs("EPSG:3857")
         pixels, labels, fids = [], [], []
+
         for (wgs84_geom, webm_geom, fid, label) in zip(
                 gdf_wgs84.geometry, gdf_3857.geometry,
                 gdf["id"], gdf["classLabel"]):
+            
+            print
+            
             for cog in self.get_cog_urls(wgs84_geom):
+
                 with rasterio.open(cog) as src:
-                    out, _ = mask(src, [mapping(webm_geom)], crop=True,
-                                  indexes=(1, 2, 3, 4), all_touched=True)
-                    arr = np.moveaxis(out, 0, -1).reshape(-1, 4)
+                    if src.crs == "EPSG:4326":
+                        mask_geom = wgs84_geom
+                    if src.crs == "EPSG:3857":
+                        mask_geom = webm_geom
+                    out, _ = mask(src, [mapping(mask_geom)], crop=True,
+                                  indexes=range(1, src.count + 1), all_touched=True)
+                    arr = np.moveaxis(out, 0, -1).reshape(-1, src.count)
                     nodata = src.nodata
                     if nodata is not None:
                         arr = arr[~np.all(arr == nodata, axis=1)]

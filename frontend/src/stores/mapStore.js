@@ -393,10 +393,20 @@ export const useMapStore = defineStore('map', () => {
     // Testing out loading predictions from Spaces - this works!!
 
     // Python palette to JSON palette - need to find a better way to do this..
+    //   palette = {
+    //     "1": [0, 128, 0], "2": [255, 255, 0], "3": [255, 255, 255],
+    //   "4": [0, 0, 0], "5": [0, 0, 255]
+    // }
     // import urllib.parse, json
-    // palette = { "1":[0,128,0], "2":[255,255,0], "3":[255,255,255],
-    //             "4":[0,0,0], "5":[0,0,255] }
+
     // colormap_param = urllib.parse.quote(json.dumps(palette))
+
+
+    // import urllib.parse, json
+
+    // palette = { "1": [0, 128, 0], "0": [255, 255, 0] }
+    // colormap_param = urllib.parse.quote(json.dumps(palette))
+
 
 
     // If planet imagery
@@ -407,18 +417,34 @@ export const useMapStore = defineStore('map', () => {
       source = new XYZ({
         url: `http://localhost:8083/collections/nicfi-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
         maxZoom: 14,
-          });
+      });
     }
 
 
     // Create a new XYZ source for predictions
     if (type === 'predictions') {
 
-      const colormap =
-        '%7B%220%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%221%22%3A%20%5B255%2C%20255%2C%200%5D%2C%20%222%22%3A%20%5B255%2C%20255%2C%20255%5D%2C%20%223%22%3A%20%5B0%2C%200%2C%200%5D%2C%20%224%22%3A%20%5B0%2C%200%2C%20255%5D%7D';
+      // const colormap =
+      //   '%7B%220%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%221%22%3A%20%5B255%2C%20255%2C%200%5D%2C%20%222%22%3A%20%5B255%2C%20255%2C%20255%5D%2C%20%223%22%3A%20%5B0%2C%200%2C%200%5D%2C%20%224%22%3A%20%5B0%2C%200%2C%20255%5D%7D';
+
+      // source = new XYZ({
+      //   url: `http://localhost:8083/collections/nicfi-pred-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=pred&colormap=${colormap}`,
+      //   maxZoom: 14,
+      // });
+
+      //  Composite forest cover map
+      // const colormap =
+      //   '%7B%221%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%220%22%3A%20%5B255%2C%20255%2C%200%5D%7D';
+
+      // source = new XYZ({
+      //   url: `http://localhost:8083/collections/nicfi-pred-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
+      //   maxZoom: 14,
+      // });
+
+      // Testing out hansen tree cover benchmark
 
       source = new XYZ({
-        url: `http://localhost:8083/collections/nicfi-pred-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=pred&colormap=${colormap}`,
+        url: `http://localhost:8083/collections/benchmarks-hansen-tree-cover-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap_name=viridis`,
         maxZoom: 14,
       });
     }

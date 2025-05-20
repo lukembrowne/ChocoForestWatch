@@ -118,3 +118,4 @@ saved_models/*
 ml_pipeline/notebooks/*.xml
 ml_pipeline/notebooks/data_cache/*
 ml_pipeline/notebooks/prediction_cogs/*
+ml_pipeline/notebooks/benchmarks/*

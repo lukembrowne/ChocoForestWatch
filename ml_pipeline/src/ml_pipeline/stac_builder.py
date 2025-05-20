@@ -34,6 +34,8 @@ from pystac import (
     TemporalExtent,
 )
 
+from .s3_utils import get_s3_client, list_files
+
 # ---------------------------------------------------------------------
 #  Configuration dataclass
 # ---------------------------------------------------------------------
@@ -54,6 +56,7 @@ class STACBuilderConfig:
             "PGPASSWORD": os.getenv("POSTGRES_PASSWORD"),
         }
     )
+
 # Set database connection environment variables needed by pypgstac
 os.environ['PGHOST'] = 'localhost'
 os.environ['PGPORT'] = os.getenv('DB_PORT')
@@ -80,16 +83,7 @@ class STACBuilder:
     def __init__(self, cfg: STACBuilderConfig = STACBuilderConfig()):
         load_dotenv()
         self.cfg = cfg
-
-        # Spaces client
-        self.s3 = boto3.session.Session().client(
-            "s3",
-            region_name=os.getenv("AWS_REGION"),
-            endpoint_url= "https://" + os.getenv("AWS_S3_ENDPOINT"),
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-        )
-
+        self.s3, _ = get_s3_client(cfg.bucket)
         # ensure pypgstac can see DB creds
         os.environ.update(cfg.pg_env_vars)
 
@@ -99,32 +93,46 @@ class STACBuilder:
 
     def list_cogs(self, prefix: str) -> list[dict]:
         """Return every `.tif[f]` under a prefix with S3 URL + key."""
-        print(f"Listing COGs under {prefix}")
-        resp = self.s3.list_objects_v2(Bucket=self.cfg.bucket, Prefix=prefix)
-        return [
-            {"key": o["Key"], "url": f"s3://{self.cfg.bucket}/{o['Key']}"}
-            for o in resp.get("Contents", [])
-            if o["Key"].lower().endswith((".tif", ".tiff"))
-        ]
-
-    # ..................................................................
+        return list_files(prefix, self.cfg.bucket)
 
     def build_collection(
         self,
         collection_id: str,
         year: str,
-        month: str,
-        description: str,
+        month: str | None = None,
+        description: str | None = None,
         license: str = "proprietary",
     ) -> Collection:
-        first = datetime(int(year), int(month), 1)
-        last = datetime(
-            int(year), int(month), calendar.monthrange(int(year), int(month))[1]
-        )
+        """
+        Build a STAC Collection for either monthly or annual data.
+        
+        Parameters
+        ----------
+        collection_id : str
+            The ID for the collection
+        year : str
+            The year of the data
+        month : str | None, optional
+            The month of the data. If None, creates an annual collection.
+        description : str | None, optional
+            Collection description. If None, generates one based on temporal extent.
+        license : str, optional
+            The license for the collection, by default "proprietary"
+        """
+        if month:
+            first = datetime(int(year), int(month), 1)
+            last = datetime(
+                int(year), int(month), calendar.monthrange(int(year), int(month))[1]
+            )
+            desc = description or f"Monthly data for {year}-{month}"
+        else:
+            first = datetime(int(year), 1, 1)
+            last = datetime(int(year), 12, 31)
+            desc = description or f"Annual data for {year}"
 
         col = Collection(
             id=collection_id,
-            description=description,
+            description=desc,
             license=license,
             extent=Extent(
                 SpatialExtent([[-180, -90, 180, 90]]),
@@ -142,16 +150,14 @@ class STACBuilder:
         )
         return col
 
-    # ..................................................................
-
     def build_item(
         self,
         cog: dict,
         year: str,
-        month: str,
-        asset_key: str,
-        asset_roles: Sequence[str],
-        asset_title: str,
+        month: str | None = None,
+        asset_key: str = "data",
+        asset_roles: Sequence[str] = ("data",),
+        asset_title: str | None = None,
         media_type: str = MediaType.COG,
         extra_asset_fields: dict | None = None,
         derived_from: str | None = None,
@@ -160,7 +166,11 @@ class STACBuilder:
         with rasterio.open(cog["url"]) as ds:
             wgs_bounds = transform_bounds(ds.crs, "EPSG:4326", *ds.bounds)
 
-        dt = datetime(int(year), int(month), 1)
+        if month:
+            dt = datetime(int(year), int(month), 1)
+        else:
+            dt = datetime(int(year), 1, 1)
+            
         item_id = Path(cog["key"]).stem
 
         itm = Item(
@@ -186,7 +196,7 @@ class STACBuilder:
             "href": cog["url"],
             "media_type": media_type,
             "roles": list(asset_roles),
-            "title": asset_title,
+            "title": asset_title or f"{asset_key} for {item_id}",
         }
         if extra_asset_fields:
             asset_dict.update(extra_asset_fields)
@@ -198,14 +208,12 @@ class STACBuilder:
             itm.add_link(
                 Link(
                     rel="derived_from",
-                    href=derived_from,          # ← was “target=…”
+                    href=derived_from,
                     media_type="application/json",
                 )
             )
 
         return itm
-
-    # ..................................................................
 
     def upsert_to_pgstac(self, collection: Collection, items: Iterable[Item]) -> None:
         """Write temp JSON / ndjson and call pypgstac CLI."""
@@ -228,10 +236,6 @@ class STACBuilder:
             )
             print(f"✅ Upserted ⟨{collection.id}⟩ and {len(list(items))} items")
 
-    # ------------------------------------------------------------------
-    #  High‑level convenience: process one month
-    # ------------------------------------------------------------------
-
     def process_month(
         self,
         year: str,
@@ -246,17 +250,28 @@ class STACBuilder:
         derived_from_tpl: str | None = None,
     ) -> None:
         """
-        Scan prefix/year/mo, build collection & items, push to pgSTAC.
-
+        Process monthly data and create STAC collection/items.
+        
         Parameters
         ----------
-        prefix
-            e.g. ``"NICFI Monthly Mosaics"`` or ``"predictions/rf-v1"``.
-        asset_key / roles / title
-            How the asset should appear in STAC (\"data\", \"pred\", …).
-        derived_from_tpl
-            Optional string template with ``{item_id}`` placeholder to build a
-            provenance link (use for predictions that refer back to source).
+        year : str
+            The year of the data
+        month : str
+            The month of the data
+        prefix : str
+            The S3 prefix where the data is stored
+        collection_id : str
+            The ID for the STAC collection
+        asset_key : str
+            The key for the asset in the STAC item
+        asset_roles : Sequence[str]
+            The roles for the asset
+        asset_title : str
+            The title for the asset
+        extra_asset_fields : dict | None, optional
+            Additional fields to add to the asset
+        derived_from_tpl : str | None, optional
+            Template for the derived_from link
         """
         month_str = f"{int(month):02d}"
         year_str = str(year)
@@ -283,6 +298,73 @@ class STACBuilder:
                 cog=cg,
                 year=year_str,
                 month=month_str,
+                asset_key=asset_key,
+                asset_roles=asset_roles,
+                asset_title=asset_title,
+                extra_asset_fields=extra_asset_fields,
+                derived_from=derived_href,
+            )
+            items.append(it)
+            col.add_item(it)
+
+        self.upsert_to_pgstac(col, items)
+
+    def process_year(
+        self,
+        year: str,
+        prefix: str,
+        collection_id: str,
+        asset_key: str,
+        asset_roles: Sequence[str],
+        asset_title: str,
+        *,
+        extra_asset_fields: dict | None = None,
+        derived_from_tpl: str | None = None,
+    ) -> None:
+        """
+        Process annual data and create STAC collection/items.
+        
+        Parameters
+        ----------
+        year : str
+            The year of the data
+        prefix : str
+            The S3 prefix where the data is stored
+        collection_id : str
+            The ID for the STAC collection
+        asset_key : str
+            The key for the asset in the STAC item
+        asset_roles : Sequence[str]
+            The roles for the asset
+        asset_title : str
+            The title for the asset
+        extra_asset_fields : dict | None, optional
+            Additional fields to add to the asset
+        derived_from_tpl : str | None, optional
+            Template for the derived_from link
+        """
+        year_str = str(year)
+        s3_prefix = f"{prefix}/{year_str}"
+
+        cogs = self.list_cogs(s3_prefix)
+        print(f"🔍 Found {len(cogs)} COGs under {s3_prefix}")
+
+        col = self.build_collection(
+            collection_id=collection_id,
+            year=year_str,
+            description=f"{asset_title} for {year_str}",
+        )
+
+        items: list[Item] = []
+        for cg in cogs:
+            derived_href = (
+                derived_from_tpl.format(item_id=Path(cg["key"]).stem)
+                if derived_from_tpl
+                else None
+            )
+            it = self.build_item(
+                cog=cg,
+                year=year_str,
                 asset_key=asset_key,
                 asset_roles=asset_roles,
                 asset_title=asset_title,
