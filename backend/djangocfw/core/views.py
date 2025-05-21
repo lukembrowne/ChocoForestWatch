@@ -706,7 +706,7 @@ def get_random_points_within_collection(request, collection_id):
     collection_id : str
         The collection ID to generate points for
     count : int, optional
-        Number of sets of points to generate (default: 1)
+        Number of sets of points to generate (default: 2)
         
     Returns
     -------
@@ -718,7 +718,7 @@ def get_random_points_within_collection(request, collection_id):
     titiler_url = os.environ.get("TITILER_URL", "http://tiler-uvicorn:8083")
     
     # Get count parameter from query params, default to 10
-    count = int(request.query_params.get('count', 10))
+    count = int(request.query_params.get('count', 2))
     
     try:
         # Initialize the extractor with default band indexes
@@ -727,24 +727,28 @@ def get_random_points_within_collection(request, collection_id):
             collection=collection_id,
             band_indexes=[1, 2, 3, 4]
         )
+
+        # Limit to northern Choco for now
+        bbox = "-80.325,-0.175,-78.2523342311799439,1.4466469335460774"
         
         # Get all COG URLs first
-        cog_urls = list(extractor.get_all_cog_urls(collection_id))
+        cog_urls = list(extractor.get_all_cog_urls(collection_id, bbox=bbox))
         num_quads = len(cog_urls)
+
+        print(f"Found {len(cog_urls)} COGs in the bounding box")
         
-        # Generate all points for each quad
+        # Generate all points for each quad in a single pass
         all_points = []
-        for i in range(count):
-            seed = 42 + i
-            for cog_url in cog_urls:
-                points = extractor.random_points_in_quad(cog_url, 1, rng=random.Random(seed))
-                all_points.extend(points)
+        for cog_url in cog_urls:
+            # Generate all points for this quad at once
+            points = extractor.random_points_in_quad(cog_url, count, rng=random.Random(42))
+            all_points.extend(points)
         
         # Sort points to alternate between quads
         sorted_points = []
         for i in range(count):
             for j in range(num_quads):
-                point_index = i * num_quads + j
+                point_index = j * count + i  # Changed indexing to get points in correct order
                 if point_index < len(all_points):
                     point = all_points[point_index]
                     # Remove the Point object and keep only the necessary fields

@@ -38,23 +38,28 @@ class TitilerExtractor:
     #  Metadata helpers
     # ------------------------------------------------------------------ #
 
-    def get_cog_urls(self, polygon_wgs84) -> list[str]:
-        """Return COG URLs intersecting *polygon_wgs84* (EPSG:4326)."""
-        minx, miny, maxx, maxy = polygon_wgs84.bounds
-        bbox = f"{minx},{miny},{maxx},{maxy}"
-        r = requests.get(
-            f"{self.base_url}/collections/{self.collection}/bbox/{bbox}/assets",
-            headers={"accept": "application/json"},
-            timeout=30,
-        )
-        r.raise_for_status()
-        return [a["assets"]["data"]["href"] for a in r.json()]
-
     def get_all_cog_urls(self, collection: Optional[str] = None,
+                         bbox: Optional[str] = None,
                          scan_limit: int = 100_000) -> list[str]:
-        """Return every COG URL in *collection* (defaults to ``self.collection``)."""
+        """Return every COG URL in *collection* (defaults to ``self.collection``).
+        
+        Parameters
+        ----------
+        collection : str, optional
+            The collection ID to query. If None, uses self.collection.
+        bbox : str, optional
+            Bounding box in format "minx,miny,maxx,maxy". If None, uses the whole world.
+        scan_limit : int, optional
+            Maximum number of items to scan, by default 100_000.
+            
+        Returns
+        -------
+        list[str]
+            List of COG URLs in the collection within the bbox.
+        """
         collection = collection or self.collection
-        bbox = "-180,-90,180,90"  # whole world
+        bbox = bbox or "-180,-90,180,90"  # whole world if no bbox provided
+        
         r = requests.get(
             f"{self.base_url}/collections/{collection}/bbox/{bbox}/assets",
             params={"scan_limit": scan_limit},
@@ -67,45 +72,6 @@ class TitilerExtractor:
     # ------------------------------------------------------------------ #
     #  Random point generation
     # ------------------------------------------------------------------ #
-
-    def random_point_in_quad(
-        self,
-        cog_url: str,
-        rng: Optional[random.Random] = None,
-    ) -> dict[str, Any]:
-        """
-        Draw a single random geographic point *inside* the bounding box of
-        **one** quad / COG.
-
-        Parameters
-        ----------
-        cog_url : str
-            HREF to a Cloud-Optimised GeoTIFF (one NICFI quad).
-        rng : random.Random, optional
-            Supply your own RNG (e.g. ``random.Random(seed)``) for repeatability.
-
-        Returns
-        -------
-        dict
-            ``{"quad_id": str, "cog_url": str, "x": float, "y": float,
-            "point": shapely.geometry.Point}``
-        """
-        rng = rng or random
-
-        with rasterio.open(cog_url) as src:
-            # Uses metadata only – no raster blocks read.
-            bounds = src.bounds
-            # Draw uniform random lon/lat within bounding box
-            x = rng.uniform(bounds.left, bounds.right)
-            y = rng.uniform(bounds.bottom, bounds.top)
-
-        return {
-            "quad_id": Path(cog_url).stem,
-            "cog_url": cog_url,
-            "x": x,
-            "y": y,
-            "point": Point(x, y),
-        }
 
     def random_points_in_quad(
         self,
@@ -151,52 +117,6 @@ class TitilerExtractor:
                 })
         
         return points
-
-    def iter_random_points_per_quad(
-        self,
-        collection: Optional[str] = None,
-        points_per_quad: int = 1,
-        seed: Optional[int] = None,
-    ) -> Iterator[Dict[str, Any]]:
-        """
-        Yield multiple random points for every quad in collection.
-
-        Parameters
-        ----------
-        collection : str, optional
-            Collection ID to use (defaults to self.collection)
-        points_per_quad : int, optional
-            Number of points to generate per quad (default: 1)
-        seed : int, optional
-            Random seed for reproducibility
-
-        Yields
-        ------
-        dict
-            Point dictionaries with quad_id, coordinates, etc.
-        """
-        rng = random.Random(seed)
-        for cog in self.get_all_cog_urls(collection or self.collection):
-            for point in self.random_points_in_quad(cog, points_per_quad, rng=rng):
-                yield point
-
-    def iter_one_random_point_per_quad(
-        self,
-        collection: Optional[str] = None,
-        seed: Optional[int] = None,
-    ) -> Iterator[Dict[str, Any]]:
-        """
-        Yield **exactly one** random point for every quad in *collection*.
-
-        Examples
-        --------
-        >>> ext = TitilerExtractor("http://localhost:8083", "nicfi-2022-01", [1,2,3,4])
-        >>> for sample in ext.iter_one_random_point_per_quad(seed=7):
-        ...     print(sample["quad_id"], sample["x"], sample["y"])
-        """
-        rng = random.Random(seed)
-        for cog in self.get_all_cog_urls(collection or self.collection):
-            yield self.random_point_in_quad(cog, rng=rng)
 
     # ------------------------------------------------------------------ #
     #  Pixel extraction

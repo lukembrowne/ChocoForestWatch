@@ -221,6 +221,23 @@ ChocoForestWatch/
 └── docker-compose.prod.yml # Production Docker configuration
 ```
 
+## Data Processing Workflows
+
+### NICFI Imagery Processing
+
+The system includes automated workflows for processing NICFI (Norway's International Climate and Forests Initiative) satellite imagery:
+
+1. **Data Transfer**
+   - Use `migrate_nicfi_data.sh` to transfer NICFI imagery from Google Drive to DigitalOcean Spaces
+   - This script handles the  transfer of large imagery datasets
+
+2. **STAC Integration**
+   - Process transferred imagery using `build_nicfi_STAC.py`
+   - Builds SpatioTemporal Asset Catalog (STAC) metadata
+   - Inserts STAC records into PGSTAC database
+   - Enables seamless integration with TiTiler for dynamic tile serving
+   - Provides standardized access to imagery through STAC API endpoints
+
 ## Contributing
 
 1. Follow the development workflow outlined above

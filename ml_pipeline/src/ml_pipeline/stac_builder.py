@@ -34,7 +34,7 @@ from pystac import (
     TemporalExtent,
 )
 
-from .s3_utils import get_s3_client, list_files
+from ml_pipeline.s3_utils import get_s3_client, list_files
 
 # ---------------------------------------------------------------------
 #  Configuration dataclass
@@ -280,6 +280,22 @@ class STACBuilder:
         cogs = self.list_cogs(s3_prefix)
         print(f"🔍 Found {len(cogs)} COGs under {s3_prefix}")
 
+        # Test for duplicates
+        cog_counts = {}
+        for cg in cogs:
+            key = cg["key"]
+            cog_counts[key] = cog_counts.get(key, 0) + 1
+        
+        # Report any duplicates found
+        print("Checking for duplicates...")
+        duplicates = {key: count for key, count in cog_counts.items() if count > 1}
+        if duplicates:
+            print("\n⚠️  Found duplicate COGs:")
+            for key, count in duplicates.items():
+                print(f"  - {key}: {count} occurrences")
+        else:
+            print("\n✅ No duplicate COGs found")
+
         col = self.build_collection(
             collection_id=collection_id,
             year=year_str,
@@ -287,10 +303,22 @@ class STACBuilder:
             description=f"{asset_title} for {year_str}-{month_str}",
         )
 
+        # Track unique item IDs to avoid duplicates
+        seen_item_ids = set()
         items: list[Item] = []
+        
         for cg in cogs:
+            item_id = Path(cg["key"]).stem
+            
+            # Skip if we've already processed this item
+            if item_id in seen_item_ids:
+                print(f"Skipping duplicate item {item_id}")
+                continue
+                
+            seen_item_ids.add(item_id)
+            
             derived_href = (
-                derived_from_tpl.format(item_id=Path(cg["key"]).stem)
+                derived_from_tpl.format(item_id=item_id)
                 if derived_from_tpl
                 else None
             )
