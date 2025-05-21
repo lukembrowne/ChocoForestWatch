@@ -349,6 +349,10 @@ class STACBuilder:
         cogs = self.list_cogs(s3_prefix)
         print(f"🔍 Found {len(cogs)} COGs under {s3_prefix}")
 
+        if len(cogs) == 0:
+            raise ValueError(f"No COGs found for {collection_id} in {year_str}")
+
+        print(f"Building collection {collection_id} for {year_str}")
         col = self.build_collection(
             collection_id=collection_id,
             year=year_str,
@@ -362,6 +366,7 @@ class STACBuilder:
                 if derived_from_tpl
                 else None
             )
+            print(f"Building item {Path(cg['key']).stem} for {year_str}")
             it = self.build_item(
                 cog=cg,
                 year=year_str,
@@ -372,6 +377,7 @@ class STACBuilder:
                 derived_from=derived_href,
             )
             items.append(it)
+            print(f"Added item {Path(cg['key']).stem} to collection {collection_id}")
             col.add_item(it)
 
         self.upsert_to_pgstac(col, items)

@@ -54,6 +54,8 @@ year = "2022"
 rm = RunManager()
 parent = rm.new_run(tag=f"{tag}_{year}")    
 
+
+#%%
 # Loop through months
 for m in tqdm(range(1, 13), desc=f"Processing months for {year}"):
     
@@ -76,9 +78,13 @@ for m in tqdm(range(1, 13), desc=f"Processing months for {year}"):
     )
 
     # append month metrics to parent-level aggregator (optional)
-    with open(child / "metrics.json") as f:
-        metrics = json.load(f)
-    rm.save_json(f"metrics_{month}.json", metrics)
+    metrics_file = child / "metrics.json"
+    if metrics_file.exists():
+        with open(metrics_file) as f:
+            metrics = json.load(f)
+        rm.save_json(f"metrics_{month}.json", metrics)
+    else:
+        print(f"No metrics file found for {year}-{month}")
 
     print(f"✅ Year {year} finished. Results in {parent}")
 # %%

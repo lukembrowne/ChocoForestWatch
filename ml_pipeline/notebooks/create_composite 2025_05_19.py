@@ -16,10 +16,13 @@ import rasterio
 year = 2022
 months = [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12]
 
-quad_name = "570-1025" # 570-1026
+run_name = "20250520T2122_rf_test_2022"
+
+# quad_name = "570-1025" 
+quad_name = "570-1026"
 
 cogs = [
-    f"s3://choco-forest-watch/predictions/model/{year}/{m:02d}/{quad_name}_{year}_{m:02d}.tiff"
+    f"s3://choco-forest-watch/predictions/{run_name}//{year}/{m:02d}/{quad_name}_{year}_{m:02d}.tiff"
     for m in months
 ]
 
@@ -139,7 +142,7 @@ ds = None  # close dataset
 
 
 # Upload the composite to S3
-remote_key = f"predictions/composites/{year}/{quad_name}_{year}_forest_cover.tif"
+remote_key = f"predictions/{run_name}-composites/{year}/{quad_name}_{year}_forest_cover.tif"
 upload_file(Path(tif_path), remote_key)
 
 # Create STAC builder instance
@@ -155,11 +158,11 @@ builder = STACBuilder()
 
 builder.process_year(
     year=year,
-    prefix="predictions/composites",
-    collection_id=f"nicfi-pred-composite-{year}",
+    prefix_on_s3=f"predictions/{run_name}-composites",
+    collection_id=f"nicfi-pred-{run_name}-composite-{year}",
     asset_key="data",
     asset_roles=["classification"],
-    asset_title="Annual Forest Cover Composite (RF v1)",
+    asset_title=f"Annual Forest Cover Composite for {run_name}",
     extra_asset_fields={
         "raster:bands": [
             {

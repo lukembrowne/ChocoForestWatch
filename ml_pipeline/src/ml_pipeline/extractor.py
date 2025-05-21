@@ -54,4 +54,8 @@ class TitilerExtractor:
                     pixels.append(arr)
                     labels.extend([label] * len(arr))
                     fids.extend([fid] * len(arr))
+        
+        print("Pixels: ", len(pixels))
+        print("Labels: ", len(labels))
+        print("Fids: ", len(fids))
         return np.vstack(pixels), np.array(labels), np.array(fids)

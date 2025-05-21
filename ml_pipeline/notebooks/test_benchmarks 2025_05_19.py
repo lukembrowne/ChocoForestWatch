@@ -30,116 +30,115 @@ engine = get_db_connection()
 # Should maybe move this elsewhere since only have to do it once?
 
 
+# # Hansen Tree Cover 2022
+# tif_path = "./benchmark_rasters/TreeCover2022-Hansen_wec.tif"
+# remote_key = f"benchmarks/HansenTreeCover/2022/{Path(tif_path).name}"
+# upload_file(Path(tif_path), remote_key)
 
-# Hansen Tree Cover 2022
-tif_path = "./benchmark_rasters/TreeCover2022-Hansen_wec.tif"
-remote_key = f"benchmarks/HansenTreeCover/2022/{Path(tif_path).name}"
-upload_file(Path(tif_path), remote_key)
+# from ml_pipeline.stac_builder import STACBuilder
 
-from ml_pipeline.stac_builder import STACBuilder
+# builder = STACBuilder()
 
-builder = STACBuilder()
+# builder.process_year(
+#     year=2022,
+#     prefix="benchmarks/HansenTreeCover",
+#     collection_id="benchmarks-hansen-tree-cover-2022",
+#     asset_key="data",
+#     asset_roles=["benchmark"],
+#     asset_title="Hansen Tree Cover 2022",
+# )
 
-builder.process_year(
-    year=2022,
-    prefix="benchmarks/HansenTreeCover",
-    collection_id="benchmarks-hansen-tree-cover-2022",
-    asset_key="data",
-    asset_roles=["benchmark"],
-    asset_title="Hansen Tree Cover 2022",
-)
-
-# Ecuador MapBiomes 2022
-# MapBiomes Ecuador from Ecociencia 2022
-# Download Tif directly here - https://ecuador.mapbiomas.org/mapas-de-cobertura-y-uso/
-# Legend for values - https://ecuador.mapbiomas.org/wp-content/uploads/sites/7/2023/12/Ecuador_Legend-Code-Col-1.pdf
-# 3 = Forest, 4 = open forest
-# 21 = agriculture mosaic
-# 27 = not observed
-tif_path = "./benchmark_rasters/ecuador_coverage_2022_wec.tif"
-remote_key = f"benchmarks/MapBiomes/2022/{Path(tif_path).name}"
-upload_file(Path(tif_path), remote_key)
-
-
-builder = STACBuilder()
-
-builder.process_year(
-    year=2022,
-    prefix="benchmarks/MapBiomes",
-    collection_id="benchmarks-mapbiomes-2022",
-    asset_key="data",
-    asset_roles=["benchmark"],
-    asset_title="MapBiomes 2022",
-)
+# # Ecuador MapBiomes 2022
+# # MapBiomes Ecuador from Ecociencia 2022
+# # Download Tif directly here - https://ecuador.mapbiomas.org/mapas-de-cobertura-y-uso/
+# # Legend for values - https://ecuador.mapbiomas.org/wp-content/uploads/sites/7/2023/12/Ecuador_Legend-Code-Col-1.pdf
+# # 3 = Forest, 4 = open forest
+# # 21 = agriculture mosaic
+# # 27 = not observed
+# tif_path = "./benchmark_rasters/ecuador_coverage_2022_wec.tif"
+# remote_key = f"benchmarks/MapBiomes/2022/{Path(tif_path).name}"
+# upload_file(Path(tif_path), remote_key)
 
 
-# ESA Land Cover 2020
-tif_path = "./benchmark_rasters/LandCover2020-ESA_wec_merged.tif"
-remote_key = f"benchmarks/ESA-Landcover/2020/{Path(tif_path).name}"
-upload_file(Path(tif_path), remote_key)
+# builder = STACBuilder()
 
-builder = STACBuilder()
-
-builder.process_year(
-    year=2020,
-    prefix="benchmarks/ESA-Landcover",
-    collection_id="benchmarks-esa-landcover-2020",
-    asset_key="data",
-    asset_roles=["benchmark"],
-    asset_title="ESA Land Cover 2020",
-)
-
-# JRC Forest Cover 2020
-tif_path = "./benchmark_rasters/ForestCover2020-JRC_wec_merged.tif"
-remote_key = f"benchmarks/JRC-ForestCover/2020/{Path(tif_path).name}"
-upload_file(Path(tif_path), remote_key)
-
-builder = STACBuilder()
-
-builder.process_year(
-    year=2020,
-    prefix="benchmarks/JRC-ForestCover",
-    collection_id="benchmarks-jrc-forestcover-2020",
-    asset_key="data",
-    asset_roles=["benchmark"],
-    asset_title="JRC Forest Cover 2020",
-)
-
-# PALSAR-2 2020
-# PALSAR-2 - Global 4-class PALSAR-2/PALSAR Forest/Non-Forest Map 
-# https://developers.google.com/earth-engine/datasets/catalog/JAXA_ALOS_PALSAR_YEARLY_FNF4#description
-tif_path = "./benchmark_rasters/PALSAR2020_wec.tif"
-remote_key = f"benchmarks/PALSAR/2020/{Path(tif_path).name}"
-upload_file(Path(tif_path), remote_key)
-
-builder = STACBuilder()
-
-builder.process_year(
-    year=2020,
-    prefix="benchmarks/PALSAR",
-    collection_id="benchmarks-palsar-2020",
-    asset_key="data",
-    asset_roles=["benchmark"],
-    asset_title="PALSAR 2020",
-)
+# builder.process_year(
+#     year=2022,
+#     prefix="benchmarks/MapBiomes",
+#     collection_id="benchmarks-mapbiomes-2022",
+#     asset_key="data",
+#     asset_roles=["benchmark"],
+#     asset_title="MapBiomes 2022",
+# )
 
 
+# # ESA Land Cover 2020
+# tif_path = "./benchmark_rasters/LandCover2020-ESA_wec_merged.tif"
+# remote_key = f"benchmarks/ESA-Landcover/2020/{Path(tif_path).name}"
+# upload_file(Path(tif_path), remote_key)
 
-# WRI Tree Cover 2020
-tif_path = "./benchmark_rasters/TreeCover2020-WRI_wec_merged.tif"
-remote_key = f"benchmarks/WRI-TreeCover/2020/{Path(tif_path).name}"
-upload_file(Path(tif_path), remote_key)
+# builder = STACBuilder()
 
-builder = STACBuilder()
+# builder.process_year(
+#     year=2020,
+#     prefix="benchmarks/ESA-Landcover",
+#     collection_id="benchmarks-esa-landcover-2020",
+#     asset_key="data",
+#     asset_roles=["benchmark"],
+#     asset_title="ESA Land Cover 2020",
+# )
 
-builder.process_year(
-    year=2020,
-    prefix="benchmarks/WRI-TreeCover",
-    collection_id="benchmarks-wri-treecover-2020",
-    asset_key="data",
-    asset_roles=["benchmark"],
-    asset_title="WRI Tree Cover 2020",
-)
+# # JRC Forest Cover 2020
+# tif_path = "./benchmark_rasters/ForestCover2020-JRC_wec_merged.tif"
+# remote_key = f"benchmarks/JRC-ForestCover/2020/{Path(tif_path).name}"
+# upload_file(Path(tif_path), remote_key)
+
+# builder = STACBuilder()
+
+# builder.process_year(
+#     year=2020,
+#     prefix="benchmarks/JRC-ForestCover",
+#     collection_id="benchmarks-jrc-forestcover-2020",
+#     asset_key="data",
+#     asset_roles=["benchmark"],
+#     asset_title="JRC Forest Cover 2020",
+# )
+
+# # PALSAR-2 2020
+# # PALSAR-2 - Global 4-class PALSAR-2/PALSAR Forest/Non-Forest Map 
+# # https://developers.google.com/earth-engine/datasets/catalog/JAXA_ALOS_PALSAR_YEARLY_FNF4#description
+# tif_path = "./benchmark_rasters/PALSAR2020_wec.tif"
+# remote_key = f"benchmarks/PALSAR/2020/{Path(tif_path).name}"
+# upload_file(Path(tif_path), remote_key)
+
+# builder = STACBuilder()
+
+# builder.process_year(
+#     year=2020,
+#     prefix="benchmarks/PALSAR",
+#     collection_id="benchmarks-palsar-2020",
+#     asset_key="data",
+#     asset_roles=["benchmark"],
+#     asset_title="PALSAR 2020",
+# )
+
+
+
+# # WRI Tree Cover 2020
+# tif_path = "./benchmark_rasters/TreeCover2020-WRI_wec_merged.tif"
+# remote_key = f"benchmarks/WRI-TreeCover/2020/{Path(tif_path).name}"
+# upload_file(Path(tif_path), remote_key)
+
+# builder = STACBuilder()
+
+# builder.process_year(
+#     year=2020,
+#     prefix="benchmarks/WRI-TreeCover",
+#     collection_id="benchmarks-wri-treecover-2020",
+#     asset_key="data",
+#     asset_roles=["benchmark"],
+#     asset_title="WRI Tree Cover 2020",
+# )
 
 #%% 
 # Loop over all months in 2022 and combine results
@@ -182,16 +181,25 @@ else:
 #%% Benchmark forest‑cover predictions
 
 # collection
-# collection = "nicfi-pred-composite-2022"
+collection = "nicfi-pred-composite-2022"
 # collection = "benchmarks-hansen-tree-cover-2022"
 # collection = "benchmarks-mapbiomes-2022"
 #collection = "benchmarks-esa-landcover-2020"
 #collection = "benchmarks-jrc-forestcover-2020"
 #collection = "benchmarks-palsar-2020"
-collection = "benchmarks-wri-treecover-2020"
+#collection = "benchmarks-wri-treecover-2020"
+# collection = "nicfi-pred-20250520T2122_rf_test_2022-composite-2022"
 
 pred_extractor  = TitilerExtractor(base_url="http://localhost:8083", 
-                                   collection=collection)
+                                   collection=collection,
+                                   band_indexes=[1])
+
+# Test that we can find the correct collection
+cog_urls = pred_extractor.get_all_cog_urls(collection)
+print(f"Found {len(cog_urls)} COGs for {collection}")
+if len(cog_urls) == 0:
+    raise ValueError(f"No COGs found for {collection}")
+
 
 metrics_rows, y_true_all, y_pred_all = [], [], []
 months_sorted = sorted(combined_gdf["basemap_date"].unique())
@@ -221,7 +229,7 @@ for month in months_sorted:
         continue
 
     # Convert pixels to either Non-forest == 0 or Forest == 1
-    if(collection == "nicfi-pred-composite-2022"):
+    if "nicfi" in collection:
         y_pred = np.where(pixels == 0, "Non-Forest", "Forest")
 
     elif(collection == "benchmarks-hansen-tree-cover-2022"):

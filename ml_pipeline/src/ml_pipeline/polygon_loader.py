@@ -46,6 +46,10 @@ def load_training_polygons(engine,
     """
     raw = pd.read_sql(q, engine, params=(basemap_date, project_id))
 
+    # If no data, return empty GeoDataFrame
+    if raw.empty:
+        return gpd.GeoDataFrame()
+
     rows = []
     for _, row in raw.iterrows():
         fc = row[geom_col]

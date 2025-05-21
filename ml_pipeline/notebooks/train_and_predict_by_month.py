@@ -36,8 +36,8 @@ if __name__ == "__main__":
 else:
     # Default values for interactive IPython session if not run from command line
     year = "2022"
-    month = "01"
-    run_dir = PosixPath('runs/20250520T2325_rf_ndvi_2022/2022_01')
+    month = "09"
+    run_dir = PosixPath(f'runs/20250520T2102_rf_test_2022/{year}_{month}')
     run_id = run_dir.parts[1]
 
 #%%
@@ -57,6 +57,14 @@ gdf.head()
 
 # Print number of training polygons
 print(f"Number of training polygons: {len(gdf)}")
+
+# If no data, break out of script
+if len(gdf) == 0:
+    print(f"No training polygons found for {year}-{month}. Exiting...")
+    import sys
+    sys.exit(0)
+
+
 
 #%% 
 # Extract pixels using the extractor - this is the same as the extractor in the trainer
@@ -119,7 +127,7 @@ predictor = ModelPredictor(
     model_path=trainer.saved_model_path,
     extractor=extractor,
     upload_to_s3=True,
-    s3_path=f"predictions/{run_id}/",
+    s3_path=f"predictions/{run_id}", # No trailing slash 
 )
 
 #%% 
