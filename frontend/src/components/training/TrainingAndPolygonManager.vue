@@ -23,13 +23,37 @@
                     <q-item v-for="(summary, className) in classSummary" :key="className" class="summary-item" dense>
                         <q-item-section>
                             <q-item-label class="text-weight-medium">{{ className }}</q-item-label>
-                            <q-item-label caption>
-                                {{ summary.count }} {{ summary.count === 1 ? t('training.summary.features') :
-                                    t('training.summary.features_plural') }}
-                            </q-item-label>
+                            <div class="progress-indicators">
+                                <div class="progress-row">
+                                    <q-item-label caption>
+                                        {{ summary.count }} {{ summary.count === 1 ? t('training.summary.features') :
+                                            t('training.summary.features_plural') }}
+                                    </q-item-label>
+                                    <q-linear-progress
+                                        :value="Math.min(summary.count / 50, 1)"
+                                        :color="summary.count >= 50 ? 'positive' : 'warning'"
+                                        size="xs"
+                                        class="progress-bar"
+                                    />
+                                </div>
+                                <div class="progress-row">
+                                    <q-item-label caption>
+                                        {{ summary.area.toFixed(2) }} {{ t('training.summary.hectares') }}
+                                    </q-item-label>
+                                    <q-linear-progress
+                                        :value="Math.min(summary.area / 50, 1)"
+                                        :color="summary.area >= 50 ? 'positive' : 'warning'"
+                                        size="xs"
+                                        class="progress-bar"
+                                    />
+                                </div>
+                            </div>
                         </q-item-section>
                         <q-item-section side>
-                            <q-chip color="primary" text-color="white">
+                            <q-chip 
+                                :color="summary.area >= 50 && summary.count >= 50 ? 'positive' : 'warning'" 
+                                text-color="white"
+                            >
                                 {{ summary.area.toFixed(2) }} {{ t('training.summary.hectares') }}
                             </q-chip>
                         </q-item-section>
@@ -347,6 +371,21 @@ export default {
     :deep(.q-item__label--caption) {
         font-size: 0.85rem;
     }
+}
+
+.progress-indicators {
+    margin-top: 4px;
+}
+
+.progress-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.progress-bar {
+    width: 100px;
 }
 
 :deep(.q-chip) {

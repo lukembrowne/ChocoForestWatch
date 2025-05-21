@@ -26,6 +26,17 @@ from sentry_sdk import capture_message, capture_exception
 from django.db.models import Sum, Count
 from datetime import timedelta
 from django.contrib.auth.decorators import user_passes_test
+from ml_pipeline.extractor import TitilerExtractor
+from datetime import datetime
+import logging
+import os
+import random
+from typing import Optional, Iterator
+import rasterio
+from shapely.geometry import Point
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 @api_view(['GET'])
 def health_check(request):
@@ -684,3 +695,81 @@ def get_system_statistics(request):
         return Response(stats)
     except Exception as e:
         return Response({'error': str(e)}, status=400)
+
+@api_view(['GET'])
+def get_random_points_within_collection(request, collection_id):
+    """
+    Generate multiple sets of random points within quads for a given collection.
+    
+    Parameters
+    ----------
+    collection_id : str
+        The collection ID to generate points for
+    count : int, optional
+        Number of sets of points to generate (default: 1)
+        
+    Returns
+    -------
+    JSON response containing:
+        - points: List of points with quad_id, cog_url, x, y coordinates
+        - metadata: Information about the points generated
+    """
+    
+    titiler_url = os.environ.get("TITILER_URL", "http://tiler-uvicorn:8083")
+    
+    # Get count parameter from query params, default to 10
+    count = int(request.query_params.get('count', 10))
+    
+    try:
+        # Initialize the extractor with default band indexes
+        extractor = TitilerExtractor(
+            base_url=titiler_url,
+            collection=collection_id,
+            band_indexes=[1, 2, 3, 4]
+        )
+        
+        # Get all COG URLs first
+        cog_urls = list(extractor.get_all_cog_urls(collection_id))
+        num_quads = len(cog_urls)
+        
+        # Generate all points for each quad
+        all_points = []
+        for i in range(count):
+            seed = 42 + i
+            for cog_url in cog_urls:
+                points = extractor.random_points_in_quad(cog_url, 1, rng=random.Random(seed))
+                all_points.extend(points)
+        
+        # Sort points to alternate between quads
+        sorted_points = []
+        for i in range(count):
+            for j in range(num_quads):
+                point_index = i * num_quads + j
+                if point_index < len(all_points):
+                    point = all_points[point_index]
+                    # Remove the Point object and keep only the necessary fields
+                    point = {
+                        "quad_id": point["quad_id"],
+                        "x": point["x"],
+                        "y": point["y"],
+                        "set_index": i
+                    }
+                    sorted_points.append(point)
+        
+        # Prepare response
+        response = {
+            "points": sorted_points,
+            "metadata": {
+                "collection_id": collection_id,
+                "total_points": len(sorted_points),
+                "sets_generated": count,
+                "points_per_set": num_quads,
+                "generated_at": datetime.utcnow().isoformat()
+            }
+        }
+        
+        return Response(response, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error generating random points: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

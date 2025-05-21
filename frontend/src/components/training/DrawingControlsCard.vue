@@ -173,6 +173,50 @@
               </div>
             </div>
           </div>
+
+          <!-- Random Points Navigation -->
+          <div class="col-12 q-mt-md">
+            <div class="row items-center q-mb-sm">
+              <div class="text-subtitle1">{{ t('drawing.randomPoints.title') }}</div>
+              <q-btn flat round dense icon="help" size="sm" class="q-ml-sm">
+                <q-tooltip>{{ t('drawing.tooltips.randomPoints') }}</q-tooltip>
+              </q-btn>
+            </div>
+            <div class="row q-col-gutter-sm items-center">
+              <div class="col-2">
+                <q-btn 
+                  class="full-width" 
+                  icon="navigate_before" 
+                  @click="goToPreviousPoint" 
+                  :disable="!hasRandomPoints"
+                  dense
+                >
+                  <q-tooltip>{{ t('drawing.randomPoints.previous') }}</q-tooltip>
+                </q-btn>
+              </div>
+              <div class="col-8">
+                <div class="text-center">
+                  <div class="text-caption text-grey-8">
+                    {{ currentPointInfo }}
+                  </div>
+                  <div class="text-caption text-grey-8">
+                    {{ pointProgress }}
+                  </div>
+                </div>
+              </div>
+              <div class="col-2">
+                <q-btn 
+                  class="full-width" 
+                  icon="navigate_next" 
+                  @click="goToNextPoint" 
+                  :disable="!hasRandomPoints"
+                  dense
+                >
+                  <q-tooltip>{{ t('drawing.randomPoints.next') }}</q-tooltip>
+                </q-btn>
+              </div>
+            </div>
+          </div>
         </div>
       </q-card-section>
     </q-card>
@@ -206,6 +250,9 @@ export default {
             if (projectClasses.value.length > 0 && !selectedClass.value) {
                 selectedClass.value = projectClasses.value[0].name
             }
+
+            // Load random points for the selected basemap date
+            await mapStore.loadRandomPoints('nicfi-2022-01');
         })
 
         onUnmounted(() => {
@@ -439,6 +486,27 @@ export default {
             mapStore.toggleDrawingMode()
         }
 
+        const hasRandomPoints = computed(() => mapStore.randomPoints.length > 0);
+        const currentPointInfo = computed(() => {
+            const point = mapStore.getCurrentPoint();
+            if (!point) return 'No points loaded';
+            return `Quad: ${point.quad_id}`;
+        });
+        const pointProgress = computed(() => {
+            if (!hasRandomPoints.value) return '';
+            const current = mapStore.currentPointIndex + 1;
+            const total = mapStore.randomPoints.length;
+            return `${current} of ${total}`;
+        });
+
+        const goToNextPoint = () => {
+            mapStore.goToNextPoint();
+        };
+
+        const goToPreviousPoint = () => {
+            mapStore.goToPreviousPoint();
+        };
+
         return {
             interactionMode,
             selectedClass,
@@ -462,7 +530,12 @@ export default {
             fileInput,
             drawingMode,
             toggleDrawingMode,
-            t
+            t,
+            hasRandomPoints,
+            currentPointInfo,
+            pointProgress,
+            goToNextPoint,
+            goToPreviousPoint,
         }
     }
 }
@@ -514,4 +587,8 @@ export default {
   }
 }
 
+.text-caption {
+  line-height: 1.2;
+  margin: 2px 0;
+}
 </style>

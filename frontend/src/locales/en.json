@@ -294,6 +294,16 @@
     "classes": {
       "title": "Select Class"
     },
+    "randomPoints": {
+      "title": "Random Points Navigation",
+      "next": "Go to next point",
+      "previous": "Go to previous point",
+      "noPoints": "No points loaded",
+      "pointInfo": "Quad: {quadId} (Set {setIndex})",
+      "progress": "Point {current} of {total} (Set {currentSet} of {totalSets})",
+      "count": "Number of sets",
+      "reload": "Load Points"
+    },
     "dialogs": {
       "clear": {
         "message": "Are you sure you want to clear all drawn polygons? There is no going back from this!",
@@ -326,6 +336,7 @@
       "dateIncluded": "Date has been included in training data",
       "dateToggleError": "Error toggling date exclusion status",
       "loadError": "Failed to load polygons from file",
+      "loadPointsError": "Failed to load random points",
       "noFeatureSelected": "No feature selected",
       "polygonsLoaded": "Polygons loaded successfully",
       "saveError": "Error saving training polygons"

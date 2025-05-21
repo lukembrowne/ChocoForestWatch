@@ -24,14 +24,15 @@ services:
 
   backend:
     build: 
-      context: ./backend/djangocfw
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/djangocfw/Dockerfile
     volumes:
       - ./data/planet_quads:/app/data/planet_quads
       - ./data/predictions:/app/data/predictions
       - ./data/models:/app/data/models
       - ./media:/app/media
       - ./logs:/app/logs
+      - ./ml_pipeline:/app/ml_pipeline
     ports:
       - "8000:8000"
     env_file:

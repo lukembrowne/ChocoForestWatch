@@ -57,6 +57,8 @@ export const useMapStore = defineStore('map', () => {
     })
   });
   const sliderValue = ref(0);
+  const randomPoints = ref([]);
+  const currentPointIndex = ref(-1);
 
   // Internal state
   const projectStore = useProjectStore();
@@ -461,12 +463,13 @@ export const useMapStore = defineStore('map', () => {
     const id = type === 'planet' ? `planet-basemap` : `predictions`;
     const zIndex = type === 'planet' ? 1 : 2;
     const opacity = type === 'planet' ? 1 : 0.7;
+    const visible = type === 'planet' ? true : false;
 
     return new TileLayer({
       source: source,
       title: title,
       type: 'base', // Set the layer type to 'base'
-      visible: true, // Make the layer visible by default
+      visible: visible, // Make the layer visible by default
       id: id, // Set a unique ID for the layer
       zIndex: zIndex, // Set the layer's z-index to 1
       opacity: opacity // Set the layer's opacity to 0.7
@@ -1486,6 +1489,66 @@ export const useMapStore = defineStore('map', () => {
     updateLayers();
   };
 
+  const loadRandomPoints = async (collectionId) => {
+    try {
+      const response = await api.getRandomPoints(collectionId, 5);
+      randomPoints.value = response.data.points;
+      currentPointIndex.value = -1; // Reset index
+      return response.data;
+    } catch (error) {
+      console.error('Error loading random points:', error);
+      throw error;
+    }
+  };
+
+  const goToNextPoint = () => {
+    if (randomPoints.value.length === 0) return;
+    
+    currentPointIndex.value = (currentPointIndex.value + 1) % randomPoints.value.length;
+    const point = randomPoints.value[currentPointIndex.value];
+    
+    // Zoom to the point
+    if (map.value) {
+      const view = map.value.getView();
+      view.animate({
+        center: [point.x, point.y],
+        zoom: 15,
+        duration: 750
+      });
+    }
+    
+    return point;
+  };
+
+  const goToPreviousPoint = () => {
+    if (randomPoints.value.length === 0) return;
+    
+    currentPointIndex.value = (currentPointIndex.value - 1 + randomPoints.value.length) % randomPoints.value.length;
+    const point = randomPoints.value[currentPointIndex.value];
+    
+    // Zoom to the point
+    if (map.value) {
+      const view = map.value.getView();
+      view.animate({
+        center: [point.x, point.y],
+        zoom: 14,
+        duration: 1000
+      });
+    }
+    
+    return point;
+  };
+
+  const getCurrentPoint = () => {
+    if (currentPointIndex.value === -1 || randomPoints.value.length === 0) return null;
+    return randomPoints.value[currentPointIndex.value];
+  };
+
+  const clearRandomPoints = () => {
+    randomPoints.value = [];
+    currentPointIndex.value = -1;
+  };
+
   return {
     // State
     aoi,
@@ -1509,6 +1572,8 @@ export const useMapStore = defineStore('map', () => {
     selectedFeatureStyle,
     sliderValue,
     drawingMode,
+    randomPoints,
+    currentPointIndex,
     // Actions
     initMap,
     setAOI,
@@ -1554,6 +1619,11 @@ export const useMapStore = defineStore('map', () => {
     showSingleMap,
     hideSingleMap,
     hideDualMaps,
+    loadRandomPoints,
+    goToNextPoint,
+    goToPreviousPoint,
+    getCurrentPoint,
+    clearRandomPoints,
     // Getters
     getMap,
     maps,

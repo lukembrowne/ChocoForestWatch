@@ -16,6 +16,7 @@ urlpatterns = [
     path('trained_models/<int:project_id>/metrics/', views.get_model_metrics, name='model-metrics'),
     path('analysis/change/', views.change_analysis, name='change-analysis'),
     path('analysis/deforestation_hotspots/<int:prediction_id>/', views.deforestation_hotspots, name='deforestation-hotspots'),
+    path('random_points_collection/<str:collection_id>/', views.get_random_points_within_collection, name='random-points'),
     path('auth/register/', auth_views.register, name='register'),
     path('auth/login/', auth_views.login, name='login'),
     path('auth/request-reset/', auth_views.request_password_reset, name='request-reset'),

@@ -326,6 +326,7 @@
       "dateIncluded": "Fecha incluida en entrenamiento",
       "dateToggleError": "Error al cambiar el estado de exclusión de la fecha",
       "loadError": "Error al cargar polígonos desde el archivo",
+      "loadPointsError": "Error al cargar puntos aleatorios",
       "noFeatureSelected": "Ninguna característica seleccionada",
       "polygonsLoaded": "Polígonos cargados exitosamente",
       "saveError": "Error al guardar los polígonos de entrenamiento"
@@ -336,6 +337,16 @@
       "squareMode": "Modo cuadrado (F). \nHaga clic para cambiar al modo Mano alzada.",
       "squareSize": "",
       "title": "Opciones de Dibujo"
+    },
+    "randomPoints": {
+      "title": "Navegación de Puntos Aleatorios",
+      "next": "Ir al siguiente punto",
+      "previous": "Ir al punto anterior",
+      "noPoints": "No hay puntos cargados",
+      "pointInfo": "Cuadrícula: {quadId} (Conjunto {setIndex})",
+      "progress": "Punto {current} de {total} (Conjunto {currentSet} de {totalSets})",
+      "count": "Número de conjuntos",
+      "reload": "Cargar Puntos"
     },
     "title": "Controles de Dibujo",
     "tooltips": {
