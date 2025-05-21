@@ -63,13 +63,15 @@ class ModelPredictor:
         self,
         model_path: str | Path,
         extractor,
+        upload_to_s3: bool,
+        s3_path: str,
         cfg: PredictorConfig = PredictorConfig(),
-        upload_to_spaces: bool = False,
     ):
         self.model_path = Path(model_path)
         self.extractor = extractor
         self.cfg = cfg
-        self.upload_to_spaces = upload_to_spaces
+        self.upload_to_s3 = upload_to_s3
+        self.s3_path = s3_path
 
         with open(self.model_path, "rb") as f:
             bundle = pickle.load(f)
@@ -200,8 +202,8 @@ class ModelPredictor:
             self._sieve_inplace(out_path, min_pixels=10)
 
             # Upload to Spaces if configured
-            if self.upload_to_spaces:
-                self._upload_to_spaces(out_path, basemap_date)
+            if self.upload_to_s3:
+                self._upload_to_s3(out_path, basemap_date)
 
         return out_path
 
@@ -235,14 +237,14 @@ class ModelPredictor:
 
         band.FlushCache()
         ds = None  # close dataset
-        
-    def _upload_to_spaces(self, local_path: Path, basemap_date: str) -> None:
+
+    def _upload_to_s3(self, local_path: Path, basemap_date: str) -> None:
         """Upload a COG to DigitalOcean Spaces."""
-        if not self.upload_to_spaces:
+        if not self.upload_to_s3:
             return  # uploading disabled
             
         yyyy, mm = basemap_date.split("-")
-        remote_key = f"predictions/{self.meta.get('model_id', 'model')}/{yyyy}/{mm}/{local_path.name}"
+        remote_key = f"{self.s3_path}/{yyyy}/{mm}/{local_path.name}"
         
         upload_file(local_path, remote_key)
 

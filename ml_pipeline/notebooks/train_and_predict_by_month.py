@@ -7,20 +7,43 @@ import os
 from pathlib import Path
 import numpy as np
 from ml_pipeline.extractor import TitilerExtractor
-from ml_pipeline.trainer import ModelTrainer
+from ml_pipeline.trainer import ModelTrainer, TrainerConfig
 from ml_pipeline.predictor import ModelPredictor
 from ml_pipeline.stac_builder import STACBuilder
-
 from ml_pipeline.db_utils import get_db_connection
+import argparse
+from ml_pipeline.run_manager import RunManager    
+from pathlib import PosixPath
+import json
 
+# Set up database connection
 engine = get_db_connection()
-
 
 #%% 
 
-# Set year and month
-year = "2022"
-month = "06"
+# --- Argument Parsing ---
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run ML pipeline for a given year and month.")
+    parser.add_argument("--year", type=str, required=True, help="Year for the pipeline (e.g., '2022')")
+    parser.add_argument("--month", type=str, required=True, help="Month for the pipeline (e.g., '06')")
+    parser.add_argument("--run_dir", type=str, required=True, help="Run directory for the pipeline")
+    args = parser.parse_args()
+
+    year = args.year
+    month = args.month
+    run_dir = Path(args.run_dir) if args.run_dir else None
+    run_id = run_dir.parts[1]
+else:
+    # Default values for interactive IPython session if not run from command line
+    year = "2022"
+    month = "01"
+    run_dir = PosixPath('runs/20250520T2325_rf_ndvi_2022/2022_01')
+    run_id = run_dir.parts[1]
+
+#%%
+if run_dir is None:                 
+    rm = RunManager()
+    run_dir = rm.new_run(tag=f"rf_{year}{month}")            
 
 
 #%% 
@@ -37,8 +60,13 @@ print(f"Number of training polygons: {len(gdf)}")
 
 #%% 
 # Extract pixels using the extractor - this is the same as the extractor in the trainer
-extractor = TitilerExtractor(base_url="http://localhost:8083",
-                             collection=f"nicfi-{year}-{month}")
+
+# Extract pixels from NICFI collection
+extractor = TitilerExtractor(
+    base_url="http://localhost:8083",
+    collection=f"nicfi-{year}-{month}",
+    band_indexes=[1, 2, 3, 4]  # Example band indexes for RGB+NIR
+)
 
 # Test
 # extractor.get_all_cog_urls(collection="nicfi-2022-01")
@@ -57,61 +85,72 @@ extractor = TitilerExtractor(base_url="http://localhost:8083",
 
 #%% 
 # Train model
+config = TrainerConfig(cache_dir=run_dir / "data_cache")
+
 trainer = ModelTrainer(
     extractor=extractor,
-    out_dir=Path("saved_models"),
+    out_dir=run_dir / "saved_models",
+    cfg=config
 )
 
 # %% 
 # Train model
+print("Preparing training data...")
 npz = trainer.prepare_training_data(training_sets = [{"gdf": gdf, "basemap_date": f"{year}-{month}"}], 
-                                    cache_name = f"pixels_{year}_{month}.npz")
+                                    cache_name = f"pixels_{year}_{month}.npz",)
 
 
 #%% 
-model_path, metrics = trainer.fit_prepared_data(npz, model_name=f"nicfi-{year}-{month}")  
+print("Fitting model...")
+model_path, metrics = trainer.fit_prepared_data(npz, 
+                                                model_name=f"nicfi-{year}-{month}")  
 
 print(metrics)
+
+# Save metrics to run_dir
+with open(run_dir / "metrics.json", "w") as f:
+    json.dump(metrics, f)
+
+
 # %% 
 
-# import importlib
-# import ml_pipeline.predictor
-# importlib.reload(ml_pipeline.predictor)
-# from ml_pipeline.predictor import ModelPredictor
-
+print("Initializing ModelPredictor...")
 predictor = ModelPredictor(
     model_path=trainer.saved_model_path,
     extractor=extractor,
-    upload_to_spaces=True,
+    upload_to_s3=True,
+    s3_path=f"predictions/{run_id}/",
 )
 
 #%% 
+
+print("Predicting across entire collection...")
 
 # Predict across entire collection
 predictor.predict_collection(
     basemap_date=f"{year}-{month}",
     collection=f"nicfi-{year}-{month}",
-    pred_dir=f"prediction_cogs/{year}/{month}",
+    pred_dir=run_dir / f"prediction_cogs/{year}/{month}",
 )
 
 
 
 # %%
 
-# Testing out adding predictions to the pgstac database
+# Add predictions to the pgstac database
 
 builder = STACBuilder()
 
-builder.list_cogs(prefix=f"predictions/model/{year}/{month}")
+print("Adding predictions to the STAC database...")
 
 builder.process_month(
     year=year,
     month=month,
-    prefix="predictions/model", ## do not need year and month here
+    prefix_on_s3=f"predictions/{run_id}", ## do not need year and month here
     collection_id=f"nicfi-pred-{year}-{month}",
     asset_key="data",
     asset_roles=["classification"],
-    asset_title="Land‑cover classes (RF v1)",
+    asset_title=f"Land‑cover classes - {run_dir.name}",
     extra_asset_fields={
         "raster:bands": [{"nodata": 255, "data_type": "uint8"}],
         "classification:classes": [

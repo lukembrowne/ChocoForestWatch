@@ -60,6 +60,3 @@ def get_db_connection(
     # Create and return engine
     print("Creating engine...")
     return create_engine(db_url)
-
-# Create a default engine instance that can be imported and used directly
-engine = get_db_connection()

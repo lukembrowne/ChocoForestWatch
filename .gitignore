@@ -121,3 +121,5 @@ ml_pipeline/notebooks/prediction_cogs/*
 ml_pipeline/notebooks/benchmarks/*
 ml_pipeline/notebooks/benchmark_rasters/*
 ml_pipeline/notebooks/benchmark_results/*
+ml_pipeline/notebooks/runs.csv
+ml_pipeline/notebooks/runs/*

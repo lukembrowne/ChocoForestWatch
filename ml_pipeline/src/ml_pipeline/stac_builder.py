@@ -240,7 +240,7 @@ class STACBuilder:
         self,
         year: str,
         month: str,
-        prefix: str,
+        prefix_on_s3: str,
         collection_id: str,
         asset_key: str,
         asset_roles: Sequence[str],
@@ -258,7 +258,7 @@ class STACBuilder:
             The year of the data
         month : str
             The month of the data
-        prefix : str
+        prefix_on_s3 : str
             The S3 prefix where the data is stored
         collection_id : str
             The ID for the STAC collection
@@ -275,7 +275,7 @@ class STACBuilder:
         """
         month_str = f"{int(month):02d}"
         year_str = str(year)
-        s3_prefix = f"{prefix}/{year_str}/{month_str}"
+        s3_prefix = f"{prefix_on_s3}/{year_str}/{month_str}"
 
         cogs = self.list_cogs(s3_prefix)
         print(f"🔍 Found {len(cogs)} COGs under {s3_prefix}")
@@ -312,7 +312,7 @@ class STACBuilder:
     def process_year(
         self,
         year: str,
-        prefix: str,
+        prefix_on_s3: str,
         collection_id: str,
         asset_key: str,
         asset_roles: Sequence[str],
@@ -328,7 +328,7 @@ class STACBuilder:
         ----------
         year : str
             The year of the data
-        prefix : str
+        prefix_on_s3 : str
             The S3 prefix where the data is stored
         collection_id : str
             The ID for the STAC collection
@@ -344,7 +344,7 @@ class STACBuilder:
             Template for the derived_from link
         """
         year_str = str(year)
-        s3_prefix = f"{prefix}/{year_str}"
+        s3_prefix = f"{prefix_on_s3}/{year_str}"
 
         cogs = self.list_cogs(s3_prefix)
         print(f"🔍 Found {len(cogs)} COGs under {s3_prefix}")

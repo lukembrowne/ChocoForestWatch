@@ -5,9 +5,10 @@ import numpy as np
 from shapely.geometry import mapping
 
 class TitilerExtractor:
-    def __init__(self, base_url: str , collection: str ):
+    def __init__(self, base_url: str, collection: str, band_indexes: list[int]):
         self.base_url = base_url
         self.collection = collection
+        self.band_indexes = band_indexes
 
     def get_cog_urls(self, polygon_wgs84) -> list[str]:
         minx, miny, maxx, maxy = polygon_wgs84.bounds
@@ -38,18 +39,15 @@ class TitilerExtractor:
                 gdf_wgs84.geometry, gdf_3857.geometry,
                 gdf["id"], gdf["classLabel"]):
             
-            print
-            
             for cog in self.get_cog_urls(wgs84_geom):
-
                 with rasterio.open(cog) as src:
                     if src.crs == "EPSG:4326":
                         mask_geom = wgs84_geom
                     if src.crs == "EPSG:3857":
                         mask_geom = webm_geom
                     out, _ = mask(src, [mapping(mask_geom)], crop=True,
-                                  indexes=range(1, src.count + 1), all_touched=True)
-                    arr = np.moveaxis(out, 0, -1).reshape(-1, src.count)
+                                  indexes=self.band_indexes, all_touched=True)
+                    arr = np.moveaxis(out, 0, -1).reshape(-1, len(self.band_indexes))
                     nodata = src.nodata
                     if nodata is not None:
                         arr = arr[~np.all(arr == nodata, axis=1)]

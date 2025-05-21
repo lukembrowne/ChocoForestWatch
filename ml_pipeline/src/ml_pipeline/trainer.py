@@ -122,6 +122,7 @@ class ModelTrainer:
         if self.cfg.cache_dir:
             Path(self.cfg.cache_dir).mkdir(parents=True, exist_ok=True)
 
+
     # ------------------------------------------------------------------
     #  PUBLIC API – STEP 1: extract & cache pixel arrays
     # ------------------------------------------------------------------
@@ -138,7 +139,9 @@ class ModelTrainer:
         training‑set metadata so the same inputs always map to the same cache
         file.
         """
+
         if cache_name is None:
+            print("Generating cache name since none provided...")
             meta_hash = hashlib.sha1(json.dumps([
                 {"len": len(ts["gdf"]), "date": ts.get("basemap_date", "")}
                 for ts in training_sets
@@ -147,13 +150,13 @@ class ModelTrainer:
 
         cache_path = Path(self.cfg.cache_dir) / cache_name
         if cache_path.exists() and not overwrite:
-            logger.info(f"Using cached arrays → {cache_path}")
+            print(f"Using cached arrays → {cache_path}")
             return cache_path
 
-        logger.info("[ 0%] Extracting pixels…")
+        print("Assembling pixel arrays...")
         X, y, fids, dates = self._assemble_arrays(training_sets)
         np.savez_compressed(cache_path, X=X, y=y, fids=fids, dates=dates)
-        logger.info(f"Pixel arrays cached at {cache_path}")
+        print(f"Pixel arrays cached at {cache_path}")
         return cache_path
 
     # ------------------------------------------------------------------
@@ -168,10 +171,11 @@ class ModelTrainer:
         model_params: dict | None = None,
     ) -> tuple[Path, dict]:
         """Load arrays from *npz_path* and train a model."""
+        print("Loading pixel arrays...")
         data = np.load(npz_path, allow_pickle=True)
         X, y, fids, dates = data["X"], data["y"], data["fids"], data["dates"]
 
-        logger.info("[40%] Fitting XGBoost model…")
+        print("Fitting XGBoost model...")
         model, metrics = self._fit_model(
             X,
             y,
@@ -180,9 +184,9 @@ class ModelTrainer:
             model_params or {},
         )
 
-        logger.info("[90%] Saving model…")
+        print("Saving model...")
         path = self._save_model(model_name, model_description, model)
-        logger.info(f"[100%] Done ➜ {path}")
+        print(f"Done ➜ {path}")
         return path, metrics
 
     # ------------------------------------------------------------------
@@ -343,6 +347,9 @@ class ModelTrainer:
 
         # ---- final training ----------------------------------------
         print(f"Final training model with {X_tr.shape[0]} training samples and {X_val.shape[0]} validation samples")
+
+        print("Label data (first 5 values): ", y_tr[:5])
+        print("Covariate data (first 5 rows):\n", X_tr[:5])
         model_final.fit(
             X_tr,
             y_tr,
