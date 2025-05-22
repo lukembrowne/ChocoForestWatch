@@ -707,6 +707,7 @@ def get_random_points_within_collection(request, collection_id):
         The collection ID to generate points for
     count : int, optional
         Number of sets of points to generate (default: 2)
+
         
     Returns
     -------
@@ -742,30 +743,28 @@ def get_random_points_within_collection(request, collection_id):
         for cog_url in cog_urls:
             # Generate all points for this quad at once
             points = extractor.random_points_in_quad(cog_url, count, rng=random.Random(42))
-            all_points.extend(points)
+            # Convert Point objects to serializable format
+            serializable_points = []
+            for point in points:
+                serializable_point = {
+                    "quad_id": point["quad_id"],
+                    "x": point["x"],
+                    "y": point["y"],
+                    "cog_url": cog_url
+                }
+                serializable_points.append(serializable_point)
+            all_points.extend(serializable_points)
         
-        # Sort points to alternate between quads
-        sorted_points = []
-        for i in range(count):
-            for j in range(num_quads):
-                point_index = j * count + i  # Changed indexing to get points in correct order
-                if point_index < len(all_points):
-                    point = all_points[point_index]
-                    # Remove the Point object and keep only the necessary fields
-                    point = {
-                        "quad_id": point["quad_id"],
-                        "x": point["x"],
-                        "y": point["y"],
-                        "set_index": i
-                    }
-                    sorted_points.append(point)
+        # Randomize the order of all points
+        random.seed(42)
+        random.shuffle(all_points)
         
         # Prepare response
         response = {
-            "points": sorted_points,
+            "points": all_points,
             "metadata": {
                 "collection_id": collection_id,
-                "total_points": len(sorted_points),
+                "total_points": len(all_points),
                 "sets_generated": count,
                 "points_per_set": num_quads,
                 "generated_at": datetime.utcnow().isoformat()

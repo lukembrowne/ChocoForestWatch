@@ -120,7 +120,7 @@ export default {
         const aoiDrawn = ref(false)
         const fileInput = ref(null)
         const aoiSizeHa = ref(0)
-        const maxAoiSizeHa = ref(10000)
+        const maxAoiSizeHa = ref(100000000000000000000000000000)
         const vectorSource = ref(null)
         const vectorLayer = ref(null)
         let drawInteraction = null

@@ -38,6 +38,21 @@ class TitilerExtractor:
     #  Metadata helpers
     # ------------------------------------------------------------------ #
 
+
+    def get_cog_urls(self, polygon_wgs84) -> list[str]:
+        """Return COG URLs intersecting *polygon_wgs84* (EPSG:4326)."""
+        minx, miny, maxx, maxy = polygon_wgs84.bounds
+        bbox = f"{minx},{miny},{maxx},{maxy}"
+        r = requests.get(
+            f"{self.base_url}/collections/{self.collection}/bbox/{bbox}/assets",
+            headers={"accept": "application/json"},
+            timeout=30,
+        )
+        r.raise_for_status()
+        return [a["assets"]["data"]["href"] for a in r.json()]
+
+
+
     def get_all_cog_urls(self, collection: Optional[str] = None,
                          bbox: Optional[str] = None,
                          scan_limit: int = 100_000) -> list[str]:
@@ -152,23 +167,31 @@ class TitilerExtractor:
             gdf["classLabel"],
         ):
             for cog in self.get_cog_urls(wgs84_geom):
-                with rasterio.open(cog) as src:
-                    mask_geom = wgs84_geom if src.crs.to_epsg() == 4326 else webm_geom
-                    out, _ = mask(
-                        src,
-                        [mapping(mask_geom)],
-                        crop=True,
-                        indexes=self.band_indexes,
-                        all_touched=True,
-                    )
-                    arr = np.moveaxis(out, 0, -1).reshape(-1, len(self.band_indexes))
-                    nodata = src.nodata
-                    if nodata is not None:
-                        arr = arr[~np.all(arr == nodata, axis=1)]
+               # print("Extracting pixels from COG:", cog, "for polygon:", fid)
+                try:
+                    with rasterio.open(cog) as src:
+                        mask_geom = wgs84_geom if src.crs.to_epsg() == 4326 else webm_geom
+                        out, _ = mask(
+                            src,
+                            [mapping(mask_geom)],
+                            crop=True,
+                            indexes=self.band_indexes,
+                            all_touched=True,
+                        )
+                        arr = np.moveaxis(out, 0, -1).reshape(-1, len(self.band_indexes))
+                        nodata = src.nodata
+                        if nodata is not None:
+                            arr = arr[~np.all(arr == nodata, axis=1)]
 
-                pixels.append(arr)
-                labels.extend([label] * len(arr))
-                fids.extend([fid] * len(arr))
+                    pixels.append(arr)
+                    labels.extend([label] * len(arr))
+                    fids.extend([fid] * len(arr))
+                except Exception as e:
+                    print(f"⚠️  Skipping COG due to error: {cog} — {str(e)}")
+                    continue
+
+        if not pixels:
+            raise RuntimeError("No valid pixels were extracted from any COGs.")
 
         print("Pixels :", sum(len(p) for p in pixels))
         print("Labels :", len(labels))

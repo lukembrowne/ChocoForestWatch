@@ -36,23 +36,21 @@ The results are organized as:
 """
 
 #%% 
-from pathlib import Path
-import argparse, subprocess, json, shutil
+import subprocess, json
 from ml_pipeline.run_manager import RunManager     
 from tqdm import tqdm
 
 #%% 
 
 # Set tag
-tag = "rf_test" # Folder prefix will be the time
+run_id = "northern_choco_test_2025_05_21" # Name for run
 
 # Set year
 year = "2022"
 
 #%% 
 # One folder for the whole year-long experiment
-rm = RunManager()
-parent = rm.new_run(tag=f"{tag}_{year}")    
+rm = RunManager(run_id=run_id, root="runs")
 
 
 #%%
@@ -63,7 +61,7 @@ for m in tqdm(range(1, 13), desc=f"Processing months for {year}"):
     print("-"*100)
     print("-"*100)
     month = f"{m:02d}"
-    child = parent / f"{year}_{month}"
+    child = rm.run_path / f"{year}_{month}"
     child.mkdir()                                       # keeps artefacts separate
 
     subprocess.run(
@@ -86,13 +84,13 @@ for m in tqdm(range(1, 13), desc=f"Processing months for {year}"):
     else:
         print(f"No metrics file found for {year}-{month}")
 
-    print(f"✅ Year {year} finished. Results in {parent}")
+    print(f"✅ Year {year} finished. Results in {rm.run_path}")
 # %%
 
 # Add to summary csv
 
 # Loop through all metrics files in parent
-metrics_files = list(parent.glob("metrics_*.json"))
+metrics_files = list(rm.run_path.glob("metrics_*.json"))
 
 # Loop through all metrics files and add to summary csv
 for file in metrics_files:

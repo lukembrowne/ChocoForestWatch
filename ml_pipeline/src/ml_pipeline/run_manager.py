@@ -5,28 +5,47 @@ from datetime import datetime
 import json, csv, subprocess, os, uuid
 
 class RunManager:
-    def __init__(self, root: str | Path = "runs"):
+    def __init__(self, run_id: str, root: str | Path = "runs"):
         self.root = Path(root)
         self.root.mkdir(exist_ok=True)
         self.runs_csv = self.root.parent / "runs.csv"
+        self.run_id = run_id
+        self.run_path = self.root / run_id
+        
+        # Create run directory and subdirectories
+        self.run_path.mkdir(exist_ok=True)
+        (self.run_path / "preds").mkdir(exist_ok=True)
+        
+        if self.run_exists():
+            print(f"⚠️  Run directory already exists: {self.run_path}")
+        else:
+            print(f"✅ Created new run directory: {self.run_path}")
 
-    def new_run(self, tag: str = "") -> Path:
-        ts = datetime.now().strftime("%Y%m%dT%H%M")   #timestamp       # e.g. 20250520T1832
-        gid = tag or uuid.uuid4().hex[:6]                      # optional human tag
-        run_id = f"{ts}_{gid}".strip("_")
-        path = self.root / run_id
-        path.mkdir()
-        (path / "preds").mkdir()
-        self.run_path = path
-        return path
+    def new_run(self) -> Path:
+        """Create a new run directory with a deterministic ID based on the tag."""
+        return self.run_path
+
+    def load_run(self) -> Path:
+        """Load an existing run by its tag."""
+        if not self.run_exists():
+            raise ValueError(f"No existing run found with tag: {self.run_id}")
+        return self.run_path
+
+    def run_exists(self) -> bool:
+        """Check if a run with the given tag exists."""
+        return self.run_path.exists()
 
     def save_json(self, name: str, obj):
+        if not self.run_path:
+            raise ValueError("No active run. Call new_run() or load_run() first.")
         with open(self.run_path / name, "w") as f:
             json.dump(obj, f, indent=2)
 
     def record_summary(self, metrics: dict, note: str = ""):
+        if not self.run_path:
+            raise ValueError("No active run. Call new_run() or load_run() first.")
         row = {
-            "run_id": self.run_path.name,
+            "run_id": self.run_id,
             "local": datetime.now().isoformat(timespec="seconds"),
             "accuracy": metrics.get("accuracy"),
             "note": note,

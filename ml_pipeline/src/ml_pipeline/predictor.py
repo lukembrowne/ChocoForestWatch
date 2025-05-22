@@ -26,7 +26,7 @@ from osgeo import gdal, gdalconst
 import tempfile
 import shutil
 
-from .s3_utils import upload_file
+from ml_pipeline.s3_utils import upload_file
 
 # ---------------------------------------------------------------------------
 #  Predictor configuration
@@ -117,6 +117,7 @@ class ModelPredictor:
         basemap_date: str,
         collection: str,
         pred_dir: str | Path,
+        save_local: bool = True,
     ) -> list[Path]:
         """
         Run the model on *every* COG in a STAC collection.
@@ -129,7 +130,14 @@ class ModelPredictor:
         list[Path]
             Paths to the saved prediction COGs.
         """
-        cog_urls = self.extractor.get_all_cog_urls(collection)
+
+        # Limit to northern Choco for now
+        bbox = "-80.325,-0.175,-78.2523342311799439,1.4466469335460774"
+
+        # Get all COG URLs intersecting the bounding box
+        cog_urls = self.extractor.get_all_cog_urls(collection, bbox=bbox)
+
+
         print(f"Found {len(cog_urls)} COGs in collection '{collection}'")
         print(f"Warning: This will overwrite any existing prediction files in {pred_dir}")
 
@@ -147,6 +155,7 @@ class ModelPredictor:
                     cog_url=url,
                     basemap_date=basemap_date,
                     pred_dir=pred_dir,
+                    save_local=save_local,
                 )
             )
 
@@ -157,55 +166,80 @@ class ModelPredictor:
     #  Internal helpers
     # ------------------------------------------------------------------
 
-    def _predict_single_cog(self, cog_url: str, basemap_date: str, pred_dir: str | Path) -> Path:
-        with rasterio.open(cog_url) as src:
-            profile = src.profile.copy()
-            profile.update(
-                count=1,
-                dtype=self.cfg.dtype,
-                compress=self.cfg.compress,
-                predictor=self.cfg.predictor,
-                nodata=self.cfg.nodata,
-            )
+    def _predict_single_cog(self, cog_url: str, basemap_date: str, pred_dir: str | Path, save_local: bool = True) -> Path:
+        try:
+            with rasterio.open(cog_url) as src:
+                profile = src.profile.copy()
+                profile.update(
+                    count=1,
+                    dtype=self.cfg.dtype,
+                    compress=self.cfg.compress,
+                    predictor=self.cfg.predictor,
+                    nodata=self.cfg.nodata,
+                )
 
-            # build output filename
-            tile_id = Path(cog_url).stem
-            out_path = pred_dir / f"{tile_id}.tiff"
+                # build output filename
+                tile_id = Path(cog_url).stem
+                out_path = pred_dir / f"{tile_id}.tiff"
 
-            with rasterio.open(out_path, "w", **profile) as dst:
-                # iterate by window to keep memory small
-                for ji, window in src.block_windows(1):
-                    img = src.read(window=window, indexes=(1, 2, 3, 4)).astype(
-                        np.float32
-                    )  # (4, h, w)
-                    h, w = img.shape[1], img.shape[2]
-                    X = img.reshape(4, -1).T  # -> (n,4)
+                with rasterio.open(out_path, "w", **profile) as dst:
+                    # iterate by window to keep memory small
+                    for ji, window in src.block_windows(1):
+                        try:
+                            img = src.read(window=window, indexes=(1, 2, 3, 4)).astype(
+                                np.float32
+                            )  # (4, h, w)
+                        except Exception as e:
+                            print(f"Error reading window {window} from {cog_url}: {e}")
+                            continue
 
-                    X_full = X
+                        h, w = img.shape[1], img.shape[2]
+                        X = img.reshape(4, -1).T  # -> (n,4)
 
-                    # mask nodata
-                    valid_mask = ~np.any(
-                        X[:, :4] == src.nodata, axis=1
-                    )  # ignore temporal cols
-                    preds = np.full(X.shape[0], self.cfg.nodata, dtype=self.cfg.dtype)
-                    if valid_mask.any():
-                        y_pred = self.model.predict(X_full[valid_mask])
-                        # map from consecutive to global indices
-                        y_global = np.vectorize(
-                            self.model.consecutive_to_global.get
-                        )(y_pred)
-                        preds[valid_mask] = y_global.astype(self.cfg.dtype)
+                        X_full = X
 
-                    dst.write(preds.reshape(1, h, w), window=window)
+                        # mask nodata
+                        valid_mask = ~np.any(
+                            X[:, :4] == src.nodata, axis=1
+                        )  # ignore temporal cols
+                        preds = np.full(X.shape[0], self.cfg.nodata, dtype=self.cfg.dtype)
+                        if valid_mask.any():
+                            try:
+                                y_pred = self.model.predict(X_full[valid_mask])
+                                # map from consecutive to global indices
+                                y_global = np.vectorize(
+                                    self.model.consecutive_to_global.get
+                                )(y_pred)
+                                preds[valid_mask] = y_global.astype(self.cfg.dtype)
+                            except Exception as e:
+                                print(f"Error predicting window {window} from {cog_url}: {e}")
+                                continue
 
-            # ➊ run sieve
-            self._sieve_inplace(out_path, min_pixels=10)
+                        dst.write(preds.reshape(1, h, w), window=window)
 
-            # Upload to Spaces if configured
-            if self.upload_to_s3:
-                self._upload_to_s3(out_path, basemap_date)
+                # ➊ run sieve
+                try:
+                    self._sieve_inplace(out_path, min_pixels=10)
+                except Exception as e:
+                    print(f"Error applying sieve filter to {out_path}: {e}")
 
-        return out_path
+                # Upload to Spaces if configured
+                try:
+                    if self.upload_to_s3:
+                        self._upload_to_s3(out_path, basemap_date)
+                except Exception as e:
+                    print(f"Error uploading {out_path} to Spaces: {e}")
+
+                # Delete local file if not saving locally
+                if not save_local:
+                    out_path.unlink()
+                    return None
+
+            return out_path
+
+        except Exception as e:
+            print(f"⚠️ Skipping COG due to error: {cog_url} — {e}")
+            return None
 
     def _sieve_inplace(self, tif_path: Path, min_pixels: int) -> None:
         """

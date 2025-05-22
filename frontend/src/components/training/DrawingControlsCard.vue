@@ -329,6 +329,10 @@ export default {
                 mapStore.stopDrawing();
             } else if (event.key === 'f') {
                 toggleDrawingMode();
+            } else if (event.key === 'q') {
+                goToPreviousPoint();
+            } else if (event.key === 'e') {
+                goToNextPoint();
             }
         };
 

@@ -39,6 +39,8 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 from sklearn.utils.class_weight import compute_sample_weight
+import rasterio
+from rasterio.mask import mask
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -197,7 +199,10 @@ class ModelTrainer:
         xs, ys, fids, ds = [], [], [], []
         for ts in training_sets:
             gdf = ts["gdf"]
+
+            # Extract pixels
             X, y, fid = self.extractor.extract_pixels(gdf)
+            
             xs.append(X)
             ys.append(y)
             fids.append(fid)
@@ -402,3 +407,67 @@ class ModelTrainer:
     def saved_model_path(self) -> Path | None:
         """Return path of the most recently saved model, if any."""
         return self.last_saved_model_path
+
+    def extract_pixels(self, gdf) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Extract pixels for each labelled polygon in *gdf*.
+
+        Parameters
+        ----------
+        gdf : geopandas.GeoDataFrame
+            Must contain geometry column and fields ``id`` and ``classLabel``.
+
+        Returns
+        -------
+        X : np.ndarray
+            2-D array of shape (n_samples, n_bands) with predictor values.
+        y : np.ndarray
+            1-D array of class labels.
+        fid : np.ndarray
+            1-D array of polygon IDs corresponding to each sample.
+        """
+        gdf_wgs84 = gdf.to_crs("EPSG:4326")
+        gdf_3857 = gdf.to_crs("EPSG:3857")
+
+        pixels, labels, fids = [], [], []
+
+        for wgs84_geom, webm_geom, fid, label in zip(
+            gdf_wgs84.geometry,
+            gdf_3857.geometry,
+            gdf["id"],
+            gdf["classLabel"],
+        ):
+            for cog in self.get_cog_urls(wgs84_geom):
+                try:
+                    with rasterio.open(cog) as src:
+                        mask_geom = wgs84_geom if src.crs.to_epsg() == 4326 else webm_geom
+                        try:
+                            out, _ = mask(
+                                src,
+                                [mapping(mask_geom)],
+                                crop=True,
+                                indexes=self.band_indexes,
+                                all_touched=True,
+                            )
+                            arr = np.moveaxis(out, 0, -1).reshape(-1, len(self.band_indexes))
+                            nodata = src.nodata
+                            if nodata is not None:
+                                arr = arr[~np.all(arr == nodata, axis=1)]
+
+                            pixels.append(arr)
+                            labels.extend([label] * len(arr))
+                            fids.extend([fid] * len(arr))
+                        except rasterio.errors.RasterioIOError as e:
+                            print(f"Warning: Failed to read data from {cog}: {str(e)}")
+                            continue
+                except Exception as e:
+                    print(f"Warning: Failed to open {cog}: {str(e)}")
+                    continue
+
+        if not pixels:
+            raise ValueError("No valid pixels were extracted from any of the input files")
+
+        print("Pixels :", sum(len(p) for p in pixels))
+        print("Labels :", len(labels))
+        print("Fids   :", len(fids))
+        return np.vstack(pixels), np.array(labels), np.array(fids)

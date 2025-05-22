@@ -36,20 +36,14 @@ if __name__ == "__main__":
 else:
     # Default values for interactive IPython session if not run from command line
     year = "2022"
-    month = "09"
-    run_dir = PosixPath(f'runs/20250520T2102_rf_test_2022/{year}_{month}')
-    run_id = run_dir.parts[1]
-
-#%%
-if run_dir is None:                 
-    rm = RunManager()
-    run_dir = rm.new_run(tag=f"rf_{year}{month}")            
+    month = "01"
+    rm = RunManager("northern_choco_test_2025_05_21")
 
 
 #%% 
 gdf = load_training_polygons(
     engine,
-    project_id=1,
+    project_id=2,
     basemap_date=f"{year}-{month}",
 )
 
@@ -67,8 +61,6 @@ if len(gdf) == 0:
 
 
 #%% 
-# Extract pixels using the extractor - this is the same as the extractor in the trainer
-
 # Extract pixels from NICFI collection
 extractor = TitilerExtractor(
     base_url="http://localhost:8083",
@@ -76,28 +68,14 @@ extractor = TitilerExtractor(
     band_indexes=[1, 2, 3, 4]  # Example band indexes for RGB+NIR
 )
 
-# Test
-# extractor.get_all_cog_urls(collection="nicfi-2022-01")
-
-# Test it out
-# X, y, fids = extractor.extract_pixels(gdf, collection="nicfi-2022-01")
-
-# print("\nTitilerExtractor results:")
-# print(f"Total number of pixels: {len(X)}")
-# print(f"Number of unique classes: {len(np.unique(y))}")
-# print(f"Shape of X: {X.shape}")
-# print(f"Shape of y: {y.shape}")
-# print(f"Number of unique feature IDs: {len(np.unique(fids))}")
-
-
 
 #%% 
 # Train model
-config = TrainerConfig(cache_dir=run_dir / "data_cache")
+config = TrainerConfig(cache_dir=rm.run_path / "data_cache") # Set cache dir
 
 trainer = ModelTrainer(
     extractor=extractor,
-    out_dir=run_dir / "saved_models",
+    out_dir=rm.run_path / "saved_models",
     cfg=config
 )
 
@@ -116,7 +94,7 @@ model_path, metrics = trainer.fit_prepared_data(npz,
 print(metrics)
 
 # Save metrics to run_dir
-with open(run_dir / "metrics.json", "w") as f:
+with open(rm.run_path / "metrics.json", "w") as f:
     json.dump(metrics, f)
 
 
@@ -127,7 +105,7 @@ predictor = ModelPredictor(
     model_path=trainer.saved_model_path,
     extractor=extractor,
     upload_to_s3=True,
-    s3_path=f"predictions/{run_id}", # No trailing slash 
+    s3_path=f"predictions/{rm.run_id}", # No trailing slash 
 )
 
 #%% 
@@ -138,7 +116,8 @@ print("Predicting across entire collection...")
 predictor.predict_collection(
     basemap_date=f"{year}-{month}",
     collection=f"nicfi-{year}-{month}",
-    pred_dir=run_dir / f"prediction_cogs/{year}/{month}",
+    pred_dir=rm.run_path / f"prediction_cogs/{year}/{month}",
+    save_local=False
 )
 
 
@@ -146,7 +125,6 @@ predictor.predict_collection(
 # %%
 
 # Add predictions to the pgstac database
-
 builder = STACBuilder()
 
 print("Adding predictions to the STAC database...")
@@ -154,11 +132,11 @@ print("Adding predictions to the STAC database...")
 builder.process_month(
     year=year,
     month=month,
-    prefix_on_s3=f"predictions/{run_id}", ## do not need year and month here
-    collection_id=f"nicfi-pred-{year}-{month}",
+    prefix_on_s3=f"predictions/{rm.run_id}", ## do not need year and month here
+    collection_id=f"{rm.run_id}-pred-{year}-{month}",
     asset_key="data",
     asset_roles=["classification"],
-    asset_title=f"Land‑cover classes - {run_dir.name}",
+    asset_title=f"Land‑cover classes - {rm.run_id}",
     extra_asset_fields={
         "raster:bands": [{"nodata": 255, "data_type": "uint8"}],
         "classification:classes": [

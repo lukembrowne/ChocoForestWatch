@@ -163,57 +163,68 @@ class STACBuilder:
         derived_from: str | None = None,
     ) -> Item:
         """Return a STAC Item (bounds derived from the COG itself)."""
-        with rasterio.open(cog["url"]) as ds:
-            wgs_bounds = transform_bounds(ds.crs, "EPSG:4326", *ds.bounds)
-
-        if month:
-            dt = datetime(int(year), int(month), 1)
-        else:
-            dt = datetime(int(year), 1, 1)
+        try:
+            # Check if file exists and is accessible
+            self.s3.head_object(Bucket=self.cfg.bucket, Key=cog["key"])
             
-        item_id = Path(cog["key"]).stem
+            # Use the proper S3 URL format
+            s3_url = f"s3://{self.cfg.bucket}/{cog['key']}"
+            
+            with rasterio.open(s3_url) as ds:
+                wgs_bounds = transform_bounds(ds.crs, "EPSG:4326", *ds.bounds)
 
-        itm = Item(
-            id=item_id,
-            geometry={
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [wgs_bounds[0], wgs_bounds[1]],
-                        [wgs_bounds[2], wgs_bounds[1]],
-                        [wgs_bounds[2], wgs_bounds[3]],
-                        [wgs_bounds[0], wgs_bounds[3]],
-                        [wgs_bounds[0], wgs_bounds[1]],
-                    ]
-                ],
-            },
-            bbox=list(wgs_bounds),
-            datetime=dt,
-            properties={},
-        )
+            if month:
+                dt = datetime(int(year), int(month), 1)
+            else:
+                dt = datetime(int(year), 1, 1)
+                
+            item_id = Path(cog["key"]).stem
 
-        asset_dict = {
-            "href": cog["url"],
-            "media_type": media_type,
-            "roles": list(asset_roles),
-            "title": asset_title or f"{asset_key} for {item_id}",
-        }
-        if extra_asset_fields:
-            asset_dict.update(extra_asset_fields)
-
-        itm.add_asset(asset_key, Asset.from_dict(asset_dict))
-
-        # provenance link
-        if derived_from:
-            itm.add_link(
-                Link(
-                    rel="derived_from",
-                    href=derived_from,
-                    media_type="application/json",
-                )
+            itm = Item(
+                id=item_id,
+                geometry={
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [wgs_bounds[0], wgs_bounds[1]],
+                            [wgs_bounds[2], wgs_bounds[1]],
+                            [wgs_bounds[2], wgs_bounds[3]],
+                            [wgs_bounds[0], wgs_bounds[3]],
+                            [wgs_bounds[0], wgs_bounds[1]],
+                        ]
+                    ],
+                },
+                bbox=list(wgs_bounds),
+                datetime=dt,
+                properties={},
             )
 
-        return itm
+            asset_dict = {
+                "href": cog["url"],
+                "media_type": media_type,
+                "roles": list(asset_roles),
+                "title": asset_title or f"{asset_key} for {item_id}",
+            }
+            if extra_asset_fields:
+                asset_dict.update(extra_asset_fields)
+
+            itm.add_asset(asset_key, Asset.from_dict(asset_dict))
+
+            # provenance link
+            if derived_from:
+                itm.add_link(
+                    Link(
+                        rel="derived_from",
+                        href=derived_from,
+                        media_type="application/json",
+                    )
+                )
+
+            return itm
+            
+        except Exception as e:
+            print(f"Error building item for {cog['key']}: {str(e)}")
+            raise
 
     def upsert_to_pgstac(self, collection: Collection, items: Iterable[Item]) -> None:
         """Write temp JSON / ndjson and call pypgstac CLI."""
@@ -322,18 +333,25 @@ class STACBuilder:
                 if derived_from_tpl
                 else None
             )
-            it = self.build_item(
-                cog=cg,
-                year=year_str,
-                month=month_str,
-                asset_key=asset_key,
-                asset_roles=asset_roles,
-                asset_title=asset_title,
-                extra_asset_fields=extra_asset_fields,
-                derived_from=derived_href,
-            )
-            items.append(it)
-            col.add_item(it)
+            try:
+                it = self.build_item(
+                    cog=cg,
+                    year=year_str,
+                    month=month_str,
+                    asset_key=asset_key,
+                    asset_roles=asset_roles,
+                    asset_title=asset_title,
+                    extra_asset_fields=extra_asset_fields,
+                    derived_from=derived_href,
+                )
+                items.append(it)
+                col.add_item(it)
+            except rasterio.errors.RasterioIOError as e:
+                print(f"Failed to read raster file {item_id}: {str(e)}")
+                continue
+            except Exception as e:
+                print(f"Unexpected error processing {item_id}: {str(e)}")
+                continue
 
         self.upsert_to_pgstac(col, items)
 
