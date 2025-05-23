@@ -24,11 +24,13 @@ class Command(BaseCommand):
             is_template=True,
             owner=superuser,
             classes=[
-                {"name": "Forest", "color": "#00FF00"},
-                {"name": "Non-Forest", "color": "#FFFF00"},
-                {"name": "Cloud", "color": "#FFFFFF"},
-                {"name": "Shadow", "color": "#808080"},
-                {"name": "Water", "color": "#0000FF"}
+                {"name": "Forest", "color": "#00FF00"},        # Bright green
+                {"name": "Non-Forest", "color": "#FFFF00"},    # Yellow
+                {"name": "Cloud", "color": "#FFFFFF"},         # White
+                {"name": "Shadow", "color": "#808080"},        # Gray
+                {"name": "Water", "color": "#0000FF"},         # Blue
+                {"name": "Haze", "color": "#FFB347"},          # Light orange
+                {"name": "Sensor Error", "color": "#FF00FF"}   # Magenta
             ]
         )
 

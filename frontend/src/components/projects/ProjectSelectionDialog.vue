@@ -158,7 +158,10 @@ export default {
         { name: 'Non-Forest', color: '#FFFF00' },
         { name: 'Cloud', color: '#FFFFFF' },
         { name: 'Shadow', color: '#808080' },
-        { name: 'Water', color: '#0000FF' }
+        { name: 'Water', color: '#0000FF' },
+        { name: 'Haze', color: '#FFB347' },
+        { name: 'Sensor Error', color: '#FF00FF' }
+        
       ]
     })
 
@@ -252,7 +255,9 @@ export default {
             { name: 'Non-Forest', color: '#FFFF00' },
             { name: 'Cloud', color: '#FFFFFF' },
             { name: 'Shadow', color: '#808080' },
-            { name: 'Water', color: '#0000FF' }
+            { name: 'Water', color: '#0000FF' },
+            { name: 'Haze', color: '#FFB347' },
+            { name: 'Sensor Error', color: '#FF00FF' }
           ]
         }
 

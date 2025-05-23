@@ -376,7 +376,7 @@
                 <div class="text-h6 q-mb-md">{{ formatDate(selectedDeforestationMap.summary_statistics.prediction1_date)
                   }}</div>
                 <div class="row q-col-gutter-md">
-                  <template v-for="type in ['Forest', 'Non-Forest', 'Water', 'Cloud', 'Shadow']" :key="type">
+                  <template v-for="type in ['Forest', 'Non-Forest', 'Water', 'Cloud', 'Shadow', 'Haze', 'Sensor Error']" :key="type">
                     <div class="col-6">
                       <div class="text-subtitle2">{{ t(`analysis.unified.stats.landCover.types.${type.toLowerCase()}`)
                         }}</div>
@@ -400,7 +400,7 @@
                 <div class="text-h6 q-mb-md">{{ formatDate(selectedDeforestationMap.summary_statistics.prediction2_date)
                   }}</div>
                 <div class="row q-col-gutter-md">
-                  <template v-for="type in ['Forest', 'Non-Forest', 'Water', 'Cloud', 'Shadow']" :key="type">
+                  <template v-for="type in ['Forest', 'Non-Forest', 'Water', 'Cloud', 'Shadow', 'Haze', 'Sensor Error']" :key="type">
                     <div class="col-6">
                       <div class="text-subtitle2">{{ t(`analysis.unified.stats.landCover.types.${type.toLowerCase()}`)
                         }}</div>

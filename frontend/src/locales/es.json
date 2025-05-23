@@ -174,7 +174,9 @@
             "forest": "Bosque",
             "non-forest": "No Bosque",
             "shadow": "Sombra",
-            "water": "Agua"
+            "water": "Agua",
+            "haze": "Neblina",
+            "sensorError": "Error del Sensor"
           }
         },
         "overview": {

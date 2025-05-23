@@ -426,8 +426,8 @@ export const useMapStore = defineStore('map', () => {
     // Create a new XYZ source for predictions
     if (type === 'predictions') {
 
-      const colormap =
-        '%7B%220%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%221%22%3A%20%5B255%2C%20255%2C%200%5D%2C%20%222%22%3A%20%5B255%2C%20255%2C%20255%5D%2C%20%223%22%3A%20%5B0%2C%200%2C%200%5D%2C%20%224%22%3A%20%5B0%2C%200%2C%20255%5D%7D';
+      // const colormap =
+      //   '%7B%220%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%221%22%3A%20%5B255%2C%20255%2C%200%5D%2C%20%222%22%3A%20%5B255%2C%20255%2C%20255%5D%2C%20%223%22%3A%20%5B0%2C%200%2C%200%5D%2C%20%224%22%3A%20%5B0%2C%200%2C%20255%5D%7D';
 
       // source = new XYZ({
       //   url: `http://localhost:8083/collections/nicfi-pred-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=pred&colormap=${colormap}`,
@@ -435,19 +435,19 @@ export const useMapStore = defineStore('map', () => {
       // });
 
       //  Composite forest cover map
-      // const colormap =
-      //   '%7B%221%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%220%22%3A%20%5B255%2C%20255%2C%200%5D%7D';
+      const colormap =
+        '%7B%221%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%220%22%3A%20%5B255%2C%20255%2C%200%5D%7D';
 
-      // source = new XYZ({
-      //   url: `http://localhost:8083/collections/nicfi-pred-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
-      //   maxZoom: 14,
-      // });
-
-      // Testing out hansen tree cover benchmark
       source = new XYZ({
-        url: `http://localhost:8083/collections/northern_choco_test_2025_05_21-pred-2022-01/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
+        url: `http://localhost:8083/collections/nicfi-pred-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
         maxZoom: 14,
       });
+
+      // Testing out hansen tree cover benchmark
+      // source = new XYZ({
+      //   url: `http://localhost:8083/collections/northern_choco_test_2025_05_21-pred-2022-01/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
+      //   maxZoom: 14,
+      // });
     }
 
 

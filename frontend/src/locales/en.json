@@ -174,7 +174,9 @@
             "forest": "Forest",
             "non-forest": "Non-Forest",
             "shadow": "Shadow",
-            "water": "Water"
+            "water": "Water",
+            "haze": "Haze",
+            "sensorError": "Sensor Error"
           }
         },
         "overview": {
