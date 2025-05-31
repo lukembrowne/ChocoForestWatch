@@ -207,11 +207,11 @@
         },
         "features": {
           "ml": {
-            "description": "Desarrolle modelos localizados adaptados a su región y paisaje específico",
-            "title": "Modelos de Aprendizaje Automático Personalizados"
+            "description": "Utilizando un modelo de aprendizaje automático especializado desarrollado específicamente para el paisaje forestal único del Chocó ecuatoriano",
+            "title": "Aprendizaje Automático Especializado"
           },
           "monitoring": {
-            "description": "Genere alertas de deforestación de alta resolución y monitoree cambios en el uso del suelo a lo largo del tiempo",
+            "description": "Genere alertas de deforestación de alta resolución y monitoree cambios en el uso del suelo a lo largo del tiempo en el Chocó ecuatoriano",
             "title": "Monitoreo Avanzado"
           },
           "satellite": {
@@ -223,9 +223,9 @@
         "funding": {
           "title": "Apoyado Por"
         },
-        "motivation": "Si bien las iniciativas globales de monitoreo de deforestación son invaluables, a menudo enfrentan desafíos a escalas locales donde ocurre la mayoría del trabajo de conservación en terreno. Choco Forest Watch cierra esta brecha al permitir modelos de aprendizaje automático personalizados entrenados con experiencia local.",
-        "subtitle": "Plataforma gratuita y de código abierto que apoya los esfuerzos de conservación local",
-        "tagline": "Monitoreo de Deforestación para la Conservación Local",
+        "motivation": "Choco Forest Watch es una plataforma especializada enfocada en el monitoreo de la deforestación en el Chocó ecuatoriano desde 2022-2024. Si bien las iniciativas globales de monitoreo de deforestación son invaluables, a menudo enfrentan desafíos a escalas locales donde ocurre la mayoría del trabajo de conservación en terreno. Nuestra plataforma cierra esta brecha proporcionando herramientas e información específicas para la región.",
+        "subtitle": "Plataforma gratuita y de código abierto que apoya los esfuerzos de conservación en el Chocó ecuatoriano",
+        "tagline": "Monitoreo de Deforestación para el Chocó Ecuatoriano",
         "planetWarning": {
           "title": "Aviso Importante: Cambios en el Acceso a Imágenes de Planet",
           "message": "A partir del 1 de abril de 2025, las imágenes de Planet ya no están disponibles a través del programa NICFI. Esto afecta nuestra capacidad para proporcionar imágenes satelitales de alta resolución. Estamos trabajando para asegurar fuentes alternativas de imágenes. Algunas funciones pueden estar limitadas hasta que implementemos una nueva solución."

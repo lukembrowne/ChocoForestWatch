@@ -207,11 +207,11 @@
         },
         "features": {
           "ml": {
-            "description": "Develop localized models tailored to your specific region and landscape",
-            "title": "Custom Machine Learning Models"
+            "description": "Utilizing a specialized machine learning model developed specifically for Western Ecuador's unique forest landscape",
+            "title": "Specialized Machine Learning"
           },
           "monitoring": {
-            "description": "Generate high-resolution deforestation alerts and track land use changes over time",
+            "description": "Generate high-resolution deforestation alerts and track land use changes over time in Western Ecuador",
             "title": "Advanced Monitoring"
           },
           "satellite": {
@@ -223,9 +223,9 @@
         "funding": {
           "title": "Supported By"
         },
-        "motivation": "While global deforestation monitoring initiatives are invaluable, they often face challenges at local scales where most on-the-ground conservation work happens. Choco Forest Watch bridges this gap by enabling custom machine learning models trained with local expertise.",
-        "subtitle": "Free, open-source platform supporting local conservation efforts",
-        "tagline": "Deforestation Monitoring for Local Conservation",
+        "motivation": "Choco Forest Watch is a specialized platform focused on monitoring forest cover and deforestation in Western Ecuador from 2022-2024. While global deforestation monitoring initiatives are invaluable, they can face challenges in regions with high cloud cover. Our platform bridges this gap by providing region-specific monitoring tools and insights.",
+        "subtitle": "Free, open-source platform supporting conservation efforts in Western Ecuador",
+        "tagline": "Forest Monitoring for Western Ecuador",
         "planetWarning": {
           "title": "Important Notice: Planet Imagery Access Changes",
           "message": "As of April 1, 2025, Planet imagery is no longer available through the NICFI program. This affects our ability to provide high-resolution satellite imagery. We are working to secure alternative imagery sources. The core functionality of Choco Forest Watch may be limited until we implement a new solution."
