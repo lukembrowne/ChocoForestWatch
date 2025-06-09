@@ -16,8 +16,10 @@ from ml_pipeline.run_manager import RunManager
 from pathlib import PosixPath
 import json
 
+
 # Set up database connection
 engine = get_db_connection()
+
 
 #%% 
 
@@ -33,11 +35,13 @@ if __name__ == "__main__":
     month = args.month
     run_dir = Path(args.run_dir) if args.run_dir else None
     run_id = run_dir.parts[1]
-else:
-    # Default values for interactive IPython session if not run from command line
-    year = "2022"
-    month = "01"
-    rm = RunManager("northern_choco_test_2025_05_21")
+
+
+#%% 
+# Default values for interactive IPython session if not run from command line
+year = "2022"
+month = "01"
+rm = RunManager("northern_choco_test_2025_05_21")
 
 
 #%% 

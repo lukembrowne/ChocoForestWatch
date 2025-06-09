@@ -26,7 +26,10 @@ import hashlib
 import json
 
 import numpy as np
+import comet_ml
 from xgboost import XGBClassifier
+import xgboost as xgb
+import shap
 from sklearn.model_selection import (
     train_test_split,
     GroupKFold,
@@ -44,6 +47,16 @@ from rasterio.mask import mask
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+# 
+comet_ml.login(api_key=os.getenv("COMETML_API"),
+               project_name="choco-forest-watch",
+               workspace="lukembrowne")
+
 
 # ---------------------------------------------------------------------------
 #  Config & default hyper‑parameters
@@ -224,6 +237,10 @@ class ModelTrainer:
     def _fit_model(self, X, y, feature_ids, dates, model_params):
         cfg = self.cfg
 
+        # Get the current experiment
+        experiment = comet_ml.Experiment    (project_name="choco-forest-watch",
+                                         workspace="lukembrowne")
+
          # ---- encode class labels -----------------------------------------
         desired = cfg.class_order
         present = np.unique(y).tolist()
@@ -321,6 +338,12 @@ class ModelTrainer:
         params.setdefault("random_state", cfg.random_state)
         params.setdefault("early_stopping_rounds", cfg.early_stopping_rounds)
 
+
+
+        # Log Pandas Profile Train
+        experiment.log_dataframe_profile(X_tr, "pandas_profiling_train", minimal=True, log_raw_dataframe=False)
+
+
         # ---- models for CV and final fit ----------------------------
         model_final = XGBClassifier(**params)
         cv_scores = None
@@ -380,6 +403,66 @@ class ModelTrainer:
             "classes_present": present,
             "cv_accuracy": cv_scores.tolist() if cv_scores is not None else None,
         }
+
+        # Save model to comet
+       # experiment.log_model('model_final', 'models/model_final.pkl')
+
+        #feature importance plot
+        booster = model_final.get_booster()
+        importances = booster.get_score(importance_type='weight')
+        print(importances)
+        for key in importances:
+            experiment.log_other(key, importances[key])
+            
+        experiment.log_asset_data(importances)
+
+            
+        ax = xgb.plot_importance(booster)
+        ax.figure.savefig('feature_importance.png')
+
+        experiment.log_image('feature_importance.png')
+
+
+        # Log the confusion matrix
+        experiment.log_confusion_matrix(y_te, y_pred, labels=present)
+
+        # Log scalar metrics
+        experiment.log_metric("accuracy", metrics["accuracy"])
+        experiment.log_metric("cv_accuracy_mean", sum(metrics["cv_accuracy"]) / len(metrics["cv_accuracy"]))
+
+        # Log class-wise precision, recall, f1 with per-class index
+        for i, class_name in enumerate(metrics["classes_present"]):
+            experiment.log_metric(f"precision_{class_name}", metrics["precision"][i])
+            experiment.log_metric(f"recall_{class_name}", metrics["recall"][i])
+            experiment.log_metric(f"f1_{class_name}", metrics["f1"][i])
+
+        #### Log SHAP values
+
+        # model_bytearray = booster.save_raw()[4:]
+        # def myfunc(self=None):
+        #     return model_bytearray
+        # booster.save_raw = myfunc
+
+        # explainer = shap.TreeExplainer(booster)
+
+        # shap_values = explainer.shap_values(X_tr)
+        # shap.initjs()
+        # feature_names = y_tr
+
+
+        # # log decision plot
+        # shap.decision_plot(explainer.expected_value, shap_values, feature_names, show=False)
+        # plt.savefig('decision_plot.png')
+        # plt.clf()
+
+        # # log Summary plot
+        # shap.summary_plot(shap_values, feature_names, show=False)
+        # plt.savefig('summary_plot.png')
+
+
+        # End experiment
+        experiment.end()
+
 
         # ---- stash encoders & mappings -----------------------------
         model_final.train_map = train_map
