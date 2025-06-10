@@ -24,7 +24,7 @@ import pickle
 import logging
 import hashlib
 import json
-
+import io
 import numpy as np
 import comet_ml
 from xgboost import XGBClassifier
@@ -44,6 +44,7 @@ from sklearn.metrics import (
 from sklearn.utils.class_weight import compute_sample_weight
 import rasterio
 from rasterio.mask import mask
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -68,11 +69,11 @@ class TrainerConfig:
     # Splitting strategy
     split_method: str = "feature"  # "feature" or "pixel"
     test_fraction: float = 0.2      # portion held out as TEST (never seen)
-    val_fraction: float = 0.1       # portion of training set for VAL/early‑stop
+    val_fraction: float = 0.2      # portion of training set for VAL/early‑stop
 
     # Model and training
     random_state: int = 42
-    early_stopping_rounds: int = 10
+    early_stopping_rounds: int = 20
 
     # Class imbalance
     class_weighting: str | None = None  # None or "balanced"
@@ -87,6 +88,8 @@ class TrainerConfig:
         "Cloud",
         "Shadow",
         "Water",
+        "Haze",
+        "Sensor Error"
     )
 
     # Data cache directory (optional)
@@ -124,13 +127,12 @@ class ModelTrainer:
     def __init__(
         self,
         extractor,
-        out_dir: str | Path = "models",
+        run_dir: str | Path = "models",
         cfg: TrainerConfig = TrainerConfig(),
     ):
         self.extractor = extractor
         self.cfg = cfg
-        self.out_dir = Path(out_dir)
-        self.out_dir.mkdir(parents=True, exist_ok=True)
+        self.run_dir = Path(run_dir)
         self.last_saved_model_path: Path | None = None
 
         # ensure cache dir exists
@@ -297,6 +299,25 @@ class ModelTrainer:
             feature_ids[trval_mask],
         )
         X_te, y_te = X_feat[test_mask], y_enc[test_mask]
+        feature_ids_te = feature_ids[test_mask]  # Feature IDs for test set
+        dates_te = dates[test_mask]  # Dates for test set
+
+        # Save test feature IDs for later reference for running benchmarks
+        test_ids_dir = self.run_dir / "feature_ids_testing"
+        
+        # Create DataFrame with test IDs, dates, and class labels
+        test_df = pd.DataFrame({
+            'feature_id': feature_ids_te,
+            'date': dates_te,
+            'class_label': [present_classes[label] for label in y_te]  # Convert encoded labels back to class names
+        })
+
+        # Subset to only unique rows
+        test_df = test_df.drop_duplicates()
+        
+        # Save to file
+        test_df.to_csv(test_ids_dir / f"test_features_{dates_te[0]}.csv", index=False)
+        print(f"Saved test feature IDs to {test_ids_dir}/test_features_{dates_te[0]}.csv")
 
         # ---- inner VAL split ----------------------------------------
         if cfg.split_method == "feature":
@@ -318,8 +339,8 @@ class ModelTrainer:
                 stratify=y_trval,
             )
 
-        X_tr, y_tr = X_trval[tr_mask], y_trval[tr_mask]
-        X_val, y_val = X_trval[val_mask], y_trval[val_mask]
+        X_tr, y_tr = X_trval[tr_mask], y_trval[tr_mask] # Used for training
+        X_val, y_val = X_trval[val_mask], y_trval[val_mask] # Used for validation during training
 
         # ---- class imbalance ----------------------------------------
         sample_weight_tr = sample_weight_val = None
@@ -416,12 +437,12 @@ class ModelTrainer:
             
         experiment.log_asset_data(importances)
 
-            
+        # Create figure and save to BytesIO buffer
         ax = xgb.plot_importance(booster)
-        ax.figure.savefig('feature_importance.png')
-
-        experiment.log_image('feature_importance.png')
-
+        buf = io.BytesIO()
+        ax.figure.savefig(buf, format='png')
+        buf.seek(0)
+        experiment.log_image(buf, name='feature_importance')
 
         # Log the confusion matrix
         experiment.log_confusion_matrix(y_te, y_pred, labels=present)
@@ -435,6 +456,9 @@ class ModelTrainer:
             experiment.log_metric(f"precision_{class_name}", metrics["precision"][i])
             experiment.log_metric(f"recall_{class_name}", metrics["recall"][i])
             experiment.log_metric(f"f1_{class_name}", metrics["f1"][i])
+
+        # Log unique dates
+        experiment.log_metric("dates", list(set(dates)))
 
         #### Log SHAP values
 
@@ -479,7 +503,7 @@ class ModelTrainer:
 
     def _save_model(self, name, desc, model):
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        path = self.out_dir / f"{name}_{ts}.pkl"
+        path = self.run_dir / "saved_models" / f"{name}.pkl"
         meta = {"name": name, "description": desc, "saved_utc": ts}
         with open(path, "wb") as f:
             pickle.dump({"meta": meta, "model": model}, f)

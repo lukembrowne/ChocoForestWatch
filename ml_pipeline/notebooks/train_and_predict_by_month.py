@@ -29,25 +29,29 @@ if __name__ == "__main__":
     parser.add_argument("--year", type=str, required=True, help="Year for the pipeline (e.g., '2022')")
     parser.add_argument("--month", type=str, required=True, help="Month for the pipeline (e.g., '06')")
     parser.add_argument("--run_dir", type=str, required=True, help="Run directory for the pipeline")
+    parser.add_argument("--project_id", type=str, required=True, help="Project ID for the training polygons")
     args = parser.parse_args()
 
     year = args.year
     month = args.month
     run_dir = Path(args.run_dir) if args.run_dir else None
     run_id = run_dir.parts[1]
-
+    project_id = args.project_id
 
 #%% 
 # Default values for interactive IPython session if not run from command line
-year = "2022"
-month = "01"
-rm = RunManager("northern_choco_test_2025_05_21")
+# year = "2022"
+# month = "01"
+# run_id = "northern_choco_test_2025_06_09"
+# rm = RunManager(run_id)
+# run_dir = rm.run_path
+# project_id = 6
 
 
 #%% 
 gdf = load_training_polygons(
     engine,
-    project_id=2,
+    project_id=project_id,
     basemap_date=f"{year}-{month}",
 )
 
@@ -75,11 +79,11 @@ extractor = TitilerExtractor(
 
 #%% 
 # Train model
-config = TrainerConfig(cache_dir=rm.run_path / "data_cache") # Set cache dir
+config = TrainerConfig(cache_dir=run_dir / "data_cache") # Set cache dir
 
 trainer = ModelTrainer(
     extractor=extractor,
-    out_dir=rm.run_path / "saved_models",
+    run_dir=run_dir,
     cfg=config
 )
 
@@ -98,18 +102,18 @@ model_path, metrics = trainer.fit_prepared_data(npz,
 print(metrics)
 
 # Save metrics to run_dir
-with open(rm.run_path / "metrics.json", "w") as f:
-    json.dump(metrics, f)
+# with open(run_dir / "metrics.json", "w") as f:
+#     json.dump(metrics, f)
 
 
 # %% 
 
 print("Initializing ModelPredictor...")
 predictor = ModelPredictor(
-    model_path=trainer.saved_model_path,
-    extractor=extractor,
-    upload_to_s3=True,
-    s3_path=f"predictions/{rm.run_id}", # No trailing slash 
+    model_path=trainer.saved_model_path, # Path to the saved model
+    extractor=extractor, # TitilerExtractor object
+    upload_to_s3=True, # Whether to upload to S3
+    s3_path=f"predictions/{run_id}", # No trailing slash 
 )
 
 #%% 
@@ -120,7 +124,7 @@ print("Predicting across entire collection...")
 predictor.predict_collection(
     basemap_date=f"{year}-{month}",
     collection=f"nicfi-{year}-{month}",
-    pred_dir=rm.run_path / f"prediction_cogs/{year}/{month}",
+    pred_dir=run_dir / f"prediction_cogs/{year}/{month}",
     save_local=False
 )
 
@@ -136,11 +140,11 @@ print("Adding predictions to the STAC database...")
 builder.process_month(
     year=year,
     month=month,
-    prefix_on_s3=f"predictions/{rm.run_id}", ## do not need year and month here
-    collection_id=f"{rm.run_id}-pred-{year}-{month}",
+    prefix_on_s3=f"predictions/{run_id}", ## do not need year and month here
+    collection_id=f"{run_id}-pred-{year}-{month}",
     asset_key="data",
     asset_roles=["classification"],
-    asset_title=f"Land‑cover classes - {rm.run_id}",
+    asset_title=f"Land‑cover classes - {run_id}",
     extra_asset_fields={
         "raster:bands": [{"nodata": 255, "data_type": "uint8"}],
         "classification:classes": [
@@ -149,6 +153,8 @@ builder.process_month(
             {"value": 2, "name": "Cloud"},
             {"value": 3, "name": "Shadow"},
             {"value": 4, "name": "Water"},
+            {"value": 5, "name": "Haze"},
+            {"value": 6, "name": "Sensor Error"},
         ],
     }
 )

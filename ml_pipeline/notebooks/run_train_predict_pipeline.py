@@ -11,6 +11,7 @@ across all months of a specified year. It:
    - Runs the training and prediction pipeline
    - Saves metrics for that month
 3. Aggregates all monthly metrics into a summary
+4. Generates annual composites from the monthly predictions in parallel
 
 The script uses subprocess to run train_and_predict_by_month.py for each month,
 which handles:
@@ -32,37 +33,40 @@ The results are organized as:
         │   └── prediction_cogs/
         ├── {year}_02/
         │   └── ...
-        └── metrics_*.json
+        ├── metrics_*.json
+        └── composites/
+            └── {quad_name}_{year}_forest_cover.tif
 """
 
 #%% 
 import subprocess, json
 from ml_pipeline.run_manager import RunManager     
+from ml_pipeline.composite_generator import CompositeGenerator
 from tqdm import tqdm
+from joblib import Parallel, delayed
+from ml_pipeline.s3_utils import list_files
 
 #%% 
 
 # Set tag
-run_id = "northern_choco_test_2025_05_21" # Name for run
+run_id = "northern_choco_test_2025_06_09" # Name for run
 
 # Set year
 year = "2022"
+project_id = 6 # Project ID for the training polygons
 
 #%% 
 # One folder for the whole year-long experiment
 rm = RunManager(run_id=run_id, root="runs")
 
-
 #%%
 # Loop through months
-for m in tqdm(range(1, 13), desc=f"Processing months for {year}"):
+for m in tqdm(range(3, 13), desc=f"Processing months for {year}"):
     
     print("-"*100)
     print("-"*100)
     print("-"*100)
-    month = f"{m:02d}"
-    child = rm.run_path / f"{year}_{month}"
-    child.mkdir()                                       # keeps artefacts separate
+    month = f"{m:02d}"                                # keeps artefacts separate
 
     subprocess.run(
         [
@@ -70,31 +74,68 @@ for m in tqdm(range(1, 13), desc=f"Processing months for {year}"):
             "train_and_predict_by_month.py",
             "--year",  year,
             "--month", month,
-            "--run_dir", str(child),                    # NEW flag
+            "--run_dir", str(rm.run_path),
+            "--project_id", str(project_id),
         ],
     check=True,
     )
 
-    # append month metrics to parent-level aggregator (optional)
-    metrics_file = child / "metrics.json"
-    if metrics_file.exists():
-        with open(metrics_file) as f:
-            metrics = json.load(f)
-        rm.save_json(f"metrics_{month}.json", metrics)
-    else:
-        print(f"No metrics file found for {year}-{month}")
+#%%
+def process_quad(quad_name: str, run_id: str, year: str):
+    """Process a single quad for composite generation."""
+    try:
+        with CompositeGenerator(run_id=run_id, year=year) as composite_gen:
+            composite_gen.generate_composite(quad_name=quad_name)
+        return True
+    except Exception as e:
+        print(f"Error processing quad {quad_name}: {str(e)}")
+        return False
 
-    print(f"✅ Year {year} finished. Results in {rm.run_path}")
+
+#%%
+# Generate composites in parallel
+print("\nGenerating annual composites...")
+
+# Get list of quads from S3
+s3_files = list_files(prefix=f"predictions/{run_id}/{year}/01")
+
+
+def extract_quad_name(s3_file: dict) -> str:
+    """Extract quad name (e.g. '567-1027') from S3 file listing."""
+    # Get the filename from either key or url
+    filename = s3_file['key'].split('/')[-1]  # or s3_file['url'].split('/')[-1]
+    # Split on underscore and take first part
+    return filename.split('_')[0]
+
+
+quads = list(set(extract_quad_name(f) for f in s3_files))  # Use set to remove duplicates
+print(f"Found {len(quads)} unique quads")
+print("Examples of quads: ", quads[0:4])
+
+
+
+#%% 
+
+# Generate composites in parallel for each quad
+# Need to limit number of jobs to avoid overwhelming S3
+results = Parallel(n_jobs=2, prefer="processes")(
+    delayed(process_quad)(quad_name=quad, run_id=run_id, year=year)
+    for quad in tqdm(quads, desc="Processing quads")
+)
+
+# Check results
+successful = sum(results)
+failed = len(quads) - successful
+print(f"Completed composite generation: {successful} successful, {failed} failed")
+
+
+#%% 
+
+# Create STAC collection so that the composites are visible in the frontend
+CompositeGenerator(run_id=run_id, year=year)._create_stac_collection()
+
+
+
 # %%
 
-# Add to summary csv
-
-# Loop through all metrics files in parent
-metrics_files = list(rm.run_path.glob("metrics_*.json"))
-
-# Loop through all metrics files and add to summary csv
-for file in metrics_files:
-    with open(file) as f:
-        metrics = json.load(f)
-    rm.record_summary(metrics)
 

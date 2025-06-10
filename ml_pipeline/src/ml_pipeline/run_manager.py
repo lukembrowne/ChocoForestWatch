@@ -11,15 +11,20 @@ class RunManager:
         self.runs_csv = self.root.parent / "runs.csv"
         self.run_id = run_id
         self.run_path = self.root / run_id
+
+        if self.run_exists():
+            print(f"⚠️  Run directory already exists: {self.run_path}")
+        else:
+            print(f"✅ Creating new run directory: {self.run_path}")
         
         # Create run directory and subdirectories
         self.run_path.mkdir(exist_ok=True)
         (self.run_path / "preds").mkdir(exist_ok=True)
+        (self.run_path / "feature_ids_testing").mkdir(exist_ok=True)
+        (self.run_path / "saved_models").mkdir(exist_ok=True)
+        (self.run_path / "data_cache").mkdir(exist_ok=True)
         
-        if self.run_exists():
-            print(f"⚠️  Run directory already exists: {self.run_path}")
-        else:
-            print(f"✅ Created new run directory: {self.run_path}")
+        
 
     def new_run(self) -> Path:
         """Create a new run directory with a deterministic ID based on the tag."""
