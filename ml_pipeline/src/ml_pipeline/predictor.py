@@ -28,6 +28,9 @@ import shutil
 
 from ml_pipeline.s3_utils import upload_file
 
+from joblib import Parallel, delayed
+
+
 # ---------------------------------------------------------------------------
 #  Predictor configuration
 # ---------------------------------------------------------------------------
@@ -149,15 +152,20 @@ class ModelPredictor:
         pred_dir.mkdir(parents=True, exist_ok=True)
 
         saved: list[Path] = []
-        for url in tqdm(cog_urls, desc=f"Predicting {collection}"):
-            saved.append(
-                self._predict_single_cog(
-                    cog_url=url,
-                    basemap_date=basemap_date,
-                    pred_dir=pred_dir,
-                    save_local=save_local,
-                )
-            )
+        # for url in tqdm(cog_urls, desc=f"Predicting {collection}"):
+        #     saved.append(
+        #         self._predict_single_cog(
+        #             cog_url=url,
+        #             basemap_date=basemap_date,
+        #             pred_dir=pred_dir,
+        #             save_local=save_local,
+        #         )
+        #     )
+
+        saved = Parallel(n_jobs=8, prefer="processes")(
+            delayed(self._predict_single_cog)(u, basemap_date, pred_dir, save_local)
+            for u in tqdm(cog_urls)
+        )
 
         print(f"Saved {len(saved)} prediction rasters ➜ {pred_dir}")
         return saved
