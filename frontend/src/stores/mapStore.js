@@ -24,6 +24,7 @@ import { Polygon } from 'ol/geom';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { transformExtent } from 'ol/proj'
 import { useQuasar } from 'quasar';
+import { getEncodedColormap } from 'src/utils/colormap';
 
 export const useMapStore = defineStore('map', () => {
 
@@ -426,22 +427,31 @@ export const useMapStore = defineStore('map', () => {
     // Create a new XYZ source for predictions
     if (type === 'predictions') {
 
-      // const colormap =
-      //   '%7B%220%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%221%22%3A%20%5B255%2C%20255%2C%200%5D%2C%20%222%22%3A%20%5B255%2C%20255%2C%20255%5D%2C%20%223%22%3A%20%5B0%2C%200%2C%200%5D%2C%20%224%22%3A%20%5B0%2C%200%2C%20255%5D%7D';
+      // const colormap = encodeColormap(landcoverPalette);
 
       // source = new XYZ({
-      //   url: `http://localhost:8083/collections/nicfi-pred-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=pred&colormap=${colormap}`,
+      //   url: `http://localhost:8083/collections/northern_choco_test_2025_06_09-pred-2022-01/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
       //   maxZoom: 14,
       // });
 
-      //  Composite forest cover map
-      const colormap =
-        '%7B%221%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%220%22%3A%20%5B255%2C%20255%2C%200%5D%7D';
+      // //  Composite forest cover map - old
+      // const colormap =
+      //   '%7B%221%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%220%22%3A%20%5B255%2C%20255%2C%200%5D%7D';
+
+      // source = new XYZ({
+      //   url: `http://localhost:8083/collections/nicfi-pred-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
+      //   maxZoom: 14,
+      // });
+      
+      //  Composite forest cover map - new
+      const colormap = getEncodedColormap('CFWForestCoverPalette');
+
 
       source = new XYZ({
-        url: `http://localhost:8083/collections/nicfi-pred-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
+        url: `http://localhost:8083/collections/nicfi-pred-northern_choco_test_2025_06_09-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
         maxZoom: 14,
       });
+
 
       // Testing out hansen tree cover benchmark
       // source = new XYZ({
@@ -1511,7 +1521,7 @@ export const useMapStore = defineStore('map', () => {
       const view = map.value.getView();
       view.animate({
         center: [point.x, point.y],
-        zoom: 16,
+        zoom: 14,
         duration: 750
       });
     }
@@ -1531,7 +1541,7 @@ export const useMapStore = defineStore('map', () => {
       view.animate({
         center: [point.x, point.y],
         zoom: 14,
-        duration: 1000
+        duration: 750
       });
     }
     
