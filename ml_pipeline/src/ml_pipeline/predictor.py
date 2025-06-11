@@ -149,7 +149,8 @@ class ModelPredictor:
             pred_dir = Path(pred_dir)
 
         # Create the prediction directory if it doesn't exist
-        pred_dir.mkdir(parents=True, exist_ok=True)
+        if save_local:
+            pred_dir.mkdir(parents=True, exist_ok=True)
 
         saved: list[Path] = []
         # for url in tqdm(cog_urls, desc=f"Predicting {collection}"):

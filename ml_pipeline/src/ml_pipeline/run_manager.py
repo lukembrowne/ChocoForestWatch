@@ -19,7 +19,6 @@ class RunManager:
         
         # Create run directory and subdirectories
         self.run_path.mkdir(exist_ok=True)
-        (self.run_path / "preds").mkdir(exist_ok=True)
         (self.run_path / "feature_ids_testing").mkdir(exist_ok=True)
         (self.run_path / "saved_models").mkdir(exist_ok=True)
         (self.run_path / "data_cache").mkdir(exist_ok=True)
