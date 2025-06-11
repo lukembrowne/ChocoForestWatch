@@ -341,12 +341,7 @@ class BenchmarkTester:
             for cog in self.extractor.get_cog_urls(wgs84_geom):
                 try:
                     with rasterio.open(cog) as src:
-                        # Save WGS84 geometry to file for debugging
-                        import json
-                        from shapely.geometry import mapping
-                        with open(f'debug_geom_{fid}.geojson', 'w') as f:
-                            json.dump(mapping(wgs84_geom), f)
-                            
+                        
                         mask_geom = wgs84_geom if src.crs.to_epsg() == 4326 else webm_geom
                         out, _ = mask(
                             src,
@@ -355,8 +350,6 @@ class BenchmarkTester:
                             indexes=self.band_indexes,
                             all_touched=True,
                         )
-
-                        raise RuntimeError("Debug breakpoint reached - variable 'a' is undefined")
 
                         nodata = src.nodata
                         if nodata is not None:
