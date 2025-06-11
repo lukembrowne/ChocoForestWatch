@@ -60,6 +60,7 @@ export const useMapStore = defineStore('map', () => {
   const sliderValue = ref(0);
   const randomPoints = ref([]);
   const currentPointIndex = ref(-1);
+  const boundaryLayer = ref(null);
 
   // Internal state
   const projectStore = useProjectStore();
@@ -126,6 +127,7 @@ export const useMapStore = defineStore('map', () => {
       console.log('Map initialized in MapStore...');
       mapInitialized.value = true;
       map.value.setTarget(target)
+      initBoundaryLayer();
     }
   };
 
@@ -1342,7 +1344,7 @@ export const useMapStore = defineStore('map', () => {
 
 
   // Add new methods
-  const initDualMaps = (primaryTarget, secondaryTarget) => {
+  const initDualMaps = async (primaryTarget, secondaryTarget) => {
 
     // console.log('Primary target:', primaryTarget);
     // console.log('Secondary target:', secondaryTarget);
@@ -1455,6 +1457,7 @@ export const useMapStore = defineStore('map', () => {
     maps.value.primary.setTarget(primaryTarget)
     maps.value.secondary.setTarget(secondaryTarget)
 
+    initBoundaryLayer();
   };
 
   function hideDualMaps() {
@@ -1556,6 +1559,35 @@ export const useMapStore = defineStore('map', () => {
   const clearRandomPoints = () => {
     randomPoints.value = [];
     currentPointIndex.value = -1;
+  };
+
+  const initBoundaryLayer = async () => {
+    if (boundaryLayer.value) return;                 // already added
+
+    const response  = await fetch('/data/Ecuador-DEM-900m-contour.geojson');
+    console.log("Response:", response);
+    const geojson   = await response.json();
+
+    boundaryLayer.value = new VectorLayer({
+      source: new VectorSource({
+        features: new GeoJSON().readFeatures(geojson, {
+          featureProjection: 'EPSG:3857',
+        }),
+      }),
+      id:    'ecuador-boundary',
+      title: 'Western Ecuador Boundary',
+      zIndex: 4,                           // above OSM, below polygons
+      visible: true,
+      style: new Style({
+        stroke: new Stroke({ color: '#000000', width: 2 }),
+      }),
+      interactive: false,
+      selectable:  false,
+    });
+
+    map.value?.addLayer(boundaryLayer.value);
+    maps.value.primary?.addLayer(boundaryLayer.value.clone());
+    maps.value.secondary?.addLayer(boundaryLayer.value.clone());
   };
 
   return {
