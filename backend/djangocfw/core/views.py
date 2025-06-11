@@ -33,10 +33,54 @@ import os
 import random
 from typing import Optional, Iterator
 import rasterio
-from shapely.geometry import Point
+from shapely.geometry import Point, shape
+from shapely.ops import unary_union
 from pathlib import Path
+import requests
+from pyproj import Transformer
+from shapely.ops import transform
 
 logger = logging.getLogger(__name__)
+
+_global_boundary_polygon = None  # cache for boundary geometry
+
+def _load_boundary_polygon():
+    """Load and cache the project boundary as a shapely geometry in Web Mercator projection."""
+    global _global_boundary_polygon
+    if _global_boundary_polygon is not None:
+        return _global_boundary_polygon
+
+    # Path to the GeoJSON that defines the project boundary. Allow override via env var.
+    boundary_path = os.environ.get("BOUNDARY_GEOJSON_PATH")
+
+    try:
+        if boundary_path.startswith("http://") or boundary_path.startswith("https://"):
+            resp = requests.get(boundary_path, timeout=30)
+            resp.raise_for_status()
+            geojson = resp.json()
+        else:
+            with open(boundary_path, "r", encoding="utf-8") as f:
+                geojson = json.load(f)
+        
+        # Load geometries and convert to Web Mercator
+        # Create transformer from WGS84 to Web Mercator
+        project = Transformer.from_crs('EPSG:4326', 'EPSG:3857', always_xy=True).transform
+        
+        # Load and transform each geometry
+        geoms = []
+        for feat in geojson.get("features", []):
+            geom = shape(feat["geometry"])
+            # Transform to Web Mercator
+            geom_3857 = transform(project, geom)
+            geoms.append(geom_3857)
+            
+        _global_boundary_polygon = unary_union(geoms)
+        logger.info(f"Loaded and projected boundary polygon from {boundary_path}")
+    except Exception as exc:
+        logger.error(f"Failed to load boundary polygon: {exc}")
+        _global_boundary_polygon = None
+
+    return _global_boundary_polygon
 
 @api_view(['GET'])
 def health_check(request):
@@ -740,20 +784,37 @@ def get_random_points_within_collection(request, collection_id):
         
         # Generate all points for each quad in a single pass
         all_points = []
+
+        # Load boundary geometry once
+        boundary_polygon = _load_boundary_polygon()
+
         for cog_url in cog_urls:
-            # Generate all points for this quad at once
-            points = extractor.random_points_in_quad(cog_url, count, rng=random.Random(42))
+            # Oversample points, then keep those inside boundary
+            raw_points = extractor.random_points_in_quad(
+                cog_url,
+                count,
+                rng=random.Random(42),
+            )
+
+            if boundary_polygon:
+                filtered_points = [p for p in raw_points if boundary_polygon.contains(p["point"])]
+            else:
+                # Fallback to all raw points if boundary failed to load
+                filtered_points = raw_points
+
+            # Limit to requested count per quad
+            selected_points = filtered_points[:count]
+
             # Convert Point objects to serializable format
-            serializable_points = []
-            for point in points:
-                serializable_point = {
-                    "quad_id": point["quad_id"],
-                    "x": point["x"],
-                    "y": point["y"],
-                    "cog_url": cog_url
-                }
-                serializable_points.append(serializable_point)
-            all_points.extend(serializable_points)
+            for pt in selected_points:
+                all_points.append(
+                    {
+                        "quad_id": pt["quad_id"],
+                        "x": pt["x"],
+                        "y": pt["y"],
+                        "cog_url": cog_url,
+                    }
+                )
         
         # Randomize the order of all points
         random.seed(42)
