@@ -9,16 +9,32 @@ import matplotlib.pyplot as plt   # Only needed if you want the quick plot
 def save_metrics_csv(
     metrics_df: pd.DataFrame,
     benchmark_name: str,
-    out_root: Path | str = "benchmark_results",
+    *,
+    run_id: str,
+    runs_root: Path | str = "runs",
 ) -> Path:
+    """Save one benchmark run CSV inside this run's folder.
+
+    The file layout is now:
+        runs/<run_id>/benchmark_results/metrics_<benchmark_name>_<YYYYMMDD_HHMMSS>.csv
+
+    Parameters
+    ----------
+    metrics_df
+        DataFrame returned from ``BenchmarkTester.run``.
+    benchmark_name
+        Typically the STAC collection ID (e.g. ``nicfi-pred-composite-2022``).
+    run_id
+        Identifier for the current pipeline run (matches ``RunManager``).
+    runs_root
+        Root directory that contains all runs – defaults to ``"runs"``.
     """
-    Save *one* benchmark run to:
-        benchmark_results/<benchmark_name>/metrics_YYYYMMDD_HHMMSS.csv
-    """
-    out_dir = Path(out_root) / benchmark_name
+    out_dir = Path(runs_root) / run_id / "benchmark_results"
     out_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_file = out_dir / f"metrics_{stamp}.csv"
+
+    safe_benchmark = benchmark_name.replace("/", "-")
+    out_file = out_dir / f"{safe_benchmark}.csv"
+
     metrics_df.to_csv(out_file, index=False)
     print(f"✅  Metrics written ➜ {out_file}")
     return out_file
@@ -34,7 +50,7 @@ def load_all_metrics(
     csv_files = sorted((Path(out_root) / benchmark_name).glob("metrics_*.csv"))
     if not csv_files:
         raise FileNotFoundError(
-            f"No metrics CSVs found for benchmark “{benchmark_name}” in {out_root}"
+            f"No metrics CSVs found for benchmark {benchmark_name}"
         )
     return pd.concat(map(pd.read_csv, csv_files), ignore_index=True)
 

@@ -45,6 +45,7 @@ from ml_pipeline.composite_generator import CompositeGenerator
 from tqdm import tqdm
 from joblib import Parallel, delayed
 from ml_pipeline.s3_utils import list_files
+from ml_pipeline.benchmark_tester import BenchmarkTester
 
 #%% 
 
@@ -61,7 +62,7 @@ rm = RunManager(run_id=run_id, root="runs")
 
 #%%
 # Loop through months
-for m in tqdm(range(3, 13), desc=f"Processing months for {year}"):
+for m in tqdm(range(1, 3), desc=f"Processing months for {year}"):
     
     print("-"*100)
     print("-"*100)
@@ -135,7 +136,58 @@ print(f"Completed composite generation: {successful} successful, {failed} failed
 CompositeGenerator(run_id=run_id, year=year)._create_stac_collection()
 
 
+#%%
+# Run benchmark evaluation against reference datasets
+
+print("\nRunning benchmark tests…")
+
+# List of benchmark collections to evaluate
+benchmark_collections = [
+    # Our own predictions
+    f"nicfi-pred-{run_id}-composite-{year}",  # Our annual composite
+    
+    # External benchmarks
+    "benchmarks-hansen-tree-cover-2022",      # Hansen Global Forest Change
+    "benchmarks-mapbiomes-2022",              # MapBiomas
+    "benchmarks-esa-landcover-2020",          # ESA WorldCover
+    "benchmarks-jrc-forestcover-2020",        # JRC Global Forest Cover
+    "benchmarks-palsar-2020",                 # PALSAR Forest/Non-Forest
+    "benchmarks-wri-treecover-2020",          # WRI Tree Cover
+]
+
+# Loop through each benchmark collection
+for collection in benchmark_collections:
+    print("\n" + "="*100)
+    print(f"Evaluating benchmark: {collection}")
+    print("="*100)
+    
+    try:
+        tester = BenchmarkTester(
+            base_url="http://localhost:8083",
+            collection=collection,
+            year=year,
+            project_id=project_id,
+            run_id=run_id,
+        )
+        tester.run()
+    except Exception as e:
+        print(f"❌  Failed to evaluate {collection}: {str(e)}")
+        continue
 
 # %%
 
+# Playground
+tester = BenchmarkTester(
+            base_url="http://localhost:8083",
+            collection="benchmarks-jrc-forestcover-2020",
+            year=year,
+            project_id=project_id,
+            run_id=run_id,
+        )
 
+#%% 
+tester.run()
+
+
+
+# %%
