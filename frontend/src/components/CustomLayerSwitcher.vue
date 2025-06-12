@@ -2,9 +2,16 @@
   <div class="custom-layer-switcher">
     <div class="row items-center justify-between q-mb-sm">
       <p class="text-subtitle1 q-mb-none">{{ t('layers.switcher.title') }}</p>
-      <q-btn flat round dense :icon="isExpanded ? 'expand_less' : 'expand_more'" size="sm" @click="isExpanded = !isExpanded">
-        <q-tooltip>{{ isExpanded ? t('layers.switcher.tooltips.collapse') : t('layers.switcher.tooltips.expand') }}</q-tooltip>
-      </q-btn>
+      <div class="row items-center no-wrap">
+        <!-- Add benchmark button -->
+        <q-btn flat round dense icon="add" size="sm" class="q-mr-xs" @click="showBenchmarkDialog = true">
+          <q-tooltip>{{ t('layers.switcher.tooltips.addBenchmark') }}</q-tooltip>
+        </q-btn>
+        <!-- Expand / collapse -->
+        <q-btn flat round dense :icon="isExpanded ? 'expand_less' : 'expand_more'" size="sm" @click="isExpanded = !isExpanded">
+          <q-tooltip>{{ isExpanded ? t('layers.switcher.tooltips.collapse') : t('layers.switcher.tooltips.expand') }}</q-tooltip>
+        </q-btn>
+      </div>
     </div>
     <q-slide-transition>
       <div v-show="isExpanded">
@@ -18,7 +25,7 @@
                 <!-- <q-btn flat round dense icon="tune" size="sm" @click="element.showOpacity = !element.showOpacity">
                   <q-tooltip>{{ t('layers.switcher.tooltips.toggleOpacity') }}</q-tooltip>
                 </q-btn> -->
-                <q-btn v-if="element.id.includes('landcover') || element.id.includes('deforestation')" flat round dense
+                <q-btn v-if="element.id.includes('landcover') || element.id.includes('deforestation') || element.id.includes('benchmark')" flat round dense
                   icon="delete" color="negative" size="sm" @click="removeLayer(element.id)">
                   <q-tooltip>{{ t('layers.switcher.tooltips.remove') }}</q-tooltip>
                 </q-btn>
@@ -34,6 +41,44 @@
         </Sortable>
       </div>
     </q-slide-transition>
+
+    <!-- Dialog for selecting benchmark dataset -->
+    <q-dialog v-model="showBenchmarkDialog">
+      <q-card style="min-width: 600px">
+        <q-card-section class="text-h6">{{ t('layers.switcher.benchmarks.title') }}</q-card-section>
+        <q-card-section>
+          <div class="row q-col-gutter-md">
+            <div v-for="benchmark in benchmarkOptions" :key="benchmark.value" class="col-12 col-md-6">
+              <q-card 
+                class="benchmark-card cursor-pointer" 
+                :class="{ 'selected': selectedBenchmark === benchmark.value }"
+                @click="selectedBenchmark = benchmark.value"
+              >
+                <q-card-section>
+                  <div class="text-h6">{{ t(`layers.switcher.benchmarks.datasets.${benchmark.value.split('-')[1]}.title`) }}</div>
+                  <div class="text-caption q-mt-sm">{{ t(`layers.switcher.benchmarks.datasets.${benchmark.value.split('-')[1]}.description`) }}</div>
+                  <div class="text-caption q-mt-sm">
+                    <a :href="t(`layers.switcher.benchmarks.datasets.${benchmark.value.split('-')[1]}.url`)"
+                       target="_blank"
+                       class="text-primary"
+                       @click.stop>
+                      {{ t('common.learnMore') }}
+                    </a>
+                  </div>
+                </q-card-section>
+                <q-card-actions align="right">
+                  <q-btn flat color="primary" :label="t('layers.switcher.benchmarks.add')" @click.stop="addBenchmark(benchmark.value)" />
+                </q-card-actions>
+              </q-card>
+            </div>
+          </div>
+        </q-card-section>
+        <q-separator />
+        <q-card-actions align="right">
+          <q-btn flat :label="t('common.cancel')" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -59,6 +104,42 @@ export default {
     const mapStore = useMapStore();
     const { t } = useI18n();
     const isExpanded = ref(true);
+
+    // Benchmark dialog state
+    const showBenchmarkDialog = ref(false);
+    const selectedBenchmark = ref(null);
+    const benchmarkOptions = [
+      { 
+        label: 'Hansen Tree Cover 2022', 
+        value: 'benchmarks-hansen-tree-cover-2022',
+        description: 'Global forest cover data from University of Maryland, showing tree cover density at 30m resolution.'
+      },
+      { 
+        label: 'MapBiomas 2022', 
+        value: 'benchmarks-mapbiomes-2022',
+        description: 'Brazilian land use and land cover data, providing detailed classification of natural and anthropic areas.'
+      },
+      { 
+        label: 'ESA WorldCover 2020', 
+        value: 'benchmarks-esa-landcover-2020',
+        description: 'Global land cover map at 10m resolution from the European Space Agency, covering 11 land cover classes.'
+      },
+      { 
+        label: 'JRC Forest Cover 2020', 
+        value: 'benchmarks-jrc-forestcover-2020',
+        description: 'Global forest cover map from the Joint Research Centre, showing forest presence at 10m resolution.'
+      },
+      { 
+        label: 'PALSAR Forest/Non-Forest 2020', 
+        value: 'benchmarks-palsar-2020',
+        description: 'Forest/non-forest classification based on L-band SAR data from the PALSAR-2 sensor.'
+      },
+      { 
+        label: 'WRI Tree Cover 2020', 
+        value: 'benchmarks-wri-treecover-2020',
+        description: 'Global tree cover data from World Resources Institute, showing percentage of tree cover at 30m resolution.'
+      },
+    ];
 
     const mapLayers = computed(() => {
       if (props.mapId === 'training') {
@@ -115,6 +196,12 @@ export default {
       mapStore.removeLayer(layerId, props.mapId);
     };
 
+    const addBenchmark = (benchmarkValue) => {
+      if (!benchmarkValue) return;
+      mapStore.addBenchmarkLayer(benchmarkValue, props.mapId);
+      showBenchmarkDialog.value = false;
+    };
+
     return {
       mapLayers,
       onDragEnd,
@@ -123,6 +210,10 @@ export default {
       removeLayer,
       t,
       isExpanded,
+      showBenchmarkDialog,
+      benchmarkOptions,
+      selectedBenchmark,
+      addBenchmark,
     };
   }
 };
@@ -191,5 +282,28 @@ export default {
 .drag-handle {
   cursor: move;
   font-size: 1.2rem;
+}
+
+.benchmark-card {
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  &.selected {
+    border-color: var(--q-primary);
+  }
+
+  .text-h6 {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .text-caption {
+    color: rgba(0, 0, 0, 0.6);
+  }
 }
 </style>

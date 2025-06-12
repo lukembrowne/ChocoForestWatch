@@ -286,6 +286,7 @@
     "error": "An error occurred",
     "export": "Export",
     "getStarted": "Get Started",
+    "learnMore": "Learn More",
     "loading": "Loading...",
     "logout": "Logout",
     "logoutSuccess": "Successfully logged out",
@@ -422,8 +423,46 @@
         "collapse": "Collapse layer list",
         "expand": "Expand layer list",
         "remove": "Remove layer",
-        "toggleOpacity": "Toggle opacity control"
-      }
+        "toggleOpacity": "Toggle opacity control",
+        "addBenchmark": "Add a benchmark dataset to compare with your analysis"
+      },
+        "benchmarks": {
+          "title": "Add Benchmark Layer",
+          "description": "Select a benchmark dataset to add to the map",
+          "add": "Add",
+          "datasets": {
+            "hansen": {
+              "title": "Global Forest Change v1.10 (2000 – 2022)",
+              "description": "30 m annual forest extent, loss & gain derived from Landsat by the Univ. of Maryland GLAD lab (Hansen et al.). Latest year: 2022.",
+              "url": "https://data.globalforestwatch.org/documents/941f17325a494ed78c4817f9bb20f33a"
+            },
+            "mapbiomes": {
+              "title": "MapBiomas Ecuador 2022",
+              "description": "Annual 30 m land-cover classifications for all Ecuadorian biomes produced by the MapBiomas network.",
+              "url": "https://ecuador.mapbiomas.org/en/home-english/"
+            },
+            "esa": {
+              "title": "ESA WorldCover 2020 (10 m Global)",
+              "description": "Global 10 m land-cover map (11 classes) generated from Sentinel-1 & -2 imagery by the ESA WorldCover consortium.",
+              "url": "https://esa-worldcover.org/en"
+            },
+            "jrc": {
+              "title": "JRC Global Forest Cover 2020 (v2, 10 m)",
+              "description": "10 m map of standing tree cover for 2020 compiled from Sentinel-2 by the European Commission JRC Forest Observatory.",
+              "url": "https://data.europa.eu/89h/e554d6fb-6340-45d5-9309-332337e5bc26"
+            },
+            "palsar": {
+              "title": "ALOS PALSAR-2 Forest / Non-Forest Map 2020",
+              "description": "Global 25 m forest/non-forest classification from JAXA SAR (PALSAR-2) backscatter mosaics.",
+              "url": "https://developers.google.com/earth-engine/datasets/catalog/JAXA_ALOS_PALSAR_YEARLY_FNF4"
+            },
+            "wri": {
+              "title": "WRI Tropical Tree Cover 2020 (10 m)",
+              "description": "High-resolution (10 m) probability-based tree-cover map for the tropics developed by WRI Land & Carbon Lab and partners.",
+              "url": "https://data.globalforestwatch.org/datasets/gfw::tropical-tree-cover/about"
+            }
+          }
+        }
     },
     "terrain": "Terrain"
   },

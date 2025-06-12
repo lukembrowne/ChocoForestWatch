@@ -286,6 +286,7 @@
     "error": "Se produjo un error",
     "export": "Exportar",
     "getStarted": "Comenzar",
+    "learnMore": "Más Información",
     "loading": "Cargando...",
     "logout": "Cerrar Sesión",
     "logoutSuccess": "Sesión cerrada exitosamente",
@@ -422,7 +423,45 @@
         "collapse": "Lista de capa de colapso",
         "expand": "Expandir la lista de capas",
         "remove": "Eliminar capa",
-        "toggleOpacity": "Alternar control de opacidad"
+        "toggleOpacity": "Alternar control de opacidad",
+        "addBenchmark": "Agregar un conjunto de datos de referencia para comparar con su análisis"
+      },
+      "benchmarks": {
+        "title": "Agregar Capa de Referencia",
+        "description": "Seleccione un conjunto de datos de referencia para agregar al mapa",
+        "add": "Agregar",
+        "datasets": {
+          "hansen": {
+            "title": "Cambio Forestal Global v1.10 (2000 – 2022)",
+            "description": "Extensión forestal anual de 30 m, pérdida y ganancia derivadas de Landsat por el laboratorio GLAD de la Universidad de Maryland (Hansen et al.). Último año: 2022.",
+            "url": "https://data.globalforestwatch.org/documents/941f17325a494ed78c4817f9bb20f33a"
+          },
+          "mapbiomes": {
+            "title": "MapBiomas Ecuador 2022",
+            "description": "Clasificaciones anuales de cobertura terrestre de 30 m para todos los biomas ecuatorianos producidas por la red MapBiomas.",
+            "url": "https://ecuador.mapbiomas.org/en/home-english/"
+          },
+          "esa": {
+            "title": "ESA WorldCover 2020 (10 m Global)",
+            "description": "Mapa global de cobertura terrestre de 10 m (11 clases) generado a partir de imágenes Sentinel-1 y -2 por el consorcio ESA WorldCover.",
+            "url": "https://esa-worldcover.org/en"
+          },
+          "jrc": {
+            "title": "Cobertura Forestal Global JRC 2020 (v2, 10 m)",
+            "description": "Mapa de 10 m de cobertura arbórea en pie para 2020 compilado a partir de Sentinel-2 por el Observatorio Forestal JRC de la Comisión Europea.",
+            "url": "https://data.europa.eu/89h/e554d6fb-6340-45d5-9309-332337e5bc26"
+          },
+          "palsar": {
+            "title": "Mapa Forestal/No Forestal ALOS PALSAR-2 2020",
+            "description": "Clasificación global de 25 m de forestal/no forestal a partir de mosaicos de retrodispersión SAR (PALSAR-2) de JAXA.",
+            "url": "https://developers.google.com/earth-engine/datasets/catalog/JAXA_ALOS_PALSAR_YEARLY_FNF4"
+          },
+          "wri": {
+            "title": "Cobertura Arbórea Tropical WRI 2020 (10 m)",
+            "description": "Mapa de cobertura arbórea basado en probabilidades de alta resolución (10 m) para los trópicos desarrollado por WRI Land & Carbon Lab y sus socios.",
+            "url": "https://data.globalforestwatch.org/datasets/gfw::tropical-tree-cover/about"
+          }
+        }
       }
     },
     "terrain": "Terreno"

@@ -94,6 +94,16 @@ export const useMapStore = defineStore('map', () => {
     }
   });
 
+  // Add benchmark expression mapping constant
+  const benchmarkExpressionMapping = {
+    'benchmarks-hansen-tree-cover-2022': 'where(data>=90,1,0)',
+    'benchmarks-mapbiomes-2022': 'where((data==3)|(data==4)|(data==5)|(data==6),1,0)',
+    'benchmarks-esa-landcover-2020': 'where(data==10,1,0)',
+    'benchmarks-jrc-forestcover-2020': 'where(data==1,1,0)',
+    'benchmarks-palsar-2020': 'where((data==1)|(data==2),1,0)',
+    'benchmarks-wri-treecover-2020': 'where(data>=90,1,0)',
+  };
+
   // Actions
   const initMap = (target, force = false) => {
     if (!map.value || force) {
@@ -1590,6 +1600,58 @@ export const useMapStore = defineStore('map', () => {
     maps.value.secondary?.addLayer(boundaryLayer.value.clone());
   };
 
+  // -------------------------------------------
+  // Benchmark layers
+  // -------------------------------------------
+
+  const createBenchmarkLayer = (collectionId) => {
+    const titilerURL = import.meta.env.VITE_TITILER_URL;
+    const expression = benchmarkExpressionMapping[collectionId];
+    if (!expression) {
+      throw new Error(`No expression mapping found for collection ${collectionId}`);
+    }
+    const encodedExpression = encodeURIComponent(expression);
+    const colormap = getEncodedColormap('CFWForestCoverPalette');
+
+    const source = new XYZ({
+      url: `http://localhost:8083/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&expression=${encodedExpression}&asset_as_band=true&colormap=${colormap}`,
+      maxZoom: 14,
+    });
+
+
+    return new TileLayer({
+      source,
+      title: collectionId.replace('benchmarks-', '').replace(/-/g, ' '),
+      id: `benchmark-${collectionId}`,
+      visible: true,
+      zIndex: 3,
+      opacity: 0.7,
+    });
+  };
+
+  const addBenchmarkLayer = (collectionId, mapId = null) => {
+    const layerId = `benchmark-${collectionId}`;
+    let targetMap;
+    if (mapId && maps.value[mapId]) {
+      targetMap = maps.value[mapId];
+    } else {
+      targetMap = map.value;
+    }
+    if (!targetMap) return;
+
+    // Avoid adding duplicate layer with same id
+    const existing = targetMap.getLayers().getArray().find((l) => l.get('id') === layerId);
+    if (existing) {
+      existing.setVisible(true);
+      updateLayers();
+      return;
+    }
+
+    const newLayer = createBenchmarkLayer(collectionId);
+    targetMap.addLayer(newLayer);
+    updateLayers();
+  };
+
   return {
     // State
     aoi,
@@ -1665,6 +1727,8 @@ export const useMapStore = defineStore('map', () => {
     goToPreviousPoint,
     getCurrentPoint,
     clearRandomPoints,
+    // new benchmark actions
+    addBenchmarkLayer,
     // Getters
     getMap,
     maps,
