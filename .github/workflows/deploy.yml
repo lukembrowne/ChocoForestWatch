@@ -55,7 +55,6 @@ jobs:
             --build-arg VUE_APP_PLANET_API_KEY="${VUE_APP_PLANET_API_KEY}" \
             --build-arg VITE_TITILER_URL="${VITE_TITILER_URL}" \
             --build-arg TITILER_URL="${TITILER_URL}" \
-            --build-arg PGSTAC_VERSION="${PGSTAC_VERSION}" \
             --build-arg POSTGRES_USER="${POSTGRES_USER}" \
             --build-arg POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
             --build-arg POSTGRES_DB="${POSTGRES_DB}" \
