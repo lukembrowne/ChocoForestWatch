@@ -363,34 +363,34 @@ USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Sentry configuration
-sentry_sdk.init(
-    dsn=os.getenv('DJANGO_SENTRY_DSN'),
-    integrations=[
-        DjangoIntegration(),
-        LoggingIntegration(
-            level=logging.INFO,        # Capture info and above as breadcrumbs
-            event_level=logging.ERROR  # Send errors as events
-        ),
-    ],
+# sentry_sdk.init(
+#     dsn=os.getenv('DJANGO_SENTRY_DSN'),
+#     integrations=[
+#         DjangoIntegration(),
+#         LoggingIntegration(
+#             level=logging.INFO,        # Capture info and above as breadcrumbs
+#             event_level=logging.ERROR  # Send errors as events
+#         ),
+#     ],
     
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for performance monitoring.
-    traces_sample_rate=0.1,
+#     # Set traces_sample_rate to 1.0 to capture 100%
+#     # of transactions for performance monitoring.
+#     traces_sample_rate=0.1,
     
-    # Set profiles_sample_rate to 1.0 to profile 100%
-    # of sampled transactions.
-    profiles_sample_rate=0.1,
+#     # Set profiles_sample_rate to 1.0 to profile 100%
+#     # of sampled transactions.
+#     profiles_sample_rate=0.1,
 
-    # If you're not in production, you can set this to True
-    debug=DEBUG,
-    environment=os.getenv('DJANGO_ENV', 'development'),
+#     # If you're not in production, you can set this to True
+#     debug=DEBUG,
+#     environment=os.getenv('DJANGO_ENV', 'development'),
     
-    # Configure here what you don't want to send to Sentry
-    ignore_errors=[
-        KeyError,
-        # Add other exceptions you want to ignore
-    ],
-)
+#     # Configure here what you don't want to send to Sentry
+#     ignore_errors=[
+#         KeyError,
+#         # Add other exceptions you want to ignore
+#     ],
+# )
 
 # Frontend URL Configuration
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:9000')

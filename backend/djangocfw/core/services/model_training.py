@@ -250,7 +250,7 @@ class ModelTrainingService:
         all_class_names = [cls['name'] for cls in project.classes]
 
         # Define the desired class order with fixed indices
-        desired_class_order = ['Forest', 'Non-Forest', 'Cloud', 'Shadow', 'Water']
+        desired_class_order = ['Forest', 'Non-Forest', 'Cloud', 'Shadow', 'Water', 'Haze', 'Sensor Error']
         global_class_to_int = {class_name: idx for idx, class_name in enumerate(desired_class_order)}
         
         # Get classes actually present in training data

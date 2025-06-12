@@ -24,6 +24,7 @@ import { Polygon } from 'ol/geom';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { transformExtent } from 'ol/proj'
 import { useQuasar } from 'quasar';
+import { getEncodedColormap } from 'src/utils/colormap';
 
 export const useMapStore = defineStore('map', () => {
 
@@ -57,6 +58,9 @@ export const useMapStore = defineStore('map', () => {
     })
   });
   const sliderValue = ref(0);
+  const randomPoints = ref([]);
+  const currentPointIndex = ref(-1);
+  const boundaryLayer = ref(null);
 
   // Internal state
   const projectStore = useProjectStore();
@@ -89,6 +93,16 @@ export const useMapStore = defineStore('map', () => {
         return { icon: 'help', color: 'grey', label: 'Unknown' };
     }
   });
+
+  // Add benchmark expression mapping constant
+  const benchmarkExpressionMapping = {
+    'benchmarks-hansen-tree-cover-2022': 'where(data>=90,1,0)',
+    'benchmarks-mapbiomes-2022': 'where((data==3)|(data==4)|(data==5)|(data==6),1,0)',
+    'benchmarks-esa-landcover-2020': 'where(data==10,1,0)',
+    'benchmarks-jrc-forestcover-2020': 'where(data==1,1,0)',
+    'benchmarks-palsar-2020': 'where((data==1)|(data==2),1,0)',
+    'benchmarks-wri-treecover-2020': 'where(data>=90,1,0)',
+  };
 
   // Actions
   const initMap = (target, force = false) => {
@@ -123,6 +137,7 @@ export const useMapStore = defineStore('map', () => {
       console.log('Map initialized in MapStore...');
       mapInitialized.value = true;
       map.value.setTarget(target)
+      initBoundaryLayer();
     }
   };
 
@@ -351,7 +366,13 @@ export const useMapStore = defineStore('map', () => {
 
 
   // Function to create a Planet Basemap layer for a given date
-  const createPlanetBasemap = (date) => {
+  const createBasemap = (date, type) => {
+
+    // Type shoudl be either 'planet' or 'predictions'
+    // Check to make sure type is valid
+    if (type !== 'planet' && type !== 'predictions') {
+      throw new Error('Invalid basemap type');
+    }
 
     //
     // Retrieve the Planet API key from the environment variables
@@ -363,54 +384,146 @@ export const useMapStore = defineStore('map', () => {
     //   url: `http://localhost:8080/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2Fdata%2F2022%2F01%2F570-1025_2022_01.tif&bidx=3&bidx=2&bidx=1&rescale=0,2500`,
     // });
 
-    
+
     // Create a new XYZ source for titiler from mosaic - this works!
     // const source = new XYZ({
     //   url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2Fmosaics%2F${date}.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
     // });
 
-      // Testing out with mosaicJsons locally - this works!
-      // const source = new XYZ({
-      //   url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+    // Testing out with mosaicJsons locally - this works!
+    // const source = new XYZ({
+    //   url: `http://localhost:8080/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+    // });
+
+    // Testing out with mosaicJsons on server with base titiler - this works!
+    // const source = new XYZ({
+    //   url: `${titilerURL}/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+    // });
+
+    // Testing out with titiler-pgstac - this works!!
+    //  const source = new XYZ({
+    //   url: `http://localhost:8083/collections/nicfi-2022-01/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
+    // });
+
+    // Testing out loading predictions from Spaces - this works!!
+
+    // Python palette to JSON palette - need to find a better way to do this..
+    //   palette = {
+    //     "1": [0, 128, 0], "2": [255, 255, 0], "3": [255, 255, 255],
+    //   "4": [0, 0, 0], "5": [0, 0, 255]
+    // }
+    // import urllib.parse, json
+
+    // colormap_param = urllib.parse.quote(json.dumps(palette))
+
+
+    // import urllib.parse, json
+
+    // palette = { "1": [0, 128, 0], "0": [255, 255, 0] }
+    // colormap_param = urllib.parse.quote(json.dumps(palette))
+
+
+
+    // If planet imagery
+
+    let source;
+
+    if (type === 'planet') {
+      source = new XYZ({
+        url: `http://localhost:8083/collections/nicfi-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
+        maxZoom: 14,
+      });
+    }
+
+
+    // Create a new XYZ source for predictions
+    if (type === 'predictions') {
+
+      // const colormap = encodeColormap(landcoverPalette);
+
+      // source = new XYZ({
+      //   url: `http://localhost:8083/collections/northern_choco_test_2025_06_09-pred-2022-01/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
+      //   maxZoom: 14,
       // });
 
-      // Testing out with mosaicJsons on server - this works!
-      const source = new XYZ({
-        url: `${titilerURL}/mosaicjson/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=file%3A%2F%2F%2FmosaicJsons%2F${date}-mosaic.json&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+      // //  Composite forest cover map - old
+      // const colormap =
+      //   '%7B%221%22%3A%20%5B0%2C%20128%2C%200%5D%2C%20%220%22%3A%20%5B255%2C%20255%2C%200%5D%7D';
+
+      // source = new XYZ({
+      //   url: `http://localhost:8083/collections/nicfi-pred-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
+      //   maxZoom: 14,
+      // });
+      
+      //  Composite forest cover map - new
+      const colormap = getEncodedColormap('CFWForestCoverPalette');
+
+
+      source = new XYZ({
+        url: `http://localhost:8083/collections/nicfi-pred-northern_choco_test_2025_06_09-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
+        maxZoom: 14,
       });
+
+
+      // Testing out hansen tree cover benchmark
+      // source = new XYZ({
+      //   url: `http://localhost:8083/collections/northern_choco_test_2025_05_21-pred-2022-01/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
+      //   maxZoom: 14,
+      // });
+    }
+
+
 
     // Old planet imagery tile
     // url: `https://tiles{0-3}.planet.com/basemaps/v1/planet-tiles/planet_medres_normalized_analytic_${date}_mosaic/gmap/{z}/{x}/{y}.png?api_key=${apiKey}`,
 
 
+    // Return a new TileLayer for basemap
 
-    // Return a new TileLayer for the Planet Basemap
+    const title = type === 'planet' ? `Planet Basemap ${date}` : `Predictions ${date}`;
+    const id = type === 'planet' ? `planet-basemap` : `predictions`;
+    const zIndex = type === 'planet' ? 1 : 2;
+    const opacity = type === 'planet' ? 1 : 0.7;
+    const visible = type === 'planet' ? true : false;
+
     return new TileLayer({
       source: source,
-      title: `Planet Basemap ${date}`, // Set the layer title to include the date
+      title: title,
       type: 'base', // Set the layer type to 'base'
-      visible: true, // Make the layer visible by default
-      id: `planet-basemap`, // Set a unique ID for the layer
-      zIndex: 1 // Set the layer's z-index to 1
+      visible: visible, // Make the layer visible by default
+      id: id, // Set a unique ID for the layer
+      zIndex: zIndex, // Set the layer's z-index to 1
+      opacity: opacity // Set the layer's opacity to 0.7
     });
   };
-  // Function to update the basemap layer with a new date
-  const updateBasemap = (date) => {
-    // Create a new Planet Basemap layer for the given date
-    const planetBasemap = createPlanetBasemap(date);
 
-    // Find the existing Planet Basemap layer by its ID
-    let existingBasemap = map.value.getLayers().getArray().find(layer => layer.get('id') === 'planet-basemap');
+
+  // Function to update the basemap layer with a new date
+  const updateBasemap = (date, type) => {
+
+    // Check to make sure type is valid
+    if (type !== 'planet' && type !== 'predictions') {
+      throw new Error('Invalid basemap type');
+    }
+
+    // Create a new Planet Basemap layer for the given date
+    const basemap = createBasemap(date, type);
+
+    const id = type === 'planet' ? `planet-basemap` : `predictions`;
+    const title = type === 'planet' ? `Planet Basemap ${date}` : `Predictions ${date}`;
+
+    // Find the existing  Basemap layer by its ID
+    let existingBasemap = map.value.getLayers().getArray().find(layer => layer.get('id') === id);
 
     // If an existing layer is found, update it with the new basemap
     if (existingBasemap) {
-      console.log("Updating existing planet basemap layer...");
-      existingBasemap.setSource(planetBasemap.getSource());
-      existingBasemap.set('title', `Planet Basemap ${date}`);
+      console.log("Updating existing basemap layer...");
+      existingBasemap.setSource(basemap.getSource());
+      existingBasemap.set('title', title);
     } else {
       // If no existing layer is found, create a new one and insert it at a specific position
-      console.log("Creating new planet basemap layer...");
-      map.value.getLayers().insertAt(2, planetBasemap);
+      console.log("Creating new basemap layer...");
+      map.value.getLayers().insertAt(2, basemap);
     }
 
     // Update the slider value to match the new basemap date
@@ -1009,7 +1122,8 @@ export const useMapStore = defineStore('map', () => {
 
   const setSelectedBasemapDate = async (date) => {
     selectedBasemapDate.value = date;
-    await updateBasemap(date);
+    await updateBasemap(date, 'planet');
+    await updateBasemap(date, 'predictions');
     await loadTrainingPolygonsForDate(date);
   };
 
@@ -1240,112 +1354,112 @@ export const useMapStore = defineStore('map', () => {
 
 
   // Add new methods
-  const initDualMaps = (primaryTarget, secondaryTarget) => {
+  const initDualMaps = async (primaryTarget, secondaryTarget) => {
 
     // console.log('Primary target:', primaryTarget);
     // console.log('Secondary target:', secondaryTarget);
 
     // Initialize maps no matter what
     // if (!maps.value.primary || !maps.value.secondary) {
-      console.log('Initializing dual maps!');
+    console.log('Initializing dual maps!');
 
-      // nextTick(async () => {
-        // Create maps
-        maps.value.primary = new Map({
-          target: primaryTarget,
-          layers: [
-            new TileLayer({
-              source: new OSM(),
-              name: 'baseMap',
-              title: 'OpenStreetMap',
-              visible: true,
-              id: 'osm',
-              zIndex: 0
-            })
-          ],
-          view: new View({
-            center: fromLonLat([-79.81822466589962, 0.460628082970743]),
-            zoom: 12
-          })
-        });
+    // nextTick(async () => {
+    // Create maps
+    maps.value.primary = new Map({
+      target: primaryTarget,
+      layers: [
+        new TileLayer({
+          source: new OSM(),
+          name: 'baseMap',
+          title: 'OpenStreetMap',
+          visible: true,
+          id: 'osm',
+          zIndex: 0
+        })
+      ],
+      view: new View({
+        center: fromLonLat([-79.81822466589962, 0.460628082970743]),
+        zoom: 12
+      })
+    });
 
-        maps.value.secondary = new Map({
-          target: secondaryTarget,
-          layers: [
-            new TileLayer({
-              source: new OSM(),
-              name: 'baseMap',
-              title: 'OpenStreetMap',
-              visible: true,
-              id: 'osm',
-              zIndex: 0
-            })
-          ],
-          view: new View({
-            center: fromLonLat([-79.81822466589962, 0.460628082970743]),
-            zoom: 12
-          })
-        });
+    maps.value.secondary = new Map({
+      target: secondaryTarget,
+      layers: [
+        new TileLayer({
+          source: new OSM(),
+          name: 'baseMap',
+          title: 'OpenStreetMap',
+          visible: true,
+          id: 'osm',
+          zIndex: 0
+        })
+      ],
+      view: new View({
+        center: fromLonLat([-79.81822466589962, 0.460628082970743]),
+        zoom: 12
+      })
+    });
 
-        // Force a redraw
-        maps.value.primary.updateSize();
-        maps.value.secondary.updateSize();
+    // Force a redraw
+    maps.value.primary.updateSize();
+    maps.value.secondary.updateSize();
 
-        // Add AOI layers if project has AOI
-        const projectStore = useProjectStore();
-        if (projectStore.currentProject?.aoi) {
-          console.log("Setting up AOI layers in dual maps...");
+    // Add AOI layers if project has AOI
+    const projectStore = useProjectStore();
+    if (projectStore.currentProject?.aoi) {
+      console.log("Setting up AOI layers in dual maps...");
 
-          // Create AOI layers
-          const { layer: primaryAOILayer, source: aoiSource } = createAOILayer(
-            projectStore.currentProject.aoi
-          );
-          const { layer: secondaryAOILayer } = createAOILayer(
-            projectStore.currentProject.aoi
-          );
+      // Create AOI layers
+      const { layer: primaryAOILayer, source: aoiSource } = createAOILayer(
+        projectStore.currentProject.aoi
+      );
+      const { layer: secondaryAOILayer } = createAOILayer(
+        projectStore.currentProject.aoi
+      );
 
-          // Add layers
-          maps.value.primary.addLayer(primaryAOILayer);
-          maps.value.secondary.addLayer(secondaryAOILayer);
+      // Add layers
+      maps.value.primary.addLayer(primaryAOILayer);
+      maps.value.secondary.addLayer(secondaryAOILayer);
 
-          // Get AOI extent and fit both maps
-          const extent = aoiSource.getExtent();
-          console.log('Fitting to AOI extent:', extent);
+      // Get AOI extent and fit both maps
+      const extent = aoiSource.getExtent();
+      console.log('Fitting to AOI extent:', extent);
 
-          maps.value.primary.getView().fit(extent);
-          maps.value.secondary.getView().fit(extent);
+      maps.value.primary.getView().fit(extent);
+      maps.value.secondary.getView().fit(extent);
 
-          // Secondary map will sync automatically due to view synchronization
-        }
+      // Secondary map will sync automatically due to view synchronization
+    }
 
-        // Sync map movements
-        const primaryView = maps.value.primary.getView();
-        const secondaryView = maps.value.secondary.getView();
+    // Sync map movements
+    const primaryView = maps.value.primary.getView();
+    const secondaryView = maps.value.secondary.getView();
 
-        // Sync center changes
-        primaryView.on('change:center', () => {
-          secondaryView.setCenter(primaryView.getCenter());
-        });
-        secondaryView.on('change:center', () => {
-          primaryView.setCenter(secondaryView.getCenter());
-        });
+    // Sync center changes
+    primaryView.on('change:center', () => {
+      secondaryView.setCenter(primaryView.getCenter());
+    });
+    secondaryView.on('change:center', () => {
+      primaryView.setCenter(secondaryView.getCenter());
+    });
 
-        // Sync zoom changes
-        primaryView.on('change:resolution', () => {
-          secondaryView.setResolution(primaryView.getResolution());
-        });
-        secondaryView.on('change:resolution', () => {
-          primaryView.setResolution(secondaryView.getResolution());
-        });
+    // Sync zoom changes
+    primaryView.on('change:resolution', () => {
+      secondaryView.setResolution(primaryView.getResolution());
+    });
+    secondaryView.on('change:resolution', () => {
+      primaryView.setResolution(secondaryView.getResolution());
+    });
 
-        // Sync rotation changes
-        primaryView.on('change:rotation', () => {
-          secondaryView.setRotation(primaryView.getRotation());
-        });
-        secondaryView.on('change:rotation', () => {
-          primaryView.setRotation(secondaryView.getRotation());
-        });
-      // });
+    // Sync rotation changes
+    primaryView.on('change:rotation', () => {
+      secondaryView.setRotation(primaryView.getRotation());
+    });
+    secondaryView.on('change:rotation', () => {
+      primaryView.setRotation(secondaryView.getRotation());
+    });
+    // });
 
     // } // End if
 
@@ -1353,6 +1467,7 @@ export const useMapStore = defineStore('map', () => {
     maps.value.primary.setTarget(primaryTarget)
     maps.value.secondary.setTarget(secondaryTarget)
 
+    initBoundaryLayer();
   };
 
   function hideDualMaps() {
@@ -1396,6 +1511,147 @@ export const useMapStore = defineStore('map', () => {
     updateLayers();
   };
 
+  const loadRandomPoints = async (collectionId) => {
+    try {
+      const response = await api.getRandomPoints(collectionId, 1);
+      randomPoints.value = response.data.points;
+      currentPointIndex.value = -1; // Reset index
+      return response.data;
+    } catch (error) {
+      console.error('Error loading random points:', error);
+      throw error;
+    }
+  };
+
+  const goToNextPoint = () => {
+    if (randomPoints.value.length === 0) return;
+    
+    currentPointIndex.value = (currentPointIndex.value + 1) % randomPoints.value.length;
+    const point = randomPoints.value[currentPointIndex.value];
+    
+    // Zoom to the point
+    if (map.value) {
+      const view = map.value.getView();
+      view.animate({
+        center: [point.x, point.y],
+        zoom: 14,
+        duration: 750
+      });
+    }
+    
+    return point;
+  };
+
+  const goToPreviousPoint = () => {
+    if (randomPoints.value.length === 0) return;
+    
+    currentPointIndex.value = (currentPointIndex.value - 1 + randomPoints.value.length) % randomPoints.value.length;
+    const point = randomPoints.value[currentPointIndex.value];
+    
+    // Zoom to the point
+    if (map.value) {
+      const view = map.value.getView();
+      view.animate({
+        center: [point.x, point.y],
+        zoom: 14,
+        duration: 750
+      });
+    }
+    
+    return point;
+  };
+
+  const getCurrentPoint = () => {
+    if (currentPointIndex.value === -1 || randomPoints.value.length === 0) return null;
+    return randomPoints.value[currentPointIndex.value];
+  };
+
+  const clearRandomPoints = () => {
+    randomPoints.value = [];
+    currentPointIndex.value = -1;
+  };
+
+  const initBoundaryLayer = async () => {
+    if (boundaryLayer.value) return;                 // already added
+
+    const response  = await fetch('/data/Ecuador-DEM-900m-contour.geojson');
+    console.log("Response:", response);
+    const geojson   = await response.json();
+
+    boundaryLayer.value = new VectorLayer({
+      source: new VectorSource({
+        features: new GeoJSON().readFeatures(geojson, {
+          featureProjection: 'EPSG:3857',
+        }),
+      }),
+      id:    'ecuador-boundary',
+      title: 'Western Ecuador Boundary',
+      zIndex: 4,                           // above OSM, below polygons
+      visible: true,
+      style: new Style({
+        stroke: new Stroke({ color: '#000000', width: 2 }),
+      }),
+      interactive: false,
+      selectable:  false,
+    });
+
+    map.value?.addLayer(boundaryLayer.value);
+    maps.value.primary?.addLayer(boundaryLayer.value.clone());
+    maps.value.secondary?.addLayer(boundaryLayer.value.clone());
+  };
+
+  // -------------------------------------------
+  // Benchmark layers
+  // -------------------------------------------
+
+  const createBenchmarkLayer = (collectionId) => {
+    const titilerURL = import.meta.env.VITE_TITILER_URL;
+    const expression = benchmarkExpressionMapping[collectionId];
+    if (!expression) {
+      throw new Error(`No expression mapping found for collection ${collectionId}`);
+    }
+    const encodedExpression = encodeURIComponent(expression);
+    const colormap = getEncodedColormap('CFWForestCoverPalette');
+
+    const source = new XYZ({
+      url: `http://localhost:8083/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&expression=${encodedExpression}&asset_as_band=true&colormap=${colormap}`,
+      maxZoom: 14,
+    });
+
+
+    return new TileLayer({
+      source,
+      title: collectionId.replace('benchmarks-', '').replace(/-/g, ' '),
+      id: `benchmark-${collectionId}`,
+      visible: true,
+      zIndex: 3,
+      opacity: 0.7,
+    });
+  };
+
+  const addBenchmarkLayer = (collectionId, mapId = null) => {
+    const layerId = `benchmark-${collectionId}`;
+    let targetMap;
+    if (mapId && maps.value[mapId]) {
+      targetMap = maps.value[mapId];
+    } else {
+      targetMap = map.value;
+    }
+    if (!targetMap) return;
+
+    // Avoid adding duplicate layer with same id
+    const existing = targetMap.getLayers().getArray().find((l) => l.get('id') === layerId);
+    if (existing) {
+      existing.setVisible(true);
+      updateLayers();
+      return;
+    }
+
+    const newLayer = createBenchmarkLayer(collectionId);
+    targetMap.addLayer(newLayer);
+    updateLayers();
+  };
+
   return {
     // State
     aoi,
@@ -1419,6 +1675,8 @@ export const useMapStore = defineStore('map', () => {
     selectedFeatureStyle,
     sliderValue,
     drawingMode,
+    randomPoints,
+    currentPointIndex,
     // Actions
     initMap,
     setAOI,
@@ -1459,11 +1717,18 @@ export const useMapStore = defineStore('map', () => {
     toggleDrawingMode,
     fitBounds,
     addGeoJSON,
-    createPlanetBasemap,
+    createBasemap,
     createAOILayer,
     showSingleMap,
     hideSingleMap,
     hideDualMaps,
+    loadRandomPoints,
+    goToNextPoint,
+    goToPreviousPoint,
+    getCurrentPoint,
+    clearRandomPoints,
+    // new benchmark actions
+    addBenchmarkLayer,
     // Getters
     getMap,
     maps,

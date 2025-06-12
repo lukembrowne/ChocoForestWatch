@@ -411,7 +411,8 @@ export default {
         showProjectSelection.value = false
 
         // Set default basemap after loading a project
-        mapStore.updateBasemap('2022-01')
+        mapStore.updateBasemap('2022-01', 'planet')
+        mapStore.updateBasemap('2022-01', 'predictions')
 
         // Load training polygons for the current date
         mapStore.loadTrainingPolygonsForDate('2022-01')
@@ -449,7 +450,8 @@ export default {
         // Set initial basemap date and zoom to AOI
         const initialDate = '2022-01'
         await Promise.all([
-          mapStore.updateBasemap(initialDate),
+          mapStore.updateBasemap(initialDate, 'planet'),
+          mapStore.updateBasemap(initialDate, 'predictions'),
           mapStore.loadTrainingPolygonsForDate(initialDate),
           mapStore.displayAOI(projectStore.currentProject.aoi)
         ])

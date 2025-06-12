@@ -3,7 +3,10 @@
     <!-- Navigation Bar -->
     <div class="nav-bar q-px-lg q-py-md">
       <div class="row justify-between items-center">
-        <div class="text-h5 text-weight-bold text-primary">Choco Forest Watch</div>
+        <div class="row items-center">
+          <img src="/favicon/favicon-32x32.png" alt="Choco Forest Watch Logo" style="width: 28px; height: 28px; margin-right: 10px;" />
+          <span class="text-h5 text-weight-bold text-primary">Choco Forest Watch</span>
+        </div>
         <div class="row q-gutter-md">
           <q-btn-group flat>
             <q-btn
@@ -26,56 +29,54 @@
 
     <!-- Planet Imagery Warning Banner -->
     <q-banner
-      class="bg-warning text-black q-px-lg q-py-md"
-      rounded
+      class="planet-warning-banner q-px-lg q-py-md"
+      style="border: 1px solid #ffe082; background: #FFF9C4; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-radius: 10px;"
     >
       <template v-slot:avatar>
-        <q-icon name="warning" color="black" />
+        <q-icon name="warning" color="amber-7" />
       </template>
       <div class="text-weight-bold q-mb-xs">{{ t('auth.login.landing.planetWarning.title') }}</div>
       <div>{{ t('auth.login.landing.planetWarning.message') }}</div>
     </q-banner>
 
+
     <!-- Main Content Section -->
     <div class="content-wrapper">
       <!-- Hero Section with Integrated Features -->
       <div class="hero-section">
-        <div class="row items-center justify-between q-pl-xl q-pr-xl">
-          <!-- Left Column: Hero Content -->
-          <div class="col-12 col-md-6 hero-content q-pr-md">
-            <h1 class="text-h3 text-weight-bold q-mb-md">{{ t('auth.login.landing.tagline') }}</h1>
-            <p class="text-h6 q-mb-lg">{{ t('auth.login.landing.subtitle') }}</p>
-            <p class="text-body1 q-mb-lg">{{ t('auth.login.landing.motivation') }}</p>
-            <div class="row q-gutter-md q-mb-xl justify-center">
-              <q-btn
-                color="primary"
-                size="lg"
-                :label="t('auth.login.landing.cta.createAccount')"
-                @click="registerDialogOpen = true"
-              />
-            </div>
 
-            <!-- Feature Cards -->
-            <div class="row q-col-gutter-md features-grid">
-              <div class="col-12 col-sm-4" v-for="(feature, index) in features" :key="index">
-                <q-card flat bordered class="feature-card">
-                  <q-card-section class="text-center">
-                    <q-icon :name="feature.icon" size="2.5rem" color="primary" class="q-mb-sm" />
-                    <div class="text-subtitle1 text-weight-bold q-mb-xs">{{ t(feature.title) }}</div>
-                    <p class="text-caption">{{ t(feature.description) }}</p>
-                  </q-card-section>
-                </q-card>
-              </div>
-            </div>
+        <div class="hero-content q-mt-md">
+          <h1 class="text-h3 text-weight-bold q-mb-md">{{ t('auth.login.landing.tagline') }}</h1>
+          <p class="text-h6 q-mb-lg">{{ t('auth.login.landing.subtitle') }}</p>
+          <p class="text-body1 q-mb-lg">{{ t('auth.login.landing.motivation') }}</p>
+          <div class="row q-gutter-md q-mb-xl justify-center">
+            <q-btn
+              color="primary"
+              size="lg"
+              :label="t('auth.login.landing.cta.createAccount')"
+              @click="registerDialogOpen = true"
+            />
           </div>
 
-          <!-- Right Column: Image -->
-          <div class="col-12 col-md-6 hero-image">
-            <q-img 
-              src="/images/SCR-20250124-iyyd.png" 
-              class="rounded-borders"
-              style="box-shadow: 0 8px 30px rgba(0,0,0,0.12);"
-            />
+          <div class="hero-image">
+          <q-img 
+            src="/images/SCR-20250124-iyyd.png" 
+            class="rounded-borders"
+            style="box-shadow: 0 8px 30px rgba(0,0,0,0.12); max-width: 100%; height: auto;"
+          />
+        </div>
+
+          <!-- Feature Cards -->
+          <div class="row q-col-gutter-md features-grid">
+            <div class="col-12 col-sm-4" v-for="(feature, index) in features" :key="index">
+              <q-card flat bordered class="feature-card">
+                <q-card-section class="text-center">
+                  <q-icon :name="feature.icon" size="2.5rem" color="primary" class="q-mb-sm" />
+                  <div class="text-subtitle1 text-weight-bold q-mb-xs">{{ t(feature.title) }}</div>
+                  <p class="text-caption">{{ t(feature.description) }}</p>
+                </q-card-section>
+              </q-card>
+            </div>
           </div>
         </div>
       </div>
@@ -595,26 +596,44 @@ export default {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: white;
+  
 }
 
 .content-wrapper {
-  flex: 1;
+  flex: 1 0 auto;
+  padding: 0;
 }
 
 .hero-section {
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-  min-height: calc(100vh - 64px - 200px); // Viewport height minus header and footer
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0rem 5rem 2rem 5rem;
+}
+
+.hero-image {
   display: flex;
   align-items: center;
+  justify-content: center;
+  margin-bottom: 2rem;
+  width: 100%;
+  max-width: 900px;
+  min-height: 1px;
 }
 
 .hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-top: 0rem;
   .feature-card {
     background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(0,0,0,0.1);
     transition: all 0.3s ease;
+    height: 100%;
 
     &:hover {
       transform: translateY(-5px);
@@ -623,35 +642,38 @@ export default {
   }
 }
 
-.hero-image {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .footer-section {
   background: #f8f9fa;
   border-top: 1px solid rgba(0,0,0,0.1);
-  margin-top: auto;
+  padding: 0rem 5rem 1rem 5rem;
+  margin-top: 1rem;
 
   .funding-item {
     background: white;
     border-radius: 8px;
     transition: all 0.2s ease;
     height: 100%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 
     &:hover {
       background: #f1f1f1;
       transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
     .q-item {
       min-height: unset;
+      padding: 2rem;
     }
 
     .q-item-label {
       font-size: 0.875rem;
       line-height: 1.4;
+      color: #2c3e50;
+    }
+
+    .q-icon {
+      font-size: 1.5rem;
     }
   }
 }
@@ -674,11 +696,44 @@ export default {
     order: 0;
     margin-bottom: 2rem;
   }
+
+  .footer-section {
+    padding: 2rem 0;
+  }
 }
 
 @media (max-width: 599px) {
   .features-grid {
     margin-top: 2rem;
   }
+
+  .footer-section {
+    padding: 1.5rem 0;
+  }
+}
+
+.nav-bar {
+  background: linear-gradient(90deg, #388e3c 0%, #43a047 100%);
+  color: white;
+  border-bottom: 1px solid #2e7d32;
+}
+
+.nav-bar .text-primary,
+.nav-bar .text-h5 {
+  color: white !important;
+}
+
+.nav-bar .q-btn,
+.nav-bar .q-btn__content {
+  color: white !important;
+}
+
+.nav-bar .q-btn--flat {
+  color: #c8e6c9 !important;
+}
+
+.nav-bar .q-btn--flat.q-btn--active,
+.nav-bar .q-btn--flat[aria-pressed="true"] {
+  color: #fff !important;
 }
 </style> 

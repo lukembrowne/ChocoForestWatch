@@ -22,15 +22,17 @@ RUN pip install debugpy
 WORKDIR /app
 
 # Copy only requirements first to leverage Docker cache
-COPY requirements.txt .
+COPY backend/djangocfw/requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy only necessary project files
-COPY manage.py wait_for_db.py entrypoint.sh ./
-COPY core/ ./core/
-COPY djangocfw/ ./djangocfw/
+COPY backend/djangocfw/ /app/
+COPY ml_pipeline/       /app/ml_pipeline/
+
+# make ml_pipeline importable everywhere
+RUN pip install -e /app/ml_pipeline
 
 # Make scripts executable
 RUN chmod +x entrypoint.sh

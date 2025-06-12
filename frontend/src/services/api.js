@@ -210,6 +210,13 @@ const api = {
     getSystemStatistics() {
         return apiClient.get('/api/statistics/system/');
     },
+
+    // Random points endpoints
+    getRandomPoints(collectionId, count = 1) {
+        return apiClient.get(`/random_points_collection/${collectionId}/`, {
+            params: { count }
+        });
+    },
 };
 
 // Initialize function for boot
