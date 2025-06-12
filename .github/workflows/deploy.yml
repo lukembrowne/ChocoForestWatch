@@ -41,7 +41,9 @@ jobs:
 
             # 4. Build the images locally on the droplet
             # Always use production settings when deploying
+            
             docker compose -f docker-compose.prod.yml down
+
             docker compose -f docker-compose.prod.yml build \
             --build-arg VITE_API_URL="${VITE_API_URL}" \
             --build-arg VITE_SENTRY_DSN="${VITE_SENTRY_DSN}" \
@@ -51,7 +53,23 @@ jobs:
             --build-arg AWS_S3_ENDPOINT="${AWS_S3_ENDPOINT}" \
             --build-arg AWS_REGION="${AWS_REGION}" \
             --build-arg VUE_APP_PLANET_API_KEY="${VUE_APP_PLANET_API_KEY}" \
-            --build-arg VITE_TITILER_URL="${VITE_TITILER_URL}"
+            --build-arg VITE_TITILER_URL="${VITE_TITILER_URL}" \
+            --build-arg TITILER_URL="${TITILER_URL}" \
+            --build-arg PGSTAC_VERSION="${PGSTAC_VERSION}" \
+            --build-arg POSTGRES_USER="${POSTGRES_USER}" \
+            --build-arg POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
+            --build-arg POSTGRES_DB="${POSTGRES_DB}" \
+            --build-arg POSTGRES_HOST="${POSTGRES_HOST}" \
+            --build-arg POSTGRES_PORT="${POSTGRES_PORT}" \
+            --build-arg POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
+            --build-arg DB_HOST="${DB_HOST}" \
+            --build-arg DB_PORT="${DB_PORT}" \
+            --build-arg POSTGRES_PASS="${POSTGRES_PASS}" \
+            --build-arg POSTGRES_DBNAME="${POSTGRES_DBNAME}" \
+            --build-arg POSTGRES_HOST="${POSTGRES_HOST}" \
+            --build-arg POSTGRES_PORT="${POSTGRES_PORT}" \
+            --build-arg BOUNDARY_GEOJSON_PATH="${BOUNDARY_GEOJSON_PATH}" 
+            
             docker compose -f docker-compose.prod.yml up -d --build
 
             # 5. Optional: prune dangling images to save disk
