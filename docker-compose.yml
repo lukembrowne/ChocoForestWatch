@@ -7,16 +7,16 @@ services:
     volumes:
       - ./.pgdata:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=cfwuser
-      - POSTGRES_PASS=1234
-      - POSTGRES_DB=cfwdb
-      - PGUSER=cfwuser
-      - PGDATABASE=cfwdb
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASS=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - PGUSER=${POSTGRES_USER}
+      - PGDATABASE=${POSTGRES_DB}
     ports:
       - "5432:5432"
     command: postgres -N 500
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cfwuser -d cfwdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -84,24 +84,18 @@ services:
     environment:
       - TZ=America/New_York
 
-  tiler:
-    container_name: tiler-pgstac
-    # At the time of writing, rasterio and psycopg wheels are not available for arm64 arch
-    # so we force the image to be built with linux/amd64
+  x-tiler-base: &tiler-base
     platform: linux/amd64
     build:
       context: ./titiler-pgstac
       dockerfile: Dockerfile
-    ports:
-      - "8081:8081"
-    command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "titiler.pgstac.main:app", "--bind", "0.0.0.0:8081", "--workers", "1"]
     environment:
       # Postgres connection
-      - POSTGRES_USER=cfwuser
-      - POSTGRES_PASS=1234
-      - POSTGRES_DBNAME=cfwdb
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASS=${POSTGRES_PASSWORD}
+      - POSTGRES_DBNAME=${POSTGRES_DB}
+      - POSTGRES_HOST=${DB_HOST}
+      - POSTGRES_PORT=${DB_PORT}
       # PG connection
       - DB_MIN_CONN_SIZE=1
       - DB_MAX_CONN_SIZE=1
@@ -142,10 +136,23 @@ services:
     networks:
       - app-network
 
+  tiler:
+    <<: *tiler-base
+    container_name: tiler-pgstac
+    # At the time of writing, rasterio and psycopg wheels are not available for arm64 arch
+    # so we force the image to be built with linux/amd64
+    # platform: linux/amd64
+    # build:
+    #   context: ./titiler-pgstac
+    #   dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "titiler.pgstac.main:app", "--bind", "0.0.0.0:8081", "--workers", "1"]
+
+
   tiler-uvicorn:
+    <<: *tiler-base
     container_name: tiler-pgstac-uvicorn
-    extends:
-      service: tiler
     ports:
       - "8083:8083"
     command: ["uvicorn", "titiler.pgstac.main:app", "--host", "0.0.0.0", "--port", "8083", "--workers", "1"]
@@ -160,13 +167,14 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - app-nginx
-    command: [ "nginx-debug", "-g", "daemon off;" ]
     networks:
       - app-network
 
   app-nginx:
-    extends:
-      service: tiler
+    <<: *tiler-base
+    container_name: tiler-pgstac-uvicorn-app
+    ports: 
+      - "8082:8082"
     command: bash -c "uvicorn titiler.pgstac.main:app --host 0.0.0.0 --port 8082 --proxy-headers --forwarded-allow-ips='*' --root-path=/api/v1/titiler"
 
 networks:
