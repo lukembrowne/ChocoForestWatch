@@ -1,43 +1,47 @@
 services:
   db:
-    image: postgis/postgis:15-3.3
+    image: ghcr.io/stac-utils/pgstac:v${PGSTAC_VERSION-0.9.2}
+    container_name: stac-db
     env_file:
       - ./.env
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./.pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASS=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - PGUSER=${POSTGRES_USER}
+      - PGDATABASE=${POSTGRES_DB}
     ports:
       - "5432:5432"
-    restart: always
-    environment:
-      - TZ=America/New_York
-
-  redis:
-    image: redis:latest
-    ports:
-      - "6379:6379"
+    command: postgres -N 500
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
       retries: 5
-    restart: always
+      start_period: 10s
+    networks:
+      - app-network
 
   backend:
     build: 
       context: .
       dockerfile: backend/djangocfw/Dockerfile
     volumes:
-      - ./data/planet_quads:/app/data/planet_quads
-      - ./data/predictions:/app/data/predictions
-      - ./data/models:/app/data/models
-      - ./media:/app/media
-      - ./logs:/app/logs
+      - ./backend/djangocfw:/app
       - ./ml_pipeline:/app/ml_pipeline
     ports:
       - "8000:8000"
+      - "5678:5678"
+      - "3000:3000"
     env_file:
       - ./.env
+    image: cfw-backend:latest
     command: gunicorn djangocfw.wsgi:application --bind 0.0.0.0:8000 --workers 3
+    depends_on:
+      db:
+        condition: service_healthy
     restart: always
     environment:
       - TZ=America/New_York
@@ -54,52 +58,112 @@ services:
       target: "production"       # Use 'development' or 'production'
     ports:
       - "9000:9000"
-    volumes:
-      - ./data/predictions:/app/data/predictions:ro
-      - ./data/planet_quads:/app/data/planet_quads:ro
-      - ./data/models:/app/data/models:ro
+    volumes:  
+      - ./frontend:/app
+      - /app/node_modules
     env_file:
       - ./.env
     restart: always
     environment:
       - TZ=America/New_York
 
-  titiler:
-      image: ghcr.io/developmentseed/titiler:latest
-      platform: linux/amd64
-      ports:
-        - "8080:80"
-      volumes:
-        - ./titiler/cogs:/data
-        - ./titiler/mosaicJsons:/mosaicJsons
-        - ./titiler/scripts:/scripts
-      env_file:
-        - ./.env
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:80/healthz"]
-        interval: 30s
-        timeout: 10s
-        retries: 3
-      command: >
-        bash -c "
-          # Install rclone
-          curl https://rclone.org/install.sh | bash &&
-          # Configure rclone with DO Spaces
-          mkdir -p /root/.config/rclone &&
-          echo '[do-spaces]
-          type = s3
-          provider = DigitalOcean
-          region = ${AWS_REGION}
-          access_key_id = ${AWS_ACCESS_KEY_ID}
-          secret_access_key = ${AWS_SECRET_ACCESS_KEY}
-          endpoint = ${AWS_S3_ENDPOINT}' > /root/.config/rclone/rclone.conf &&
-          # Run the mosaic script
-          chmod +x /scripts/build_all_mosaics.sh &&
-          cd /scripts &&
-          ./build_all_mosaics.sh &&
-          # Start the titiler server
-          cd ../ &&
-          uvicorn titiler.application.main:app --host 0.0.0.0 --port 80"
+  x-tiler-base: &tiler-base
+    platform: linux/amd64
+    build:
+      context: ./titiler-pgstac
+      dockerfile: Dockerfile
+    environment:
+      # Postgres connection
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASS=${POSTGRES_PASSWORD}
+      - POSTGRES_DBNAME=${POSTGRES_DB}
+      - POSTGRES_HOST=${DB_HOST}
+      - POSTGRES_PORT=${DB_PORT}
+      # PG connection
+      - DB_MIN_CONN_SIZE=1
+      - DB_MAX_CONN_SIZE=1
+      # - DB_MAX_QUERIES=10
+      # - DB_MAX_IDLE=10
+      # GDAL Config
+      # This option controls the default GDAL raster block cache size.
+      # If its value is small (less than 100000), it is assumed to be measured in megabytes, otherwise in bytes.
+      - GDAL_CACHEMAX=200
+      - GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR
+      - GDAL_INGESTED_BYTES_AT_OPEN=32768
+      - GDAL_HTTP_MERGE_CONSECUTIVE_RANGES=YES
+      - GDAL_HTTP_MULTIPLEX=YES
+      - GDAL_HTTP_VERSION=2
+      # The file can be cached in RAM by setting the configuration option VSI_CACHE to TRUE.
+      # The cache size defaults to 25 MB, but can be modified by setting the configuration option VSI_CACHE_SIZE (in bytes).
+      # Content in that cache is discarded when the file handle is closed.
+      - VSI_CACHE=TRUE
+      - VSI_CACHE_SIZE=536870912
+      # In addition, a global least-recently-used cache of 16 MB shared among all downloaded content is enabled by default,
+      # and content in it may be reused after a file handle has been closed and reopen,
+      # during the life-time of the process or until VSICurlClearCache() is called.
+      # Starting with GDAL 2.3, the size of this global LRU cache can be modified by
+      # setting the configuration option CPL_VSIL_CURL_CACHE_SIZE (in bytes).
+      - CPL_VSIL_CURL_CACHE_SIZE=200000000
+      # TiTiler Config
+      - MOSAIC_CONCURRENCY=5
+      # AWS S3 endpoint config
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_ENDPOINT=nyc3.digitaloceanspaces.com
+      - AWS_REGION=nyc3
+    volumes:
+      - ./benchmark:/tmp/benchmark
+      - ./titiler-pgstac/scripts:/app/scripts
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  tiler:
+    <<: *tiler-base
+    container_name: tiler-pgstac
+    # At the time of writing, rasterio and psycopg wheels are not available for arm64 arch
+    # so we force the image to be built with linux/amd64
+    # platform: linux/amd64
+    # build:
+    #   context: ./titiler-pgstac
+    #   dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "titiler.pgstac.main:app", "--bind", "0.0.0.0:8081", "--workers", "1"]
+
+
+  tiler-uvicorn:
+    <<: *tiler-base
+    container_name: tiler-pgstac-uvicorn
+    ports:
+      - "8083:8083"
+    command: ["uvicorn", "titiler.pgstac.main:app", "--host", "0.0.0.0", "--port", "8083", "--workers", "1"]
+    networks:
+          - app-network
+
+  nginx:
+    image: nginx
+    ports:
+      - 8080:80
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - app-nginx
+    networks:
+      - app-network
+
+  app-nginx:
+    <<: *tiler-base
+    container_name: tiler-pgstac-uvicorn-app
+    ports: 
+      - "8082:8082"
+    command: bash -c "uvicorn titiler.pgstac.main:app --host 0.0.0.0 --port 8082 --proxy-headers --forwarded-allow-ips='*' --root-path=/api/v1/titiler"
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
-  postgres_data:  
+  postgres_data:
+  planet_data:

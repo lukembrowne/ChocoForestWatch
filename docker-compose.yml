@@ -24,19 +24,6 @@ services:
     networks:
       - app-network
 
-  redis:
-    image: redis:latest
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    networks:
-      - app-network
-    environment:
-      - TZ=America/New_York
   backend:
     build: 
       context: .
@@ -44,7 +31,6 @@ services:
     volumes:
       - ./backend/djangocfw:/app
       - ./ml_pipeline:/app/ml_pipeline
-      
     ports:
       - "8000:8000"
       - "5678:5678"
@@ -55,8 +41,6 @@ services:
     command: python -m debugpy --listen 0.0.0.0:5678 --wait-for-client manage.py runserver 0.0.0.0:8000
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     restart: on-failure:3
     networks:
