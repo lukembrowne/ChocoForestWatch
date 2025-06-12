@@ -82,13 +82,13 @@ services:
       - POSTGRES_PORT=${DB_PORT}
       # PG connection
       - DB_MIN_CONN_SIZE=1
-      - DB_MAX_CONN_SIZE=1
+      - DB_MAX_CONN_SIZE=8
       # - DB_MAX_QUERIES=10
       # - DB_MAX_IDLE=10
       # GDAL Config
       # This option controls the default GDAL raster block cache size.
       # If its value is small (less than 100000), it is assumed to be measured in megabytes, otherwise in bytes.
-      - GDAL_CACHEMAX=200
+      - GDAL_CACHEMAX=512
       - GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR
       - GDAL_INGESTED_BYTES_AT_OPEN=32768
       - GDAL_HTTP_MERGE_CONSECUTIVE_RANGES=YES
@@ -104,7 +104,8 @@ services:
       # during the life-time of the process or until VSICurlClearCache() is called.
       # Starting with GDAL 2.3, the size of this global LRU cache can be modified by
       # setting the configuration option CPL_VSIL_CURL_CACHE_SIZE (in bytes).
-      - CPL_VSIL_CURL_CACHE_SIZE=200000000
+      - CPL_VSIL_CURL_CACHE_SIZE=268435456
+      - WEB_CONCURRENCY=4
       # TiTiler Config
       - MOSAIC_CONCURRENCY=5
       # AWS S3 endpoint config
