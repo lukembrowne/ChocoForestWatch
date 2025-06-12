@@ -7,10 +7,10 @@
 set -e  # Exit on error
 
 # Start a new tmux session if not already in one
-if [ -z "$TMUX" ]; then
-    tmux new-session -d -s migrate
-    tmux attach-session -t migrate
-fi
+# if [ -z "$TMUX" ]; then
+#     tmux new-session -d -s migrate
+#     tmux attach-session -t migrate
+# fi
 
 # Define years and months
 YEARS=("2022")
@@ -28,36 +28,66 @@ get_first_10_files() {
     local source_dir="gdrive:GIS/Satellite imagery/Planet imagery/NICFI Monthly Mosaics/${year}/${month}/"
     
     # Use rclone ls to list files and extract just the filenames
-    rclone ls "$source_dir" | head -n 10 | awk '{print $2}'
+   # rclone ls "$source_dir" | grep -i '\.tiff\?' | sort -k2 | head -n 10 | awk '{print $2}' # To do 10
+    rclone ls "$source_dir" | grep -i '\.tiff\?' | sort -k2 | awk '{print $2}' # to do all
+
 }
 
 # Main migration loop
+# for YEAR in "${YEARS[@]}"; do
+#     for MONTH in "${MONTHS[@]}"; do
+#         log "Getting files for ${YEAR}/${MONTH}..."
+        
+#         # Get the first 10 files for this year/month
+#         mapfile -t FILES < <(get_first_10_files "$YEAR" "$MONTH")
+        
+#         for FILENAME in "${FILES[@]}"; do
+#             SRC="gdrive:GIS/Satellite imagery/Planet imagery/NICFI Monthly Mosaics/${YEAR}/${MONTH}/${FILENAME}"
+#             DEST="do-space:choco-forest-watch/NICFI Monthly Mosaics/${YEAR}/${MONTH}"
+
+#             log "Starting upload of $FILENAME ..."
+            
+#             if rclone copy "$SRC" "$DEST" \
+#                 --ignore-existing \
+#                 --progress --transfers 16 --checkers 32 \
+#                 --s3-upload-concurrency 8 \
+#                 --s3-chunk-size 128M \
+#                 --drive-pacer-min-sleep 200ms \
+#                 --drive-pacer-burst 200; then
+#                 log "Successfully uploaded $FILENAME"
+#             else
+#                 log "ERROR: Failed to upload $FILENAME"
+#                 exit 1
+#             fi
+#         done
+#     done
+# done
+
+
+
+# Main migration loop with sync
 for YEAR in "${YEARS[@]}"; do
     for MONTH in "${MONTHS[@]}"; do
-        log "Getting files for ${YEAR}/${MONTH}..."
         
-        # Get the first 10 files for this year/month
-        mapfile -t FILES < <(get_first_10_files "$YEAR" "$MONTH")
-        
-        for FILENAME in "${FILES[@]}"; do
-            SRC="gdrive:GIS/Satellite imagery/Planet imagery/NICFI Monthly Mosaics/${YEAR}/${MONTH}/${FILENAME}"
+            SRC="gdrive:GIS/Satellite imagery/Planet imagery/NICFI Monthly Mosaics/${YEAR}/${MONTH}"
             DEST="do-space:choco-forest-watch/NICFI Monthly Mosaics/${YEAR}/${MONTH}"
 
-            log "Starting upload of $FILENAME ..."
+            log "Starting sync of $SRC to $DEST ..."
             
-            if rclone copy "$SRC" "$DEST" \
+            if rclone sync "$SRC" "$DEST" \
+                --ignore-existing \
                 --progress --transfers 16 --checkers 32 \
                 --s3-upload-concurrency 8 \
                 --s3-chunk-size 128M \
                 --drive-pacer-min-sleep 200ms \
                 --drive-pacer-burst 200; then
-                log "Successfully uploaded $FILENAME"
+                log "Successfully synced $SRC to $DEST"
             else
-                log "ERROR: Failed to upload $FILENAME"
+                log "ERROR: Failed to sync $SRC to $DEST"
                 exit 1
             fi
-        done
     done
 done
+
 
 log "Migration completed successfully!" 

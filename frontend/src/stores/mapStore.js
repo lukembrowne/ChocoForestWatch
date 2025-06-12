@@ -430,7 +430,7 @@ export const useMapStore = defineStore('map', () => {
 
     if (type === 'planet') {
       source = new XYZ({
-        url: `http://localhost:8083/collections/nicfi-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
+        url: `${titilerURL}/collections/nicfi-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
         maxZoom: 14,
       });
     }
@@ -460,7 +460,7 @@ export const useMapStore = defineStore('map', () => {
 
 
       source = new XYZ({
-        url: `http://localhost:8083/collections/nicfi-pred-northern_choco_test_2025_06_09-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
+        url: `${titilerURL}/collections/nicfi-pred-northern_choco_test_2025_06_09-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
         maxZoom: 14,
       });
 
@@ -1614,7 +1614,7 @@ export const useMapStore = defineStore('map', () => {
     const colormap = getEncodedColormap('CFWForestCoverPalette');
 
     const source = new XYZ({
-      url: `http://localhost:8083/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&expression=${encodedExpression}&asset_as_band=true&colormap=${colormap}`,
+      url: `${titilerURL}/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&expression=${encodedExpression}&asset_as_band=true&colormap=${colormap}`,
       maxZoom: 14,
     });
 
