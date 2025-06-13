@@ -24,15 +24,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load environment variables from .env file
 load_dotenv(BASE_DIR.parent / '.env')
 
-# Get Planet API key from environment with better error handling
-PLANET_API_KEY = os.getenv('PLANET_API_KEY')
-if not PLANET_API_KEY:
-    raise ValueError(
-        "No PLANET_API_KEY found in environment variables. "
-        "Please make sure you have created a .env file with your Planet API key "
-        "or set the environment variable directly."
-    )
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -99,11 +90,6 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
-PLANET_API_KEY = os.environ.get('PLANET_API_KEY', 'your_planet_api_key_here')
-
-if not PLANET_API_KEY:
-    raise ValueError("No PLANET_API_KEY set. Did you follow the setup instructions?")
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

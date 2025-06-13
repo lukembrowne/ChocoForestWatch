@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import authService from 'src/services/auth';
 
 export const useWelcomeStore = defineStore('welcome', () => {
   const showProjectsModal = ref(false);
@@ -7,6 +8,8 @@ export const useWelcomeStore = defineStore('welcome', () => {
   const showAnalysisModal = ref(false);
 
   const showHelp = (section) => {
+    const isAdmin = authService.getCurrentUser()?.user?.is_superuser === true;
+    if (!isAdmin) return;
     console.log('Showing help for section:', section);
     switch(section) {
       case 'projects':

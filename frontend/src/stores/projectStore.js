@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import api from 'src/services/api';
+import api, { DEFAULT_PROJECT_ID } from 'src/services/api';
 import 'ol/ol.css';
 import { useMapStore } from './mapStore';  // Import the mapStore
 import { ref, computed } from 'vue';
@@ -74,8 +74,8 @@ export const useProjectStore = defineStore('project', {
         const mapStore = useMapStore();  // Access the mapStore
         mapStore.updateTrainingLayerStyle();
         if (this.currentProject['aoi'] && mapStore.mapInitialized) {
-          console.log("Displaying AOI within loadProject")
-          mapStore.displayAOI(this.currentProject.aoi)
+        //  console.log("Displaying AOI within loadProject")
+       // mapStore.displayAOI(this.currentProject.aoi)
         }
 
         // Fetch training dates when a project is loaded
@@ -217,6 +217,11 @@ export const useProjectStore = defineStore('project', {
 
     includedTrainingDates() {
       return this.trainingDates.filter(date => !this.isDateExcluded(date))
+    },
+
+    // Load the public default project (ID from env)
+    async loadDefaultProject() {
+      return this.loadProject(DEFAULT_PROJECT_ID);
     },
 
   }

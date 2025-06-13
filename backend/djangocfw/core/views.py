@@ -8,14 +8,12 @@ from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, Defor
 from .serializers import (ProjectSerializer, TrainingPolygonSetSerializer, 
                          TrainedModelSerializer, PredictionSerializer, 
                          DeforestationHotspotSerializer, UserSerializer, UserSettingsSerializer)
-from .services.model_training import ModelTrainingService
-from .services.prediction import PredictionService
 from loguru import logger
 import json
 from django.conf import settings
 from django.http import JsonResponse
 from .services.deforestation import analyze_change, get_deforestation_hotspots
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
@@ -31,8 +29,6 @@ from datetime import datetime
 import logging
 import os
 import random
-from typing import Optional, Iterator
-import rasterio
 from shapely.geometry import Point, shape
 from shapely.ops import unary_union
 from pathlib import Path
@@ -43,6 +39,8 @@ from shapely.ops import transform
 logger = logging.getLogger(__name__)
 
 _global_boundary_polygon = None  # cache for boundary geometry
+
+DEFAULT_PUBLIC_PROJECT_ID = int(os.getenv("DEFAULT_PUBLIC_PROJECT_ID"))
 
 def _load_boundary_polygon():
     """Load and cache the project boundary as a shapely geometry in Web Mercator projection."""
@@ -90,13 +88,17 @@ def health_check(request):
     })
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    """Projects owned by user; anonymous visitors get read-only access to a single public project."""
+    permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_class = ProjectSerializer
     queryset = Project.objects.all()
     
     def get_queryset(self):
-        # Filter queryset to only return projects owned by the current user
-        return Project.objects.filter(owner=self.request.user)
+        """Authenticated users see their projects; anonymous users see only the public project."""
+        if self.request.user and self.request.user.is_authenticated:
+            return Project.objects.filter(owner=self.request.user)
+        # Anonymous: expose just the default public project
+        return Project.objects.filter(id=DEFAULT_PUBLIC_PROJECT_ID)
     
     def perform_create(self, serializer):
         # Automatically set the owner when creating a new project

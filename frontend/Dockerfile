@@ -34,9 +34,7 @@ RUN if [ "$DJANGO_DEBUG" != "True" ]; then \
     echo "Building for production..." && \
     echo "DJANGO_DEBUG: $DJANGO_DEBUG" && \
     echo "VITE_API_URL: $VITE_API_URL" && \
-    echo "VUE_APP_PLANET_API_KEY: $VUE_APP_PLANET_API_KEY" && \
     echo "VITE_API_URL=${VITE_API_URL}" && \
-    echo "VUE_APP_PLANET_API_KEY=${VUE_APP_PLANET_API_KEY}" && \
     echo "VITE_TITILER_URL=${VITE_TITILER_URL}" > .env.production && \
     quasar build; \
     fi

@@ -408,7 +408,7 @@ export default {
         if (response.user?.preferred_language) {
           changeLanguage(response.user.preferred_language)
         }
-        router.push('/projects')
+        router.push('/')
         $q.notify({
           color: 'positive',
           message: t('auth.login.loginSuccess'),

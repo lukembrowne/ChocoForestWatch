@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import api from 'src/services/api';
+import authService from 'src/services/auth';
 import TileLayer from 'ol/layer/Tile'
 import OSM from 'ol/source/OSM'
 import { Map, View } from 'ol'
@@ -125,8 +126,11 @@ export const useMapStore = defineStore('map', () => {
         })
       });
 
-      initTrainingLayer();
-      initInteractions();
+      const isAdmin = authService.getCurrentUser()?.user?.is_superuser === true;
+      if (isAdmin) {
+        initTrainingLayer();
+        initInteractions();
+      }
 
       // Initialize layers
       updateLayers();
