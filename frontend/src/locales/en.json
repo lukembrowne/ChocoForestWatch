@@ -453,7 +453,7 @@
           }
         },
         "description": "Select a benchmark dataset to add to the map",
-        "title": "Add Benchmark Layer"
+        "title": "Add Forest/Tree Cover Layer"
       },
       "opacity": "Opacity",
       "title": "Map Layers",
@@ -493,6 +493,12 @@
     "languageUpdateFailed": "Failed to update language preference",
     "languageUpdated": "Language preference updated successfully",
     "projectLoaded": "Project loaded successfully"
+  },
+  "placeholder": {
+    "landCoverStats": {
+      "text": "Coming soon",
+      "title": "Land-cover statistics"
+    }
   },
   "projects": {
     "aoi": {
@@ -831,12 +837,6 @@
         "description": "Start training and monitor progress. Review accuracy metrics when complete.",
         "title": "Train and Evaluate"
       }
-    }
-  },
-  "placeholder": {
-    "landCoverStats": {
-      "title": "Land-cover statistics",
-      "text": "Coming soon"
     }
   }
 }

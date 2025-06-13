@@ -453,7 +453,7 @@
           }
         },
         "description": "Seleccione un conjunto de datos de referencia para agregar al mapa",
-        "title": "Agregar Capa de Referencia"
+        "title": "Agregue la capa de tapa del bosque/árbol"
       },
       "opacity": "Opacidad",
       "title": "Capas del Mapa",
@@ -493,6 +493,12 @@
     "languageUpdateFailed": "Error al actualizar la preferencia de idioma",
     "languageUpdated": "Preferencia de idioma actualizada exitosamente",
     "projectLoaded": "Proyecto cargado exitosamente"
+  },
+  "placeholder": {
+    "landCoverStats": {
+      "text": "Próximamente",
+      "title": "Estadísticas de cobertura terrestre"
+    }
   },
   "projects": {
     "aoi": {
@@ -831,12 +837,6 @@
         "description": "",
         "title": ""
       }
-    }
-  },
-  "placeholder": {
-    "landCoverStats": {
-      "title": "Estadísticas de cobertura terrestre",
-      "text": "Próximamente"
     }
   }
 }

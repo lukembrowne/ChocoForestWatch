@@ -4,7 +4,7 @@
       <p class="text-subtitle1 q-mb-none">{{ t('layers.switcher.title') }}</p>
       <div class="row items-center no-wrap">
         <!-- Add benchmark button -->
-        <q-btn flat round dense icon="add" size="sm" class="q-mr-xs" @click="showBenchmarkDialog = true">
+        <q-btn flat round dense icon="add" size="sm" class="q-mr-xs" @click="showBenchmarkDialog = true" v-if="false">
           <q-tooltip>{{ t('layers.switcher.tooltips.addBenchmark') }}</q-tooltip>
         </q-btn>
         <!-- Expand / collapse -->
@@ -79,6 +79,7 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    
   </div>
 </template>
 

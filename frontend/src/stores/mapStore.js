@@ -8,7 +8,7 @@ import 'ol/ol.css';
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
 import GeoJSON from 'ol/format/GeoJSON'
-import { Style, Fill, Stroke } from 'ol/style'
+import { Style, Fill, Stroke, Circle as CircleStyle } from 'ol/style'
 import XYZ from 'ol/source/XYZ';
 import { useProjectStore } from './projectStore';
 
@@ -21,7 +21,7 @@ import ImageLayer from 'ol/layer/Image';
 import ImageStatic from 'ol/source/ImageStatic';
 import { getBasemapDateOptions } from 'src/utils/dateUtils';
 import { Feature } from 'ol';
-import { Polygon } from 'ol/geom';
+import { Polygon, Point } from 'ol/geom';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { transformExtent } from 'ol/proj'
 import { useQuasar } from 'quasar';
@@ -62,6 +62,10 @@ export const useMapStore = defineStore('map', () => {
   const randomPoints = ref([]);
   const currentPointIndex = ref(-1);
   const boundaryLayer = ref(null);
+
+  // Search (geocoder) state
+  const searchResults = ref([]);
+  const searchMarkerLayer = ref(null);
 
   // Internal state
   const projectStore = useProjectStore();
@@ -1656,6 +1660,72 @@ export const useMapStore = defineStore('map', () => {
     updateLayers();
   };
 
+  // -------------------------------------------
+  // Search functionality (Nominatim geocoder)
+  // -------------------------------------------
+
+  const searchLocation = async (query) => {
+    if (!query || !query.trim()) {
+      searchResults.value = [];
+      return [];
+    }
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`;
+      const response = await fetch(url, {
+        headers: {
+          'Accept-Language': 'en',
+          'User-Agent': 'ChocoForestWatch/0.1 (+https://chocoforestwatch.org)'
+        }
+      });
+      const data = await response.json();
+      searchResults.value = data.map((d) => ({
+        label: d.display_name,
+        lon: Number(d.lon),
+        lat: Number(d.lat),
+        bbox: d.boundingbox.map(Number)
+      }));
+    } catch (err) {
+      console.error('Location search failed:', err);
+      searchResults.value = [];
+    }
+    return searchResults.value;
+  };
+
+  const zoomToSearchResult = (result, zoomLevel = 14) => {
+    if (!map.value || !result) return;
+
+    // Prepare / clear marker layer
+    if (!searchMarkerLayer.value) {
+      searchMarkerLayer.value = new VectorLayer({
+        source: new VectorSource(),
+        style: new Style({
+          image: new CircleStyle({
+            radius: 6,
+            fill: new Fill({ color: '#1976D2' }),
+            stroke: new Stroke({ color: '#ffffff', width: 2 })
+          })
+        }),
+        id: 'search-marker',
+        title: 'Search Result',
+        zIndex: 100
+      });
+      map.value.addLayer(searchMarkerLayer.value);
+    } else {
+      searchMarkerLayer.value.getSource().clear();
+    }
+
+    const coord3857 = fromLonLat([result.lon, result.lat]);
+    searchMarkerLayer.value.getSource().addFeature(new Feature({ geometry: new Point(coord3857) }));
+
+    if (result.bbox && result.bbox.length === 4) {
+      const extent4326 = [result.bbox[2], result.bbox[0], result.bbox[3], result.bbox[1]]; // minX, minY, maxX, maxY
+      const extent3857 = transformExtent(extent4326, 'EPSG:4326', map.value.getView().getProjection());
+      map.value.getView().fit(extent3857, { duration: 500, maxZoom: zoomLevel });
+    } else {
+      map.value.getView().animate({ center: coord3857, zoom: zoomLevel, duration: 500 });
+    }
+  };
+
   return {
     // State
     aoi,
@@ -1681,6 +1751,7 @@ export const useMapStore = defineStore('map', () => {
     drawingMode,
     randomPoints,
     currentPointIndex,
+    searchResults,
     // Actions
     initMap,
     setAOI,
@@ -1731,6 +1802,9 @@ export const useMapStore = defineStore('map', () => {
     goToPreviousPoint,
     getCurrentPoint,
     clearRandomPoints,
+    // Search actions
+    searchLocation,
+    zoomToSearchResult,
     // new benchmark actions
     addBenchmarkLayer,
     // Getters

@@ -130,7 +130,7 @@
               @aoi-saved="handleAOISaved"
             />
             <TrainingAndPolygonManager v-if="isAdmin && showTrainingAndPolygonManager" />
-            <LandCoverStatsPlaceholder v-if="!isAdmin" />
+            <SidebarPanel v-if="!isAdmin" />
           </div>
           <UnifiedAnalysis v-if="isAdmin && showUnifiedAnalysis" />
           <SystemDashboard v-if="isAdmin && showAdminDashboard" />
@@ -251,7 +251,7 @@ import ProjectSelection from 'components/projects/ProjectSelectionDialog.vue'
 import TrainingAndPolygonManager from 'components/training/TrainingAndPolygonManager.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
-import LandCoverStatsPlaceholder from 'components/LandCoverStatsPlaceholder.vue'
+import SidebarPanel from 'components/sidebar/SidebarPanel.vue'
 import BasemapDateSlider from 'components/BasemapDateSlider.vue'
 import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -269,7 +269,7 @@ export default {
     TrainingAndPolygonManager,
     CustomLayerSwitcher,
     AOIFloatingCard,
-    LandCoverStatsPlaceholder,
+    SidebarPanel,
     BasemapDateSlider,
     ProjectSelection,
     UnifiedAnalysis,
