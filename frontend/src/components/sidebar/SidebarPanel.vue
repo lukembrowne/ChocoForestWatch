@@ -25,13 +25,11 @@
       </q-select>
     </q-card-section>
 
-    <!-- Benchmarks selector -->
-    <BenchmarkSelector />
 
     <q-separator />
 
     <div class="q-pa-sm flex column">
-      <LandCoverStatsPlaceholder />
+      <LandCoverStats />
     </div>
   </q-card>
 </template>
@@ -41,11 +39,9 @@ import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { useMapStore } from 'src/stores/mapStore'
 
-import LandCoverStatsPlaceholder from '../LandCoverStatsPlaceholder.vue'
-import BenchmarkSelector from './BenchmarkSelector.vue'
+import LandCoverStats from '../LandCoverStats.vue'
 
 const mapStore   = useMapStore()
-const $q         = useQuasar()
 
 const options        = ref([])
 const selectedLabel  = ref('')

@@ -35,6 +35,7 @@ from pathlib import Path
 import requests
 from pyproj import Transformer
 from shapely.ops import transform
+from ml_pipeline.summary_stats import AOISummaryStats
 
 logger = logging.getLogger(__name__)
 
@@ -839,3 +840,47 @@ def get_random_points_within_collection(request, collection_id):
     except Exception as e:
         logger.error(f"Error generating random points: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def aoi_summary(request):
+    """Compute forest / non-forest summary stats for a user-provided AOI.
+
+    Payload example:
+        {
+            "aoi": { ... GeoJSON Polygon/Multipolygon ... }
+        }
+
+    Returns a JSON object with keys: forest_px, nonforest_px, missing_px,
+    pct_forest, pct_missing, forest_ha, nonforest_ha.
+    """
+
+    try:
+        logger.info("Starting AOI summary computation")
+        
+        aoi_geojson = request.data.get('aoi')
+        if not aoi_geojson:
+            logger.warning("Missing 'aoi' field in request")
+            return Response({"error": "'aoi' field is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        titiler_url = os.environ.get("TITILER_URL")
+        if not titiler_url:
+            logger.error("TITILER_URL environment variable not set")
+            raise ValueError("TITILER_URL environment variable is not set")
+
+        # Hard-coded collection for now – will be parameterised later
+        collection_id = "benchmarks-hansen-tree-cover-2022"
+        logger.info(f"Using collection ID: {collection_id}")
+
+        logger.info("Computing summary statistics")
+        stats_df = AOISummaryStats(titiler_url, collection_id).summary(aoi_geojson)
+
+        # Convert single-row dataframe to plain dict
+        stats_dict = stats_df.iloc[0].to_dict()
+        logger.info("Successfully computed summary statistics")
+
+        return Response(stats_dict, status=status.HTTP_200_OK)
+
+    except Exception as exc:
+        logger.error(f"AOI summary computation failed: {exc}")
+        capture_exception(exc)
+        return Response({"error": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

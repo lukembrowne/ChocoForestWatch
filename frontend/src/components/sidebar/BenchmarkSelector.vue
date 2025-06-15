@@ -1,7 +1,7 @@
 <template>
   <div>
-    <q-card-section class="q-pt-none q-pb-xs">
-      <q-btn color="primary" outline size="sm" class="full-width" icon="add" @click="showDialog = true">
+    <q-card-section class="q-pt-none q-pb-xs flex flex-center">
+      <q-btn color="green-5" size="sm" class="full-width" @click="showDialog = true">
         {{ $t('layers.switcher.benchmarks.title') }}
       </q-btn>
     </q-card-section>
@@ -77,5 +77,7 @@ export default {
 </script>
 
 <style scoped>
-/* Add any specific styles for the benchmark selector here if needed */
+.half-width {
+  width: 50%;
+}
 </style> 

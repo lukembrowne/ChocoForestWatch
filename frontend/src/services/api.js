@@ -202,6 +202,11 @@ const api = {
             params: { count }
         });
     },
+
+    // AOI summary statistics
+    getAOISummary(aoiGeoJSON) {
+        return apiClient.post('/aoi_summary/', { aoi: aoiGeoJSON });
+    },
 };
 
 // Initialize function for boot

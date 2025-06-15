@@ -16,6 +16,7 @@ from ml_pipeline.benchmark_metrics_io import (
     plot_accuracy,
 )
 from ml_pipeline.db_utils import get_db_connection
+from ml_pipeline.raster_utils import pixels_to_labels, extract_pixels_with_missing
 
 # Suppress boto3 logging
 logging.getLogger('boto3').setLevel(logging.WARNING)
@@ -157,14 +158,14 @@ class BenchmarkTester:
             # ------------------------------------------------------------------
             # Extract pixels & classify
             # ------------------------------------------------------------------
-            pixels, fids, missing_px = self._extract_pixels_with_missing(gdf_month)
+            pixels, fids, missing_px = extract_pixels_with_missing(self.extractor, gdf_month.geometry.iloc[0], self.band_indexes)
             if pixels.size == 0:
                 raise RuntimeError(
                     f"❌  No valid pixels extracted for {month}. Check if the raster has coverage "
                     "or if all pixels are nodata."
                 )
 
-            y_pred = self._pixels_to_labels(pixels).squeeze()
+            y_pred = pixels_to_labels(self.collection, pixels.squeeze())
             pred_df = pd.DataFrame({"id": fids, "predicted_label": y_pred})
 
             # Merge predictions into GeoDataFrame
@@ -270,103 +271,3 @@ class BenchmarkTester:
             plot_accuracy(metrics_df)
 
         return metrics_df
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-    def _pixels_to_labels(self, pixels: np.ndarray) -> np.ndarray:
-        """Map raw raster pixel values ➜ "Forest" / "Non-Forest" labels."""
-        if "nicfi" in self.collection:
-            # Our NICFI predictions use 0=Non-forest, 1=Forest, 2/3/4/… for QA flags
-            return np.where(pixels == 0, "Non-Forest", "Forest")
-
-        # ---- External benchmark datasets ----------------------------------
-        if self.collection == "benchmarks-hansen-tree-cover-2022":
-            return np.where(pixels >= 90, "Forest", "Non-Forest")
-
-        if self.collection == "benchmarks-mapbiomes-2022":
-            return np.where(
-                np.logical_or.reduce([
-                    pixels == 3,
-                    pixels == 4,
-                    pixels == 5,
-                    pixels == 6,
-                ]),
-                "Forest",
-                "Non-Forest",
-            )
-
-        if self.collection == "benchmarks-esa-landcover-2020":
-            return np.where(pixels == 10, "Forest", "Non-Forest")
-
-        if self.collection == "benchmarks-jrc-forestcover-2020":
-            return np.where(pixels == 1, "Forest", "Non-Forest")
-
-        if self.collection == "benchmarks-palsar-2020":
-            return np.where(
-                np.logical_or.reduce([
-                    pixels == 1,
-                    pixels == 2,
-                ]),
-                "Forest",
-                "Non-Forest",
-            )
-
-        if self.collection == "benchmarks-wri-treecover-2020":
-            return np.where(pixels >= 90, "Forest", "Non-Forest")
-
-        raise ValueError(f"Unknown collection: {self.collection}")
-
-    # ------------------------------------------------------------------
-    # Pixel extraction including missing-data accounting
-    # ------------------------------------------------------------------
-    def _extract_pixels_with_missing(self, gdf) -> tuple[np.ndarray, np.ndarray, int]:
-        """Like TitilerExtractor.extract_pixels but also counts missing (nodata) pixels."""
-        import rasterio
-        from rasterio.mask import mask
-        from shapely.geometry import mapping
-
-        gdf_wgs84 = gdf.to_crs("EPSG:4326")
-        gdf_3857 = gdf.to_crs("EPSG:3857")
-
-        pixels, fids = [], []
-        missing_px_count = 0
-
-
-        for wgs84_geom, webm_geom, fid in zip(
-            gdf_wgs84.geometry,
-            gdf_3857.geometry,
-            gdf["id"],
-        ):
-            for cog in self.extractor.get_cog_urls(wgs84_geom):
-                try:
-                    with rasterio.open(cog) as src:
-                        
-                        mask_geom = wgs84_geom if src.crs.to_epsg() == 4326 else webm_geom
-                        out, _ = mask(
-                            src,
-                            [mapping(mask_geom)],
-                            crop=True,
-                            indexes=self.band_indexes,
-                            all_touched=True,
-                        )
-
-                        nodata = src.nodata
-                        if nodata is not None:
-                            nodata_mask = np.all(out == nodata, axis=0) if out.ndim == 3 else (out == nodata)
-                            missing_px_count += int(np.count_nonzero(nodata_mask))
-
-                        arr = np.moveaxis(out, 0, -1).reshape(-1, len(self.band_indexes))
-                        if nodata is not None:
-                            arr = arr[~np.all(arr == nodata, axis=1)]
-
-                    if len(arr):
-                        pixels.append(arr)
-                        fids.extend([fid] * len(arr))
-                except Exception as e:
-                    raise RuntimeError(f"⚠️  Failed to read COG {cog}: {e}") from e
-
-        if not pixels:
-            return np.empty((0, len(self.band_indexes))), np.array([]), missing_px_count
-
-        return np.vstack(pixels), np.array(fids), missing_px_count 

@@ -26,6 +26,7 @@ import { fromLonLat, toLonLat } from 'ol/proj';
 import { transformExtent } from 'ol/proj'
 import { useQuasar } from 'quasar';
 import { getEncodedColormap } from 'src/utils/colormap';
+import { createBox } from 'ol/interaction/Draw';
 
 export const useMapStore = defineStore('map', () => {
 
@@ -82,6 +83,12 @@ export const useMapStore = defineStore('map', () => {
   const availableDates = ref([]);
 
   const $q = useQuasar();
+
+  // Summary AOI drawing
+  const summaryAOILayer = ref(null);
+  const summaryDrawInteraction = ref(null);
+  const isDrawingSummaryAOI = ref(false);
+  const summaryStats = ref(null);
 
   // New computed property for visual indicator
   const modeIndicator = computed(() => {
@@ -488,11 +495,11 @@ export const useMapStore = defineStore('map', () => {
 
     // Return a new TileLayer for basemap
 
-    const title = type === 'planet' ? `Planet Basemap ${date}` : `Predictions ${date}`;
+    const title = type === 'planet' ? `Planet Basemap ${date}` : `CFW Tree Cover 2022`;
     const id = type === 'planet' ? `planet-basemap` : `predictions`;
     const zIndex = type === 'planet' ? 1 : 2;
     const opacity = type === 'planet' ? 1 : 0.7;
-    const visible = type === 'planet' ? true : false;
+    const visible = type === 'planet' ? false : true;
 
     return new TileLayer({
       source: source,
@@ -1726,6 +1733,82 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // AOI summary drawing and computation
+  // ---------------------------------------------------------------------------
+
+  const startSummaryAOIDraw = () => {
+    if (!map.value) return;
+
+    // Ensure previous summary AOI cleared
+    clearSummaryAOI();
+
+    isDrawingSummaryAOI.value = true;
+
+    // Create vector layer to hold the rectangle
+    summaryAOILayer.value = new VectorLayer({
+      source: new VectorSource(),
+      style: new Style({
+        stroke: new Stroke({ color: '#1976D2', width: 2 }),
+        fill: new Fill({ color: 'rgba(25, 118, 210, 0.1)' })
+      }),
+      title: 'Summary AOI',
+      id: 'summary-aoi',
+      zIndex: 101
+    });
+    map.value.addLayer(summaryAOILayer.value);
+
+    // Box draw interaction
+    summaryDrawInteraction.value = new Draw({
+      source: summaryAOILayer.value.getSource(),
+      type: 'Circle', // special code for box with geometryFunction
+      geometryFunction: createBox(),
+    });
+
+    summaryDrawInteraction.value.on('drawend', async (evt) => {
+      try {
+        const geom3857 = evt.feature.getGeometry();
+        // Convert to GeoJSON WGS84 (EPSG:4326)
+        const geoJSONGeom = new GeoJSON().writeGeometryObject(geom3857, {
+          dataProjection: 'EPSG:4326',
+          featureProjection: 'EPSG:3857',
+        });
+
+        // Send to backend
+        isLoading.value = true;
+        const resp = await api.getAOISummary({ type: 'Feature', geometry: geoJSONGeom });
+        summaryStats.value = resp.data;
+      } catch (err) {
+        console.error('Failed to compute AOI summary:', err);
+        $q.notify({ type: 'negative', message: 'Failed to compute summary statistics.' });
+      } finally {
+        isLoading.value = false;
+        stopSummaryAOIDraw();
+      }
+    });
+
+    map.value.addInteraction(summaryDrawInteraction.value);
+  };
+
+  const stopSummaryAOIDraw = () => {
+    if (!map.value) return;
+    isDrawingSummaryAOI.value = false;
+    if (summaryDrawInteraction.value) {
+      map.value.removeInteraction(summaryDrawInteraction.value);
+      summaryDrawInteraction.value = null;
+    }
+  };
+
+  const clearSummaryAOI = () => {
+    if (!map.value) return;
+    stopSummaryAOIDraw();
+    summaryStats.value = null;
+    if (summaryAOILayer.value) {
+      map.value.removeLayer(summaryAOILayer.value);
+      summaryAOILayer.value = null;
+    }
+  };
+
   return {
     // State
     aoi,
@@ -1802,6 +1885,11 @@ export const useMapStore = defineStore('map', () => {
     goToPreviousPoint,
     getCurrentPoint,
     clearRandomPoints,
+    // AOI summary
+    startSummaryAOIDraw,
+    clearSummaryAOI,
+    summaryStats,
+    isDrawingSummaryAOI,
     // Search actions
     searchLocation,
     zoomToSearchResult,

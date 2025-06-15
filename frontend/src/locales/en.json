@@ -453,7 +453,7 @@
           }
         },
         "description": "Select a benchmark dataset to add to the map",
-        "title": "Add Forest/Tree Cover Layer"
+        "title": "Add Layer"
       },
       "opacity": "Opacity",
       "title": "Map Layers",
