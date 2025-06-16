@@ -90,6 +90,18 @@ export const useMapStore = defineStore('map', () => {
   const isDrawingSummaryAOI = ref(false);
   const summaryStats = ref(null);
 
+  // Benchmark selection
+  const availableBenchmarks = [
+    { value: 'benchmarks-hansen-tree-cover-2022', label: 'Hansen Tree Cover 2022' },
+    { value: 'benchmarks-mapbiomes-2022', label: 'MapBiomas 2022' },
+    { value: 'benchmarks-esa-landcover-2020', label: 'ESA Landcover 2020' },
+    { value: 'benchmarks-jrc-forestcover-2020', label: 'JRC Forest Cover 2020' },
+    { value: 'benchmarks-palsar-2020', label: 'PALSAR 2020' },
+    { value: 'benchmarks-wri-treecover-2020', label: 'WRI Tree Cover 2020' },
+    { value: 'nicfi-pred-northern_choco_test_2025_06_09-composite-2022', label: 'CFW Composite 2022' },
+  ];
+  const selectedBenchmark = ref(availableBenchmarks[0].value);
+
   // New computed property for visual indicator
   const modeIndicator = computed(() => {
     switch (interactionMode.value) {
@@ -1776,7 +1788,7 @@ export const useMapStore = defineStore('map', () => {
 
         // Send to backend
         isLoading.value = true;
-        const resp = await api.getAOISummary({ type: 'Feature', geometry: geoJSONGeom });
+        const resp = await api.getAOISummary({ type: 'Feature', geometry: geoJSONGeom }, selectedBenchmark.value);
         summaryStats.value = resp.data;
       } catch (err) {
         console.error('Failed to compute AOI summary:', err);
@@ -1901,5 +1913,8 @@ export const useMapStore = defineStore('map', () => {
     initDualMaps,
     addLayerToDualMaps,
     removeLayerFromDualMaps,
+    // Benchmark selection
+    availableBenchmarks,
+    selectedBenchmark,
   };
 });

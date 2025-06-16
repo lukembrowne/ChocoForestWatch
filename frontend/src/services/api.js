@@ -204,8 +204,8 @@ const api = {
     },
 
     // AOI summary statistics
-    getAOISummary(aoiGeoJSON) {
-        return apiClient.post('/aoi_summary/', { aoi: aoiGeoJSON });
+    getAOISummary(aoiGeoJSON, collectionId) {
+        return apiClient.post('/aoi_summary/', { aoi: aoiGeoJSON, collection_id: collectionId });
     },
 };
 

@@ -5,17 +5,31 @@
       <div class="text-h6">Forest-cover summary</div>
     </q-card-section>
 
+    <q-card-section class="q-gutter-sm">
+      <q-select
+        dense
+        outlined
+        v-model="benchmark"
+        :options="benchmarkOptions"
+        option-label="label"
+        option-value="value"
+        emit-value
+        map-options
+        label="Benchmark"
+        :disable="isDrawing || isLoading"
+      />
+    </q-card-section>
+
     <q-separator inset />
 
     <q-card-section class="q-gutter-md">
       <div v-if="!stats">
-        <q-btn color="primary" label="Draw area" icon="crop_square" @click="startDraw" :loading="isLoading"/>
+        <q-btn color="primary" label="Draw area" @click="startDraw" :loading="isLoading"/>
       </div>
 
       <div v-else>
         <div class="row items-center q-gutter-sm">
-          <q-btn dense flat icon="refresh" @click="clear"/>
-          <span class="text-caption">Draw new area</span>
+          <q-btn dense icon="refresh" color="green-5" label="Draw new area" @click="clear"/>
         </div>
 
         <q-markup-table dense flat class="q-mt-sm">
@@ -48,13 +62,27 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
 
 const mapStore = useMapStore()
 
-const stats      = computed(() => mapStore.summaryStats)
-const isLoading  = computed(() => mapStore.isLoading)
+const stats         = computed(() => mapStore.summaryStats)
+const isLoading     = computed(() => mapStore.isLoading)
+const isDrawing     = computed(() => mapStore.isDrawingSummaryAOI)
+
+const benchmarkOptions = computed(() => mapStore.availableBenchmarks)
+const benchmark        = computed({
+  get: () => mapStore.selectedBenchmark,
+  set: (val) => mapStore.selectedBenchmark = val,
+})
+
+// Auto-refresh stats if user changes benchmark and rectangle exists
+watch(benchmark, async () => {
+  if (stats.value && mapStore.summaryAOILayer) {
+    await mapStore.startSummaryAOIDraw(); // triggers new call
+  }
+})
 
 function startDraw() {
   mapStore.startSummaryAOIDraw()

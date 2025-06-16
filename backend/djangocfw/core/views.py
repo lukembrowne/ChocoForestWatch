@@ -43,6 +43,21 @@ _global_boundary_polygon = None  # cache for boundary geometry
 
 DEFAULT_PUBLIC_PROJECT_ID = int(os.getenv("DEFAULT_PUBLIC_PROJECT_ID"))
 
+# ---------------------------------------------------------------------------
+# Allowed benchmark / land-cover collections that users can choose from
+# Update this list as new datasets become available.
+# ---------------------------------------------------------------------------
+
+ALLOWED_BENCHMARK_COLLECTIONS = [
+    "benchmarks-hansen-tree-cover-2022",
+    "benchmarks-mapbiomes-2022",
+    "benchmarks-esa-landcover-2020",
+    "benchmarks-jrc-forestcover-2020",
+    "benchmarks-palsar-2020",
+    "benchmarks-wri-treecover-2020",
+    "nicfi-pred-northern_choco_test_2025_06_09-composite-2022",  # CFW composite
+]
+
 def _load_boundary_polygon():
     """Load and cache the project boundary as a shapely geometry in Web Mercator projection."""
     global _global_boundary_polygon
@@ -867,8 +882,13 @@ def aoi_summary(request):
             logger.error("TITILER_URL environment variable not set")
             raise ValueError("TITILER_URL environment variable is not set")
 
-        # Hard-coded collection for now – will be parameterised later
-        collection_id = "benchmarks-hansen-tree-cover-2022"
+        # Collection ID comes from client, fallback to first allowed entry
+        collection_id = request.data.get("collection_id") or ALLOWED_BENCHMARK_COLLECTIONS[0]
+
+        if collection_id not in ALLOWED_BENCHMARK_COLLECTIONS:
+            logger.warning(f"Invalid collection_id received: {collection_id}")
+            return Response({"error": "Invalid collection_id"}, status=status.HTTP_400_BAD_REQUEST)
+
         logger.info(f"Using collection ID: {collection_id}")
 
         logger.info("Computing summary statistics")
