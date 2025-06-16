@@ -24,4 +24,5 @@ urlpatterns = [
     path('auth/reset-password/<str:uidb64>/<str:token>/', auth_views.reset_password, name='reset-password'),
     path('user/settings/', views.user_settings, name='user_settings'),
     path('api/statistics/system/', views.get_system_statistics, name='system-statistics'),
+    path('gfw/alerts/2022/', views.gfw_alerts_2022, name='gfw-alerts-2022'),
 ]

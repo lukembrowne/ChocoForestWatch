@@ -1821,6 +1821,79 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
+  // -------------------------------------------
+  // GFW Alerts functionality  
+  // -------------------------------------------
+  
+  const createGFWAlertsLayer = () => {
+    // Create a vector layer for GFW alerts using GeoJSON data
+    const vectorSource = new VectorSource({
+      url: `${import.meta.env.VITE_API_URL}/gfw/alerts/2022/`,
+      format: new GeoJSON(),
+      attributions: '© Global Forest Watch'
+    });
+
+    // Style for GFW alert polygons
+    const alertStyle = new Style({
+      stroke: new Stroke({
+        color: '#FF6B35', // Orange-red for deforestation alerts
+        width: 2
+      }),
+      fill: new Fill({
+        color: 'rgba(255, 107, 53, 0.3)' // Semi-transparent orange-red
+      })
+    });
+
+    return new VectorLayer({
+      source: vectorSource,
+      style: alertStyle,
+      title: 'GFW Deforestation Alerts 2022',
+      id: 'gfw-alerts-2022',
+      visible: true,
+      zIndex: 4, // Higher than benchmark layers
+      opacity: 0.8
+    });
+  };
+
+  const addGFWAlertsLayer = (mapId = null) => {
+    const layerId = 'gfw-alerts-2022';
+    let targetMap;
+    
+    if (mapId && maps.value[mapId]) {
+      targetMap = maps.value[mapId];
+    } else {
+      targetMap = map.value;
+    }
+    
+    if (!targetMap) return;
+
+    // Avoid adding duplicate layer with same id
+    const existing = targetMap.getLayers().getArray().find((l) => l.get('id') === layerId);
+    if (existing) {
+      existing.setVisible(true);
+      updateLayers();
+      return;
+    }
+
+    try {
+      const newLayer = createGFWAlertsLayer();
+      targetMap.addLayer(newLayer);
+      updateLayers();
+      $q.notify({
+        type: 'positive',
+        message: 'GFW Deforestation Alerts 2022 layer added successfully',
+        timeout: 2000
+      });
+    } catch (error) {
+      console.error('Error adding GFW alerts layer:', error);
+      $q.notify({
+        type: 'negative', 
+        message: 'Failed to add GFW alerts layer',
+        timeout: 3000
+      });
+    }
+  };
+
   return {
     // State
     aoi,
@@ -1907,6 +1980,7 @@ export const useMapStore = defineStore('map', () => {
     zoomToSearchResult,
     // new benchmark actions
     addBenchmarkLayer,
+    addGFWAlertsLayer,
     // Getters
     getMap,
     maps,

@@ -207,6 +207,11 @@ const api = {
     getAOISummary(aoiGeoJSON, collectionId) {
         return apiClient.post('/aoi_summary/', { aoi: aoiGeoJSON, collection_id: collectionId });
     },
+
+    // GFW deforestation alerts
+    getGFWAlerts2022() {
+        return apiClient.get('/gfw/alerts/2022/');
+    },
 };
 
 // Initialize function for boot

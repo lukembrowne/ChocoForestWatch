@@ -450,6 +450,11 @@
             "description": "High-resolution (10 m) probability-based tree-cover map for the tropics developed by WRI Land & Carbon Lab and partners.",
             "title": "WRI Tropical Tree Cover 2020 (10 m)",
             "url": "https://data.globalforestwatch.org/datasets/gfw::tropical-tree-cover/about"
+          },
+          "gfw-alerts": {
+            "description": "Integrated deforestation alerts from Global Forest Watch including GLAD, RADD, and other systems providing near real-time forest disturbance detection.",
+            "title": "GFW Integrated Deforestation Alerts",
+            "url": "https://www.globalforestwatch.org/help/map/guides/forest-change-analysis/"
           }
         },
         "description": "Select a benchmark dataset to add to the map",

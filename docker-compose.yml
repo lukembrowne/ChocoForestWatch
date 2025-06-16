@@ -8,7 +8,7 @@ services:
       - ./.pgdata:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASS=${POSTGRES_PASSWORD}
+      - POSTGRES_PASS=${POSTGRES_PASS}
       - POSTGRES_DB=${POSTGRES_DB}
       - PGUSER=${POSTGRES_USER}
       - PGDATABASE=${POSTGRES_DB}

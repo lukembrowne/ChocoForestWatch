@@ -18,10 +18,10 @@
                 @click="selectedBenchmark = benchmark.value"
               >
                 <q-card-section>
-                  <div class="text-h6">{{ $t(`layers.switcher.benchmarks.datasets.${benchmark.value.split('-')[1]}.title`) }}</div>
-                  <div class="text-caption q-mt-sm">{{ $t(`layers.switcher.benchmarks.datasets.${benchmark.value.split('-')[1]}.description`) }}</div>
+                  <div class="text-h6">{{ $t(`layers.switcher.benchmarks.datasets.${getDatasetKey(benchmark.value)}.title`) }}</div>
+                  <div class="text-caption q-mt-sm">{{ $t(`layers.switcher.benchmarks.datasets.${getDatasetKey(benchmark.value)}.description`) }}</div>
                   <div class="text-caption q-mt-sm">
-                    <a :href="$t(`layers.switcher.benchmarks.datasets.${benchmark.value.split('-')[1]}.url`)" target="_blank" class="text-primary" @click.stop>
+                    <a :href="$t(`layers.switcher.benchmarks.datasets.${getDatasetKey(benchmark.value)}.url`)" target="_blank" class="text-primary" @click.stop>
                       {{ $t('common.learnMore') }}
                     </a>
                   </div>
@@ -59,18 +59,32 @@ export default {
       { label: 'JRC Forest Cover 2020', value: 'benchmarks-jrc-forestcover-2020' },
       { label: 'PALSAR Forest/Non-Forest 2020', value: 'benchmarks-palsar-2020' },
       { label: 'WRI Tree Cover 2020', value: 'benchmarks-wri-treecover-2020' },
+      { label: 'GFW Deforestation Alerts 2022', value: 'gfw-alerts-2022' },
     ]
 
     const addBenchmark = (val) => {
-      mapStore.addBenchmarkLayer(val, 'training')
+      if (val === 'gfw-alerts-2022') {
+        mapStore.addGFWAlertsLayer('training')
+      } else {
+        mapStore.addBenchmarkLayer(val, 'training')
+      }
       showDialog.value = false
+    }
+
+    const getDatasetKey = (value) => {
+      if (value === 'gfw-alerts-2022') {
+        return 'gfw-alerts'
+      }
+      // For other benchmark datasets, extract the second part after splitting by '-'
+      return value.split('-')[1]
     }
 
     return {
       showDialog,
       benchmarkOptions,
       addBenchmark,
-      selectedBenchmark
+      selectedBenchmark,
+      getDatasetKey
     }
   }
 }

@@ -13,6 +13,7 @@ import json
 from django.conf import settings
 from django.http import JsonResponse
 from .services.deforestation import analyze_change, get_deforestation_hotspots
+from .services.gfw_alerts import gfw_service
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
@@ -904,3 +905,26 @@ def aoi_summary(request):
         logger.error(f"AOI summary computation failed: {exc}")
         capture_exception(exc)
         return Response({"error": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def gfw_alerts_2022(request):
+    """Get Global Forest Watch deforestation alerts for 2022 within Ecuador boundary."""
+    try:
+        logger.info("Fetching GFW 2022 alerts for Ecuador boundary")
+        
+        # Get alerts from service
+        alerts_geojson = gfw_service.get_2022_alerts()
+        
+        logger.info(f"Successfully retrieved {alerts_geojson['metadata']['total_alerts']} GFW alerts")
+        
+        return Response(alerts_geojson, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error fetching GFW alerts: {str(e)}")
+        capture_exception(e)
+        return Response(
+            {"error": f"Failed to fetch GFW alerts: {str(e)}"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

@@ -450,6 +450,11 @@
             "description": "Mapa de cobertura arbórea basado en probabilidades de alta resolución (10 m) para los trópicos desarrollado por WRI Land & Carbon Lab y sus socios.",
             "title": "Cobertura Arbórea Tropical WRI 2020 (10 m)",
             "url": "https://data.globalforestwatch.org/datasets/gfw::tropical-tree-cover/about"
+          },
+          "gfw-alerts": {
+            "description": "Alertas integradas de deforestación de Global Forest Watch incluyendo GLAD, RADD y otros sistemas que proporcionan detección de perturbaciones forestales en tiempo casi real.",
+            "title": "Alertas Integradas de Deforestación GFW",
+            "url": "https://www.globalforestwatch.org/help/map/guides/forest-change-analysis/"
           }
         },
         "description": "Seleccione un conjunto de datos de referencia para agregar al mapa",
