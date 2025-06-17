@@ -5,6 +5,8 @@ from shapely.geometry import mapping
 import rasterio
 from rasterio.mask import mask
 from pyproj import Geod
+from shapely.ops import transform
+from pyproj import Transformer
 
 _GEOD = Geod(ellps="WGS84")  # reused for geodesic area calculations
 
@@ -65,11 +67,22 @@ def extract_pixels_with_missing(extractor, geom, band_indexes):
     pixels, missing_px = [], 0
     px_area_m2 = None
 
+    # Pre-transform geometry to both coordinate systems
+    # Assume input geometry is in WGS84 (EPSG:4326)
+    geom_wgs84 = geom
+    
+    # Transform to Web Mercator (EPSG:3857)
+    transformer_to_3857 = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
+    geom_3857 = transform(transformer_to_3857.transform, geom)
+
     for cog in extractor.get_cog_urls(geom):
         with rasterio.open(cog) as src:
+            # Choose appropriate geometry based on raster CRS
+            mask_geom = geom_wgs84 if src.crs.to_epsg() == 4326 else geom_3857
+            
             out, _ = mask(
                 src,
-                [mapping(geom)],
+                [mapping(mask_geom)],
                 crop=True,
                 indexes=band_indexes,
                 all_touched=True,

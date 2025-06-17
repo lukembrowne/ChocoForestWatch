@@ -137,6 +137,7 @@
           <div class="floating-elements" v-if="!showAOICard && !showUnifiedAnalysis && !showAdminDashboard">
             <BasemapDateSlider class="date-slider" />
           </div>
+          <MapLegend v-if="!showUnifiedAnalysis && !showAdminDashboard" />
           <custom-layer-switcher v-if="!showUnifiedAnalysis && !showAdminDashboard" mapId="training" />
         </div>
       </q-page>
@@ -209,6 +210,7 @@ import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
 import SidebarPanel from 'components/sidebar/SidebarPanel.vue'
 import BasemapDateSlider from 'components/BasemapDateSlider.vue'
+import MapLegend from 'components/MapLegend.vue'
 import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
 import { useRouter, useRoute } from 'vue-router'
 import authService from '../services/auth'
@@ -228,6 +230,7 @@ export default {
     AOIFloatingCard,
     SidebarPanel,
     BasemapDateSlider,
+    MapLegend,
     ProjectSelection,
     UnifiedAnalysis,
     SystemDashboard,
