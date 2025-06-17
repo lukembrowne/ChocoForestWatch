@@ -766,6 +766,7 @@
       "chooseMapTooltip": "Seleccione qué conjunto de datos de cobertura forestal usar para el análisis. El mapa seleccionado aparecerá automáticamente en el mapa principal.",
       "selectMapPlaceholder": "Seleccionar mapa de cobertura forestal",
       "mapLoaded": "Mapa cargado en vista principal",
+      "loadingMap": "Cargando mapa...",
       "drawArea": "Dibujar Área de Análisis",
       "drawAreaTooltip": "Dibuje un rectángulo en el mapa para calcular las estadísticas de cobertura forestal para esa área específica.",
       "readyToAnalyze": "Listo para analizar",
@@ -803,7 +804,24 @@
         "title": "Verificar Puntos Críticos"
       }
     },
-    "dontShowAgain": "",
+    "dontShowAgain": "No mostrar esto de nuevo",
+    "modal": {
+      "title": "Bienvenido a Choco Forest Watch",
+      "welcomeTitle": "Bienvenido a Choco Forest Watch",
+      "description": "Monitorea la cobertura forestal y la deforestación en la Bioregión del Chocó de Ecuador.",
+      "featuresTitle": "Características principales:",
+      "features": {
+        "imagery": "Imágenes forestales de alta resolución",
+        "analysis": "Análisis detallado de cobertura forestal",
+        "openSource": "Gratuito y de código abierto"
+      },
+      "descriptions": {
+        "imagery": "Accede a imágenes satelitales de alta resolución y conjuntos de datos de cobertura forestal para el occidente de Ecuador, impulsado por datos NICFI Planet",
+        "analysis": "Dibuja áreas personalizadas en el mapa para generar estadísticas completas de cobertura forestal",
+        "openSource": "Plataforma completamente gratuita con código abierto, desarrollada para investigación de conservación y uso comunitario"
+      },
+      "getStarted": "Comenzar"
+    },
     "projects": {
       "analysis": {
         "description": "",

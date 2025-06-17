@@ -766,6 +766,7 @@
       "chooseMapTooltip": "Select which forest cover dataset to use for analysis. The selected map will automatically appear on the main map.",
       "selectMapPlaceholder": "Select forest cover map",
       "mapLoaded": "Map loaded on main view",
+      "loadingMap": "Loading map...",
       "drawArea": "Draw Analysis Area",
       "drawAreaTooltip": "Draw a rectangle on the map to calculate forest cover statistics for that specific area.",
       "readyToAnalyze": "Ready to analyze",
@@ -804,6 +805,23 @@
       }
     },
     "dontShowAgain": "Don't show this again",
+    "modal": {
+      "title": "Welcome to Choco Forest Watch",
+      "welcomeTitle": "Welcome to Choco Forest Watch",
+      "description": "Monitor forest cover and deforestation in the Chocó Bioregion of Ecuador.",
+      "featuresTitle": "Key Features:",
+      "features": {
+        "imagery": "High-resolution forest imagery",
+        "analysis": "Detailed forest cover analysis", 
+        "openSource": "Free and open source"
+      },
+      "descriptions": {
+        "imagery": "Access high-resolution satellite imagery and forest cover datasets for western Ecuador, powered by NICFI Planet data",
+        "analysis": "Draw custom areas on the map to generate comprehensive forest cover statistics",
+        "openSource": "Completely free platform with open-source code, developed for conservation research and community use"
+      },
+      "getStarted": "Get Started"
+    },
     "projects": {
       "analysis": {
         "description": "Get deforestation statistics and set up alerts",
