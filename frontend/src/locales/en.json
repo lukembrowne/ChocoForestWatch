@@ -418,6 +418,7 @@
     },
     "satellite": "Satellite",
     "switcher": {
+      "layersCount": "layers",
       "benchmarks": {
         "add": "Add",
         "datasets": {
