@@ -13,7 +13,7 @@ import json
 from django.conf import settings
 from django.http import JsonResponse
 from .services.deforestation import analyze_change, get_deforestation_hotspots
-from .services.gfw_alerts import gfw_service
+from .services.gfw_alerts import gfw_service, get_or_create_gfw_alerts
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
@@ -912,12 +912,46 @@ def aoi_summary(request):
 def gfw_alerts_2022(request):
     """Get Global Forest Watch deforestation alerts for 2022 within Ecuador boundary."""
     try:
-        logger.info("Fetching GFW 2022 alerts for Ecuador boundary")
+        logger.info("Fetching GFW 2022 alerts from database")
         
-        # Get alerts from service
-        alerts_geojson = gfw_service.get_2022_alerts()
+        # Get alerts from database (create if they don't exist)
+        alerts = get_or_create_gfw_alerts(year=2022)
         
-        logger.info(f"Successfully retrieved {alerts_geojson['metadata']['total_alerts']} GFW alerts")
+        # Convert to GeoJSON format
+        features = []
+        for alert in alerts:
+            feature = {
+                "type": "Feature",
+                "id": str(alert.id),
+                "geometry": alert.geometry,
+                "properties": {
+                    "id": str(alert.id),
+                    "area_ha": round(alert.area_ha, 2),
+                    "perimeter_m": round(alert.perimeter_m, 2),
+                    "compactness": round(alert.compactness, 3),
+                    "edge_density": round(alert.edge_density, 3),
+                    "confidence": alert.confidence,
+                    "source": alert.source,
+                    "year": alert.year,
+                    "centroid_lon": alert.centroid_lon,
+                    "centroid_lat": alert.centroid_lat,
+                    "verification_status": alert.verification_status
+                }
+            }
+            features.append(feature)
+        
+        alerts_geojson = {
+            "type": "FeatureCollection",
+            "features": features,
+            "metadata": {
+                "year": 2022,
+                "source": "Global Forest Watch",
+                "total_alerts": len(features),
+                "boundary": "Ecuador DEM 900m contour"
+            }
+        }
+        
+        logger.info(f"Successfully retrieved {len(features)} GFW alerts from database")
         
         return Response(alerts_geojson, status=status.HTTP_200_OK)
         

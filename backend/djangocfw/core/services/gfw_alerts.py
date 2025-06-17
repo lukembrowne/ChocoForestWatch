@@ -22,6 +22,133 @@ from pyproj import Transformer
 
 from django.conf import settings
 from loguru import logger
+from joblib import Parallel, delayed
+
+
+def process_pixel_chunk(data_chunk, start_date, end_date, decode_gfw_date_func):
+    """Process a chunk of pixels and return alert positions and confidences."""
+    alert_positions = []
+    confidences = []
+    
+    for i, value in enumerate(data_chunk):
+        if value > 0:  # Skip nodata pixels
+            alert_date, confidence = decode_gfw_date_func(value)
+            if alert_date and start_date <= alert_date <= end_date:
+                alert_positions.append(i)
+                confidences.append(confidence)
+    
+    return alert_positions, confidences
+
+
+def process_single_shape(geom, value, confidence_data, alert_mask, clipped_transform):
+    """Process a single shape from GFW alerts and return feature or None if skipped."""
+    if value != 1:
+        return None
+        
+    polygon = shape(geom)
+    
+    # Calculate area in hectares (convert from m² to ha)
+    # First transform to Web Mercator for accurate area calculation
+    project = Transformer.from_crs('EPSG:4326', 'EPSG:3857', always_xy=True).transform
+    polygon_3857 = transform(project, polygon)
+    area_ha = polygon_3857.area / 10000
+    
+    # Skip very small alerts (< 0.1 ha)
+    if area_ha < 0.1:
+        return None
+    
+    # Get average confidence for this alert
+    from rasterio import features as rasterio_features
+    mask_indices = rasterio_features.rasterize(
+        [(geom, 1)],
+        out_shape=alert_mask.shape,
+        transform=clipped_transform
+    ) == 1
+    
+    if np.any(mask_indices):
+        avg_confidence = float(np.mean(confidence_data[mask_indices]))
+    else:
+        avg_confidence = 1
+    
+    # Create feature
+    feature = {
+        "type": "Feature",
+        "geometry": mapping(polygon),  # Keep in WGS84
+        "properties": {
+            "area_ha": round(area_ha, 2),
+            "perimeter_m": round(polygon_3857.length, 2),
+            "confidence": int(avg_confidence),
+            "source": "gfw",
+            "year": 2022,
+            "centroid_lon": float(polygon.centroid.x),
+            "centroid_lat": float(polygon.centroid.y)
+        }
+    }
+    
+    return feature
+
+
+def get_or_create_gfw_alerts(year=2022):
+    """Get GFW alerts from database or create them if they don't exist."""
+    from ..models import DeforestationHotspot
+    
+    # Check if alerts for this year already exist
+    alerts_exist = DeforestationHotspot.objects.filter(
+        source='gfw',
+        year=year,
+        prediction__isnull=True
+    ).exists()
+    
+    if alerts_exist:
+        logger.info(f"GFW alerts for {year} already exist in database")
+        return DeforestationHotspot.objects.filter(
+            source='gfw',
+            year=year,
+            prediction__isnull=True
+        )
+    
+    # Create new alerts by processing GFW data
+    logger.info(f"Creating GFW alerts for {year}")
+    service = GFWAlertsService()
+    alerts_data = service.get_2022_alerts()
+    
+    # Save alerts to database
+    created_alerts = []
+    logger.info(f"Adding {len(alerts_data['features'])} GFW features for {year} into database")
+    for feature in alerts_data['features']:
+        # Calculate compactness and edge density
+        from shapely.geometry import shape
+        from shapely.ops import transform
+        from pyproj import Transformer
+        
+        polygon = shape(feature['geometry'])
+        
+        # Transform to Web Mercator for accurate area calculations
+        project = Transformer.from_crs('EPSG:4326', 'EPSG:3857', always_xy=True).transform
+        polygon_3857 = transform(project, polygon)
+        
+        area_ha = polygon_3857.area / 10000
+        perimeter_m = polygon_3857.length
+        compactness = 4 * 3.14159 * polygon_3857.area / (perimeter_m ** 2) if perimeter_m > 0 else 0
+        edge_density = perimeter_m / (area_ha * 10000) if area_ha > 0 else 0
+        
+        alert = DeforestationHotspot.objects.create(
+            prediction=None,  # GFW alerts are not tied to predictions
+            geometry=feature['geometry'],
+            area_ha=feature['properties']['area_ha'],
+            perimeter_m=feature['properties']['perimeter_m'],
+            compactness=compactness,
+            edge_density=edge_density,
+            centroid_lon=feature['properties']['centroid_lon'],
+            centroid_lat=feature['properties']['centroid_lat'],
+            source='gfw',
+            confidence=feature['properties']['confidence'],
+            year=year
+        )
+        created_alerts.append(alert)
+    
+    logger.info(f"Created {len(created_alerts)} GFW alerts in database")
+    return created_alerts
 
 
 class GFWAlertsService:
@@ -184,7 +311,7 @@ class GFWAlertsService:
     
     def _process_tile_for_alerts(self, tile_path, boundary_shape, start_date, end_date):
         """Process a single GFW tile to extract 2022 alerts within boundary."""
-        features = []
+        feature_list = []
         tile_name = os.path.basename(tile_path)
         
         logger.info(f"[{tile_name}] Starting tile processing...")
@@ -196,7 +323,7 @@ class GFWAlertsService:
             tile_bounds = box(*src.bounds)
             if not tile_bounds.intersects(boundary_shape):
                 logger.info(f"[{tile_name}] Tile does not intersect with Ecuador boundary - skipping")
-                return features
+                return feature_list
             
             try:
                 # Clip tile to boundary
@@ -211,28 +338,42 @@ class GFWAlertsService:
                 alert_mask = np.zeros_like(clipped_data[0], dtype=bool)
                 confidence_data = np.zeros_like(clipped_data[0], dtype=np.uint8)
                 
-                # Process each pixel to find 2022 alerts
+                # Process pixels in parallel to find 2022 alerts
                 logger.info(f"[{tile_name}] Processing {total_pixels:,} pixels to find 2022 alerts...")
-                processed_pixels = 0
-                valid_pixels = 0
-                alert_pixels = 0
                 
-                for idx in np.ndindex(clipped_data[0].shape):
-                    processed_pixels += 1
+                # Flatten data for easier chunking
+                flat_data = clipped_data[0].flatten()
+                chunk_size = 1000000  # Process 1M pixels per chunk
+                
+                # Create chunks
+                chunks = [flat_data[i:i + chunk_size] for i in range(0, len(flat_data), chunk_size)]
+                logger.info(f"[{tile_name}] Split into {len(chunks)} chunks of ~{chunk_size:,} pixels each")
+                
+                # Process chunks in parallel
+                results = Parallel(n_jobs=8, prefer="processes")(
+                    delayed(process_pixel_chunk)(chunk, start_date, end_date, self.decode_gfw_date)
+                    for chunk in chunks
+                )
+                
+                # Aggregate results
+                alert_pixels = 0
+                valid_pixels = 0
+                
+                for chunk_idx, (alert_positions, confidences) in enumerate(results):
+                    chunk_start = chunk_idx * chunk_size
                     
-                    # Log progress every 100,000 pixels
-                    if processed_pixels % 100000 == 0:
-                        logger.info(f"[{tile_name}] Processed {processed_pixels:,}/{total_pixels:,} pixels "
-                                   f"({processed_pixels/total_pixels*100:.1f}%) - Found {alert_pixels} alerts so far")
-                    
-                    value = clipped_data[0][idx]
-                    if value > 0:  # Skip nodata pixels
-                        valid_pixels += 1
-                        alert_date, confidence = self.decode_gfw_date(value)
-                        if alert_date and start_date <= alert_date <= end_date:
-                            alert_mask[idx] = True
-                            confidence_data[idx] = confidence
+                    for pos, confidence in zip(alert_positions, confidences):
+                        flat_pos = chunk_start + pos
+                        row, col = divmod(flat_pos, clipped_data[0].shape[1])
+                        
+                        # Ensure we don't go out of bounds
+                        if row < alert_mask.shape[0] and col < alert_mask.shape[1]:
+                            alert_mask[row, col] = True
+                            confidence_data[row, col] = confidence
                             alert_pixels += 1
+                    
+                    # Count valid pixels in this chunk
+                    valid_pixels += np.sum(chunks[chunk_idx] > 0)
                 
                 logger.info(f"[{tile_name}] Pixel processing complete - Valid: {valid_pixels:,}, "
                            f"2022 Alerts: {alert_pixels:,} ({alert_pixels/total_pixels*100:.3f}%)")
@@ -246,67 +387,34 @@ class GFWAlertsService:
                         transform=clipped_transform
                     )
                     
-                    # Convert shapes to features
+                    # Convert shapes to features using parallel processing
                     logger.info(f"[{tile_name}] Converting shapes to feature polygons...")
-                    shape_count = 0
-                    small_polygons_skipped = 0
+                    shapes_list = list(shapes)  # Convert iterator to list for parallel processing
                     
-                    for geom, value in shapes:
-                        if value == 1:
-                            shape_count += 1
-                            polygon = shape(geom)
-                            
-                            # Calculate area in hectares (convert from m² to ha)
-                            # First transform to Web Mercator for accurate area calculation
-                            project = Transformer.from_crs('EPSG:4326', 'EPSG:3857', always_xy=True).transform
-                            polygon_3857 = transform(project, polygon)
-                            area_ha = polygon_3857.area / 10000
-                            
-                            # Skip very small alerts (< 0.1 ha)
-                            if area_ha < 0.1:
-                                small_polygons_skipped += 1
-                                continue
-                            
-                            # Get average confidence for this alert
-                            mask_indices = features.rasterize(
-                                [(geom, 1)],
-                                out_shape=alert_mask.shape,
-                                transform=clipped_transform
-                            ) == 1
-                            
-                            if np.any(mask_indices):
-                                avg_confidence = float(np.mean(confidence_data[mask_indices]))
-                            else:
-                                avg_confidence = 1
-                            
-                            # Create feature
-                            feature = {
-                                "type": "Feature",
-                                "geometry": mapping(polygon),  # Keep in WGS84
-                                "properties": {
-                                    "area_ha": round(area_ha, 2),
-                                    "perimeter_m": round(polygon_3857.length, 2),
-                                    "confidence": int(avg_confidence),
-                                    "source": "gfw",
-                                    "year": 2022,
-                                    "centroid_lon": float(polygon.centroid.x),
-                                    "centroid_lat": float(polygon.centroid.y)
-                                }
-                            }
-                            
-                            features.append(feature)
+                    # Process shapes in parallel
+                    processed_features = Parallel(n_jobs=8, prefer="processes")(
+                        delayed(process_single_shape)(geom, value, confidence_data, alert_mask, clipped_transform)
+                        for geom, value in shapes_list
+                    )
+                    
+                    # Filter out None results and add to feature list
+                    valid_features = [f for f in processed_features if f is not None]
+                    feature_list.extend(valid_features)
+                    
+                    shape_count = len(shapes_list)
+                    small_polygons_skipped = shape_count - len(valid_features)
                     
                     logger.info(f"[{tile_name}] Shape processing complete - "
                                f"Shapes processed: {shape_count}, Small polygons skipped: {small_polygons_skipped}, "
-                               f"Final features: {len(features)}")
+                               f"Final features: {len(valid_features)}")
                 else:
                     logger.info(f"[{tile_name}] No alert pixels found in mask - no features to extract")
                 
             except Exception as e:
                 logger.error(f"[{tile_name}] Error processing tile data: {str(e)}")
                 
-        logger.info(f"[{tile_name}] Tile processing complete - {len(features)} features extracted")
-        return features
+        logger.info(f"[{tile_name}] Tile processing complete - {len(feature_list)} features extracted")
+        return feature_list
 
 
 # Global instance

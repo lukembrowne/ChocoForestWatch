@@ -196,7 +196,9 @@ class DeforestationHotspot(models.Model):
     prediction = models.ForeignKey(
         Prediction, 
         on_delete=models.CASCADE,
-        related_name='hotspots'
+        related_name='hotspots',
+        null=True,
+        blank=True
     )
     geometry = models.JSONField()
     area_ha = models.FloatField()
@@ -209,9 +211,20 @@ class DeforestationHotspot(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     source = models.CharField(max_length=20, default='ml')
     confidence = models.IntegerField(null=True)
+    year = models.IntegerField(null=True)  # Add year field for GFW alerts
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['source']),
+            models.Index(fields=['year']),
+            models.Index(fields=['source', 'year']),
+        ]
 
     def __str__(self):
-        return f"Hotspot {self.id} - {self.prediction.name}"
+        if self.prediction:
+            return f"Hotspot {self.id} - {self.prediction.name}"
+        else:
+            return f"GFW Alert {self.id} - {self.year or 'Unknown year'} ({self.area_ha} ha)"
 
 class ModelTrainingTask(models.Model):
     STATUS_CHOICES = [

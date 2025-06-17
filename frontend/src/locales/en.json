@@ -451,19 +451,24 @@
             "title": "WRI Tropical Tree Cover 2020 (10 m)",
             "url": "https://data.globalforestwatch.org/datasets/gfw::tropical-tree-cover/about"
           },
+          "cfw-composite": {
+            "description": "ChocoForestWatch's machine learning-generated forest cover map for 2022, specifically trained for the Northern Chocó region of Ecuador using NICFI satellite imagery.",
+            "title": "CFW Composite 2022",
+            "url": "https://github.com/lukembrowne/chocoforestwatch"
+          },
           "gfw-alerts": {
             "description": "Integrated deforestation alerts from Global Forest Watch including GLAD, RADD, and other systems providing near real-time forest disturbance detection.",
             "title": "GFW Integrated Deforestation Alerts",
             "url": "https://www.globalforestwatch.org/help/map/guides/forest-change-analysis/"
           }
         },
-        "description": "Select a benchmark dataset to add to the map",
-        "title": "Add Layer"
+        "description": "Add forest cover datasets to compare and analyze",
+        "title": "Add Dataset"
       },
       "opacity": "Opacity",
       "title": "Map Layers",
       "tooltips": {
-        "addBenchmark": "Add a benchmark dataset to compare with your analysis",
+        "addBenchmark": "Add forest cover datasets to compare and analyze",
         "collapse": "Collapse layer list",
         "expand": "Expand layer list",
         "remove": "Remove layer",

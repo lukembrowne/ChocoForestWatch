@@ -90,15 +90,15 @@ export const useMapStore = defineStore('map', () => {
   const isDrawingSummaryAOI = ref(false);
   const summaryStats = ref(null);
 
-  // Benchmark selection
+  // Forest Cover Maps selection (formerly benchmarks)
   const availableBenchmarks = [
-    { value: 'benchmarks-hansen-tree-cover-2022', label: 'Hansen Tree Cover 2022' },
-    { value: 'benchmarks-mapbiomes-2022', label: 'MapBiomas 2022' },
-    { value: 'benchmarks-esa-landcover-2020', label: 'ESA Landcover 2020' },
-    { value: 'benchmarks-jrc-forestcover-2020', label: 'JRC Forest Cover 2020' },
-    { value: 'benchmarks-palsar-2020', label: 'PALSAR 2020' },
-    { value: 'benchmarks-wri-treecover-2020', label: 'WRI Tree Cover 2020' },
-    { value: 'nicfi-pred-northern_choco_test_2025_06_09-composite-2022', label: 'CFW Composite 2022' },
+    { value: 'nicfi-pred-northern_choco_test_2025_06_09-composite-2022', label: 'Choco Forest Watch 2022' },
+    { value: 'benchmarks-hansen-tree-cover-2022', label: 'Hansen Global Forest Change' },
+    { value: 'benchmarks-mapbiomes-2022', label: 'MapBiomas Ecuador' },
+    { value: 'benchmarks-esa-landcover-2020', label: 'ESA WorldCover' },
+    { value: 'benchmarks-jrc-forestcover-2020', label: 'JRC Forest Cover' },
+    { value: 'benchmarks-palsar-2020', label: 'ALOS PALSAR Forest Map' },
+    { value: 'benchmarks-wri-treecover-2020', label: 'WRI Tropical Tree Cover' },
   ];
   const selectedBenchmark = ref(availableBenchmarks[0].value);
 
@@ -120,6 +120,7 @@ export const useMapStore = defineStore('map', () => {
 
   // Add benchmark expression mapping constant
   const benchmarkExpressionMapping = {
+    'nicfi-pred-northern_choco_test_2025_06_09-composite-2022': 'where((data==1),1,0)',
     'benchmarks-hansen-tree-cover-2022': 'where(data>=90,1,0)',
     'benchmarks-mapbiomes-2022': 'where((data==3)|(data==4)|(data==5)|(data==6),1,0)',
     'benchmarks-esa-landcover-2020': 'where(data==10,1,0)',
@@ -135,7 +136,9 @@ export const useMapStore = defineStore('map', () => {
         target: target,
         layers: [
           new TileLayer({
-            source: new OSM(),
+            source: new OSM({
+              attributions: '© OpenStreetMap contributors'
+            }),
             name: 'baseMap',
             title: 'OpenStreetMap',
             visible: true,
@@ -456,9 +459,11 @@ export const useMapStore = defineStore('map', () => {
     let source;
 
     if (type === 'planet') {
+      const year = date.split('-')[0];
       source = new XYZ({
         url: `${titilerURL}/collections/nicfi-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
         maxZoom: 14,
+        attributions: `Imagery © ${year} Planet Labs Inc. All use subject to the <a href="https://www.planet.com/terms-of-use/" target="_blank">Planet Participant License Agreement</a>`
       });
     }
 
@@ -1396,7 +1401,9 @@ export const useMapStore = defineStore('map', () => {
       target: primaryTarget,
       layers: [
         new TileLayer({
-          source: new OSM(),
+          source: new OSM({
+            attributions: '© OpenStreetMap contributors'
+          }),
           name: 'baseMap',
           title: 'OpenStreetMap',
           visible: true,
@@ -1414,7 +1421,9 @@ export const useMapStore = defineStore('map', () => {
       target: secondaryTarget,
       layers: [
         new TileLayer({
-          source: new OSM(),
+          source: new OSM({
+            attributions: '© OpenStreetMap contributors'
+          }),
           name: 'baseMap',
           title: 'OpenStreetMap',
           visible: true,
@@ -1645,10 +1654,13 @@ export const useMapStore = defineStore('map', () => {
       maxZoom: 14,
     });
 
+    // Get readable title from availableBenchmarks array
+    const benchmarkInfo = availableBenchmarks.find(b => b.value === collectionId);
+    const title = benchmarkInfo ? benchmarkInfo.label : collectionId.replace('benchmarks-', '').replace(/-/g, ' ');
 
     return new TileLayer({
       source,
-      title: collectionId.replace('benchmarks-', '').replace(/-/g, ' '),
+      title: title,
       id: `benchmark-${collectionId}`,
       visible: true,
       zIndex: 3,

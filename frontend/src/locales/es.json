@@ -457,13 +457,13 @@
             "url": "https://www.globalforestwatch.org/help/map/guides/forest-change-analysis/"
           }
         },
-        "description": "Seleccione un conjunto de datos de referencia para agregar al mapa",
-        "title": "Agregue la capa de tapa del bosque/árbol"
+        "description": "Agregue conjuntos de datos de cobertura forestal para comparar y analizar",
+        "title": "Agregar Conjunto de Datos"
       },
       "opacity": "Opacidad",
       "title": "Capas del Mapa",
       "tooltips": {
-        "addBenchmark": "Agregar un conjunto de datos de referencia para comparar con su análisis",
+        "addBenchmark": "Agregar conjuntos de datos de cobertura forestal para comparar y analizar",
         "collapse": "Lista de capa de colapso",
         "expand": "Expandir la lista de capas",
         "remove": "Eliminar capa",

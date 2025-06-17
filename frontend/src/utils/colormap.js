@@ -2,8 +2,8 @@
 
   export const colormaps = {
     landcoverPalette: {
-      0: [0, 128, 0],   // Forest – green
-      1: [255, 255, 0],   // Non-forest – yellow
+      0: [34, 102, 51],   // Forest – dark green
+      1: [205, 170, 125],   // Non-forest – light brown
       2: [255, 255, 255], // Cloud – white
       3: [0,   0,   0],   // Shadow – black
       4: [0,   0, 255],   // Water – blue
@@ -11,8 +11,8 @@
       6: [128, 0, 128]   // Sensor Error – purple
     },
     CFWForestCoverPalette: {
-      1: [0, 128, 0],   // Forest – green
-      0: [255, 255, 0],   // Non-forest – yellow
+      1: [34, 102, 51],   // Forest – dark green
+      0: [205, 170, 125],   // Non-forest – light brown
       255: [0, 0, 0], // No data – black
     }
   };

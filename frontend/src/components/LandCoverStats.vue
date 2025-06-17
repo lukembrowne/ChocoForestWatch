@@ -1,64 +1,165 @@
-<!-- New component for displaying AOI summary stats -->
+<!-- Enhanced AOI summary stats component -->
 <template>
-  <q-card class="q-pa-md">
-    <q-card-section>
-      <div class="text-h6">Forest-cover summary</div>
-    </q-card-section>
+  <div class="land-cover-stats">
 
-    <q-card-section class="q-gutter-sm">
-      <q-select
-        dense
-        outlined
-        v-model="benchmark"
-        :options="benchmarkOptions"
-        option-label="label"
-        option-value="value"
-        emit-value
-        map-options
-        label="Benchmark"
-        :disable="isDrawing || isLoading"
-      />
-    </q-card-section>
+    <!-- Forest Cover Map Selection -->
+    <div class="benchmark-section">
+      <div class="workflow-step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <div class="input-label">
+            <q-icon name="map" class="label-icon" />
+            Choose Forest Cover Map
+            <q-btn 
+              flat 
+              round 
+              dense 
+              size="xs" 
+              icon="info" 
+              class="info-btn"
+            >
+              <q-tooltip class="bg-dark text-white" max-width="280px">
+                Select which forest cover dataset to use for analysis. The selected map will automatically appear on the main map.
+              </q-tooltip>
+            </q-btn>
+          </div>
+          <q-select
+            outlined
+            v-model="benchmark"
+            :options="benchmarkOptions"
+            option-label="label"
+            option-value="value"
+            emit-value
+            map-options
+            :disable="isDrawing || isLoading"
+            class="benchmark-select"
+            placeholder="Select forest cover map"
+          >
+            <template v-slot:prepend>
+              <q-icon name="layers" color="primary" />
+            </template>
+          </q-select>
+          <div class="map-info" v-if="benchmark">
+            <q-icon name="check_circle" color="positive" size="xs" />
+            <span>Map loaded on main view</span>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <q-separator inset />
-
-    <q-card-section class="q-gutter-md">
-      <div v-if="!stats">
-        <q-btn color="primary" label="Draw area" @click="startDraw" :loading="isLoading"/>
+    <!-- Analysis Section -->
+    <div class="analysis-section">
+      <div class="workflow-step" v-if="!stats">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <div class="input-label">
+            <q-icon name="crop_free" class="label-icon" />
+            Draw Analysis Area
+            <q-btn 
+              flat 
+              round 
+              dense 
+              size="xs" 
+              icon="info" 
+              class="info-btn"
+            >
+              <q-tooltip class="bg-dark text-white" max-width="280px">
+                Draw a rectangle on the map to calculate forest cover statistics for that specific area.
+              </q-tooltip>
+            </q-btn>
+          </div>
+          <div class="no-analysis">
+            <div class="no-analysis-content">
+              <q-icon name="draw" size="32px" class="no-analysis-icon" />
+              <div class="no-analysis-text">Ready to analyze</div>
+              <div class="no-analysis-subtitle">Click below then draw a rectangle on the map</div>
+              <q-btn 
+                color="primary" 
+                icon="draw" 
+                label="Start Drawing" 
+                @click="startDraw" 
+                :loading="isLoading"
+                class="draw-btn"
+                size="md"
+                rounded
+                :disable="!benchmark"
+              >
+                <q-tooltip v-if="!benchmark">Please select a forest cover map first</q-tooltip>
+              </q-btn>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div v-else>
-        <div class="row items-center q-gutter-sm">
-          <q-btn dense icon="refresh" color="green-5" label="Draw new area" @click="clear"/>
+      <div v-else class="results-section">
+        <!-- Results Header -->
+        <div class="results-header">
+          <div class="step-number completed">✓</div>
+          <div class="results-title">
+            <q-icon name="analytics" class="label-icon" />
+            Analysis Results
+          </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="action-bar">
+          <q-btn 
+            icon="refresh" 
+            color="primary" 
+            label="Analyze New Area" 
+            @click="clear"
+            outline
+            class="action-btn"
+            size="sm"
+          />
+          <q-btn 
+            flat 
+            icon="map" 
+            label="Change Map" 
+            @click="focusMapSelector"
+            class="action-btn"
+            size="sm"
+          />
         </div>
 
-        <q-markup-table dense flat class="q-mt-sm">
-          <tbody>
-            <tr>
-              <td>Forest (%)</td>
-              <td class="text-right">{{ (stats.pct_forest * 100).toFixed(1) }}</td>
-            </tr>
-            <tr>
-              <td>Non-forest (%)</td>
-              <td class="text-right">{{ (100 - stats.pct_forest * 100).toFixed(1) }}</td>
-            </tr>
-            <tr>
-              <td>Missing (%)</td>
-              <td class="text-right">{{ (stats.pct_missing * 100).toFixed(1) }}</td>
-            </tr>
-            <tr>
-              <td>Forest (ha)</td>
-              <td class="text-right">{{ stats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }}</td>
-            </tr>
-            <tr>
-              <td>Non-forest (ha)</td>
-              <td class="text-right">{{ stats.nonforest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }}</td>
-            </tr>
-          </tbody>
-        </q-markup-table>
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+          <div class="stat-card forest-card">
+            <div class="stat-icon">
+              <q-icon name="park" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ (stats.pct_forest * 100).toFixed(1) }}%</div>
+              <div class="stat-label">Forest Cover</div>
+              <div class="stat-detail">{{ stats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
+            </div>
+          </div>
+
+          <div class="stat-card nonforest-card">
+            <div class="stat-icon">
+              <q-icon name="landscape" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ (100 - stats.pct_forest * 100).toFixed(1) }}%</div>
+              <div class="stat-label">Non-Forest</div>
+              <div class="stat-detail">{{ stats.nonforest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
+            </div>
+          </div>
+
+          <div class="stat-card missing-card">
+            <div class="stat-icon">
+              <q-icon name="help_outline" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ (stats.pct_missing * 100).toFixed(1) }}%</div>
+              <div class="stat-label">No Data</div>
+              <div class="stat-detail">{{ stats.pct_missing > 0 ? 'Missing pixels' : 'Complete coverage' }}</div>
+            </div>
+          </div>
+        </div>
       </div>
-    </q-card-section>
-  </q-card>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -77,8 +178,14 @@ const benchmark        = computed({
   set: (val) => mapStore.selectedBenchmark = val,
 })
 
-// Auto-refresh stats if user changes benchmark and rectangle exists
-watch(benchmark, async () => {
+// Auto-refresh stats and load forest cover map when benchmark changes
+watch(benchmark, async (newBenchmark) => {
+  // Auto-load the selected forest cover map onto the main map
+  if (newBenchmark) {
+    mapStore.addBenchmarkLayer(newBenchmark)
+  }
+  
+  // Auto-refresh stats if user has drawn a rectangle
   if (stats.value && mapStore.summaryAOILayer) {
     await mapStore.startSummaryAOIDraw(); // triggers new call
   }
@@ -91,6 +198,337 @@ function startDraw() {
 function clear() {
   mapStore.clearSummaryAOI()
 }
+
+
+function focusMapSelector() {
+  // Scroll to map selector if needed
+  const element = document.querySelector('.benchmark-select')
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    element.focus()
+  }
+}
 </script>
 
-<style scoped></style> 
+<style scoped>
+.land-cover-stats {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.section-header {
+  background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
+  padding: 16px;
+  border-bottom: 1px solid #e0e7e4;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1b5e20;
+  margin-bottom: 4px;
+}
+
+.section-icon {
+  font-size: 20px;
+  margin-right: 8px;
+  color: #4caf50;
+}
+
+.section-subtitle {
+  font-size: 13px;
+  color: #2e7d32;
+  opacity: 0.8;
+}
+
+.benchmark-section {
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.input-label {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: #424242;
+  margin-bottom: 8px;
+}
+
+.label-icon {
+  font-size: 16px;
+  margin-right: 6px;
+  color: #666;
+}
+
+.benchmark-select {
+  border-radius: 8px;
+}
+
+.benchmark-select :deep(.q-field__control) {
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.benchmark-select :deep(.q-field--focused .q-field__control) {
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.15);
+}
+
+.workflow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #4caf50;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.step-number.completed {
+  background: #66bb6a;
+  font-size: 16px;
+}
+
+.step-content {
+  flex: 1;
+}
+
+.help-btn, .info-btn {
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+.help-btn:hover, .info-btn:hover {
+  opacity: 1;
+}
+
+.map-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #2e7d32;
+  opacity: 0.9;
+}
+
+.results-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.results-title {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1b5e20;
+}
+
+.results-title .label-icon {
+  margin-right: 8px;
+  color: #4caf50;
+}
+
+.analysis-section {
+  padding: 16px;
+}
+
+.no-analysis {
+  text-align: center;
+  padding: 24px 16px;
+}
+
+.no-analysis-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.no-analysis-icon {
+  color: #9e9e9e;
+  opacity: 0.7;
+}
+
+.no-analysis-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #424242;
+}
+
+.no-analysis-subtitle {
+  font-size: 13px;
+  color: #757575;
+  margin-bottom: 8px;
+}
+
+.draw-btn {
+  margin-top: 8px;
+  padding: 8px 24px;
+  text-transform: none;
+  font-weight: 500;
+}
+
+.results-section {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.action-bar {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  text-transform: none;
+  font-weight: 500;
+  border-radius: 20px;
+}
+
+.stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  border-radius: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.forest-card {
+  background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
+  border: 1px solid #c8e6c9;
+}
+
+.nonforest-card {
+  background: linear-gradient(135deg, #fff3e0 0%, #fce4ec 100%);
+  border: 1px solid #ffccbc;
+}
+
+.missing-card {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e1f5fe 100%);
+  border: 1px solid #e1bee7;
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin-right: 16px;
+  font-size: 24px;
+}
+
+.forest-card .stat-icon {
+  background: rgba(76, 175, 80, 0.15);
+  color: #2e7d32;
+}
+
+.nonforest-card .stat-icon {
+  background: rgba(255, 152, 0, 0.15);
+  color: #ef6c00;
+}
+
+.missing-card .stat-icon {
+  background: rgba(156, 39, 176, 0.15);
+  color: #7b1fa2;
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #212121;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.stat-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #424242;
+  margin-bottom: 2px;
+}
+
+.stat-detail {
+  font-size: 12px;
+  color: #757575;
+  font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .section-header {
+    padding: 12px;
+  }
+  
+  .section-title {
+    font-size: 15px;
+  }
+  
+  .benchmark-section,
+  .analysis-section {
+    padding: 12px;
+  }
+  
+  .no-analysis {
+    padding: 20px 12px;
+  }
+  
+  .stat-card {
+    padding: 12px;
+  }
+  
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    margin-right: 12px;
+    font-size: 20px;
+  }
+  
+  .stat-value {
+    font-size: 20px;
+  }
+}
+</style> 
