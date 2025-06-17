@@ -479,6 +479,11 @@
     },
     "terrain": "Terreno"
   },
+  "legend": {
+    "title": "Leyenda",
+    "forest": "Bosque",
+    "nonForest": "No Forestal"
+  },
   "navigation": {
     "admin": {
       "name": "Admin",

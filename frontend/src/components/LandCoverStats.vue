@@ -119,14 +119,6 @@
             class="action-btn"
             size="sm"
           />
-          <q-btn 
-            flat 
-            icon="map" 
-            :label="t('sidebar.landCover.changeMap')" 
-            @click="focusMapSelector"
-            class="action-btn"
-            size="sm"
-          />
         </div>
 
         <!-- Statistics Cards -->
@@ -209,16 +201,8 @@ function clear() {
   mapStore.clearSummaryAOI()
 }
 
-
-function focusMapSelector() {
-  // Scroll to map selector if needed
-  const element = document.querySelector('.benchmark-select')
-  if (element) {
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    element.focus()
-  }
-}
 </script>
+
 
 <style scoped>
 .land-cover-stats {

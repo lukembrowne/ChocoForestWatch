@@ -553,9 +553,17 @@ export const useMapStore = defineStore('map', () => {
       existingBasemap.setSource(basemap.getSource());
       existingBasemap.set('title', title);
     } else {
-      // If no existing layer is found, create a new one and insert it at a specific position
+      // If no existing layer is found, create a new one and insert it at a safe position
       console.log("Creating new basemap layer...");
-      map.value.getLayers().insertAt(2, basemap);
+      const layers = map.value.getLayers();
+      const layerCount = layers.getLength();
+      
+      // Insert at index 2 if we have at least 2 layers, otherwise add to the end
+      if (layerCount >= 2) {
+        layers.insertAt(2, basemap);
+      } else {
+        layers.push(basemap);
+      }
     }
 
     // Update the slider value to match the new basemap date

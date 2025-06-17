@@ -479,6 +479,11 @@
     },
     "terrain": "Terrain"
   },
+  "legend": {
+    "title": "Legend",
+    "forest": "Forest",
+    "nonForest": "Non-Forest"
+  },
   "navigation": {
     "admin": {
       "name": "Admin",
