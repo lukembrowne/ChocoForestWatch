@@ -56,6 +56,7 @@ services:
         VITE_SENTRY_DSN: ${VITE_SENTRY_DSN}
         DJANGO_DEBUG: "False"  # Default to production
         VITE_TITILER_URL: ${VITE_TITILER_URL}
+        VITE_DEFAULT_PUBLIC_PROJECT_ID: ${VITE_DEFAULT_PUBLIC_PROJECT_ID}
       target: "production"       # Use 'development' or 'production'
     ports:
       - "9000:9000"
