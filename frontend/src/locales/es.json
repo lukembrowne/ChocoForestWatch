@@ -455,10 +455,16 @@
             "description": "Alertas integradas de deforestación de Global Forest Watch incluyendo GLAD, RADD y otros sistemas que proporcionan detección de perturbaciones forestales en tiempo casi real.",
             "title": "Alertas Integradas de Deforestación GFW",
             "url": "https://www.globalforestwatch.org/help/map/guides/forest-change-analysis/"
+          },
+          "cfw-composite": {
+            "description": "Mapa de cobertura forestal generado por aprendizaje automático de ChocoForestWatch para 2022, específicamente entrenado para la región del Chocó Norte de Ecuador usando imágenes satelitales NICFI.",
+            "title": "CFW Compuesto 2022",
+            "url": "https://github.com/lukembrowne/chocoforestwatch"
           }
         },
         "description": "Agregue conjuntos de datos de cobertura forestal para comparar y analizar",
-        "title": "Agregar Conjunto de Datos"
+        "title": "Agregar Conjunto de Datos",
+        "featured": "Destacado"
       },
       "opacity": "Opacidad",
       "title": "Capas del Mapa",
@@ -746,6 +752,34 @@
       "loadPrediction": "Cargue en el mapa una predicción de cobertura terrestre generada previamente para esta fecha.",
       "modelSection": "",
       "summarySection": ""
+    }
+  },
+  "sidebar": {
+    "search": {
+      "title": "Búsqueda de Ubicación",
+      "placeholder": "Buscar cualquier ubicación...",
+      "noResults": "No se encontraron ubicaciones",
+      "tryDifferent": "Prueba con un término de búsqueda diferente"
+    },
+    "landCover": {
+      "chooseMap": "Elegir Mapa de Cobertura Forestal",
+      "chooseMapTooltip": "Seleccione qué conjunto de datos de cobertura forestal usar para el análisis. El mapa seleccionado aparecerá automáticamente en el mapa principal.",
+      "selectMapPlaceholder": "Seleccionar mapa de cobertura forestal",
+      "mapLoaded": "Mapa cargado en vista principal",
+      "drawArea": "Dibujar Área de Análisis",
+      "drawAreaTooltip": "Dibuje un rectángulo en el mapa para calcular las estadísticas de cobertura forestal para esa área específica.",
+      "readyToAnalyze": "Listo para analizar",
+      "clickThenDraw": "Haga clic abajo y luego dibuje un rectángulo en el mapa",
+      "startDrawing": "Comenzar a Dibujar",
+      "selectMapFirst": "Por favor seleccione un mapa de cobertura forestal primero",
+      "analysisResults": "Resultados del Análisis",
+      "analyzeNewArea": "Analizar Nueva Área",
+      "changeMap": "Cambiar Mapa",
+      "forestCover": "Cobertura Forestal",
+      "nonForest": "No Forestal",
+      "noData": "Sin Datos",
+      "missingPixels": "Píxeles faltantes",
+      "completeCoverage": "Cobertura completa"
     }
   },
   "welcome": {

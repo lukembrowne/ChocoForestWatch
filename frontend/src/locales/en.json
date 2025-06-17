@@ -463,7 +463,8 @@
           }
         },
         "description": "Add forest cover datasets to compare and analyze",
-        "title": "Add Dataset"
+        "title": "Add Dataset",
+        "featured": "Featured"
       },
       "opacity": "Opacity",
       "title": "Map Layers",
@@ -751,6 +752,34 @@
       "loadPrediction": "Load a previously generated land cover prediction for this date onto the map.",
       "modelSection": "Train and evaluate your land cover classification model. Review accuracy metrics to assess performance.",
       "summarySection": "View statistics about your training data. Aim for 30-50 examples of each land cover class for each date."
+    }
+  },
+  "sidebar": {
+    "search": {
+      "title": "Location Search",
+      "placeholder": "Search for any location...",
+      "noResults": "No locations found",
+      "tryDifferent": "Try a different search term"
+    },
+    "landCover": {
+      "chooseMap": "Choose Forest Cover Map",
+      "chooseMapTooltip": "Select which forest cover dataset to use for analysis. The selected map will automatically appear on the main map.",
+      "selectMapPlaceholder": "Select forest cover map",
+      "mapLoaded": "Map loaded on main view",
+      "drawArea": "Draw Analysis Area",
+      "drawAreaTooltip": "Draw a rectangle on the map to calculate forest cover statistics for that specific area.",
+      "readyToAnalyze": "Ready to analyze",
+      "clickThenDraw": "Click below then draw a rectangle on the map",
+      "startDrawing": "Start Drawing",
+      "selectMapFirst": "Please select a forest cover map first",
+      "analysisResults": "Analysis Results",
+      "analyzeNewArea": "Analyze New Area",
+      "changeMap": "Change Map",
+      "forestCover": "Forest Cover",
+      "nonForest": "Non-Forest",
+      "noData": "No Data",
+      "missingPixels": "Missing pixels",
+      "completeCoverage": "Complete coverage"
     }
   },
   "welcome": {
