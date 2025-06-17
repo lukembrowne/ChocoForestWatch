@@ -31,17 +31,24 @@
             option-value="value"
             emit-value
             map-options
-            :disable="isDrawing || isLoading"
+            :disable="isDrawing || isMapLoading"
             class="benchmark-select"
             :placeholder="t('sidebar.landCover.selectMapPlaceholder')"
           >
             <template v-slot:prepend>
               <q-icon name="layers" color="primary" />
             </template>
+            <template v-slot:append v-if="isMapLoading">
+              <q-spinner color="primary" size="sm" />
+            </template>
           </q-select>
-          <div class="map-info" v-if="benchmark">
+          <div class="map-info" v-if="benchmark && !isMapLoading">
             <q-icon name="check_circle" color="positive" size="xs" />
             <span>{{ t('sidebar.landCover.mapLoaded') }}</span>
+          </div>
+          <div class="map-info loading" v-if="isMapLoading">
+            <q-spinner color="primary" size="xs" />
+            <span>{{ t('sidebar.landCover.loadingMap') }}</span>
           </div>
         </div>
       </div>
@@ -173,6 +180,7 @@ const { t } = useI18n()
 const stats         = computed(() => mapStore.summaryStats)
 const isLoading     = computed(() => mapStore.isLoading)
 const isDrawing     = computed(() => mapStore.isDrawingSummaryAOI)
+const isMapLoading  = computed(() => mapStore.isLoading)
 
 const benchmarkOptions = computed(() => mapStore.availableBenchmarks)
 const benchmark        = computed({
@@ -181,9 +189,9 @@ const benchmark        = computed({
 })
 
 // Auto-refresh stats and load forest cover map when benchmark changes
-watch(benchmark, async (newBenchmark) => {
+watch(benchmark, async (newBenchmark, oldBenchmark) => {
   // Auto-load the selected forest cover map onto the main map
-  if (newBenchmark) {
+  if (newBenchmark && newBenchmark !== oldBenchmark) {
     mapStore.addBenchmarkLayer(newBenchmark)
   }
   
@@ -327,6 +335,16 @@ function focusMapSelector() {
   font-size: 13px;
   color: #2e7d32;
   opacity: 0.9;
+}
+
+.map-info.loading {
+  color: #1976d2;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
 }
 
 .results-header {

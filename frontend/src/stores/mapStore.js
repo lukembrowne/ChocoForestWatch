@@ -1669,7 +1669,6 @@ export const useMapStore = defineStore('map', () => {
   };
 
   const addBenchmarkLayer = (collectionId, mapId = null) => {
-    const layerId = `benchmark-${collectionId}`;
     let targetMap;
     if (mapId && maps.value[mapId]) {
       targetMap = maps.value[mapId];
@@ -1678,15 +1677,48 @@ export const useMapStore = defineStore('map', () => {
     }
     if (!targetMap) return;
 
-    // Avoid adding duplicate layer with same id
-    const existing = targetMap.getLayers().getArray().find((l) => l.get('id') === layerId);
-    if (existing) {
-      existing.setVisible(true);
-      updateLayers();
-      return;
-    }
+    // Remove any existing benchmark layers to ensure only one forest cover map at a time
+    const existingBenchmarkLayers = targetMap.getLayers().getArray().filter((l) => {
+      const id = l.get('id');
+      return id && id.startsWith('benchmark-');
+    });
+    existingBenchmarkLayers.forEach(layer => targetMap.removeLayer(layer));
 
+    // Create and add the new layer
     const newLayer = createBenchmarkLayer(collectionId);
+    
+    // Set loading state and add loading indicator
+    isLoading.value = true;
+    
+    // Add layer loading listeners
+    const source = newLayer.getSource();
+    let tilesLoading = 0;
+    let tilesLoaded = 0;
+    
+    source.on('tileloadstart', () => {
+      console
+      tilesLoading++;
+    });
+    
+    source.on('tileloadend', () => {
+      tilesLoaded++;
+      if (tilesLoaded >= Math.min(tilesLoading, 10)) { // Wait for first few tiles
+        isLoading.value = false;
+      }
+    });
+    
+    source.on('tileloaderror', () => {
+      tilesLoaded++;
+      if (tilesLoaded >= Math.min(tilesLoading, 10)) {
+        isLoading.value = false;
+      }
+    });
+    
+    // Fallback timeout to clear loading state
+    setTimeout(() => {
+      isLoading.value = false;
+    }, 5000);
+    
     targetMap.addLayer(newLayer);
     updateLayers();
   };
