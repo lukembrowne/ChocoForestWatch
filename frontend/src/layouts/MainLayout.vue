@@ -366,13 +366,12 @@ export default {
     onMounted(async () => {
       console.log("Mounted MainLayout")
       try {
-
-        // Load user settings first (if logged in)
-        // const { data } = await api.getUserSettings()
-        // if (data.preferred_language) {
-        //   currentLocale.value = data.preferred_language
-        //   locale.value = data.preferred_language
-        // }
+        // Load language preference from localStorage
+        const savedLocale = localStorage.getItem('preferred_language')
+        if (savedLocale && ['en', 'es'].includes(savedLocale)) {
+          currentLocale.value = savedLocale
+          locale.value = savedLocale
+        }
       } catch (error) {
         console.error('Error in mounted:', error)
       }
@@ -544,7 +543,8 @@ export default {
 
     const handleLocaleChange = async (newLocale) => {
       try {
-       // await api.updateUserSettings({ preferred_language: newLocale })
+        // Save language preference to localStorage
+        localStorage.setItem('preferred_language', newLocale)
         locale.value = newLocale
         $q.notify({
           message: t('notifications.languageUpdated'),
