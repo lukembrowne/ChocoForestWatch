@@ -91,7 +91,7 @@
               <q-item-section>{{ t('common.showHelp') }}</q-item-section>
             </q-item>
 
-            <q-item clickable v-ripple @click="showAboutDialog = true">
+            <q-item clickable v-ripple @click="welcomeStore.openAboutModal()">
               <q-item-section avatar>
                 <q-icon name="info" />
               </q-item-section>
@@ -190,55 +190,11 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="showAboutDialog">
-      <q-card class="modern-menu" style="width: 700px">
-        <q-card-section>
-          <div class="text-h6">{{ t('about.title') }}</div>
-        </q-card-section>
-
-        <q-card-section>
-          <p>{{ t('about.description') }} 
-            <a href="https://github.com/lukembrowne/chocoforestwatch" target="_blank">{{ t('about.github') }}</a>.
-          </p>
-
-          <div class="disclaimer q-mt-md">
-            <div class="text-subtitle2 q-mb-sm">{{ t('about.disclaimer.title') }}</div>
-            <p class="text-caption">{{ t('about.disclaimer.text') }}</p>
-          </div>
-
-          <div class="q-mt-md">
-            <div class="text-subtitle2 q-mb-sm">{{ t('about.creditsTitle') }}</div>
-            
-            <p class="text-body1">
-              <strong>{{ t('about.satellite.title') }}:</strong><br>
-              {{ t('about.satellite.description') }}
-              <a href="https://planet.widen.net/s/zfdpf8qxwk/participantlicenseagreement_nicfi_2024" target="_blank">
-                {{ t('about.satellite.license') }}
-              </a>.
-            </p>
-
-            <p class="text-body1">
-              <strong>{{ t('about.alerts.title') }}:</strong><br>
-              {{ t('about.alerts.description') }}
-              <a href="https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about" target="_blank">
-                {{ t('about.alerts.license') }}
-              </a>.
-            </p>
-
-            <p class="text-body1">
-              <strong>{{ t('about.funding.title') }}:</strong><br>
-              {{ t('about.funding.description') }}
-              <ul>
-                <li>{{ t('about.funding.sources.gfw') }}</li>
-                <li>{{ t('about.funding.sources.yale') }}</li>
-                <li>{{ t('about.funding.sources.tulane') }}</li>
-                <li>{{ t('about.funding.sources.caids') }}</li>
-              </ul>
-            </p>
-          </div>
-        </q-card-section>
-      </q-card>
-    </q-dialog>
+    <!-- Welcome Modal for first-time users -->
+    <WelcomeAboutModal v-if="!isAdmin" mode="welcome" />
+    
+    <!-- About Modal -->
+    <WelcomeAboutModal mode="about" />
   </q-layout>
 </template>
 
@@ -261,6 +217,7 @@ import { GeoJSON } from 'ol/format'
 import { useI18n } from 'vue-i18n'
 import { useWelcomeStore } from 'src/stores/welcomeStore'
 import SystemDashboard from 'src/components/admin/SystemDashboard.vue'
+import WelcomeAboutModal from 'src/components/welcome/WelcomeAboutModal.vue'
 
 
 export default {
@@ -273,7 +230,8 @@ export default {
     BasemapDateSlider,
     ProjectSelection,
     UnifiedAnalysis,
-    SystemDashboard
+    SystemDashboard,
+    WelcomeAboutModal
   },
   setup() {
     const $q = useQuasar()
@@ -361,7 +319,6 @@ export default {
       });
     };
 
-    const showAboutDialog = ref(false)
 
     onMounted(async () => {
       console.log("Mounted MainLayout")
@@ -375,6 +332,9 @@ export default {
       } catch (error) {
         console.error('Error in mounted:', error)
       }
+
+      // Check if we should show welcome modal for public users
+      welcomeStore.checkWelcomeModalStatus()
 
       // Standard loading sequence
       console.log("Initializing map")
@@ -651,11 +611,11 @@ export default {
       submittingFeedback,
       feedbackOptions,
       submitFeedback,
-      showAboutDialog,
       testSentryError,
       showAdminDashboard,
       router,
-      isAdmin
+      isAdmin,
+      welcomeStore
     }
   }
 }

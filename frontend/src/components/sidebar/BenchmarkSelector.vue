@@ -180,12 +180,19 @@ export default {
   border-radius: 8px;
   font-weight: 500;
   text-transform: none;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  border: none;
+  font-size: 13px;
+  height: 36px;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
 }
 
 .add-dataset-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+  background: linear-gradient(135deg, #16a34a, #15803d);
 }
 
 /* Dialog Styles */
