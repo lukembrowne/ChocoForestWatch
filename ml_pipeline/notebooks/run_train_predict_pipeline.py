@@ -50,7 +50,7 @@ from ml_pipeline.benchmark_tester import BenchmarkTester
 #%% 
 
 # Set tag
-run_id = "northern_choco_test_2025_06_09" # Name for run
+run_id = "northern_choco_test_2025_06_16" # Name for run
 
 # Set year
 year = "2022"
@@ -62,7 +62,7 @@ rm = RunManager(run_id=run_id, root="runs")
 
 #%%
 # Loop through months
-for m in tqdm(range(1, 3), desc=f"Processing months for {year}"):
+for m in tqdm(range(1, 13), desc=f"Processing months for {year}"):
     
     print("-"*100)
     print("-"*100)
@@ -189,5 +189,51 @@ tester = BenchmarkTester(
 tester.run()
 
 
+
+# %%
+
+# Testing summary stats
+
+from ml_pipeline.summary_stats import AOISummaryStats
+import json
+
+stats = AOISummaryStats("http://localhost:8083", "benchmarks-hansen-tree-cover-2022")
+
+with open("shapefiles/Ecuador DEM 900m contour.geojson") as f:
+    aoi = json.load(f)
+
+df = stats.summary(aoi['features'][0])
+
+print(df.to_markdown(index=False))
+
+# %%
+
+from ml_pipeline.summary_stats import AOISummaryStats
+import json
+
+stats = AOISummaryStats("http://localhost:8083", "benchmarks-mapbiomes-2022")
+
+with open("shapefiles/Ecuador DEM 900m contour.geojson") as f:
+    aoi = json.load(f)
+
+df = stats.summary(aoi['features'][0])
+df
+
+print(df.to_markdown(index=False))
+
+# %%
+
+from ml_pipeline.summary_stats import AOISummaryStats
+import json
+
+stats = AOISummaryStats("http://localhost:8083", "nicfi-pred-northern_choco_test_2025_06_09-composite-2022")
+
+with open("shapefiles/Ecuador DEM 900m contour.geojson") as f:
+    aoi = json.load(f)
+
+df = stats.summary(aoi['features'][0])
+df
+
+print(df.to_markdown(index=False))
 
 # %%

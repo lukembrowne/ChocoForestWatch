@@ -36,7 +36,7 @@
                   </div>
                   <div class="featured-badge" v-if="benchmark.value.includes('nicfi-pred')">
                     <q-icon name="star" />
-                    <span>Featured</span>
+                    <span>{{ $t('layers.switcher.benchmarks.featured') }}</span>
                   </div>
                 </div>
                 

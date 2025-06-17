@@ -44,32 +44,31 @@ jobs:
             
             docker compose -f docker-compose.prod.yml down
 
-            docker compose -f docker-compose.prod.yml build \
-            --build-arg VITE_API_URL="${VITE_API_URL}" \
-            --build-arg VITE_SENTRY_DSN="${VITE_SENTRY_DSN}" \
-            --build-arg DJANGO_DEBUG="${DJANGO_DEBUG}" \
-            --build-arg AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
-            --build-arg AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
-            --build-arg AWS_S3_ENDPOINT="${AWS_S3_ENDPOINT}" \
-            --build-arg AWS_REGION="${AWS_REGION}" \
-            --build-arg VUE_APP_PLANET_API_KEY="${VUE_APP_PLANET_API_KEY}" \
-            --build-arg VITE_TITILER_URL="${VITE_TITILER_URL}" \
-            --build-arg TITILER_URL="${TITILER_URL}" \
-            --build-arg POSTGRES_USER="${POSTGRES_USER}" \
-            --build-arg POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
-            --build-arg POSTGRES_DB="${POSTGRES_DB}" \
-            --build-arg POSTGRES_HOST="${POSTGRES_HOST}" \
-            --build-arg POSTGRES_PORT="${POSTGRES_PORT}" \
-            --build-arg POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
-            --build-arg DB_HOST="${DB_HOST}" \
-            --build-arg DB_PORT="${DB_PORT}" \
-            --build-arg POSTGRES_PASS="${POSTGRES_PASS}" \
-            --build-arg POSTGRES_DBNAME="${POSTGRES_DBNAME}" \
-            --build-arg POSTGRES_HOST="${POSTGRES_HOST}" \
-            --build-arg POSTGRES_PORT="${POSTGRES_PORT}" \
-            --build-arg BOUNDARY_GEOJSON_PATH="${BOUNDARY_GEOJSON_PATH}" 
-            --build-arg DEFAULT_PUBLIC_PROJECT_ID="${DEFAULT_PUBLIC_PROJECT_ID}" \
-            --build-arg VITE_DEFAULT_PUBLIC_PROJECT_ID="${VITE_DEFAULT_PUBLIC_PROJECT_ID}"
+              docker compose -f docker-compose.prod.yml build \
+              --build-arg VITE_API_URL="${VITE_API_URL}" \
+              --build-arg VITE_SENTRY_DSN="${VITE_SENTRY_DSN}" \
+              --build-arg DJANGO_DEBUG="${DJANGO_DEBUG}" \
+              --build-arg AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" \
+              --build-arg AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" \
+              --build-arg AWS_S3_ENDPOINT="${AWS_S3_ENDPOINT}" \
+              --build-arg AWS_REGION="${AWS_REGION}" \
+              --build-arg VITE_TITILER_URL="${VITE_TITILER_URL}" \
+              --build-arg TITILER_URL="${TITILER_URL}" \
+              --build-arg POSTGRES_USER="${POSTGRES_USER}" \
+              --build-arg POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
+              --build-arg POSTGRES_DB="${POSTGRES_DB}" \
+              --build-arg POSTGRES_HOST="${POSTGRES_HOST}" \
+              --build-arg POSTGRES_PORT="${POSTGRES_PORT}" \
+              --build-arg POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
+              --build-arg DB_HOST="${DB_HOST}" \
+              --build-arg DB_PORT="${DB_PORT}" \
+              --build-arg POSTGRES_PASS="${POSTGRES_PASS}" \
+              --build-arg POSTGRES_DBNAME="${POSTGRES_DBNAME}" \
+              --build-arg POSTGRES_HOST="${POSTGRES_HOST}" \
+              --build-arg POSTGRES_PORT="${POSTGRES_PORT}" \
+              --build-arg BOUNDARY_GEOJSON_PATH="${BOUNDARY_GEOJSON_PATH}" \
+              --build-arg DEFAULT_PUBLIC_PROJECT_ID="${DEFAULT_PUBLIC_PROJECT_ID}" \
+              --build-arg VITE_DEFAULT_PUBLIC_PROJECT_ID="${VITE_DEFAULT_PUBLIC_PROJECT_ID}"
             
             docker compose -f docker-compose.prod.yml up -d --build
 

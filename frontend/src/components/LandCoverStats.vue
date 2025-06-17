@@ -9,7 +9,7 @@
         <div class="step-content">
           <div class="input-label">
             <q-icon name="map" class="label-icon" />
-            Choose Forest Cover Map
+            {{ t('sidebar.landCover.chooseMap') }}
             <q-btn 
               flat 
               round 
@@ -19,7 +19,7 @@
               class="info-btn"
             >
               <q-tooltip class="bg-dark text-white" max-width="280px">
-                Select which forest cover dataset to use for analysis. The selected map will automatically appear on the main map.
+                {{ t('sidebar.landCover.chooseMapTooltip') }}
               </q-tooltip>
             </q-btn>
           </div>
@@ -33,7 +33,7 @@
             map-options
             :disable="isDrawing || isLoading"
             class="benchmark-select"
-            placeholder="Select forest cover map"
+            :placeholder="t('sidebar.landCover.selectMapPlaceholder')"
           >
             <template v-slot:prepend>
               <q-icon name="layers" color="primary" />
@@ -41,7 +41,7 @@
           </q-select>
           <div class="map-info" v-if="benchmark">
             <q-icon name="check_circle" color="positive" size="xs" />
-            <span>Map loaded on main view</span>
+            <span>{{ t('sidebar.landCover.mapLoaded') }}</span>
           </div>
         </div>
       </div>
@@ -54,7 +54,7 @@
         <div class="step-content">
           <div class="input-label">
             <q-icon name="crop_free" class="label-icon" />
-            Draw Analysis Area
+            {{ t('sidebar.landCover.drawArea') }}
             <q-btn 
               flat 
               round 
@@ -64,19 +64,19 @@
               class="info-btn"
             >
               <q-tooltip class="bg-dark text-white" max-width="280px">
-                Draw a rectangle on the map to calculate forest cover statistics for that specific area.
+                {{ t('sidebar.landCover.drawAreaTooltip') }}
               </q-tooltip>
             </q-btn>
           </div>
           <div class="no-analysis">
             <div class="no-analysis-content">
               <q-icon name="draw" size="32px" class="no-analysis-icon" />
-              <div class="no-analysis-text">Ready to analyze</div>
-              <div class="no-analysis-subtitle">Click below then draw a rectangle on the map</div>
+              <div class="no-analysis-text">{{ t('sidebar.landCover.readyToAnalyze') }}</div>
+              <div class="no-analysis-subtitle">{{ t('sidebar.landCover.clickThenDraw') }}</div>
               <q-btn 
                 color="primary" 
                 icon="draw" 
-                label="Start Drawing" 
+                :label="t('sidebar.landCover.startDrawing')" 
                 @click="startDraw" 
                 :loading="isLoading"
                 class="draw-btn"
@@ -84,7 +84,7 @@
                 rounded
                 :disable="!benchmark"
               >
-                <q-tooltip v-if="!benchmark">Please select a forest cover map first</q-tooltip>
+                <q-tooltip v-if="!benchmark">{{ t('sidebar.landCover.selectMapFirst') }}</q-tooltip>
               </q-btn>
             </div>
           </div>
@@ -97,7 +97,7 @@
           <div class="step-number completed">✓</div>
           <div class="results-title">
             <q-icon name="analytics" class="label-icon" />
-            Analysis Results
+            {{ t('sidebar.landCover.analysisResults') }}
           </div>
         </div>
         
@@ -106,7 +106,7 @@
           <q-btn 
             icon="refresh" 
             color="primary" 
-            label="Analyze New Area" 
+            :label="t('sidebar.landCover.analyzeNewArea')" 
             @click="clear"
             outline
             class="action-btn"
@@ -115,7 +115,7 @@
           <q-btn 
             flat 
             icon="map" 
-            label="Change Map" 
+            :label="t('sidebar.landCover.changeMap')" 
             @click="focusMapSelector"
             class="action-btn"
             size="sm"
@@ -130,7 +130,7 @@
             </div>
             <div class="stat-content">
               <div class="stat-value">{{ (stats.pct_forest * 100).toFixed(1) }}%</div>
-              <div class="stat-label">Forest Cover</div>
+              <div class="stat-label">{{ t('sidebar.landCover.forestCover') }}</div>
               <div class="stat-detail">{{ stats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
             </div>
           </div>
@@ -141,7 +141,7 @@
             </div>
             <div class="stat-content">
               <div class="stat-value">{{ (100 - stats.pct_forest * 100).toFixed(1) }}%</div>
-              <div class="stat-label">Non-Forest</div>
+              <div class="stat-label">{{ t('sidebar.landCover.nonForest') }}</div>
               <div class="stat-detail">{{ stats.nonforest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
             </div>
           </div>
@@ -152,8 +152,8 @@
             </div>
             <div class="stat-content">
               <div class="stat-value">{{ (stats.pct_missing * 100).toFixed(1) }}%</div>
-              <div class="stat-label">No Data</div>
-              <div class="stat-detail">{{ stats.pct_missing > 0 ? 'Missing pixels' : 'Complete coverage' }}</div>
+              <div class="stat-label">{{ t('sidebar.landCover.noData') }}</div>
+              <div class="stat-detail">{{ stats.pct_missing > 0 ? t('sidebar.landCover.missingPixels') : t('sidebar.landCover.completeCoverage') }}</div>
             </div>
           </div>
         </div>
@@ -165,8 +165,10 @@
 <script setup>
 import { computed, watch } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
+import { useI18n } from 'vue-i18n'
 
 const mapStore = useMapStore()
+const { t } = useI18n()
 
 const stats         = computed(() => mapStore.summaryStats)
 const isLoading     = computed(() => mapStore.isLoading)

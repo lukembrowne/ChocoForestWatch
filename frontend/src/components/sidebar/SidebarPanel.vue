@@ -11,7 +11,7 @@
      <div class="search-section">
       <div class="section-label">
         <q-icon name="search" class="section-icon" />
-        Location Search
+        {{ t('sidebar.search.title') }}
       </div>
       <q-select
         v-model="selectedLabel"
@@ -19,7 +19,7 @@
         use-input
         input-debounce="300"
         outlined
-        placeholder="Search for any location..."
+        :placeholder="t('sidebar.search.placeholder')"
         option-label="label"
         option-value="label"
         @filter="onFilter"
@@ -36,8 +36,8 @@
             <q-item-section class="text-grey-6">
               <div class="text-center">
                 <q-icon name="search_off" size="md" class="q-mb-sm" />
-                <div>No locations found</div>
-                <div class="text-caption">Try a different search term</div>
+                <div>{{ t('sidebar.search.noResults') }}</div>
+                <div class="text-caption">{{ t('sidebar.search.tryDifferent') }}</div>
               </div>
             </q-item-section>
           </q-item>
@@ -52,10 +52,12 @@
 import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { useMapStore } from 'src/stores/mapStore'
+import { useI18n } from 'vue-i18n'
 
 import LandCoverStats from '../LandCoverStats.vue'
 
 const mapStore   = useMapStore()
+const { t } = useI18n()
 
 const options        = ref([])
 const selectedLabel  = ref('')
