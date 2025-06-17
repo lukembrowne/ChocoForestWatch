@@ -4,6 +4,9 @@ import authService from './auth';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+// Set default project id to 6. This is the public map project.
+const DEFAULT_PROJECT_ID = import.meta.env.VITE_DEFAULT_PUBLIC_PROJECT_ID;
+
 // Add some debugging
 console.log('API_URL:', API_URL);
 console.log('Environment variables:', import.meta.env);
@@ -32,33 +35,19 @@ apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            authService.logout();
-            window.location.href = '/login';
+            const hadToken = !!authService.getToken();
+            // Only force login redirect if user previously had a token (was logged in)
+            if (hadToken) {
+              authService.logout();
+              window.location.href = '/login';
+            }
         }
         return Promise.reject(error);
     }
 );
 
-// Version check function
-async function checkVersion() {
-    try {
-        const response = await apiClient.get('/version/');
-        const serverVersion = response.data.version;
-        const clientVersion = process.env.APP_VERSION;
-
-        if (serverVersion !== clientVersion) {
-            console.warn(`Version mismatch: Client ${clientVersion} / Server ${serverVersion}`);
-            // You could trigger a notification here
-        }
-    } catch (error) {
-        console.error('Failed to check version:', error);
-    }
-}
-
 // API functions
 const api = {
-    // Add version check to existing API object
-    checkVersion,
 
     // Project endpoints
     getProjects() {
@@ -203,10 +192,6 @@ const api = {
         return apiClient.post('/feedback/', data);
     },
 
-    getVersion() {
-        return apiClient.get('/version/');
-    },
-
     getSystemStatistics() {
         return apiClient.get('/api/statistics/system/');
     },
@@ -217,15 +202,27 @@ const api = {
             params: { count }
         });
     },
+
+    // AOI summary statistics
+    getAOISummary(aoiGeoJSON, collectionId) {
+        return apiClient.post('/aoi_summary/', { aoi: aoiGeoJSON, collection_id: collectionId });
+    },
+
+    // GFW deforestation alerts
+    getGFWAlerts2022() {
+        return apiClient.get('/gfw/alerts/2022/');
+    },
 };
 
 // Initialize function for boot
 function initializeApi(app) {
     app.config.globalProperties.$axios = axios;
     app.config.globalProperties.$api = api;
-    checkVersion();
 }
 
 export { initializeApi };
 export default api;
+
+// Named exports
+export { DEFAULT_PROJECT_ID }
 

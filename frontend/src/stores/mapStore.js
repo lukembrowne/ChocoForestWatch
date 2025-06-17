@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import api from 'src/services/api';
+import authService from 'src/services/auth';
 import TileLayer from 'ol/layer/Tile'
 import OSM from 'ol/source/OSM'
 import { Map, View } from 'ol'
@@ -7,7 +8,7 @@ import 'ol/ol.css';
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
 import GeoJSON from 'ol/format/GeoJSON'
-import { Style, Fill, Stroke } from 'ol/style'
+import { Style, Fill, Stroke, Circle as CircleStyle } from 'ol/style'
 import XYZ from 'ol/source/XYZ';
 import { useProjectStore } from './projectStore';
 
@@ -20,11 +21,12 @@ import ImageLayer from 'ol/layer/Image';
 import ImageStatic from 'ol/source/ImageStatic';
 import { getBasemapDateOptions } from 'src/utils/dateUtils';
 import { Feature } from 'ol';
-import { Polygon } from 'ol/geom';
+import { Polygon, Point } from 'ol/geom';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { transformExtent } from 'ol/proj'
 import { useQuasar } from 'quasar';
 import { getEncodedColormap } from 'src/utils/colormap';
+import { createBox } from 'ol/interaction/Draw';
 
 export const useMapStore = defineStore('map', () => {
 
@@ -62,6 +64,10 @@ export const useMapStore = defineStore('map', () => {
   const currentPointIndex = ref(-1);
   const boundaryLayer = ref(null);
 
+  // Search (geocoder) state
+  const searchResults = ref([]);
+  const searchMarkerLayer = ref(null);
+
   // Internal state
   const projectStore = useProjectStore();
   const drawing = ref(false);
@@ -77,6 +83,24 @@ export const useMapStore = defineStore('map', () => {
   const availableDates = ref([]);
 
   const $q = useQuasar();
+
+  // Summary AOI drawing
+  const summaryAOILayer = ref(null);
+  const summaryDrawInteraction = ref(null);
+  const isDrawingSummaryAOI = ref(false);
+  const summaryStats = ref(null);
+
+  // Forest Cover Maps selection (formerly benchmarks)
+  const availableBenchmarks = [
+    { value: 'nicfi-pred-northern_choco_test_2025_06_09-composite-2022', label: 'Choco Forest Watch 2022' },
+    { value: 'benchmarks-hansen-tree-cover-2022', label: 'Hansen Global Forest Change' },
+    { value: 'benchmarks-mapbiomes-2022', label: 'MapBiomas Ecuador' },
+    { value: 'benchmarks-esa-landcover-2020', label: 'ESA WorldCover' },
+    { value: 'benchmarks-jrc-forestcover-2020', label: 'JRC Forest Cover' },
+    { value: 'benchmarks-palsar-2020', label: 'ALOS PALSAR Forest Map' },
+    { value: 'benchmarks-wri-treecover-2020', label: 'WRI Tropical Tree Cover' },
+  ];
+  const selectedBenchmark = ref(availableBenchmarks[0].value);
 
   // New computed property for visual indicator
   const modeIndicator = computed(() => {
@@ -96,6 +120,7 @@ export const useMapStore = defineStore('map', () => {
 
   // Add benchmark expression mapping constant
   const benchmarkExpressionMapping = {
+    'nicfi-pred-northern_choco_test_2025_06_09-composite-2022': 'where((data==1),1,0)',
     'benchmarks-hansen-tree-cover-2022': 'where(data>=90,1,0)',
     'benchmarks-mapbiomes-2022': 'where((data==3)|(data==4)|(data==5)|(data==6),1,0)',
     'benchmarks-esa-landcover-2020': 'where(data==10,1,0)',
@@ -111,7 +136,9 @@ export const useMapStore = defineStore('map', () => {
         target: target,
         layers: [
           new TileLayer({
-            source: new OSM(),
+            source: new OSM({
+              attributions: '© OpenStreetMap contributors'
+            }),
             name: 'baseMap',
             title: 'OpenStreetMap',
             visible: true,
@@ -125,8 +152,11 @@ export const useMapStore = defineStore('map', () => {
         })
       });
 
-      initTrainingLayer();
-      initInteractions();
+      const isAdmin = authService.getCurrentUser()?.user?.is_superuser === true;
+      if (isAdmin) {
+        initTrainingLayer();
+        initInteractions();
+      }
 
       // Initialize layers
       updateLayers();
@@ -429,9 +459,11 @@ export const useMapStore = defineStore('map', () => {
     let source;
 
     if (type === 'planet') {
+      const year = date.split('-')[0];
       source = new XYZ({
         url: `${titilerURL}/collections/nicfi-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
         maxZoom: 14,
+        attributions: `Imagery © ${year} Planet Labs Inc. All use subject to the <a href="https://www.planet.com/terms-of-use/" target="_blank">Planet Participant License Agreement</a>`
       });
     }
 
@@ -480,11 +512,11 @@ export const useMapStore = defineStore('map', () => {
 
     // Return a new TileLayer for basemap
 
-    const title = type === 'planet' ? `Planet Basemap ${date}` : `Predictions ${date}`;
+    const title = type === 'planet' ? `Planet Basemap ${date}` : `CFW Tree Cover 2022`;
     const id = type === 'planet' ? `planet-basemap` : `predictions`;
     const zIndex = type === 'planet' ? 1 : 2;
     const opacity = type === 'planet' ? 1 : 0.7;
-    const visible = type === 'planet' ? true : false;
+    const visible = type === 'planet' ? false : true;
 
     return new TileLayer({
       source: source,
@@ -1369,7 +1401,9 @@ export const useMapStore = defineStore('map', () => {
       target: primaryTarget,
       layers: [
         new TileLayer({
-          source: new OSM(),
+          source: new OSM({
+            attributions: '© OpenStreetMap contributors'
+          }),
           name: 'baseMap',
           title: 'OpenStreetMap',
           visible: true,
@@ -1387,7 +1421,9 @@ export const useMapStore = defineStore('map', () => {
       target: secondaryTarget,
       layers: [
         new TileLayer({
-          source: new OSM(),
+          source: new OSM({
+            attributions: '© OpenStreetMap contributors'
+          }),
           name: 'baseMap',
           title: 'OpenStreetMap',
           visible: true,
@@ -1618,10 +1654,13 @@ export const useMapStore = defineStore('map', () => {
       maxZoom: 14,
     });
 
+    // Get readable title from availableBenchmarks array
+    const benchmarkInfo = availableBenchmarks.find(b => b.value === collectionId);
+    const title = benchmarkInfo ? benchmarkInfo.label : collectionId.replace('benchmarks-', '').replace(/-/g, ' ');
 
     return new TileLayer({
       source,
-      title: collectionId.replace('benchmarks-', '').replace(/-/g, ' '),
+      title: title,
       id: `benchmark-${collectionId}`,
       visible: true,
       zIndex: 3,
@@ -1652,6 +1691,221 @@ export const useMapStore = defineStore('map', () => {
     updateLayers();
   };
 
+  // -------------------------------------------
+  // Search functionality (Nominatim geocoder)
+  // -------------------------------------------
+
+  const searchLocation = async (query) => {
+    if (!query || !query.trim()) {
+      searchResults.value = [];
+      return [];
+    }
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`;
+      const response = await fetch(url, {
+        headers: {
+          'Accept-Language': 'en',
+          'User-Agent': 'ChocoForestWatch/0.1 (+https://chocoforestwatch.org)'
+        }
+      });
+      const data = await response.json();
+      searchResults.value = data.map((d) => ({
+        label: d.display_name,
+        lon: Number(d.lon),
+        lat: Number(d.lat),
+        bbox: d.boundingbox.map(Number)
+      }));
+    } catch (err) {
+      console.error('Location search failed:', err);
+      searchResults.value = [];
+    }
+    return searchResults.value;
+  };
+
+  const zoomToSearchResult = (result, zoomLevel = 14) => {
+    if (!map.value || !result) return;
+
+    // Prepare / clear marker layer
+    if (!searchMarkerLayer.value) {
+      searchMarkerLayer.value = new VectorLayer({
+        source: new VectorSource(),
+        style: new Style({
+          image: new CircleStyle({
+            radius: 6,
+            fill: new Fill({ color: '#1976D2' }),
+            stroke: new Stroke({ color: '#ffffff', width: 2 })
+          })
+        }),
+        id: 'search-marker',
+        title: 'Search Result',
+        zIndex: 100
+      });
+      map.value.addLayer(searchMarkerLayer.value);
+    } else {
+      searchMarkerLayer.value.getSource().clear();
+    }
+
+    const coord3857 = fromLonLat([result.lon, result.lat]);
+    searchMarkerLayer.value.getSource().addFeature(new Feature({ geometry: new Point(coord3857) }));
+
+    if (result.bbox && result.bbox.length === 4) {
+      const extent4326 = [result.bbox[2], result.bbox[0], result.bbox[3], result.bbox[1]]; // minX, minY, maxX, maxY
+      const extent3857 = transformExtent(extent4326, 'EPSG:4326', map.value.getView().getProjection());
+      map.value.getView().fit(extent3857, { duration: 500, maxZoom: zoomLevel });
+    } else {
+      map.value.getView().animate({ center: coord3857, zoom: zoomLevel, duration: 500 });
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // AOI summary drawing and computation
+  // ---------------------------------------------------------------------------
+
+  const startSummaryAOIDraw = () => {
+    if (!map.value) return;
+
+    // Ensure previous summary AOI cleared
+    clearSummaryAOI();
+
+    isDrawingSummaryAOI.value = true;
+
+    // Create vector layer to hold the rectangle
+    summaryAOILayer.value = new VectorLayer({
+      source: new VectorSource(),
+      style: new Style({
+        stroke: new Stroke({ color: '#1976D2', width: 2 }),
+        fill: new Fill({ color: 'rgba(25, 118, 210, 0.1)' })
+      }),
+      title: 'Summary AOI',
+      id: 'summary-aoi',
+      zIndex: 101
+    });
+    map.value.addLayer(summaryAOILayer.value);
+
+    // Box draw interaction
+    summaryDrawInteraction.value = new Draw({
+      source: summaryAOILayer.value.getSource(),
+      type: 'Circle', // special code for box with geometryFunction
+      geometryFunction: createBox(),
+    });
+
+    summaryDrawInteraction.value.on('drawend', async (evt) => {
+      try {
+        const geom3857 = evt.feature.getGeometry();
+        // Convert to GeoJSON WGS84 (EPSG:4326)
+        const geoJSONGeom = new GeoJSON().writeGeometryObject(geom3857, {
+          dataProjection: 'EPSG:4326',
+          featureProjection: 'EPSG:3857',
+        });
+
+        // Send to backend
+        isLoading.value = true;
+        const resp = await api.getAOISummary({ type: 'Feature', geometry: geoJSONGeom }, selectedBenchmark.value);
+        summaryStats.value = resp.data;
+      } catch (err) {
+        console.error('Failed to compute AOI summary:', err);
+        $q.notify({ type: 'negative', message: 'Failed to compute summary statistics.' });
+      } finally {
+        isLoading.value = false;
+        stopSummaryAOIDraw();
+      }
+    });
+
+    map.value.addInteraction(summaryDrawInteraction.value);
+  };
+
+  const stopSummaryAOIDraw = () => {
+    if (!map.value) return;
+    isDrawingSummaryAOI.value = false;
+    if (summaryDrawInteraction.value) {
+      map.value.removeInteraction(summaryDrawInteraction.value);
+      summaryDrawInteraction.value = null;
+    }
+  };
+
+  const clearSummaryAOI = () => {
+    if (!map.value) return;
+    stopSummaryAOIDraw();
+    summaryStats.value = null;
+    if (summaryAOILayer.value) {
+      map.value.removeLayer(summaryAOILayer.value);
+      summaryAOILayer.value = null;
+    }
+  };
+
+  // -------------------------------------------
+  // GFW Alerts functionality  
+  // -------------------------------------------
+  
+  const createGFWAlertsLayer = () => {
+    // Create a vector layer for GFW alerts using GeoJSON data
+    const vectorSource = new VectorSource({
+      url: `${import.meta.env.VITE_API_URL}/gfw/alerts/2022/`,
+      format: new GeoJSON(),
+      attributions: '© Global Forest Watch'
+    });
+
+    // Style for GFW alert polygons
+    const alertStyle = new Style({
+      stroke: new Stroke({
+        color: '#FF6B35', // Orange-red for deforestation alerts
+        width: 2
+      }),
+      fill: new Fill({
+        color: 'rgba(255, 107, 53, 0.3)' // Semi-transparent orange-red
+      })
+    });
+
+    return new VectorLayer({
+      source: vectorSource,
+      style: alertStyle,
+      title: 'GFW Deforestation Alerts 2022',
+      id: 'gfw-alerts-2022',
+      visible: true,
+      zIndex: 4, // Higher than benchmark layers
+      opacity: 0.8
+    });
+  };
+
+  const addGFWAlertsLayer = (mapId = null) => {
+    const layerId = 'gfw-alerts-2022';
+    let targetMap;
+    
+    if (mapId && maps.value[mapId]) {
+      targetMap = maps.value[mapId];
+    } else {
+      targetMap = map.value;
+    }
+    
+    if (!targetMap) return;
+
+    // Avoid adding duplicate layer with same id
+    const existing = targetMap.getLayers().getArray().find((l) => l.get('id') === layerId);
+    if (existing) {
+      existing.setVisible(true);
+      updateLayers();
+      return;
+    }
+
+    try {
+      const newLayer = createGFWAlertsLayer();
+      targetMap.addLayer(newLayer);
+      updateLayers();
+      $q.notify({
+        type: 'positive',
+        message: 'GFW Deforestation Alerts 2022 layer added successfully',
+        timeout: 2000
+      });
+    } catch (error) {
+      console.error('Error adding GFW alerts layer:', error);
+      $q.notify({
+        type: 'negative', 
+        message: 'Failed to add GFW alerts layer',
+        timeout: 3000
+      });
+    }
+  };
+
   return {
     // State
     aoi,
@@ -1677,6 +1931,7 @@ export const useMapStore = defineStore('map', () => {
     drawingMode,
     randomPoints,
     currentPointIndex,
+    searchResults,
     // Actions
     initMap,
     setAOI,
@@ -1727,13 +1982,25 @@ export const useMapStore = defineStore('map', () => {
     goToPreviousPoint,
     getCurrentPoint,
     clearRandomPoints,
+    // AOI summary
+    startSummaryAOIDraw,
+    clearSummaryAOI,
+    summaryStats,
+    isDrawingSummaryAOI,
+    // Search actions
+    searchLocation,
+    zoomToSearchResult,
     // new benchmark actions
     addBenchmarkLayer,
+    addGFWAlertsLayer,
     // Getters
     getMap,
     maps,
     initDualMaps,
     addLayerToDualMaps,
     removeLayerFromDualMaps,
+    // Benchmark selection
+    availableBenchmarks,
+    selectedBenchmark,
   };
 });

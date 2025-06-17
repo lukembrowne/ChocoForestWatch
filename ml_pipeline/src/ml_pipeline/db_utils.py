@@ -28,7 +28,7 @@ def get_db_connection(
     Parameters
     ----------
     host : str, optional
-        Database host, by default "localhost"
+        Database host. Can be "localhost" for local database or "remote" to use DB_IP from environment variables, by default "localhost"
     port : str, optional
         Database port. If None, uses DB_PORT from environment
     db_name : str, optional
@@ -48,6 +48,13 @@ def get_db_connection(
     load_dotenv()
     
     # Use provided values or fall back to environment variables
+    if(host == "remote"):
+        host_ip = os.getenv('DB_IP')
+        if host_ip is None:
+            raise ValueError("DB_IP environment variable is not set")
+    else:
+        host_ip = "localhost"
+        
     port = port or os.getenv('DB_PORT')
     db_name = db_name or os.getenv('POSTGRES_DB')
     user = user or os.getenv('POSTGRES_USER')
@@ -55,7 +62,7 @@ def get_db_connection(
     
     # Create database connection URL
     print("Creating database connection URL...")
-    db_url = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
+    db_url = f"postgresql://{user}:{password}@{host_ip}:{port}/{db_name}"
     
     # Create and return engine
     print("Creating engine...")

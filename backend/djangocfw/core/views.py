@@ -8,14 +8,13 @@ from .models import Project, TrainingPolygonSet, TrainedModel, Prediction, Defor
 from .serializers import (ProjectSerializer, TrainingPolygonSetSerializer, 
                          TrainedModelSerializer, PredictionSerializer, 
                          DeforestationHotspotSerializer, UserSerializer, UserSettingsSerializer)
-from .services.model_training import ModelTrainingService
-from .services.prediction import PredictionService
 from loguru import logger
 import json
 from django.conf import settings
 from django.http import JsonResponse
 from .services.deforestation import analyze_change, get_deforestation_hotspots
-from rest_framework.permissions import IsAuthenticated
+from .services.gfw_alerts import gfw_service, get_or_create_gfw_alerts
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
@@ -31,18 +30,34 @@ from datetime import datetime
 import logging
 import os
 import random
-from typing import Optional, Iterator
-import rasterio
 from shapely.geometry import Point, shape
 from shapely.ops import unary_union
 from pathlib import Path
 import requests
 from pyproj import Transformer
 from shapely.ops import transform
+from ml_pipeline.summary_stats import AOISummaryStats
 
 logger = logging.getLogger(__name__)
 
 _global_boundary_polygon = None  # cache for boundary geometry
+
+DEFAULT_PUBLIC_PROJECT_ID = int(os.getenv("DEFAULT_PUBLIC_PROJECT_ID"))
+
+# ---------------------------------------------------------------------------
+# Allowed benchmark / land-cover collections that users can choose from
+# Update this list as new datasets become available.
+# ---------------------------------------------------------------------------
+
+ALLOWED_BENCHMARK_COLLECTIONS = [
+    "benchmarks-hansen-tree-cover-2022",
+    "benchmarks-mapbiomes-2022",
+    "benchmarks-esa-landcover-2020",
+    "benchmarks-jrc-forestcover-2020",
+    "benchmarks-palsar-2020",
+    "benchmarks-wri-treecover-2020",
+    "nicfi-pred-northern_choco_test_2025_06_09-composite-2022",  # CFW composite
+]
 
 def _load_boundary_polygon():
     """Load and cache the project boundary as a shapely geometry in Web Mercator projection."""
@@ -90,13 +105,17 @@ def health_check(request):
     })
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    """Projects owned by user; anonymous visitors get read-only access to a single public project."""
+    permission_classes = [IsAuthenticatedOrReadOnly]
     serializer_class = ProjectSerializer
     queryset = Project.objects.all()
     
     def get_queryset(self):
-        # Filter queryset to only return projects owned by the current user
-        return Project.objects.filter(owner=self.request.user)
+        """Authenticated users see their projects; anonymous users see only the public project."""
+        if self.request.user and self.request.user.is_authenticated:
+            return Project.objects.filter(owner=self.request.user)
+        # Anonymous: expose just the default public project
+        return Project.objects.filter(id=DEFAULT_PUBLIC_PROJECT_ID)
     
     def perform_create(self, serializer):
         # Automatically set the owner when creating a new project
@@ -837,3 +856,109 @@ def get_random_points_within_collection(request, collection_id):
     except Exception as e:
         logger.error(f"Error generating random points: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def aoi_summary(request):
+    """Compute forest / non-forest summary stats for a user-provided AOI.
+
+    Payload example:
+        {
+            "aoi": { ... GeoJSON Polygon/Multipolygon ... }
+        }
+
+    Returns a JSON object with keys: forest_px, nonforest_px, missing_px,
+    pct_forest, pct_missing, forest_ha, nonforest_ha.
+    """
+
+    try:
+        logger.info("Starting AOI summary computation")
+        
+        aoi_geojson = request.data.get('aoi')
+        if not aoi_geojson:
+            logger.warning("Missing 'aoi' field in request")
+            return Response({"error": "'aoi' field is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        titiler_url = os.environ.get("TITILER_URL")
+        if not titiler_url:
+            logger.error("TITILER_URL environment variable not set")
+            raise ValueError("TITILER_URL environment variable is not set")
+
+        # Collection ID comes from client, fallback to first allowed entry
+        collection_id = request.data.get("collection_id") or ALLOWED_BENCHMARK_COLLECTIONS[0]
+
+        if collection_id not in ALLOWED_BENCHMARK_COLLECTIONS:
+            logger.warning(f"Invalid collection_id received: {collection_id}")
+            return Response({"error": "Invalid collection_id"}, status=status.HTTP_400_BAD_REQUEST)
+
+        logger.info(f"Using collection ID: {collection_id}")
+
+        logger.info("Computing summary statistics")
+        stats_df = AOISummaryStats(titiler_url, collection_id).summary(aoi_geojson)
+
+        # Convert single-row dataframe to plain dict
+        stats_dict = stats_df.iloc[0].to_dict()
+        logger.info("Successfully computed summary statistics")
+
+        return Response(stats_dict, status=status.HTTP_200_OK)
+
+    except Exception as exc:
+        logger.error(f"AOI summary computation failed: {exc}")
+        capture_exception(exc)
+        return Response({"error": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def gfw_alerts_2022(request):
+    """Get Global Forest Watch deforestation alerts for 2022 within Ecuador boundary."""
+    try:
+        logger.info("Fetching GFW 2022 alerts from database")
+        
+        # Get alerts from database (create if they don't exist)
+        alerts = get_or_create_gfw_alerts(year=2022)
+        
+        # Convert to GeoJSON format
+        features = []
+        for alert in alerts:
+            feature = {
+                "type": "Feature",
+                "id": str(alert.id),
+                "geometry": alert.geometry,
+                "properties": {
+                    "id": str(alert.id),
+                    "area_ha": round(alert.area_ha, 2),
+                    "perimeter_m": round(alert.perimeter_m, 2),
+                    "compactness": round(alert.compactness, 3),
+                    "edge_density": round(alert.edge_density, 3),
+                    "confidence": alert.confidence,
+                    "source": alert.source,
+                    "year": alert.year,
+                    "centroid_lon": alert.centroid_lon,
+                    "centroid_lat": alert.centroid_lat,
+                    "verification_status": alert.verification_status
+                }
+            }
+            features.append(feature)
+        
+        alerts_geojson = {
+            "type": "FeatureCollection",
+            "features": features,
+            "metadata": {
+                "year": 2022,
+                "source": "Global Forest Watch",
+                "total_alerts": len(features),
+                "boundary": "Ecuador DEM 900m contour"
+            }
+        }
+        
+        logger.info(f"Successfully retrieved {len(features)} GFW alerts from database")
+        
+        return Response(alerts_geojson, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error fetching GFW alerts: {str(e)}")
+        capture_exception(e)
+        return Response(
+            {"error": f"Failed to fetch GFW alerts: {str(e)}"}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

@@ -172,11 +172,11 @@
           "types": {
             "cloud": "Cloud",
             "forest": "Forest",
-            "non-forest": "Non-Forest",
-            "shadow": "Shadow",
-            "water": "Water",
             "haze": "Haze",
-            "sensorError": "Sensor Error"
+            "non-forest": "Non-Forest",
+            "sensorError": "Sensor Error",
+            "shadow": "Shadow",
+            "water": "Water"
           }
         },
         "overview": {
@@ -224,12 +224,12 @@
           "title": "Supported By"
         },
         "motivation": "Choco Forest Watch is a specialized platform focused on monitoring forest cover and deforestation in Western Ecuador from 2022-2024. While global deforestation monitoring initiatives are invaluable, they can face challenges in regions with high cloud cover. Our platform bridges this gap by providing region-specific monitoring tools and insights.",
-        "subtitle": "Free, open-source platform supporting conservation efforts in Western Ecuador",
-        "tagline": "Forest Monitoring for Western Ecuador",
         "planetWarning": {
-          "title": "Important Notice: Planet Imagery Access Changes",
-          "message": "As of April 1, 2025, Planet imagery is no longer available through the NICFI program. This affects our ability to provide high-resolution satellite imagery. We are working to secure alternative imagery sources. The core functionality of Choco Forest Watch may be limited until we implement a new solution."
-        }
+          "message": "As of April 1, 2025, Planet imagery is no longer available through the NICFI program. This affects our ability to provide high-resolution satellite imagery. We are working to secure alternative imagery sources. The core functionality of Choco Forest Watch may be limited until we implement a new solution.",
+          "title": "Important Notice: Planet Imagery Access Changes"
+        },
+        "subtitle": "Free, open-source platform supporting conservation efforts in Western Ecuador",
+        "tagline": "Forest Monitoring for Western Ecuador"
       },
       "languageRequired": "Preferred language is required",
       "loginButton": "Login",
@@ -288,6 +288,7 @@
     "getStarted": "Get Started",
     "learnMore": "Learn More",
     "loading": "Loading...",
+    "login": "Login",
     "logout": "Logout",
     "logoutSuccess": "Successfully logged out",
     "save": "Save",
@@ -296,16 +297,6 @@
   "drawing": {
     "classes": {
       "title": "Select Class"
-    },
-    "randomPoints": {
-      "title": "Random Points Navigation",
-      "next": "Go to next point",
-      "previous": "Go to previous point",
-      "noPoints": "No points loaded",
-      "pointInfo": "Quad: {quadId} (Set {setIndex})",
-      "progress": "Point {current} of {total} (Set {currentSet} of {totalSets})",
-      "count": "Number of sets",
-      "reload": "Load Points"
     },
     "dialogs": {
       "clear": {
@@ -350,6 +341,16 @@
       "squareMode": "Square Mode (F). Click to change to Freehand mode.",
       "squareSize": "Square Size (width × height)",
       "title": "Drawing Options"
+    },
+    "randomPoints": {
+      "count": "Number of sets",
+      "next": "Go to next point",
+      "noPoints": "No points loaded",
+      "pointInfo": "Quad: {quadId} (Set {setIndex})",
+      "previous": "Go to previous point",
+      "progress": "Point {current} of {total} (Set {currentSet} of {totalSets})",
+      "reload": "Load Points",
+      "title": "Random Points Navigation"
     },
     "title": "Drawing Controls",
     "tooltips": {
@@ -417,52 +418,62 @@
     },
     "satellite": "Satellite",
     "switcher": {
+      "benchmarks": {
+        "add": "Add",
+        "datasets": {
+          "esa": {
+            "description": "Global 10 m land-cover map (11 classes) generated from Sentinel-1 & -2 imagery by the ESA WorldCover consortium.",
+            "title": "ESA WorldCover 2020 (10 m Global)",
+            "url": "https://esa-worldcover.org/en"
+          },
+          "hansen": {
+            "description": "30 m annual forest extent, loss & gain derived from Landsat by the Univ. of Maryland GLAD lab (Hansen et al.). Latest year: 2022.",
+            "title": "Global Forest Change v1.10 (2000 – 2022)",
+            "url": "https://data.globalforestwatch.org/documents/941f17325a494ed78c4817f9bb20f33a"
+          },
+          "jrc": {
+            "description": "10 m map of standing tree cover for 2020 compiled from Sentinel-2 by the European Commission JRC Forest Observatory.",
+            "title": "JRC Global Forest Cover 2020 (v2, 10 m)",
+            "url": "https://data.europa.eu/89h/e554d6fb-6340-45d5-9309-332337e5bc26"
+          },
+          "mapbiomes": {
+            "description": "Annual 30 m land-cover classifications for all Ecuadorian biomes produced by the MapBiomas network.",
+            "title": "MapBiomas Ecuador 2022",
+            "url": "https://ecuador.mapbiomas.org/en/home-english/"
+          },
+          "palsar": {
+            "description": "Global 25 m forest/non-forest classification from JAXA SAR (PALSAR-2) backscatter mosaics.",
+            "title": "ALOS PALSAR-2 Forest / Non-Forest Map 2020",
+            "url": "https://developers.google.com/earth-engine/datasets/catalog/JAXA_ALOS_PALSAR_YEARLY_FNF4"
+          },
+          "wri": {
+            "description": "High-resolution (10 m) probability-based tree-cover map for the tropics developed by WRI Land & Carbon Lab and partners.",
+            "title": "WRI Tropical Tree Cover 2020 (10 m)",
+            "url": "https://data.globalforestwatch.org/datasets/gfw::tropical-tree-cover/about"
+          },
+          "cfw-composite": {
+            "description": "ChocoForestWatch's machine learning-generated forest cover map for 2022, specifically trained for the Northern Chocó region of Ecuador using NICFI satellite imagery.",
+            "title": "CFW Composite 2022",
+            "url": "https://github.com/lukembrowne/chocoforestwatch"
+          },
+          "gfw-alerts": {
+            "description": "Integrated deforestation alerts from Global Forest Watch including GLAD, RADD, and other systems providing near real-time forest disturbance detection.",
+            "title": "GFW Integrated Deforestation Alerts",
+            "url": "https://www.globalforestwatch.org/help/map/guides/forest-change-analysis/"
+          }
+        },
+        "description": "Add forest cover datasets to compare and analyze",
+        "title": "Add Dataset"
+      },
       "opacity": "Opacity",
       "title": "Map Layers",
       "tooltips": {
+        "addBenchmark": "Add forest cover datasets to compare and analyze",
         "collapse": "Collapse layer list",
         "expand": "Expand layer list",
         "remove": "Remove layer",
-        "toggleOpacity": "Toggle opacity control",
-        "addBenchmark": "Add a benchmark dataset to compare with your analysis"
-      },
-        "benchmarks": {
-          "title": "Add Benchmark Layer",
-          "description": "Select a benchmark dataset to add to the map",
-          "add": "Add",
-          "datasets": {
-            "hansen": {
-              "title": "Global Forest Change v1.10 (2000 – 2022)",
-              "description": "30 m annual forest extent, loss & gain derived from Landsat by the Univ. of Maryland GLAD lab (Hansen et al.). Latest year: 2022.",
-              "url": "https://data.globalforestwatch.org/documents/941f17325a494ed78c4817f9bb20f33a"
-            },
-            "mapbiomes": {
-              "title": "MapBiomas Ecuador 2022",
-              "description": "Annual 30 m land-cover classifications for all Ecuadorian biomes produced by the MapBiomas network.",
-              "url": "https://ecuador.mapbiomas.org/en/home-english/"
-            },
-            "esa": {
-              "title": "ESA WorldCover 2020 (10 m Global)",
-              "description": "Global 10 m land-cover map (11 classes) generated from Sentinel-1 & -2 imagery by the ESA WorldCover consortium.",
-              "url": "https://esa-worldcover.org/en"
-            },
-            "jrc": {
-              "title": "JRC Global Forest Cover 2020 (v2, 10 m)",
-              "description": "10 m map of standing tree cover for 2020 compiled from Sentinel-2 by the European Commission JRC Forest Observatory.",
-              "url": "https://data.europa.eu/89h/e554d6fb-6340-45d5-9309-332337e5bc26"
-            },
-            "palsar": {
-              "title": "ALOS PALSAR-2 Forest / Non-Forest Map 2020",
-              "description": "Global 25 m forest/non-forest classification from JAXA SAR (PALSAR-2) backscatter mosaics.",
-              "url": "https://developers.google.com/earth-engine/datasets/catalog/JAXA_ALOS_PALSAR_YEARLY_FNF4"
-            },
-            "wri": {
-              "title": "WRI Tropical Tree Cover 2020 (10 m)",
-              "description": "High-resolution (10 m) probability-based tree-cover map for the tropics developed by WRI Land & Carbon Lab and partners.",
-              "url": "https://data.globalforestwatch.org/datasets/gfw::tropical-tree-cover/about"
-            }
-          }
-        }
+        "toggleOpacity": "Toggle opacity control"
+      }
     },
     "terrain": "Terrain"
   },
@@ -492,6 +503,12 @@
     "languageUpdateFailed": "Failed to update language preference",
     "languageUpdated": "Language preference updated successfully",
     "projectLoaded": "Project loaded successfully"
+  },
+  "placeholder": {
+    "landCoverStats": {
+      "text": "Coming soon",
+      "title": "Land-cover statistics"
+    }
   },
   "projects": {
     "aoi": {

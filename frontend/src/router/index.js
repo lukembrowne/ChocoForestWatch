@@ -18,18 +18,7 @@ const routes = [
   {
     path: '/',
     component: MainLayout,
-    meta: { requiresAuth: true },
-    children: [
-      {
-        path: '',
-        redirect: '/projects'
-      },
-      {
-        path: 'projects',
-        name: 'Projects',
-        component: MainLayout
-      }
-    ]
+    children: []
   },
   {
     path: '/:catchAll(.*)*',
@@ -50,7 +39,7 @@ router.beforeEach((to, from, next) => {
   if (requiresAuth && !currentUser) {
     next('/login');
   } else if (to.path === '/login' && currentUser) {
-    next('/projects');
+    next('/');
   } else {
     next();
   }

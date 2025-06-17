@@ -13,16 +13,21 @@
         <div class="flex-grow" />
         
         <div class="nav-section row items-center no-wrap q-gutter-x-md">
-          <q-btn 
-            v-for="section in sections" 
-            :key="section.name" 
-            flat 
-            :icon="section.icon" 
-            :label="$q.screen.gt.xs ? t(`navigation.${section.id}.name`) : ''"
-            class="nav-btn"
-            @click="handleSectionClick(section)">
-            <q-tooltip>{{ t(`navigation.${section.id}.tooltip`) }}</q-tooltip>
-          </q-btn>
+          <!-- Admin navigation buttons -->
+          <template v-if="isAdmin">
+            <q-btn 
+              v-for="section in sections" 
+              :key="section.name" 
+              flat 
+              :icon="section.icon" 
+              :label="$q.screen.gt.xs ? t(`navigation.${section.id}.name`) : ''"
+              class="nav-btn"
+              @click="handleSectionClick(section)">
+              <q-tooltip>{{ t(`navigation.${section.id}.tooltip`) }}</q-tooltip>
+            </q-btn>
+          </template>
+
+          <!-- Feedback button always visible -->
           <q-btn
             flat
             icon="feedback"
@@ -34,16 +39,15 @@
           </q-btn>
         </div>
 
-        <!-- User menu -->
+        <!-- User / guest menu -->
         <q-btn-dropdown 
           flat 
-          :icon="currentUser ? 'account_circle' : 'login'"
+          icon="account_circle"
           class="user-menu-btn q-ml-lg" 
-          v-if="currentUser"
           size="sm"
         >
           <q-list class="modern-menu">
-            <q-item class="text-center">
+            <q-item v-if="currentUser" class="text-center">
               <q-item-section>
                 <div class="row items-center">
                   <q-avatar size="48px" color="primary" text-color="white">
@@ -54,7 +58,7 @@
               </q-item-section>
             </q-item>
 
-            <q-separator />
+            <q-separator v-if="currentUser" />
 
             <q-item>
               <q-item-section avatar>
@@ -94,14 +98,19 @@
               <q-item-section>{{ t('common.about') }}</q-item-section>
             </q-item>
 
-            <q-item clickable v-ripple @click="handleLogout">
+            <q-item v-if="currentUser" clickable v-ripple @click="handleLogout">
               <q-item-section avatar>
                 <q-icon name="logout" />
               </q-item-section>
               <q-item-section>{{ t('common.logout') }}</q-item-section>
             </q-item>
 
-           
+            <q-item v-else clickable v-ripple @click="router.push('/login')">
+              <q-item-section avatar>
+                <q-icon name="login" />
+              </q-item-section>
+              <q-item-section>{{ t('common.login') }}</q-item-section>
+            </q-item>
           </q-list>
         </q-btn-dropdown>
       </q-toolbar>
@@ -110,20 +119,21 @@
     <q-page-container class="q-pa-none">
       <q-page class="relative-position">
         <div class="z-layers">
-          <div id="map" class="map-container" :class="{ 'with-sidebar': showAnyPanel || showAOICard }" v-if="!showUnifiedAnalysis && !showAdminDashboard"></div>
-          <div class="sidebar-container" v-if="(showAnyPanel || showAOICard) && !showUnifiedAnalysis && !showAdminDashboard">
+          <div id="map" class="map-container" :class="{ 'with-sidebar': showSidebar }" v-if="!showUnifiedAnalysis && !showAdminDashboard"></div>
+          <div class="sidebar-container" v-if="showSidebar && !showUnifiedAnalysis && !showAdminDashboard">
             <ProjectSelection 
-              v-if="showProjectSelection" 
+              v-if="isAdmin && showProjectSelection" 
               @project-selected="selectProject"
             />
             <AOIFloatingCard 
-              v-if="showAOICard" 
+              v-if="isAdmin && showAOICard" 
               @aoi-saved="handleAOISaved"
             />
-            <TrainingAndPolygonManager v-if="showTrainingAndPolygonManager" />
+            <TrainingAndPolygonManager v-if="isAdmin && showTrainingAndPolygonManager" />
+            <SidebarPanel v-if="!isAdmin" />
           </div>
-          <UnifiedAnalysis v-if="showUnifiedAnalysis" />
-          <SystemDashboard v-if="showAdminDashboard" />
+          <UnifiedAnalysis v-if="isAdmin && showUnifiedAnalysis" />
+          <SystemDashboard v-if="isAdmin && showAdminDashboard" />
           <div class="floating-elements" v-if="!showAOICard && !showUnifiedAnalysis && !showAdminDashboard">
             <BasemapDateSlider class="date-slider" />
           </div>
@@ -241,6 +251,7 @@ import ProjectSelection from 'components/projects/ProjectSelectionDialog.vue'
 import TrainingAndPolygonManager from 'components/training/TrainingAndPolygonManager.vue'
 import CustomLayerSwitcher from 'components/CustomLayerSwitcher.vue'
 import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
+import SidebarPanel from 'components/sidebar/SidebarPanel.vue'
 import BasemapDateSlider from 'components/BasemapDateSlider.vue'
 import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -258,6 +269,7 @@ export default {
     TrainingAndPolygonManager,
     CustomLayerSwitcher,
     AOIFloatingCard,
+    SidebarPanel,
     BasemapDateSlider,
     ProjectSelection,
     UnifiedAnalysis,
@@ -277,24 +289,28 @@ export default {
     const showProjectSelection = ref(false)
     const showUnifiedAnalysis = ref(false)
     const showAdminDashboard = ref(false)
+    const isAdmin = computed(() => currentUser.value?.user?.is_superuser === true)
+
     const sections = computed(() => {
-      const baseSections = [
+      if (!isAdmin.value) {
+        return [] // public visitors see no nav sections
+      }
+
+      const adminSections = [
         { id: 'projects', name: 'projects', icon: 'folder', component: null },
         { id: 'training', name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager },
         { id: 'analysis', name: 'Analysis', icon: 'analytics', component: UnifiedAnalysis }
-      ];
+      ]
 
-      // Add admin dashboard for superusers
-      if (currentUser.value?.user?.is_superuser) {
-        baseSections.push({
-          id: 'admin',
-          name: 'Admin Dashboard',
-          icon: 'dashboard',
-          component: SystemDashboard
-        });
-      }
+      // Superuser-only dashboard
+      adminSections.push({
+        id: 'admin',
+        name: 'Admin Dashboard',
+        icon: 'dashboard',
+        component: SystemDashboard
+      })
 
-      return baseSections;
+      return adminSections
     })
 
     const sidebarWidth = computed(() => isExpanded.value ? 300 : 60)
@@ -315,6 +331,10 @@ export default {
       showAdminDashboard.value
     )
 
+    const showSidebar = computed(() => {
+      return isAdmin.value ? (showAnyPanel.value || showAOICard.value) : true
+    })
+
     const { t, locale } = useI18n()
     const currentLocale = ref('en')
 
@@ -322,6 +342,10 @@ export default {
     const welcomeStore = useWelcomeStore();
 
     const showHelp = () => {
+      if (!isAdmin.value) {
+        // Public visitors: no contextual help yet
+        return;
+      }
       
       if (showProjectSelection.value) {
         welcomeStore.showHelp('projects');
@@ -337,33 +361,51 @@ export default {
       });
     };
 
-    const version = ref('')
     const showAboutDialog = ref(false)
 
     onMounted(async () => {
       console.log("Mounted MainLayout")
       try {
-        // Get version
-        const versionResponse = await api.getVersion()
-        version.value = versionResponse.data.version
 
-        // Load user settings first
-        const { data } = await api.getUserSettings()
-        if (data.preferred_language) {
-          currentLocale.value = data.preferred_language
-          locale.value = data.preferred_language
-        }
+        // Load user settings first (if logged in)
+        // const { data } = await api.getUserSettings()
+        // if (data.preferred_language) {
+        //   currentLocale.value = data.preferred_language
+        //   locale.value = data.preferred_language
+        // }
       } catch (error) {
         console.error('Error in mounted:', error)
       }
 
       // Standard loading sequence
-      // Initialize map
       console.log("Initializing map")
       mapStore.initMap('map', true)
       mapStore.initializeBasemapDates()
-      // mapStore.showSingleMap('map')
-      showProjectSelection.value = true
+
+      const isAdmin = currentUser.value?.user?.is_superuser === true
+
+      if (isAdmin) {
+        // legacy workflow for admins
+        showProjectSelection.value = true
+      } else {
+        try {
+          // Load default project automatically
+          await projectStore.loadDefaultProject()
+
+          // Show planet & prediction basemaps for a representative date (Jan-2022 for now)
+          mapStore.updateBasemap('2022-01', 'planet')
+
+          // Auto-load CFW Composite 2022 forest cover map
+          mapStore.addBenchmarkLayer('nicfi-pred-northern_choco_test_2025_06_09-composite-2022')
+        } catch (err) {
+          console.error('Failed to load default project:', err)
+          $q.notify({
+            message: 'Failed to load default project',
+            icon: 'error',
+            color: 'negative'
+          })
+        }
+      }
     })
 
     const handleSectionClick = async (section) => {
@@ -502,7 +544,7 @@ export default {
 
     const handleLocaleChange = async (newLocale) => {
       try {
-        await api.updateUserSettings({ preferred_language: newLocale })
+       // await api.updateUserSettings({ preferred_language: newLocale })
         locale.value = newLocale
         $q.notify({
           message: t('notifications.languageUpdated'),
@@ -600,6 +642,7 @@ export default {
       showProjectSelection,
       selectProject,
       showAnyPanel,
+      showSidebar,
       showUnifiedAnalysis,
       showHelp,
       showFeedbackDialog,
@@ -608,10 +651,11 @@ export default {
       submittingFeedback,
       feedbackOptions,
       submitFeedback,
-      version,
       showAboutDialog,
       testSentryError,
-      showAdminDashboard
+      showAdminDashboard,
+      router,
+      isAdmin
     }
   }
 }

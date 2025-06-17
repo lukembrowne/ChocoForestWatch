@@ -32,7 +32,7 @@
             </q-slider>
             <div class="month-markers">
                 <div v-for="(date, index) in dates" :key="index" class="month-marker"
-                    :class="{ 'has-data': hasTrainingData(date), 'excluded': isDateExcluded(date) }">
+                    :class="{ 'has-data': hasTrainingData(date) && isAdmin, 'excluded': isDateExcluded(date) }">
                     {{ formatMonth(date) }}
                 </div>
             </div>
@@ -46,6 +46,7 @@ import { useMapStore } from 'src/stores/mapStore';
 import { useProjectStore } from 'src/stores/projectStore';
 import { getBasemapDateOptions } from 'src/utils/dateUtils';
 import { useI18n } from 'vue-i18n';
+import authService from 'src/services/auth';
 
 export default {
     name: 'BasemapDateSlider',
@@ -56,6 +57,9 @@ export default {
         const dates = ref(getBasemapDateOptions().map(option => option.value));
         const sliderValue = ref(0);
         const selectedDate = computed(() => dates.value[sliderValue.value]);
+
+        const isAdmin = authService.getCurrentUser()?.user?.is_superuser === true;
+
 
         const years = computed(() => {
             const uniqueYears = new Set(dates.value.map(date => date.split('-')[0]));
@@ -168,7 +172,8 @@ export default {
             getYearPosition,
             hasTrainingData,
             isDateExcluded,
-            t
+            t,
+            isAdmin
         };
     },
 };
