@@ -26,7 +26,7 @@ const { t } = useI18n()
 <style scoped>
 .map-legend {
   position: absolute;
-  top: 16px;
+  bottom: 125px;
   right: 16px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(4px);
@@ -90,7 +90,7 @@ const { t } = useI18n()
 @media (max-width: 768px) {
   .map-legend {
     top: 12px;
-    right: 12px;
+    left: 12px;
     padding: 10px;
     min-width: 120px;
   }

@@ -92,7 +92,7 @@ export const useMapStore = defineStore('map', () => {
 
   // Forest Cover Maps selection (formerly benchmarks)
   const availableBenchmarks = [
-    { value: 'nicfi-pred-northern_choco_test_2025_06_09-composite-2022', label: 'Choco Forest Watch 2022' },
+    { value: 'nicfi-pred-northern_choco_test_2025_06_16-composite-2022', label: 'Choco Forest Watch 2022' },
     { value: 'benchmarks-hansen-tree-cover-2022', label: 'Hansen Global Forest Change' },
     { value: 'benchmarks-mapbiomes-2022', label: 'MapBiomas Ecuador' },
     { value: 'benchmarks-esa-landcover-2020', label: 'ESA WorldCover' },
@@ -120,7 +120,7 @@ export const useMapStore = defineStore('map', () => {
 
   // Add benchmark expression mapping constant
   const benchmarkExpressionMapping = {
-    'nicfi-pred-northern_choco_test_2025_06_09-composite-2022': 'where((data==1),1,0)',
+    'nicfi-pred-northern_choco_test_2025_06_16-composite-2022': 'where((data==1),1,0)',
     'benchmarks-hansen-tree-cover-2022': 'where(data>=90,1,0)',
     'benchmarks-mapbiomes-2022': 'where((data==3)|(data==4)|(data==5)|(data==6),1,0)',
     'benchmarks-esa-landcover-2020': 'where(data==10,1,0)',
@@ -492,7 +492,7 @@ export const useMapStore = defineStore('map', () => {
 
 
       source = new XYZ({
-        url: `${titilerURL}/collections/nicfi-pred-northern_choco_test_2025_06_09-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
+        url: `${titilerURL}/collections/nicfi-pred-northern_choco_test_2025_06_16-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
         maxZoom: 14,
       });
 

@@ -11,9 +11,9 @@ from pyproj import Transformer
 _GEOD = Geod(ellps="WGS84")  # reused for geodesic area calculations
 
 def pixels_to_labels(collection: str, pixels: np.ndarray) -> np.ndarray:
-    """Dataset-specific mapping ➜ 'Forest' / 'Non-Forest' / np.nan"""
+    """Dataset-specific mapping ➜ 'Forest' / 'Non-Forest' / 'Unknown'"""
     if "nicfi" in collection:
-        out = np.where(pixels == 0, "Non-Forest", np.where(pixels == 1, "Forest", np.nan))
+        out = np.where(pixels == 0, "Non-Forest", np.where(pixels == 1, "Forest", "Unknown"))
     elif collection == "benchmarks-hansen-tree-cover-2022":
         out = np.where(pixels >= 90, "Forest", "Non-Forest")
 

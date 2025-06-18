@@ -123,3 +123,4 @@ ml_pipeline/notebooks/benchmark_results/*
 ml_pipeline/notebooks/runs.csv
 ml_pipeline/notebooks/runs/*
 ml_pipeline/notebooks/shapefiles/*
+.claude/settings.local.json

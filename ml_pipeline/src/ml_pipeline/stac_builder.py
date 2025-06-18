@@ -49,7 +49,7 @@ class STACBuilderConfig:
     # PgSTAC connection is handled through env vars
     pg_env_vars: dict[str, str] = field(
         default_factory=lambda: {
-            "PGHOST": 'localhost',
+            "PGHOST": 'localhost', # os.getenv("DB_IP"),
             "PGPORT": os.getenv("DB_PORT"),
             "PGDATABASE": os.getenv("POSTGRES_DB"),
             "PGUSER": os.getenv("POSTGRES_USER"),
@@ -58,7 +58,7 @@ class STACBuilderConfig:
     )
 
 # Set database connection environment variables needed by pypgstac
-os.environ['PGHOST'] = 'localhost'
+os.environ['PGHOST'] = 'localhost' # os.getenv('DB_IP')
 os.environ['PGPORT'] = os.getenv('DB_PORT')
 os.environ['PGDATABASE'] = os.getenv('POSTGRES_DB')
 os.environ['PGUSER'] = os.getenv('POSTGRES_USER')

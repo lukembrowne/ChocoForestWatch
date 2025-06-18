@@ -42,74 +42,130 @@
         <!-- User / guest menu -->
         <q-btn-dropdown 
           flat 
-          icon="account_circle"
           class="user-menu-btn q-ml-lg" 
-          size="sm"
+          size="md"
+          dropdown-icon="arrow_drop_down"
+          content-class="user-dropdown-content"
         >
-          <q-list class="modern-menu">
-            <q-item v-if="currentUser" class="text-center">
-              <q-item-section>
-                <div class="row items-center">
-                  <q-avatar size="48px" color="primary" text-color="white">
-                    {{ currentUser.user.username.charAt(0).toUpperCase() }}
+          <template #label>
+            <div class="user-menu-label">
+              <q-avatar 
+                v-if="currentUser" 
+                size="24px" 
+                class="user-avatar"
+                :class="{ 'admin-avatar': isAdmin }"
+              >
+                <span class="avatar-text">{{ currentUser.user.username.charAt(0).toUpperCase() }}</span>
+                <q-badge 
+                  v-if="isAdmin" 
+                  color="amber" 
+                  floating 
+                  rounded 
+                  class="admin-badge"
+                >
+                  <q-icon name="admin_panel_settings" size="10px" />
+                </q-badge>
+              </q-avatar>
+              <q-icon v-else name="person_outline" size="24px" />
+            </div>
+          </template>
+
+          <q-list class="user-menu-list">
+            <!-- User Profile Section -->
+            <div v-if="currentUser" class="user-profile-section">
+              <q-item class="user-profile-item">
+                <q-item-section avatar>
+                  <q-avatar size="42px" class="profile-avatar" :class="{ 'admin-avatar': isAdmin }">
+                    <span class="avatar-text">{{ currentUser.user.username.charAt(0).toUpperCase() }}</span>
+                    <q-badge 
+                      v-if="isAdmin" 
+                      color="amber" 
+                      floating 
+                      rounded 
+                      class="admin-badge"
+                    >
+                      <q-icon name="admin_panel_settings" size="10px" />
+                    </q-badge>
                   </q-avatar>
-                  <div class="text-subtitle2 q-ml-sm">{{ currentUser.user.username }}</div>
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="username">{{ currentUser.user.username }}</q-item-label>
+                  <q-item-label caption class="user-role">
+                    {{ isAdmin ? 'Administrator' : 'User' }}
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-separator class="profile-separator" />
+            </div>
+
+            <!-- Language Selection -->
+            <q-item class="language-section">
+              <q-item-section avatar>
+                <q-icon name="language" class="section-icon" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="section-label">{{ t('common.language') || 'Language' }}</q-item-label>
+                <div class="language-buttons">
+                  <q-btn
+                    :class="['language-btn', { 'active': currentLocale === 'en' }]"
+                    flat
+                    no-caps
+                    @click="handleLocaleChange('en')"
+                  >
+                     English
+                  </q-btn>
+                  <q-btn
+                    :class="['language-btn', { 'active': currentLocale === 'es' }]"
+                    flat
+                    no-caps
+                    @click="handleLocaleChange('es')"
+                  >
+                     Español
+                  </q-btn>
                 </div>
+              </q-item-section>
+            </q-item>
+
+            <q-separator />
+
+            <!-- Menu Actions -->
+            <q-item clickable v-ripple @click="showHelp" class="menu-action-item">
+              <q-item-section avatar>
+                <q-icon name="help_outline" class="action-icon" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ t('common.showHelp') }}</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <q-item clickable v-ripple @click="welcomeStore.openAboutModal()" class="menu-action-item">
+              <q-item-section avatar>
+                <q-icon name="info_outline" class="action-icon" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ t('common.about') }}</q-item-label>
               </q-item-section>
             </q-item>
 
             <q-separator v-if="currentUser" />
 
-            <q-item>
+            <!-- Auth Actions -->
+            <q-item v-if="currentUser" clickable v-ripple @click="handleLogout" class="menu-action-item logout-item">
               <q-item-section avatar>
-                <q-icon name="language" />
+                <q-icon name="logout" class="action-icon logout-icon" />
               </q-item-section>
               <q-item-section>
-                <div class="row q-gutter-sm">
-                  <q-radio
-                    v-model="currentLocale"
-                    val="en"
-                    label="English"
-                    color="primary"
-                    @update:model-value="handleLocaleChange"
-                  />
-                  <q-radio
-                    v-model="currentLocale"
-                    val="es"
-                    label="Español"
-                    color="primary"
-                    @update:model-value="handleLocaleChange"
-                  />
-                </div>
+                <q-item-label>{{ t('common.logout') }}</q-item-label>
               </q-item-section>
             </q-item>
 
-            <q-item clickable v-ripple @click="showHelp">
+            <q-item v-else clickable v-ripple @click="router.push('/login')" class="menu-action-item login-item">
               <q-item-section avatar>
-                <q-icon name="help" />
+                <q-icon name="login" class="action-icon login-icon" />
               </q-item-section>
-              <q-item-section>{{ t('common.showHelp') }}</q-item-section>
-            </q-item>
-
-            <q-item clickable v-ripple @click="welcomeStore.openAboutModal()">
-              <q-item-section avatar>
-                <q-icon name="info" />
+              <q-item-section>
+                <q-item-label>{{ t('common.login') }}</q-item-label>
               </q-item-section>
-              <q-item-section>{{ t('common.about') }}</q-item-section>
-            </q-item>
-
-            <q-item v-if="currentUser" clickable v-ripple @click="handleLogout">
-              <q-item-section avatar>
-                <q-icon name="logout" />
-              </q-item-section>
-              <q-item-section>{{ t('common.logout') }}</q-item-section>
-            </q-item>
-
-            <q-item v-else clickable v-ripple @click="router.push('/login')">
-              <q-item-section avatar>
-                <q-icon name="login" />
-              </q-item-section>
-              <q-item-section>{{ t('common.login') }}</q-item-section>
             </q-item>
           </q-list>
         </q-btn-dropdown>
@@ -358,7 +414,7 @@ export default {
           mapStore.updateBasemap('2022-01', 'planet')
 
           // Auto-load CFW Composite 2022 forest cover map
-          mapStore.addBenchmarkLayer('nicfi-pred-northern_choco_test_2025_06_09-composite-2022')
+          mapStore.addBenchmarkLayer('nicfi-pred-northern_choco_test_2025_06_16-composite-2022')
         } catch (err) {
           console.error('Failed to load default project:', err)
           $q.notify({
@@ -678,57 +734,203 @@ export default {
 
 .user-menu-btn {
   border-radius: 8px;
-  padding: 4px;
+  padding: 6px 8px;
   color: #e4e9f2;
+  transition: all 0.2s ease;
   
   &:hover {
     color: white;
     background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.05);
   }
   
-  .q-icon {
-    font-size: 1.6rem;
+  .user-menu-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-
-  :deep(.q-menu) {
-    margin-top: 12px;
+  
+  .user-avatar {
+    background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+    
+    &.admin-avatar {
+      background: linear-gradient(135deg, #f57c00 0%, #e65100 100%);
+      box-shadow: 0 2px 8px rgba(245, 124, 0, 0.3);
+    }
+    
+    .avatar-text {
+      font-weight: 600;
+      font-size: 12px;
+    }
+  }
+  
+  .admin-badge {
+    .q-icon {
+      color: #333;
+      font-size: 10px;
+    }
   }
 }
 
-.modern-menu {
-  border-radius: 12px;
+// Enhanced dropdown content styles
+:deep(.user-dropdown-content) {
   margin-top: 8px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.user-menu-list {
   background: white;
-  width: 280px;
+  width: 300px;
+  padding: 0;
   
-  :deep(.q-item) {
-    min-height: 40px;
-    font-size: 0.9rem;
-    color: var(--text-color);
+  // User Profile Section
+  .user-profile-section {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    
+    .user-profile-item {
+      padding: 16px;
+      
+      .profile-avatar {
+        background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+        box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+        
+        &.admin-avatar {
+          background: linear-gradient(135deg, #f57c00 0%, #e65100 100%);
+          box-shadow: 0 2px 8px rgba(245, 124, 0, 0.3);
+        }
+        
+        .avatar-text {
+          font-weight: 600;
+          font-size: 16px;
+        }
+      }
+      
+      .username {
+        font-weight: 600;
+        font-size: 16px;
+        color: #1e293b;
+        margin-bottom: 2px;
+      }
+      
+      .user-role {
+        font-size: 12px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 500;
+      }
+    }
+    
+    .profile-separator {
+      background: rgba(148, 163, 184, 0.2);
+      margin: 0;
+    }
+  }
+  
+  // Language Section
+  .language-section {
+    padding: 12px 16px;
+    
+    .section-icon {
+      color: #64748b;
+      font-size: 20px;
+    }
+    
+    .section-label {
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    
+    .language-buttons {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      
+      .language-btn {
+        flex: 1;
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #64748b;
+        background: rgba(248, 250, 252, 0.5);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        transition: all 0.2s ease;
+        
+        &:hover {
+          background: rgba(239, 246, 255, 0.8);
+          border-color: #3b82f6;
+          color: #3b82f6;
+          transform: translateY(-1px);
+        }
+        
+        &.active {
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          color: white;
+          border-color: #3b82f6;
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+        }
+      }
+    }
+  }
+  
+  // Menu Action Items
+  .menu-action-item {
+    padding: 12px 16px;
+    transition: all 0.2s ease;
     
     &:hover {
-      background: rgba(0, 0, 0, 0.03);
-      color: var(--primary-color);
+      background: rgba(59, 130, 246, 0.04);
+      
+      .action-icon {
+        color: #3b82f6;
+        transform: scale(1.1);
+      }
+      
+      .q-item__label {
+        color: #1e293b;
+      }
     }
     
-    .q-icon {
-      font-size: 1.2rem;
-      color: #666;
+    .action-icon {
+      color: #64748b;
+      font-size: 20px;
+      transition: all 0.2s ease;
+    }
+    
+    .q-item__label {
+      font-weight: 500;
+      color: #374151;
+      font-size: 14px;
+    }
+    
+    &.logout-item:hover {
+      background: rgba(239, 68, 68, 0.04);
+      
+      .logout-icon {
+        color: #ef4444;
+      }
+    }
+    
+    &.login-item:hover {
+      background: rgba(34, 197, 94, 0.04);
+      
+      .login-icon {
+        color: #22c55e;
+      }
     }
   }
-
-  .q-item.text-center {
-    background: #f8fafc;
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
-  }
-
+  
+  // Separators
   .q-separator {
-    background: rgba(0, 0, 0, 0.06);
-  }
-
-  .q-radio {
-    font-size: 0.9rem;
+    background: rgba(148, 163, 184, 0.15);
+    margin: 0;
   }
 }
 

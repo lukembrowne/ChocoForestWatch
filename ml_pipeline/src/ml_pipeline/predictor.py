@@ -135,10 +135,10 @@ class ModelPredictor:
         """
 
         # Limit to northern Choco for now
-        bbox = "-80.325,-0.175,-78.2523342311799439,1.4466469335460774"
+       #  bbox = "-80.325,-0.175,-78.2523342311799439,1.4466469335460774"
 
         # Get all COG URLs intersecting the bounding box
-        cog_urls = self.extractor.get_all_cog_urls(collection, bbox=bbox)
+        cog_urls = self.extractor.get_all_cog_urls(collection)
 
 
         print(f"Found {len(cog_urls)} COGs in collection '{collection}'")
@@ -149,8 +149,8 @@ class ModelPredictor:
             pred_dir = Path(pred_dir)
 
         # Create the prediction directory if it doesn't exist
-        if save_local:
-            pred_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Creating prediction directory {pred_dir}")
+        pred_dir.mkdir(parents=True, exist_ok=True)
 
         saved: list[Path] = []
         # for url in tqdm(cog_urls, desc=f"Predicting {collection}"):
@@ -167,6 +167,11 @@ class ModelPredictor:
             delayed(self._predict_single_cog)(u, basemap_date, pred_dir, save_local)
             for u in tqdm(cog_urls)
         )
+
+        # Remove prediction directory if not saving locally
+        if not save_local:
+            print(f"Removing prediction directory {pred_dir}")
+            shutil.rmtree(pred_dir)
 
         print(f"Saved {len(saved)} prediction rasters ➜ {pred_dir}")
         return saved
@@ -247,7 +252,7 @@ class ModelPredictor:
             return out_path
 
         except Exception as e:
-            print(f"⚠️ Skipping COG due to error: {cog_url} — {e}")
+            print(f"⚠️ Skipping Predicting this COG due to error: {cog_url} — {e}")
             return None
 
     def _sieve_inplace(self, tif_path: Path, min_pixels: int) -> None:
