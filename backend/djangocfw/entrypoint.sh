@@ -34,4 +34,10 @@ python manage.py create_template_project
 
 # Start server
 echo "Starting server..."
-python manage.py runserver 0.0.0.0:8000 
+if [ "$DJANGO_DEBUG" = "False" ] || [ "$DJANGO_DEBUG" = "false" ]; then
+    echo "Production mode: starting with Gunicorn"
+    exec gunicorn djangocfw.wsgi:application --bind 0.0.0.0:8000 --workers 3
+else
+    echo "Development mode: starting with runserver"
+    exec python manage.py runserver 0.0.0.0:8000
+fi 
