@@ -25,4 +25,5 @@ urlpatterns = [
     path('user/settings/', views.user_settings, name='user_settings'),
     path('api/statistics/system/', views.get_system_statistics, name='system-statistics'),
     path('gfw/alerts/2022/', views.gfw_alerts_2022, name='gfw-alerts-2022'),
+    path('western_ecuador_stats/', views.get_western_ecuador_stats, name='western-ecuador-stats'),
 ]

@@ -1873,6 +1873,24 @@ export const useMapStore = defineStore('map', () => {
     }
   };
 
+  // Load cached western Ecuador statistics for the selected benchmark
+  const loadWesternEcuadorStats = async () => {
+    try {
+      isLoading.value = true;
+      const response = await api.getWesternEcuadorStats(selectedBenchmark.value);
+      summaryStats.value = response.data;
+    } catch (error) {
+      console.error('Failed to load western Ecuador stats:', error);
+      $q.notify({
+        type: 'negative',
+        message: 'Failed to load regional statistics.',
+        timeout: 4000
+      });
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   // -------------------------------------------
   // GFW Alerts functionality  
   // -------------------------------------------
@@ -2025,6 +2043,7 @@ export const useMapStore = defineStore('map', () => {
     // AOI summary
     startSummaryAOIDraw,
     clearSummaryAOI,
+    loadWesternEcuadorStats,
     summaryStats,
     isDrawingSummaryAOI,
     // Search actions
