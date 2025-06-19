@@ -280,6 +280,9 @@ docker compose exec backend python manage.py precalculate_western_ecuador_stats 
 # Clear all cached stats before calculating
 docker compose exec backend python manage.py precalculate_western_ecuador_stats --clear
 
+# Test with first collection only (recommended for troubleshooting)
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --test-first
+
 # Combine options
 docker compose exec backend python manage.py precalculate_western_ecuador_stats --clear --force
 ```
@@ -313,10 +316,34 @@ python scripts/precalculate_stats.py --help
 ### Caching Details
 
 - **Storage**: File-based cache in `backend/djangocfw/cache/`
-- **Persistence**: Statistics survive server restarts
-- **Timeout**: 30 days (configurable in Django settings)
+- **Persistence**: Statistics survive server restarts  
+- **Timeout**: Never expires (cached indefinitely)
 - **Automatic Loading**: Frontend automatically displays cached regional stats when datasets are selected
 - **Fallback**: If cache is empty, statistics are calculated on-demand and then cached
+
+### Troubleshooting
+
+If the pre-calculation seems to hang or fail:
+
+1. **Test with one collection first**:
+   ```bash
+   docker compose exec backend python manage.py precalculate_western_ecuador_stats --test-first
+   ```
+
+2. **Monitor detailed logs** while running:
+   ```bash
+   docker compose logs -f backend
+   ```
+
+3. **Verify environment variables**:
+   - `TITILER_URL` should be set (usually `http://tiler-uvicorn:8083`)
+   - `BOUNDARY_GEOJSON_PATH` should point to western Ecuador boundary file
+
+4. **Common issues**:
+   - TiTiler service not running
+   - Network timeouts (calculations can take 1-2 minutes per collection)
+   - Invalid collection IDs in STAC database
+   - Boundary file not accessible or contains invalid geometry
 
 ### Environment Requirements
 

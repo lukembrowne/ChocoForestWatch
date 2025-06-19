@@ -62,7 +62,7 @@ rm = RunManager(run_id=run_id, root="runs")
 
 #%%
 # Loop through months
-for m in tqdm(range(1, 13), desc=f"Processing months for {year}"):
+for m in tqdm(range(9, 10), desc=f"Processing months for {year}"):
     
     print("-"*100)
     print("-"*100)
@@ -226,7 +226,7 @@ print(df.to_markdown(index=False))
 from ml_pipeline.summary_stats import AOISummaryStats
 import json
 
-stats = AOISummaryStats("http://localhost:8083", "nicfi-pred-northern_choco_test_2025_06_09-composite-2022")
+stats = AOISummaryStats("http://localhost:8083", "nicfi-pred-northern_choco_test_2025_06_16-composite-2022")
 
 with open("shapefiles/Ecuador DEM 900m contour.geojson") as f:
     aoi = json.load(f)

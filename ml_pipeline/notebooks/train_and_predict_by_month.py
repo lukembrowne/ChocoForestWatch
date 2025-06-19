@@ -9,7 +9,7 @@ import numpy as np
 from ml_pipeline.extractor import TitilerExtractor
 from ml_pipeline.trainer import ModelTrainer, TrainerConfig
 from ml_pipeline.predictor import ModelPredictor
-from ml_pipeline.stac_builder import STACBuilder
+from ml_pipeline.stac_builder import STACBuilder, STACBuilderConfig
 from ml_pipeline.db_utils import get_db_connection
 import argparse
 from ml_pipeline.run_manager import RunManager    
@@ -17,8 +17,10 @@ from pathlib import PosixPath
 import json
 
 
+# Read in IP address of Digital Ocean droplet for connecting to database
+
 # Set up database connection
-engine = get_db_connection()
+engine = get_db_connection(host="remote")
 
 
 #%% 
@@ -40,9 +42,10 @@ if __name__ == "__main__":
 
 #%% 
 # Default values for interactive IPython session if not run from command line
+
 # year = "2022"
 # month = "01"
-# run_id = "northern_choco_test_2025_06_09"
+# run_id = "northern_choco_test_2025_06_16"
 # rm = RunManager(run_id)
 # run_dir = rm.run_path
 # project_id = 6
@@ -125,7 +128,7 @@ predictor.predict_collection(
     basemap_date=f"{year}-{month}",
     collection=f"nicfi-{year}-{month}",
     pred_dir=run_dir / f"prediction_cogs/{year}/{month}",
-    save_local=False
+    save_local=True
 )
 
 
@@ -133,7 +136,7 @@ predictor.predict_collection(
 # %%
 
 # Add predictions to the pgstac database
-builder = STACBuilder()
+builder = STACBuilder(STACBuilderConfig(use_remote_db=True))
 
 print("Adding predictions to the STAC database...")
 

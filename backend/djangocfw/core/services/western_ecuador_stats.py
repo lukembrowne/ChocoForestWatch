@@ -6,6 +6,7 @@ import os
 import json
 import logging
 import requests
+import signal
 from django.core.cache import cache
 from django.utils import timezone
 from pyproj import Transformer
@@ -37,6 +38,7 @@ def get_cache_key(collection_id):
     return f"western_ecuador_stats_{collection_id}"
 
 
+
 def _load_boundary_polygon():
     """Load and cache the project boundary as a shapely geometry in Web Mercator projection."""
     global _global_boundary_polygon
@@ -45,8 +47,10 @@ def _load_boundary_polygon():
 
     # Path to the GeoJSON that defines the project boundary. Allow override via env var.
     boundary_path = os.environ.get("BOUNDARY_GEOJSON_PATH")
+    logger.info(f"📂 Loading boundary from: {boundary_path}")
 
     try:
+        # Load GeoJSON file
         if boundary_path.startswith("http://") or boundary_path.startswith("https://"):
             resp = requests.get(boundary_path, timeout=30)
             resp.raise_for_status()
@@ -55,45 +59,124 @@ def _load_boundary_polygon():
             with open(boundary_path, "r", encoding="utf-8") as f:
                 geojson = json.load(f)
         
+        logger.info(f"📄 Loaded GeoJSON with {len(geojson.get('features', []))} features")
+        
         # Load geometries and convert to Web Mercator
         # Create transformer from WGS84 to Web Mercator
         project = Transformer.from_crs('EPSG:4326', 'EPSG:3857', always_xy=True).transform
         
         # Load and transform each geometry
         geoms = []
-        for feat in geojson.get("features", []):
-            geom = shape(feat["geometry"])
-            # Transform to Web Mercator
-            geom_3857 = transform(project, geom)
-            geoms.append(geom_3857)
+        for i, feat in enumerate(geojson.get("features", [])):
+            try:
+                logger.info(f"🔄 Processing feature {i+1}: {feat['geometry']['type']}")
+                geom = shape(feat["geometry"])
+                logger.info(f"✓ Shapely geometry created: {geom.geom_type}")
+                
+                # Transform to Web Mercator - this is where the error likely occurs
+                logger.info("🗺️  Transforming to Web Mercator...")
+                
+                # Try direct transformation first
+                try:
+                    geom_3857 = transform(project, geom)
+                    logger.info(f"✓ Direct transformation complete: {geom_3857.geom_type}")
+                except NotImplementedError as e:
+                    # Fallback: use the geometry's __geo_interface__ and recreate
+                    logger.warning(f"⚠️  Direct transform failed, using fallback method: {str(e)}")
+                    
+                    # Convert to GeoJSON, transform coordinates manually, then back to shapely
+                    geo_dict = geom.__geo_interface__
+                    
+                    def transform_coords(coords):
+                        """Recursively transform coordinate arrays"""
+                        if isinstance(coords[0], (list, tuple)):
+                            return [transform_coords(c) for c in coords]
+                        else:
+                            # This is a coordinate pair [lon, lat]
+                            x, y = project(coords[0], coords[1])
+                            return [x, y]
+                    
+                    # Transform the coordinates
+                    geo_dict['coordinates'] = transform_coords(geo_dict['coordinates'])
+                    
+                    # Recreate shapely geometry
+                    geom_3857 = shape(geo_dict)
+                    logger.info(f"✓ Fallback transformation complete: {geom_3857.geom_type}")
+                
+                geoms.append(geom_3857)
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to process feature {i+1}: {str(e)}")
+                logger.error(f"💥 Feature geometry type: {feat['geometry']['type']}")
+                raise
         
+        logger.info(f"✅ Processed {len(geoms)} geometries successfully")
+        
+        # Combine geometries
         if len(geoms) == 1:
             _global_boundary_polygon = geoms[0]
+            logger.info(f"📦 Using single geometry: {_global_boundary_polygon.geom_type}")
         else:
+            logger.info("🔗 Combining multiple geometries with unary_union...")
             _global_boundary_polygon = unary_union(geoms)
+            logger.info(f"📦 Combined into: {_global_boundary_polygon.geom_type}")
         
         return _global_boundary_polygon
+        
     except Exception as e:
-        logger.error(f"Failed to load boundary polygon: {e}")
+        logger.error(f"❌ Failed to load boundary polygon: {str(e)}")
+        logger.error(f"💥 Error type: {type(e).__name__}")
         raise
 
 
 def _convert_boundary_to_geojson(boundary_polygon):
     """Convert boundary polygon to GeoJSON format (WGS84)."""
-    # Convert boundary polygon to GeoJSON format (WGS84)
-    project_back = Transformer.from_crs('EPSG:3857', 'EPSG:4326', always_xy=True).transform
-    boundary_wgs84 = transform(project_back, boundary_polygon)
-    
-    # Create GeoJSON feature
-    boundary_geojson = {
-        "type": "Feature",
-        "geometry": {
-            "type": boundary_wgs84.geom_type,
-            "coordinates": list(boundary_wgs84.exterior.coords) if hasattr(boundary_wgs84, 'exterior') else boundary_wgs84.__geo_interface__['coordinates']
+    try:
+        # Convert boundary polygon to GeoJSON format (WGS84)
+        project_back = Transformer.from_crs('EPSG:3857', 'EPSG:4326', always_xy=True).transform
+        
+        # Try direct transformation first
+        try:
+            boundary_wgs84 = transform(project_back, boundary_polygon)
+            logger.info(f"✓ Direct back-transformation successful: {boundary_wgs84.geom_type}")
+        except NotImplementedError as e:
+            logger.warning(f"⚠️  Direct back-transform failed, using fallback: {str(e)}")
+            
+            # Fallback: manual coordinate transformation
+            geo_dict = boundary_polygon.__geo_interface__
+            
+            def transform_coords_back(coords):
+                """Recursively transform coordinate arrays back to WGS84"""
+                if isinstance(coords[0], (list, tuple)):
+                    return [transform_coords_back(c) for c in coords]
+                else:
+                    # This is a coordinate pair [x, y] in Web Mercator
+                    lon, lat = project_back(coords[0], coords[1])
+                    return [lon, lat]
+            
+            # Transform the coordinates back to WGS84
+            geo_dict['coordinates'] = transform_coords_back(geo_dict['coordinates'])
+            
+            # Recreate shapely geometry in WGS84
+            boundary_wgs84 = shape(geo_dict)
+            logger.info(f"✓ Fallback back-transformation complete: {boundary_wgs84.geom_type}")
+        
+        # Use shapely's built-in geo interface which handles all geometry types properly
+        geometry_dict = boundary_wgs84.__geo_interface__
+        
+        # Create GeoJSON feature
+        boundary_geojson = {
+            "type": "Feature",
+            "geometry": geometry_dict
         }
-    }
-    
-    return boundary_geojson
+        
+        logger.info(f"✓ Converted to GeoJSON: {geometry_dict['type']} geometry")
+        return boundary_geojson
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to convert boundary to GeoJSON: {str(e)}")
+        logger.error(f"💥 Error type: {type(e).__name__}")
+        raise Exception(f"Boundary conversion failed: {str(e)}")
 
 
 def get_western_ecuador_stats(collection_id, force_recalculate=False):
@@ -120,39 +203,90 @@ def get_western_ecuador_stats(collection_id, force_recalculate=False):
     if not force_recalculate:
         cached_stats = cache.get(cache_key)
         if cached_stats:
-            logger.info(f"Returning cached western Ecuador stats for collection {collection_id}")
+            logger.info(f"✓ Returning cached western Ecuador stats for collection {collection_id}")
             return cached_stats
     
     # Calculate new stats
-    logger.info(f"Calculating western Ecuador stats for collection {collection_id}")
+    logger.info(f"🔄 Starting calculation of western Ecuador stats for collection {collection_id}")
     
-    # Get required environment variables
-    titiler_url = os.environ.get("TITILER_URL")
-    if not titiler_url:
-        raise Exception("TITILER_URL environment variable not set")
-    
-    # Get the boundary polygon
-    boundary_polygon = _load_boundary_polygon()
-    if not boundary_polygon:
-        raise Exception("Could not load western Ecuador boundary")
-    
-    # Convert to GeoJSON
-    boundary_geojson = _convert_boundary_to_geojson(boundary_polygon)
-    
-    # Calculate statistics using AOISummaryStats
-    stats_df = AOISummaryStats(titiler_url, collection_id).summary(boundary_geojson)
-    stats_dict = stats_df.iloc[0].to_dict()
-    
-    # Add metadata
-    stats_dict['collection_id'] = collection_id
-    stats_dict['area_name'] = 'Western Ecuador'
-    stats_dict['cached_at'] = timezone.now().isoformat()
-    
-    # Cache the result to disk
-    cache.set(cache_key, stats_dict)
-    
-    logger.info(f"Successfully calculated and cached western Ecuador stats for collection {collection_id}")
-    return stats_dict
+    try:
+        # Get required environment variables
+        titiler_url = os.environ.get("TITILER_URL")
+        if not titiler_url:
+            raise Exception("TITILER_URL environment variable not set")
+        
+        logger.info(f"📍 Using TiTiler URL: {titiler_url}")
+        
+        # Get the boundary polygon
+        logger.info("📦 Loading western Ecuador boundary polygon...")
+        boundary_polygon = _load_boundary_polygon()
+        if not boundary_polygon:
+            raise Exception("Could not load western Ecuador boundary")
+        
+        # Log geometry info safely  
+        geom_type = boundary_polygon.geom_type
+        logger.info(f"✓ Boundary polygon loaded: {geom_type}")
+        
+        # Convert to GeoJSON
+        logger.info("🗺️  Converting boundary to GeoJSON format...")
+        try:
+            boundary_geojson = _convert_boundary_to_geojson(boundary_polygon)
+            logger.info("✓ Boundary converted to GeoJSON")
+        except Exception as e:
+            logger.error(f"❌ Failed in boundary conversion step: {str(e)}")
+            logger.error(f"💥 Conversion error type: {type(e).__name__}")
+            raise
+        
+        # Calculate statistics using AOISummaryStats
+        logger.info(f"📊 Initializing AOISummaryStats for collection: {collection_id}")
+        aoi_stats = AOISummaryStats(titiler_url, collection_id)
+        
+        logger.info("🧮 Starting summary computation (this may take 30-120 seconds)...")
+        logger.info("⏳ If this hangs, check TiTiler service availability and collection data")
+        
+        def timeout_handler(_signum, _frame):
+            raise TimeoutError(f"AOI summary computation timed out after 300 seconds for collection {collection_id}")
+        
+        # Set up timeout (5 minutes) - only on Unix systems
+        timeout_set = False
+        if hasattr(signal, 'SIGALRM'):
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(300)  # 5 minutes timeout
+            timeout_set = True
+            logger.info("⏰ Timeout set to 5 minutes for this computation")
+        else:
+            logger.warning("⚠️  Timeout not available on this system - computation may hang indefinitely")
+        
+        try:
+            stats_df = aoi_stats.summary(boundary_geojson)
+        finally:
+            if timeout_set:
+                signal.alarm(0)  # Cancel the alarm
+        
+        if stats_df is None or stats_df.empty:
+            raise Exception("AOISummaryStats returned empty results")
+        
+        stats_dict = stats_df.iloc[0].to_dict()
+        logger.info(f"✓ Statistics computed successfully: {len(stats_dict)} metrics")
+        
+        # Add metadata
+        stats_dict['collection_id'] = collection_id
+        stats_dict['area_name'] = 'Western Ecuador'
+        stats_dict['cached_at'] = timezone.now().isoformat()
+        
+        # Cache the result to disk
+        logger.info(f"💾 Caching results to disk with key: {cache_key}")
+        cache.set(cache_key, stats_dict)
+        
+        logger.info(f"🎉 Successfully calculated and cached western Ecuador stats for collection {collection_id}")
+        logger.info(f"📈 Forest coverage: {stats_dict.get('pct_forest', 0) * 100:.1f}%, Total area: {stats_dict.get('forest_ha', 0) + stats_dict.get('nonforest_ha', 0):.1f} ha")
+        
+        return stats_dict
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to calculate western Ecuador stats for {collection_id}: {str(e)}")
+        logger.error(f"💥 Error type: {type(e).__name__}")
+        raise
 
 
 def precalculate_all_stats(force_recalculate=False, collection_filter=None):
@@ -172,25 +306,51 @@ def precalculate_all_stats(force_recalculate=False, collection_filter=None):
             raise ValueError(f"Invalid collection: {collection_filter}")
         collections_to_process = [collection_filter]
     
+    total_collections = len(collections_to_process)
     results = {'successful': 0, 'failed': 0, 'skipped': 0}
     
-    for collection_id in collections_to_process:
+    logger.info(f"🚀 Starting pre-calculation for {total_collections} collection(s)")
+    logger.info(f"📋 Collections to process: {', '.join(collections_to_process)}")
+    
+    for i, collection_id in enumerate(collections_to_process, 1):
+        logger.info(f"\n{'='*60}")
+        logger.info(f"📊 Processing collection {i}/{total_collections}: {collection_id}")
+        logger.info(f"{'='*60}")
+        
         try:
             cache_key = get_cache_key(collection_id)
             
             # Check if already cached (unless force flag is used)
             if not force_recalculate and cache.get(cache_key):
-                logger.info(f"Skipping {collection_id} (already cached)")
+                logger.info(f"⏭️  Skipping {collection_id} (already cached)")
                 results['skipped'] += 1
                 continue
             
             # Calculate stats
+            logger.info(f"🎯 Starting calculation for {collection_id}...")
+            start_time = timezone.now()
+            
             get_western_ecuador_stats(collection_id, force_recalculate=True)
+            
+            end_time = timezone.now()
+            duration = (end_time - start_time).total_seconds()
+            
             results['successful'] += 1
+            logger.info(f"✅ Successfully completed {collection_id} in {duration:.1f} seconds")
+            logger.info(f"📈 Progress: {results['successful'] + results['failed']} of {total_collections} completed")
             
         except Exception as e:
-            logger.error(f"Failed to calculate stats for {collection_id}: {e}")
+            logger.error(f"❌ Failed to calculate stats for {collection_id}: {str(e)}")
+            logger.error(f"💥 Error type: {type(e).__name__}")
             results['failed'] += 1
+    
+    logger.info(f"\n{'='*60}")
+    logger.info(f"🏁 Pre-calculation completed!")
+    logger.info(f"✅ Successful: {results['successful']}")
+    logger.info(f"❌ Failed: {results['failed']}")
+    logger.info(f"⏭️  Skipped: {results['skipped']}")
+    logger.info(f"📊 Total: {total_collections}")
+    logger.info(f"{'='*60}")
     
     return results
 

@@ -192,7 +192,7 @@ CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
         'LOCATION': os.path.join(BASE_DIR, 'cache'),
-        'TIMEOUT': 60 * 60 * 24 * 30,  # 30 days
+        'TIMEOUT': None,  # Never expire - cache indefinitely
         'OPTIONS': {
             'MAX_ENTRIES': 1000,
         }
