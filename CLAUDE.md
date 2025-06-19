@@ -31,7 +31,16 @@ docker compose exec frontend sh          # Access frontend container shell
 docker compose exec backend python manage.py migrate    # Run Django migrations
 docker compose logs frontend            # View frontend service logs
 docker compose restart frontend         # Restart specific service
+
+# Pre-calculate western Ecuador statistics for all datasets
+docker compose exec backend python manage.py precalculate_western_ecuador_stats
+
+# Force recalculation of cached statistics
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --force
 ```
+
+## Development Memories
+- No need to test functionality using `docker compose up --build` because it uses too many tokens with the logging
 
 ## Architecture Overview
 
