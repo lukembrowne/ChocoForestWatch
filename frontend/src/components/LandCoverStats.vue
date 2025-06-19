@@ -42,14 +42,6 @@
               <q-spinner color="primary" size="sm" />
             </template>
           </q-select>
-          <div class="map-info" v-if="benchmark && !isMapLoading">
-            <q-icon name="check_circle" color="positive" size="xs" />
-            <span>{{ t('sidebar.landCover.mapLoaded') }}</span>
-          </div>
-          <div class="map-info loading" v-if="isMapLoading">
-            <q-spinner color="primary" size="xs" />
-            <span>{{ t('sidebar.landCover.loadingMap') }}</span>
-          </div>
         </div>
       </div>
     </div>
@@ -194,9 +186,9 @@ watch(benchmark, async (newBenchmark, oldBenchmark) => {
     
     // Automatically load western Ecuador stats for the new benchmark
     // unless the user has drawn their own area
-    if (!mapStore.summaryAOILayer) {
-      await mapStore.loadWesternEcuadorStats()
-    }
+    // if (!mapStore.summaryAOILayer) {
+    //   await mapStore.loadWesternEcuadorStats()
+    // }
   }
   
   // Auto-refresh stats if user has drawn a rectangle
@@ -212,15 +204,15 @@ function startDraw() {
 async function clear() {
   mapStore.clearSummaryAOI()
   // Automatically reload western Ecuador stats after clearing custom area
-  await mapStore.loadWesternEcuadorStats()
+  // await mapStore.loadWesternEcuadorStats()
 }
 
 // Automatically load western Ecuador stats when component mounts
 onMounted(async () => {
   // Only load if no custom area has been drawn
-  if (!mapStore.summaryAOILayer && !stats.value) {
-    await mapStore.loadWesternEcuadorStats()
-  }
+  // if (!mapStore.summaryAOILayer && !stats.value) {
+  //   await mapStore.loadWesternEcuadorStats()
+  // }
 })
 
 </script>

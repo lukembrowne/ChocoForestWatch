@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import pandas as pd
 from shapely.geometry import shape
 from ml_pipeline.extractor import TitilerExtractor
@@ -33,6 +34,7 @@ class AOISummaryStats:
         if px.size == 0:
             raise RuntimeError("AOI has no valid pixels in this collection.")
 
+        logging.info("Converting pixels to labels...")
         labels = pixels_to_labels(self.collection, px.squeeze())
         forest_px = (labels == "Forest").sum()
         nonforest_px = (labels == "Non-Forest").sum()

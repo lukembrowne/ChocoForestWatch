@@ -305,6 +305,7 @@ def precalculate_all_stats(force_recalculate=False, collection_filter=None):
         if collection_filter not in ALLOWED_BENCHMARK_COLLECTIONS:
             raise ValueError(f"Invalid collection: {collection_filter}")
         collections_to_process = [collection_filter]
+
     
     total_collections = len(collections_to_process)
     results = {'successful': 0, 'failed': 0, 'skipped': 0}
@@ -323,6 +324,21 @@ def precalculate_all_stats(force_recalculate=False, collection_filter=None):
             # Check if already cached (unless force flag is used)
             if not force_recalculate and cache.get(cache_key):
                 logger.info(f"⏭️  Skipping {collection_id} (already cached)")
+                results['skipped'] += 1
+                continue
+
+            if collection_id == "benchmarks-esa-landcover-2020":
+                logger.info("⚠️  Skipping ESA Landcover 2020 - not supported in this pre-calculation")
+                results['skipped'] += 1
+                continue
+
+            if collection_id == "benchmarks-jrc-forestcover-2020":
+                logger.info("⚠️  Skipping JRC Forest Cover 2020 - not supported in this pre-calculation")
+                results['skipped'] += 1
+                continue
+
+            if collection_id == "benchmarks-wri-treecover-2020":
+                logger.info("⚠️  Skipping WRI Tree Cover 2020 - not supported in this pre-calculation")
                 results['skipped'] += 1
                 continue
             
