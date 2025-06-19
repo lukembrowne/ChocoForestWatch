@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from osgeo import gdal, gdalconst
 import rasterio
-from ml_pipeline.stac_builder import STACBuilder
+from ml_pipeline.stac_builder import STACBuilder, STACBuilderConfig
 from ml_pipeline.s3_utils import upload_file
 import tempfile
 import shutil
@@ -171,7 +171,7 @@ class CompositeGenerator:
         
     def _create_stac_collection(self):
         # Create STAC
-        builder = STACBuilder()
+        builder = STACBuilder(STACBuilderConfig(use_remote_db=True))
         builder.process_year(
             year=self.year,
             prefix_on_s3=f"predictions/{self.run_id}-composites",
