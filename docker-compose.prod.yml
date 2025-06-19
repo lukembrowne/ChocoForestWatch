@@ -47,6 +47,7 @@ services:
       - app-network
     environment:
       - TZ=America/New_York
+      - DJANGO_DEBUG=False
 
   frontend:
     build:

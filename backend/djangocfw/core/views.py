@@ -37,6 +37,7 @@ import requests
 from pyproj import Transformer
 from shapely.ops import transform
 from ml_pipeline.summary_stats import AOISummaryStats
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ ALLOWED_BENCHMARK_COLLECTIONS = [
     "benchmarks-jrc-forestcover-2020",
     "benchmarks-palsar-2020",
     "benchmarks-wri-treecover-2020",
-    "nicfi-pred-northern_choco_test_2025_06_09-composite-2022",  # CFW composite
+    "nicfi-pred-northern_choco_test_2025_06_16-composite-2022",  # CFW composite
 ]
 
 def _load_boundary_polygon():
@@ -962,3 +963,30 @@ def gfw_alerts_2022(request):
             {"error": f"Failed to fetch GFW alerts: {str(e)}"}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_western_ecuador_stats(request):
+    """Get cached summary statistics for western Ecuador boundary polygon by collection."""
+    from .services.western_ecuador_stats import get_western_ecuador_stats as get_stats, ALLOWED_BENCHMARK_COLLECTIONS
+    
+    try:
+        collection_id = request.query_params.get('collection_id')
+        if not collection_id:
+            return Response({"error": "collection_id parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if collection_id not in ALLOWED_BENCHMARK_COLLECTIONS:
+            return Response({"error": "Invalid collection_id"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get stats using the service
+        stats_dict = get_stats(collection_id)
+        
+        return Response(stats_dict, status=status.HTTP_200_OK)
+        
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as exc:
+        logger.error(f"Failed to get western Ecuador stats: {exc}")
+        capture_exception(exc)
+        return Response({"error": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

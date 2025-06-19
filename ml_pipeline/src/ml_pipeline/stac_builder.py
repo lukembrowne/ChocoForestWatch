@@ -45,11 +45,14 @@ from ml_pipeline.s3_utils import get_s3_client, list_files
 class STACBuilderConfig:
     # DigitalOcean Spaces
     bucket: str = "choco-forest-watch"
+    
+    # Database connection type
+    use_remote_db: bool = True
 
     # PgSTAC connection is handled through env vars
     pg_env_vars: dict[str, str] = field(
         default_factory=lambda: {
-            "PGHOST": 'localhost',
+            "PGHOST": os.getenv("DB_IP") if os.getenv("DB_IP") else 'localhost',
             "PGPORT": os.getenv("DB_PORT"),
             "PGDATABASE": os.getenv("POSTGRES_DB"),
             "PGUSER": os.getenv("POSTGRES_USER"),
@@ -57,12 +60,18 @@ class STACBuilderConfig:
         }
     )
 
-# Set database connection environment variables needed by pypgstac
-os.environ['PGHOST'] = 'localhost'
-os.environ['PGPORT'] = os.getenv('DB_PORT')
-os.environ['PGDATABASE'] = os.getenv('POSTGRES_DB')
-os.environ['PGUSER'] = os.getenv('POSTGRES_USER')
-os.environ['PGPASSWORD'] = os.getenv('POSTGRES_PASSWORD')
+# Set default database connection environment variables needed by pypgstac
+# These will be overridden by STACBuilder initialization based on config
+if not os.environ.get('PGHOST'):
+    os.environ['PGHOST'] = os.getenv('DB_IP') if os.getenv('DB_IP') else 'localhost'
+if not os.environ.get('PGPORT'):
+    os.environ['PGPORT'] = os.getenv('DB_PORT') or '5432'
+if not os.environ.get('PGDATABASE'):
+    os.environ['PGDATABASE'] = os.getenv('POSTGRES_DB') or ''
+if not os.environ.get('PGUSER'):
+    os.environ['PGUSER'] = os.getenv('POSTGRES_USER') or ''
+if not os.environ.get('PGPASSWORD'):
+    os.environ['PGPASSWORD'] = os.getenv('POSTGRES_PASSWORD') or ''
 
 
 # ---------------------------------------------------------------------
@@ -84,6 +93,12 @@ class STACBuilder:
         load_dotenv()
         self.cfg = cfg
         self.s3, _ = get_s3_client(cfg.bucket)
+        
+        # Set database connection based on config
+        if not cfg.use_remote_db:
+            # Override for local database connection
+            self.cfg.pg_env_vars["PGHOST"] = 'localhost'
+        
         # ensure pypgstac can see DB creds
         os.environ.update(cfg.pg_env_vars)
 

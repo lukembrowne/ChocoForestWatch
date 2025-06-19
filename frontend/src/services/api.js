@@ -212,6 +212,13 @@ const api = {
     getGFWAlerts2022() {
         return apiClient.get('/gfw/alerts/2022/');
     },
+
+    // Western Ecuador cached statistics
+    getWesternEcuadorStats(collectionId) {
+        return apiClient.get('/western_ecuador_stats/', {
+            params: { collection_id: collectionId }
+        });
+    },
 };
 
 // Initialize function for boot

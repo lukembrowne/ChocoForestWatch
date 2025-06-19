@@ -257,6 +257,107 @@ The system includes automated workflows for processing NICFI (Norway's Internati
 ### Test against benchmarks
    - run `test_benchmarks 2025_05_19.py` to test accuracy against training data / comparea to other forest cover datasets
 
+## Western Ecuador Statistics Caching
+
+The application includes a caching system for western Ecuador summary statistics across different forest cover datasets. This provides instant loading of regional statistics without requiring users to draw custom areas first.
+
+### Pre-calculation Scripts
+
+To avoid slow calculations on first load, you can pre-calculate statistics for all datasets:
+
+#### Using Django Management Command (Recommended)
+
+```bash
+# Pre-calculate all statistics
+docker compose exec backend python manage.py precalculate_western_ecuador_stats
+
+# Force recalculation even if cached
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --force
+
+# Calculate for specific collection only
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --collection benchmarks-hansen-tree-cover-2022
+
+# Clear all cached stats before calculating
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --clear
+
+# Test with first collection only (recommended for troubleshooting)
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --test-first
+
+# Combine options
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --clear --force
+```
+
+#### Using Standalone Script
+
+```bash
+# Pre-calculate all statistics (from project root)
+python scripts/precalculate_stats.py
+
+# Force recalculation even if cached
+python scripts/precalculate_stats.py --force
+
+# Calculate for specific collection only
+python scripts/precalculate_stats.py --collection benchmarks-hansen-tree-cover-2022
+
+# Show help
+python scripts/precalculate_stats.py --help
+```
+
+### Available Forest Cover Collections
+
+- `benchmarks-hansen-tree-cover-2022` - Hansen Global Forest Change
+- `benchmarks-mapbiomes-2022` - MapBiomas Ecuador  
+- `benchmarks-esa-landcover-2020` - ESA WorldCover
+- `benchmarks-jrc-forestcover-2020` - JRC Forest Cover
+- `benchmarks-palsar-2020` - ALOS PALSAR Forest Map
+- `benchmarks-wri-treecover-2020` - WRI Tropical Tree Cover
+- `nicfi-pred-northern_choco_test_2025_06_16-composite-2022` - Choco Forest Watch 2022
+
+### Caching Details
+
+- **Storage**: File-based cache in `backend/djangocfw/cache/`
+- **Persistence**: Statistics survive server restarts  
+- **Timeout**: Never expires (cached indefinitely)
+- **Automatic Loading**: Frontend automatically displays cached regional stats when datasets are selected
+- **Fallback**: If cache is empty, statistics are calculated on-demand and then cached
+
+### Troubleshooting
+
+If the pre-calculation seems to hang or fail:
+
+1. **Test with one collection first**:
+   ```bash
+   docker compose exec backend python manage.py precalculate_western_ecuador_stats --test-first
+   ```
+
+2. **Monitor detailed logs** while running:
+   ```bash
+   docker compose logs -f backend
+   ```
+
+3. **Verify environment variables**:
+   - `TITILER_URL` should be set (usually `http://tiler-uvicorn:8083`)
+   - `BOUNDARY_GEOJSON_PATH` should point to western Ecuador boundary file
+
+4. **Common issues**:
+   - TiTiler service not running
+   - Network timeouts (calculations can take 1-2 minutes per collection)
+   - Invalid collection IDs in STAC database
+   - Boundary file not accessible or contains invalid geometry
+
+### Environment Requirements
+
+Ensure these environment variables are set:
+
+- `TITILER_URL` - URL of the TiTiler service
+- `BOUNDARY_GEOJSON_PATH` - Path to the western Ecuador boundary GeoJSON file
+
+### Recommended Workflow
+
+1. After deployment or major updates, run the pre-calculation script to warm the cache
+2. Users will then see instant western Ecuador statistics when they select different forest cover datasets
+3. Users can still draw custom areas to override the default regional statistics
+
 
 ## Contributing
 

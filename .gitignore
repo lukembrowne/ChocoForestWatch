@@ -123,3 +123,9 @@ ml_pipeline/notebooks/benchmark_results/*
 ml_pipeline/notebooks/runs.csv
 ml_pipeline/notebooks/runs/*
 ml_pipeline/notebooks/shapefiles/*
+.claude/settings.local.json
+*.djcache
+scripts/copy_localdb_to_production.sh
+ml_pipeline/notebooks/xarray_test 2025_05_16.py
+ml_pipeline/notebooks/test_benchmarks 2025_05_19.py
+ml_pipeline/notebooks/create_composite 2025_05_19.py

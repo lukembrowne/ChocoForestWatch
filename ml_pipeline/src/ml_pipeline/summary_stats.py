@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import pandas as pd
 from shapely.geometry import shape
 from ml_pipeline.extractor import TitilerExtractor
@@ -33,22 +34,29 @@ class AOISummaryStats:
         if px.size == 0:
             raise RuntimeError("AOI has no valid pixels in this collection.")
 
+        logging.info("Converting pixels to labels...")
         labels = pixels_to_labels(self.collection, px.squeeze())
         forest_px = (labels == "Forest").sum()
         nonforest_px = (labels == "Non-Forest").sum()
+        unknown_px = (labels == "Unknown").sum()
 
         if px_area_m2 is None:        # defensive; should never happen
             raise RuntimeError("Could not determine pixel area.")
         m2_to_ha = px_area_m2 / 10_000
 
+        # For percentage calculations, exclude unknown pixels to maintain consistency
+        valid_px = forest_px + nonforest_px
+        
         data = {
             "forest_px": forest_px,
             "nonforest_px": nonforest_px,
+            "unknown_px": unknown_px,
             "missing_px": missing_px,
-            "pct_forest": forest_px / (forest_px + nonforest_px) if (forest_px + nonforest_px) else 0,
-            "pct_missing": missing_px / (forest_px + nonforest_px + missing_px),
+            "pct_forest": forest_px / valid_px if valid_px else 0,
+            "pct_missing": missing_px / (valid_px + missing_px) if (valid_px + missing_px) else 0,
             "forest_ha": forest_px * m2_to_ha,
             "nonforest_ha": nonforest_px * m2_to_ha,
+            "unknown_ha": unknown_px * m2_to_ha,
         }
         # logger.info(
         #     "Extracted %d valid pixels and %d pixels with missing data",
@@ -56,10 +64,10 @@ class AOISummaryStats:
         # )
         print(f"Extracted {px.size} valid pixels and {missing_px} pixels with missing data")
         # logger.info(
-        #     "Pixel classification counts — Forest: %d, Non-Forest: %d",
-        #     forest_px, nonforest_px
+        #     "Pixel classification counts — Forest: %d, Non-Forest: %d, Unknown: %d",
+        #     forest_px, nonforest_px, unknown_px
         # )
-        print(f"Pixel classification counts — Forest: {forest_px}, Non-Forest: {nonforest_px}")
+        print(f"Pixel classification counts — Forest: {forest_px}, Non-Forest: {nonforest_px}, Unknown: {unknown_px}")
         summary_df = pd.DataFrame([data])
         # logger.info("Computed summary statistics:\n%s", summary_df.to_string(index=False))
         print("Computed summary statistics:")

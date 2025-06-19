@@ -286,6 +286,7 @@
     "error": "An error occurred",
     "export": "Export",
     "getStarted": "Get Started",
+    "language": "Language",
     "learnMore": "Learn More",
     "loading": "Loading...",
     "login": "Login",
@@ -786,7 +787,32 @@
       "nonForest": "Non-Forest",
       "noData": "No Data",
       "missingPixels": "Missing pixels",
-      "completeCoverage": "Complete coverage"
+      "completeCoverage": "Complete coverage",
+      "customArea": "Custom Area"
+    },
+    "upload": {
+      "title": "Upload Boundaries",
+      "tooltip": "Upload a GeoJSON file or zipped Shapefile to analyze forest cover for custom boundaries. The system will calculate statistics for all features in the file.",
+      "dragDrop": "Drag & drop your file here",
+      "clickToSelect": "or click to select file",
+      "supportedFormats": "Supports: GeoJSON, Shapefile (ZIP)",
+      "reading": "Reading file...",
+      "processing": "Processing geometry...",
+      "complete": "Upload complete!",
+      "error": "Failed to upload file",
+      "unsupportedFormat": "Unsupported file format. Please use GeoJSON or zipped Shapefile.",
+      "invalidGeoJSON": "Invalid GeoJSON format",
+      "invalidShapefile": "Invalid or corrupted Shapefile",
+      "readError": "Error reading file",
+      "noFeatures": "No features found in file",
+      "noValidFeatures": "No valid geometric features found",
+      "success": "Successfully uploaded {count} feature(s)",
+      "features": "Features",
+      "area": "Total Area",
+      "calculateStats": "Calculate Forest Statistics",
+      "statsCalculated": "Forest statistics calculated successfully",
+      "statsError": "Error calculating forest statistics",
+      "multipleFeatures": "Multiple features detected. Calculating statistics for the first feature only."
     }
   },
   "welcome": {

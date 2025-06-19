@@ -286,6 +286,7 @@
     "error": "Se produjo un error",
     "export": "Exportar",
     "getStarted": "Comenzar",
+    "language": "Idioma",
     "learnMore": "Más Información",
     "loading": "Cargando...",
     "login": "Iniciar sesión",
@@ -786,7 +787,32 @@
       "nonForest": "No Forestal",
       "noData": "Sin Datos",
       "missingPixels": "Píxeles faltantes",
-      "completeCoverage": "Cobertura completa"
+      "completeCoverage": "Cobertura completa",
+      "customArea": "Área Personalizada"
+    },
+    "upload": {
+      "title": "Subir Límites",
+      "tooltip": "Suba un archivo GeoJSON o Shapefile comprimido para analizar la cobertura forestal de límites personalizados. El sistema calculará estadísticas para todas las características del archivo.",
+      "dragDrop": "Arrastra y suelta tu archivo aquí",
+      "clickToSelect": "o haz clic para seleccionar archivo",
+      "supportedFormats": "Soporta: GeoJSON, Shapefile (ZIP)",
+      "reading": "Leyendo archivo...",
+      "processing": "Procesando geometría...",
+      "complete": "¡Carga completa!",
+      "error": "Error al cargar archivo",
+      "unsupportedFormat": "Formato de archivo no soportado. Por favor use GeoJSON o Shapefile comprimido.",
+      "invalidGeoJSON": "Formato GeoJSON inválido",
+      "invalidShapefile": "Shapefile inválido o corrupto",
+      "readError": "Error al leer archivo",
+      "noFeatures": "No se encontraron características en el archivo",
+      "noValidFeatures": "No se encontraron características geométricas válidas",
+      "success": "Se cargaron exitosamente {count} característica(s)",
+      "features": "Características",
+      "area": "Área Total",
+      "calculateStats": "Calcular Estadísticas Forestales",
+      "statsCalculated": "Estadísticas forestales calculadas exitosamente",
+      "statsError": "Error al calcular estadísticas forestales",
+      "multipleFeatures": "Se detectaron múltiples características. Calculando estadísticas solo para la primera característica."
     }
   },
   "welcome": {

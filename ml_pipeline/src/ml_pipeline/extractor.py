@@ -187,7 +187,7 @@ class TitilerExtractor:
                     labels.extend([label] * len(arr))
                     fids.extend([fid] * len(arr))
                 except Exception as e:
-                    print(f"⚠️  Skipping COG due to error: {cog} — {str(e)}")
+                    print(f"⚠️  Skipping Extracting pixels from this COG due to error: {cog} — {str(e)}")
                     continue
 
         if not pixels:

@@ -101,7 +101,7 @@ export default {
     const showDialog = ref(false)
     const selectedBenchmark = ref(null)
     const benchmarkOptions = [
-      { label: 'Choco Forest Watch 2022', value: 'nicfi-pred-northern_choco_test_2025_06_09-composite-2022' },
+      { label: 'Choco Forest Watch 2022', value: 'nicfi-pred-northern_choco_test_2025_06_16-composite-2022' },
       { label: 'Hansen Global Forest Change', value: 'benchmarks-hansen-tree-cover-2022' },
       { label: 'MapBiomas Ecuador', value: 'benchmarks-mapbiomes-2022' },
       { label: 'ESA WorldCover', value: 'benchmarks-esa-landcover-2020' },
@@ -124,7 +124,7 @@ export default {
       if (value === 'gfw-alerts-2022') {
         return 'gfw-alerts'
       }
-      if (value === 'nicfi-pred-northern_choco_test_2025_06_09-composite-2022') {
+      if (value === 'nicfi-pred-northern_choco_test_2025_06_16-composite-2022') {
         return 'cfw-composite'
       }
       // For other benchmark datasets, extract the second part after splitting by '-'

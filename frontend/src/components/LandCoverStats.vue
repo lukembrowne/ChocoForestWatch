@@ -42,14 +42,6 @@
               <q-spinner color="primary" size="sm" />
             </template>
           </q-select>
-          <div class="map-info" v-if="benchmark && !isMapLoading">
-            <q-icon name="check_circle" color="positive" size="xs" />
-            <span>{{ t('sidebar.landCover.mapLoaded') }}</span>
-          </div>
-          <div class="map-info loading" v-if="isMapLoading">
-            <q-spinner color="primary" size="xs" />
-            <span>{{ t('sidebar.landCover.loadingMap') }}</span>
-          </div>
         </div>
       </div>
     </div>
@@ -108,6 +100,12 @@
           </div>
         </div>
         
+        <!-- Area Info -->
+        <div class="area-info" v-if="stats">
+          <q-icon name="place" size="xs" />
+          <span>{{ stats.area_name ? stats.area_name : t('sidebar.landCover.customArea') }}</span>
+        </div>
+        
         <!-- Action Buttons -->
         <div class="action-bar">
           <q-btn 
@@ -162,7 +160,7 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { computed, watch, onMounted } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
 import { useI18n } from 'vue-i18n'
 
@@ -185,6 +183,12 @@ watch(benchmark, async (newBenchmark, oldBenchmark) => {
   // Auto-load the selected forest cover map onto the main map
   if (newBenchmark && newBenchmark !== oldBenchmark) {
     mapStore.addBenchmarkLayer(newBenchmark)
+    
+    // Automatically load western Ecuador stats for the new benchmark
+    // unless the user has drawn their own area
+    // if (!mapStore.summaryAOILayer) {
+    //   await mapStore.loadWesternEcuadorStats()
+    // }
   }
   
   // Auto-refresh stats if user has drawn a rectangle
@@ -197,9 +201,19 @@ function startDraw() {
   mapStore.startSummaryAOIDraw()
 }
 
-function clear() {
+async function clear() {
   mapStore.clearSummaryAOI()
+  // Automatically reload western Ecuador stats after clearing custom area
+  // await mapStore.loadWesternEcuadorStats()
 }
+
+// Automatically load western Ecuador stats when component mounts
+onMounted(async () => {
+  // Only load if no custom area has been drawn
+  // if (!mapStore.summaryAOILayer && !stats.value) {
+  //   await mapStore.loadWesternEcuadorStats()
+  // }
+})
 
 </script>
 
@@ -398,6 +412,16 @@ function clear() {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.area-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #666;
+  font-style: italic;
 }
 
 .action-bar {
