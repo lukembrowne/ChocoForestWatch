@@ -58,7 +58,7 @@
                         icon="tune" 
                         size="sm" 
                         class="opacity-btn"
-                        @click="element.showOpacity = !element.showOpacity"
+                        @click="toggleOpacityVisibility(element.id)"
                         :color="element.showOpacity ? 'primary' : 'grey-6'"
                       >
                         <q-tooltip>{{ t('layers.switcher.tooltips.toggleOpacity') }}</q-tooltip>
@@ -112,7 +112,7 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue';
+import { ref, computed, reactive } from 'vue';
 import { useMapStore } from 'src/stores/mapStore';
 import { Sortable } from 'sortablejs-vue3';
 import { useI18n } from 'vue-i18n';
@@ -137,6 +137,7 @@ export default {
     const mapStore = useMapStore();
     const { t } = useI18n();
     const isExpanded = ref(true);
+    const layerOpacityStates = reactive({});
 
     const mapLayers = computed(() => {
       if (props.mapId === 'training') {
@@ -144,15 +145,21 @@ export default {
         if (mapStore.map) {
           // console.log("Mapstores dirctly from mapStore", mapStore.map.getLayers().getArray())
           return mapStore.map.getLayers().getArray()
-            .map(layer => ({
-              id: layer.get('id'),
-              title: layer.get('title'),
-              zIndex: layer.getZIndex(),
-              visible: layer.getVisible(),
-              opacity: layer.getOpacity(),
-              showOpacity: false,
-              layer: layer
-            }))
+            .map(layer => {
+              const id = layer.get('id');
+              if (!layerOpacityStates[id]) {
+                layerOpacityStates[id] = { showOpacity: false };
+              }
+              return {
+                id: id,
+                title: layer.get('title'),
+                zIndex: layer.getZIndex(),
+                visible: layer.getVisible(),
+                opacity: layer.getOpacity(),
+                showOpacity: layerOpacityStates[id].showOpacity,
+                layer: layer
+              }
+            })
             .sort((a, b) => b.zIndex - a.zIndex);
         }
         return [];
@@ -164,15 +171,21 @@ export default {
         // console.log("mapLayers", map.getLayers().getArray())
 
         return map.getLayers().getArray()
-          .map(layer => ({
-            id: layer.get('id'),
-            title: layer.get('title'),
-            zIndex: layer.getZIndex(),
-            visible: layer.getVisible(),
-            opacity: layer.getOpacity(),
-            showOpacity: false,
-            layer: layer
-          }))
+          .map(layer => {
+            const id = layer.get('id');
+            if (!layerOpacityStates[id]) {
+              layerOpacityStates[id] = { showOpacity: false };
+            }
+            return {
+              id: id,
+              title: layer.get('title'),
+              zIndex: layer.getZIndex(),
+              visible: layer.getVisible(),
+              opacity: layer.getOpacity(),
+              showOpacity: layerOpacityStates[id].showOpacity,
+              layer: layer
+            }
+          })
           .sort((a, b) => b.zIndex - a.zIndex);
       }
     });
@@ -198,12 +211,20 @@ export default {
       mapStore.addBenchmarkLayer(benchmarkValue, props.mapId);
     };
 
+    const toggleOpacityVisibility = (layerId) => {
+      if (!layerOpacityStates[layerId]) {
+        layerOpacityStates[layerId] = { showOpacity: false };
+      }
+      layerOpacityStates[layerId].showOpacity = !layerOpacityStates[layerId].showOpacity;
+    };
+
     return {
       mapLayers,
       onDragEnd,
       toggleLayerVisibility,
       updateLayerOpacity,
       removeLayer,
+      toggleOpacityVisibility,
       t,
       isExpanded
     };
