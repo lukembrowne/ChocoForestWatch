@@ -14,13 +14,13 @@ from ml_pipeline.benchmark_metrics_io import (
 from ml_pipeline.s3_utils import upload_file
 from pathlib import Path
 from ml_pipeline.db_utils import get_db_connection
-from ml_pipeline.stac_builder import STACBuilder
+from ml_pipeline.stac_builder import STACManager
 
 
 
 
 #%% 
-engine = get_db_connection()
+engine = get_db_connection(host="localhost")
 
 
 # %%
@@ -35,13 +35,13 @@ engine = get_db_connection()
 # remote_key = f"benchmarks/HansenTreeCover/2022/{Path(tif_path).name}"
 # upload_file(Path(tif_path), remote_key)
 
-# from ml_pipeline.stac_builder import STACBuilder
+# from ml_pipeline.stac_builder import STACManager, STACManagerConfig
 
-# builder = STACBuilder()
-
+# builder = STACManager(STACManagerConfig(use_remote_db=False))
+# builder.delete_collection(f"benchmarks-hansen-tree-cover-2022", dry_run=False)
 # builder.process_year(
 #     year=2022,
-#     prefix="benchmarks/HansenTreeCover",
+#     prefix_on_s3_on_s3="benchmarks/HansenTreeCover",
 #     collection_id="benchmarks-hansen-tree-cover-2022",
 #     asset_key="data",
 #     asset_roles=["benchmark"],
@@ -60,11 +60,11 @@ engine = get_db_connection()
 # upload_file(Path(tif_path), remote_key)
 
 
-# builder = STACBuilder()
+# builder = STACManager()
 
 # builder.process_year(
 #     year=2022,
-#     prefix="benchmarks/MapBiomes",
+#     prefix_on_s3="benchmarks/MapBiomes",
 #     collection_id="benchmarks-mapbiomes-2022",
 #     asset_key="data",
 #     asset_roles=["benchmark"],
@@ -77,11 +77,11 @@ engine = get_db_connection()
 # remote_key = f"benchmarks/ESA-Landcover/2020/{Path(tif_path).name}"
 # upload_file(Path(tif_path), remote_key)
 
-# builder = STACBuilder()
+# builder = STACManager()
 
 # builder.process_year(
 #     year=2020,
-#     prefix="benchmarks/ESA-Landcover",
+#     prefix_on_s3="benchmarks/ESA-Landcover",
 #     collection_id="benchmarks-esa-landcover-2020",
 #     asset_key="data",
 #     asset_roles=["benchmark"],
@@ -93,11 +93,11 @@ engine = get_db_connection()
 # remote_key = f"benchmarks/JRC-ForestCover/2020/{Path(tif_path).name}"
 # upload_file(Path(tif_path), remote_key)
 
-# builder = STACBuilder()
+# builder = STACManager()
 
 # builder.process_year(
 #     year=2020,
-#     prefix="benchmarks/JRC-ForestCover",
+#     prefix_on_s3="benchmarks/JRC-ForestCover",
 #     collection_id="benchmarks-jrc-forestcover-2020",
 #     asset_key="data",
 #     asset_roles=["benchmark"],
@@ -111,11 +111,11 @@ engine = get_db_connection()
 # remote_key = f"benchmarks/PALSAR/2020/{Path(tif_path).name}"
 # upload_file(Path(tif_path), remote_key)
 
-# builder = STACBuilder()
+# builder = STACManager()
 
 # builder.process_year(
 #     year=2020,
-#     prefix="benchmarks/PALSAR",
+#     prefix_on_s3="benchmarks/PALSAR",
 #     collection_id="benchmarks-palsar-2020",
 #     asset_key="data",
 #     asset_roles=["benchmark"],
@@ -129,11 +129,11 @@ engine = get_db_connection()
 # remote_key = f"benchmarks/WRI-TreeCover/2020/{Path(tif_path).name}"
 # upload_file(Path(tif_path), remote_key)
 
-# builder = STACBuilder()
+# builder = STACManager()
 
 # builder.process_year(
 #     year=2020,
-#     prefix="benchmarks/WRI-TreeCover",
+#     prefix_on_s3="benchmarks/WRI-TreeCover",
 #     collection_id="benchmarks-wri-treecover-2020",
 #     asset_key="data",
 #     asset_roles=["benchmark"],

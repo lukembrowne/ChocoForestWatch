@@ -9,12 +9,10 @@ import numpy as np
 from ml_pipeline.extractor import TitilerExtractor
 from ml_pipeline.trainer import ModelTrainer, TrainerConfig
 from ml_pipeline.predictor import ModelPredictor
-from ml_pipeline.stac_builder import STACBuilder, STACBuilderConfig
+from ml_pipeline.stac_builder import STACManager, STACManagerConfig
 from ml_pipeline.db_utils import get_db_connection
 import argparse
 from ml_pipeline.run_manager import RunManager    
-from pathlib import PosixPath
-import json
 
 
 # Read in IP address of Digital Ocean droplet for connecting to database
@@ -120,7 +118,6 @@ predictor = ModelPredictor(
 )
 
 #%% 
-
 print("Predicting across entire collection...")
 
 # Predict across entire collection
@@ -136,7 +133,7 @@ predictor.predict_collection(
 # %%
 
 # Add predictions to the pgstac database
-builder = STACBuilder(STACBuilderConfig(use_remote_db=True))
+builder = STACManager(STACManagerConfig(use_remote_db=True))
 
 print("Adding predictions to the STAC database...")
 

@@ -82,6 +82,7 @@ for m in tqdm(range(9, 10), desc=f"Processing months for {year}"):
     )
 
 #%%
+# Function that will be used to generate composites in parallel
 def process_quad(quad_name: str, run_id: str, year: str):
     """Process a single quad for composite generation."""
     try:
@@ -99,6 +100,16 @@ print("\nGenerating annual composites...")
 
 # Get list of quads from S3
 s3_files = list_files(prefix=f"predictions/{run_id}/{year}/01")
+
+# Ensure that 570-1026 is in the list
+# Grep the urls to ensure that 570-1026 is in the list
+test = [f for f in s3_files if "570-1026" in f['url']]
+
+if len(test) == 0:
+    # Throw error
+    raise ValueError("570-1026 not found in the list")
+else:
+    print("570-1026 found in the list")
 
 
 def extract_quad_name(s3_file: dict) -> str:
@@ -119,7 +130,7 @@ print("Examples of quads: ", quads[0:4])
 
 # Generate composites in parallel for each quad
 # Need to limit number of jobs to avoid overwhelming S3
-results = Parallel(n_jobs=2, prefer="processes")(
+results = Parallel(n_jobs=1, prefer="processes")(
     delayed(process_quad)(quad_name=quad, run_id=run_id, year=year)
     for quad in tqdm(quads, desc="Processing quads")
 )
@@ -133,7 +144,7 @@ print(f"Completed composite generation: {successful} successful, {failed} failed
 #%% 
 
 # Create STAC collection so that the composites are visible in the frontend
-CompositeGenerator(run_id=run_id, year=year)._create_stac_collection()
+CompositeGenerator(run_id=run_id, year=year)._create_stac_collection(use_remote_db=False)
 
 
 #%%
@@ -235,5 +246,3 @@ df = stats.summary(aoi['features'][0])
 df
 
 print(df.to_markdown(index=False))
-
-# %%

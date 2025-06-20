@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from osgeo import gdal, gdalconst
 import rasterio
-from ml_pipeline.stac_builder import STACBuilder, STACBuilderConfig
+from ml_pipeline.stac_builder import STACManager, STACManagerConfig
 from ml_pipeline.s3_utils import upload_file
 import tempfile
 import shutil
@@ -169,9 +169,13 @@ class CompositeGenerator:
         cover_remote_key = f"predictions/{self.run_id}-composites/{self.year}/{quad_name}_{self.year}_forest_cover.tif"
         upload_file(cover_path, cover_remote_key)
         
-    def _create_stac_collection(self):
+    def _create_stac_collection(self, use_remote_db: bool):
         # Create STAC
-        builder = STACBuilder(STACBuilderConfig(use_remote_db=True))
+        print(f"Creating STAC collection for {self.run_id} with remote db: {use_remote_db}")
+        builder = STACManager(STACManagerConfig(use_remote_db=use_remote_db))
+
+        # Create STAC collection
+        print(f"Processing year {self.year} for {self.run_id}")
         builder.process_year(
             year=self.year,
             prefix_on_s3=f"predictions/{self.run_id}-composites",
