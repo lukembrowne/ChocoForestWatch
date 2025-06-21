@@ -60,6 +60,10 @@ packages = [
     { include = "ml_pipeline", from = "src" }
 ]
 
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
+jupyter = "^1.1.1"
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"

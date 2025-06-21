@@ -22,7 +22,14 @@ which handles:
 - Saving results and uploading to cloud storage
 
 Usage:
+    # Full pipeline
     python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --db-host local
+    
+    # Skip specific steps
+    python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --skip-composites --skip-benchmarks
+    
+    # Run only benchmarks (requires existing STAC collections)
+    python run_train_predict_pipeline.py --benchmarks-only --year 2023 --project_id 6 --run_id "experiment_name"
 
 Database Configuration:
 - Use --db-host local for development with local database
@@ -70,20 +77,30 @@ def parse_arguments():
                        help="Skip composite generation after monthly processing")
     parser.add_argument("--skip-benchmarks", action="store_true", 
                        help="Skip benchmark evaluation after composite generation")
+    parser.add_argument("--skip-training", action="store_true", 
+                       help="Skip training and prediction, go directly to composites/benchmarks")
+    parser.add_argument("--benchmarks-only", action="store_true", 
+                       help="Skip training, prediction, and composites - only run benchmarks")
     
     return parser.parse_args()
 
 def validate_arguments(args):
     """Validate command line arguments."""
-    # Validate month range
-    if args.start_month < 1 or args.start_month > 12:
-        logger.error("❌ start_month must be between 1 and 12")
-        sys.exit(1)
-    if args.end_month < 1 or args.end_month > 12:
-        logger.error("❌ end_month must be between 1 and 12")
-        sys.exit(1)
-    if args.start_month > args.end_month:
-        logger.error("❌ start_month must be <= end_month")
+    # Validate month range (only if training is not skipped)
+    if not args.skip_training and not args.benchmarks_only:
+        if args.start_month < 1 or args.start_month > 12:
+            logger.error("❌ start_month must be between 1 and 12")
+            sys.exit(1)
+        if args.end_month < 1 or args.end_month > 12:
+            logger.error("❌ end_month must be between 1 and 12")
+            sys.exit(1)
+        if args.start_month > args.end_month:
+            logger.error("❌ start_month must be <= end_month")
+            sys.exit(1)
+    
+    # Validate skip option combinations
+    if args.benchmarks_only and (args.skip_composites or args.skip_training):
+        logger.error("❌ --benchmarks-only cannot be combined with other skip options")
         sys.exit(1)
 
 def process_quad(quad_name: str, run_id: str, year: str):
@@ -121,7 +138,7 @@ def generate_composites(run_id: str, year: str, db_host: str = "local"):
         logger.info(f"🔍 Example quads: {quads[:4] if len(quads) >= 4 else quads}")
         
         # Generate composites in parallel (limited to avoid overwhelming S3)
-        results = Parallel(n_jobs=1, prefer="processes")(
+        results = Parallel(n_jobs=2, prefer="processes")(
             delayed(process_quad)(quad_name=quad, run_id=run_id, year=year)
             for quad in tqdm(quads, desc="Generating composites")
         )
@@ -131,10 +148,28 @@ def generate_composites(run_id: str, year: str, db_host: str = "local"):
         failed = len(quads) - successful
         logger.info(f"✅ Composite generation completed: {successful} successful, {failed} failed")
         
+        # Merge individual composites into a single COG (if more than one quad)
+        if successful > 1:
+            logger.info("🔗 Merging individual composite COGs into single file...")
+            with CompositeGenerator(run_id=run_id, year=year) as composite_gen:
+                merged_key = composite_gen.merge_composites()
+                if merged_key:
+                    logger.info(f"✅ Successfully merged composites: {merged_key}")
+                    use_merged = True
+                else:
+                    logger.warning("⚠️  Merge failed, using individual COGs")
+                    use_merged = False
+        else:
+            logger.info("ℹ️  Only one composite generated, skipping merge")
+            use_merged = False
+        
         # Create STAC collection for composites
         logger.info("📚 Creating STAC collection for composites...")
         use_remote_db = (db_host == "remote")
-        CompositeGenerator(run_id=run_id, year=year)._create_stac_collection(use_remote_db=use_remote_db)
+        CompositeGenerator(run_id=run_id, year=year)._create_stac_collection(
+            use_remote_db=use_remote_db, 
+            use_merged_cog=use_merged
+        )
         logger.info("✅ STAC collection created")
         
     except Exception as e:
@@ -207,93 +242,97 @@ def main():
     rm = RunManager(run_id=run_id, root="runs")
     logger.info(f"📁 Run directory: {rm.run_path}")
 
-    # Process each month sequentially
-    failed_months = []
-    successful_months = []
-    total_months = args.end_month - args.start_month + 1
-    
-    logger.info(f"📊 Processing {total_months} months from {args.start_month:02d} to {args.end_month:02d}")
-    
-    # Get path to the monthly processing script
-    script_path = Path(__file__).parent / "train_and_predict_by_month.py"
-    if not script_path.exists():
-        logger.error(f"❌ Could not find script at {script_path}")
-        sys.exit(1)
-    
-    for m in tqdm(range(args.start_month, args.end_month + 1), desc=f"Processing months for {year}"):
-        month = f"{m:02d}"  # Zero-pad month for consistency
-        current_month = f"{year}-{month}"
+    # Skip training if requested
+    if args.skip_training or args.benchmarks_only:
+        logger.info("⏭️ Skipping training and prediction as requested")
+        successful_months = [f"{m:02d}" for m in range(args.start_month, args.end_month + 1)]
+    else:
+        # Process each month sequentially
+        failed_months = []
+        successful_months = []
+        total_months = args.end_month - args.start_month + 1
         
-        logger.info(f"\n🗓️  Processing month {m}/{args.end_month}: {current_month}")
-        logger.info("-" * 50)
+        logger.info(f"📊 Processing {total_months} months from {args.start_month:02d} to {args.end_month:02d}")
         
-        # Build command with database configuration
-        cmd = [
-            "python",
-            str(script_path),
-            "--year", year,
-            "--month", month,
-            "--run_dir", str(rm.run_path),
-            "--project_id", str(project_id),
-            "--db-host", db_host
-        ]
+        # Get path to the monthly processing script
+        script_path = Path(__file__).parent / "train_and_predict_by_month.py"
+        if not script_path.exists():
+            logger.error(f"❌ Could not find script at {script_path}")
+            sys.exit(1)
         
-        try:
-            # Execute monthly pipeline subprocess with live output
-            logger.info(f"▶️  Running: {' '.join(cmd)}")
-            logger.info("📺 Subprocess output:")
-            logger.info("-" * 40)
-            start_time = datetime.now()
+        for m in tqdm(range(args.start_month, args.end_month + 1), desc=f"Processing months for {year}"):
+            month = f"{m:02d}"  # Zero-pad month for consistency
+            current_month = f"{year}-{month}"
             
-            # Run subprocess without capturing output so it streams to terminal
-            result = subprocess.run(cmd, check=True)
+            logger.info(f"\n🗓️  Processing month {m}/{args.end_month}: {current_month}")
+            logger.info("-" * 50)
             
-            elapsed_time = datetime.now() - start_time
-            logger.info("-" * 40)
-            logger.info(f"✅ Successfully processed {current_month} in {elapsed_time}")
+            # Build command with database configuration
+            cmd = [
+                "python",
+                str(script_path),
+                "--year", year,
+                "--month", month,
+                "--run_dir", str(rm.run_path),
+                "--project_id", str(project_id),
+                "--db-host", db_host
+            ]
             
-            successful_months.append(month)
-            
-        except subprocess.CalledProcessError as e:
-            elapsed_time = datetime.now() - start_time
-            logger.error("-" * 40)
-            logger.error(f"❌ Failed to process {current_month} after {elapsed_time}")
-            logger.error(f"Return code: {e.returncode}")
-            
-            failed_months.append(month)
+            try:
+                # Execute monthly pipeline subprocess with live output
+                logger.info(f"▶️  Running: {' '.join(cmd)}")
+                logger.info("📺 Subprocess output:")
+                logger.info("-" * 40)
+                start_time = datetime.now()
+                
+                # Run subprocess without capturing output so it streams to terminal
+                subprocess.run(cmd, check=True)
+                
+                elapsed_time = datetime.now() - start_time
+                logger.info("-" * 40)
+                logger.info(f"✅ Successfully processed {current_month} in {elapsed_time}")
+                
+                successful_months.append(month)
+                
+            except subprocess.CalledProcessError as e:
+                elapsed_time = datetime.now() - start_time
+                logger.error("-" * 40)
+                logger.error(f"❌ Failed to process {current_month} after {elapsed_time}")
+                logger.error(f"Return code: {e.returncode}")
+                
+                failed_months.append(month)
 
-    # Print monthly processing summary
-    logger.info("\n" + "=" * 60)
-    logger.info("📊 MONTHLY PROCESSING SUMMARY")
-    logger.info("=" * 60)
+        # Print monthly processing summary
+        logger.info("\n" + "=" * 60)
+        logger.info("📊 MONTHLY PROCESSING SUMMARY")
+        logger.info("=" * 60)
+        
+        total_processed = len(successful_months) + len(failed_months)
+        success_rate = len(successful_months) / total_processed * 100 if total_processed > 0 else 0
+        
+        logger.info(f"📈 Processed: {total_processed}/{total_months} months ({success_rate:.1f}% success rate)")
+        
+        if successful_months:
+            logger.info(f"✅ Successful months: {', '.join(successful_months)}")
+        
+        if failed_months:
+            logger.warning(f"❌ Failed months: {', '.join(failed_months)}")
+            logger.info(f"\n🔄 To retry failed months, run:")
+            for month in failed_months:
+                retry_cmd = f"python {script_path} --year {year} --month {month} --run_dir {rm.run_path} --project_id {project_id} --db-host {db_host}"
+                logger.info(f"   {retry_cmd}")
+        
+        # Only proceed if we have some successful months
+        if not successful_months:
+            logger.error("❌ No months processed successfully. Exiting.")
+            sys.exit(1)
     
-    total_processed = len(successful_months) + len(failed_months)
-    success_rate = len(successful_months) / total_processed * 100 if total_processed > 0 else 0
-    
-    logger.info(f"📈 Processed: {total_processed}/{total_months} months ({success_rate:.1f}% success rate)")
-    
-    if successful_months:
-        logger.info(f"✅ Successful months: {', '.join(successful_months)}")
-    
-    if failed_months:
-        logger.warning(f"❌ Failed months: {', '.join(failed_months)}")
-        logger.info(f"\n🔄 To retry failed months, run:")
-        for month in failed_months:
-            retry_cmd = f"python {script_path} --year {year} --month {month} --run_dir {rm.run_path} --project_id {project_id} --db-host {db_host}"
-            logger.info(f"   {retry_cmd}")
-    
-    # Only proceed if we have some successful months
-    if not successful_months:
-        logger.error("❌ No months processed successfully. Exiting.")
-        sys.exit(1)
-    
-    # Skip composite generation if requested
-    if args.skip_composites:
+    # Skip composite generation if requested or if benchmarks-only
+    if args.skip_composites or args.benchmarks_only:
         logger.info("⏭️ Skipping composite generation as requested")
-        return
-    
-    # Generate annual composites
-    generate_composites(run_id, year, db_host)
+    else:
+        # Generate annual composites
+        generate_composites(run_id, year, db_host)
     
     # Skip benchmark evaluation if requested
     if args.skip_benchmarks:

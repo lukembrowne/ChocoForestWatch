@@ -413,8 +413,8 @@ export default {
           // Show planet & prediction basemaps for a representative date (Jan-2022 for now)
           mapStore.updateBasemap('2022-01', 'planet')
 
-          // Auto-load CFW Composite 2022 forest cover map
-          mapStore.addBenchmarkLayer('nicfi-pred-northern_choco_test_2025_06_20-composite-2022')
+            // Auto-load CFW Composite 2022 forest cover map
+            mapStore.addBenchmarkLayer('northern_choco_test_2025_06_20_2022_merged_composite')
         } catch (err) {
           console.error('Failed to load default project:', err)
           $q.notify({
