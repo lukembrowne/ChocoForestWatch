@@ -29,7 +29,7 @@ ALLOWED_BENCHMARK_COLLECTIONS = [
     "benchmarks-jrc-forestcover-2020",
     "benchmarks-palsar-2020",
     "benchmarks-wri-treecover-2020",
-    "nicfi-pred-northern_choco_test_2025_06_16-composite-2022",  # CFW composite
+    "nicfi-pred-northern_choco_test_2025_06_20-composite-2022",  # CFW composite
 ]
 
 

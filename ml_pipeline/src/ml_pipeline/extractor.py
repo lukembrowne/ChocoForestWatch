@@ -74,15 +74,102 @@ class TitilerExtractor:
         """
         collection = collection or self.collection
         bbox = bbox or "-180,-90,180,90"  # whole world if no bbox provided
+
+        print(f"Getting all COG URLs for collection {collection} with bbox {bbox}")
         
-        r = requests.get(
-            f"{self.base_url}/collections/{collection}/bbox/{bbox}/assets",
-            params={"scan_limit": scan_limit},
-            headers={"accept": "application/json"},
-            timeout=60,
-        )
-        r.raise_for_status()
-        return [a["assets"]["data"]["href"] for a in r.json()]
+        # If bbox is the whole world, query database directly to get all URLs
+        if bbox == "-180,-90,180,90":
+            return self._get_all_cog_urls_from_db(collection, scan_limit)
+        else:
+            # Use the bbox endpoint for spatial filtering
+            r = requests.get(
+                f"{self.base_url}/collections/{collection}/bbox/{bbox}/assets",
+                params={"scan_limit": scan_limit},
+                headers={"accept": "application/json"},
+                timeout=60,
+            )
+            r.raise_for_status()
+            return [a["assets"]["data"]["href"] for a in r.json()]
+    
+    def _get_all_cog_urls_from_db(self, collection: str, scan_limit: int) -> list[str]:
+        """Get all COG URLs directly from the database when no bbox filtering is needed."""
+        import psycopg2
+        import os
+        
+        try:
+            # Connect to the database
+            conn = psycopg2.connect(
+                host=os.getenv("PGHOST", "localhost"),
+                port=os.getenv("PGPORT", "5432"),
+                database=os.getenv("POSTGRES_DB", "postgis"),
+                user=os.getenv("POSTGRES_USER", "postgres"),
+                password=os.getenv("POSTGRES_PASSWORD", "")
+            )
+            
+            with conn.cursor() as cur:
+                # Query all items from the collection
+                cur.execute("""
+                    SELECT content->'assets'->'data'->>'href' as href
+                    FROM items 
+                    WHERE collection = %s 
+                    AND content->'assets'->'data' IS NOT NULL
+                    LIMIT %s
+                """, (collection, scan_limit))
+                
+                urls = [row[0] for row in cur.fetchall() if row[0]]
+                print(f"Retrieved {len(urls)} COGs from database")
+                return urls
+                
+        except Exception as e:
+            print(f"Database query failed: {e}")
+            print("Falling back to API method with smaller chunks...")
+            return self._get_all_cog_urls_chunked(collection, scan_limit)
+        finally:
+            if 'conn' in locals():
+                conn.close()
+    
+    def _get_all_cog_urls_chunked(self, collection: str, scan_limit: int) -> list[str]:
+        """Get all COG URLs by splitting the world into smaller chunks to work around API limits."""
+        all_urls = set()  # Use set to avoid duplicates
+        
+        # Split world into 4x4 grid (16 chunks)
+        lon_step = 90  # 360/4
+        lat_step = 45  # 180/4
+        
+        for lon_start in range(-180, 180, lon_step):
+            for lat_start in range(-90, 90, lat_step):
+                lon_end = lon_start + lon_step
+                lat_end = lat_start + lat_step
+                chunk_bbox = f"{lon_start},{lat_start},{lon_end},{lat_end}"
+                
+                try:
+                    r = requests.get(
+                        f"{self.base_url}/collections/{collection}/bbox/{chunk_bbox}/assets",
+                        params={"scan_limit": scan_limit},
+                        headers={"accept": "application/json"},
+                        timeout=30,
+                    )
+                    r.raise_for_status()
+                    chunk_urls = [a["assets"]["data"]["href"] for a in r.json()]
+                    all_urls.update(chunk_urls)
+                    
+                    if chunk_urls:
+                        print(f"Chunk {chunk_bbox}: {len(chunk_urls)} COGs (total unique: {len(all_urls)})")
+                        
+                except Exception as e:
+                    print(f"Failed to query chunk {chunk_bbox}: {e}")
+                    continue
+                    
+                # Stop if we've reached the scan limit
+                if len(all_urls) >= scan_limit:
+                    break
+            
+            if len(all_urls) >= scan_limit:
+                break
+        
+        result = list(all_urls)[:scan_limit]
+        print(f"Total unique COGs retrieved: {len(result)}")
+        return result
 
     # ------------------------------------------------------------------ #
     #  Random point generation

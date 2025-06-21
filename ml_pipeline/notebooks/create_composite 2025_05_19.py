@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from osgeo import gdal, gdalconst
-from ml_pipeline.stac_builder import STACBuilder, STACBuilderConfig
+from ml_pipeline.stac_builder import STACManager, STACManagerConfig
 from ml_pipeline.s3_utils import upload_file
 import rasterio
 
@@ -146,7 +146,7 @@ remote_key = f"predictions/{run_name}-composites/{year}/{quad_name}_{year}_fores
 upload_file(Path(tif_path), remote_key)
 
 # Create STAC builder instance
-builder = STACBuilder(STACBuilderConfig(use_remote_db=True))
+builder = STACManager(STACManagerConfig(use_remote_db=True))
 
 
 

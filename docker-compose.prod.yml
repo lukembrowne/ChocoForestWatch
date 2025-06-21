@@ -144,7 +144,11 @@ services:
     container_name: tiler-pgstac-uvicorn
     ports:
       - "8083:8083"
-    command: ["uvicorn", "titiler.pgstac.main:app", "--host", "0.0.0.0", "--port", "8083", "--workers", "1"]
+    command: [
+      "uvicorn", "titiler.pgstac.main:app",
+      "--host", "0.0.0.0", "--port", "8083",
+      "--log-level", "debug", "--reload"
+    ]
     networks:
           - app-network
 

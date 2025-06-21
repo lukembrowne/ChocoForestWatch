@@ -92,7 +92,7 @@ export const useMapStore = defineStore('map', () => {
 
   // Forest Cover Maps selection (formerly benchmarks)
   const availableBenchmarks = [
-    { value: 'nicfi-pred-northern_choco_test_2025_06_16-composite-2022', label: 'Choco Forest Watch 2022' },
+    { value: 'nicfi-pred-northern_choco_test_2025_06_20-composite-2022', label: 'Choco Forest Watch 2022' },
     { value: 'benchmarks-hansen-tree-cover-2022', label: 'Hansen Global Forest Change' },
     { value: 'benchmarks-mapbiomes-2022', label: 'MapBiomas Ecuador' },
     { value: 'benchmarks-esa-landcover-2020', label: 'ESA WorldCover' },
@@ -120,7 +120,7 @@ export const useMapStore = defineStore('map', () => {
 
   // Add benchmark expression mapping constant
   const benchmarkExpressionMapping = {
-    'nicfi-pred-northern_choco_test_2025_06_16-composite-2022': 'where((data==1),1,0)',
+    'nicfi-pred-northern_choco_test_2025_06_20-composite-2022': 'where((data==1),1,0)',
     'benchmarks-hansen-tree-cover-2022': 'where(data>=90,1,0)',
     'benchmarks-mapbiomes-2022': 'where((data==3)|(data==4)|(data==5)|(data==6),1,0)',
     'benchmarks-esa-landcover-2020': 'where(data==10,1,0)',
@@ -461,7 +461,7 @@ export const useMapStore = defineStore('map', () => {
     if (type === 'planet') {
       const year = date.split('-')[0];
       source = new XYZ({
-        url: `${titilerURL}/collections/nicfi-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
+        url: `${titilerURL}/collections/nicfi-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
         maxZoom: 14,
         attributions: `Imagery © ${year} Planet Labs Inc. All use subject to the <a href="https://www.planet.com/terms-of-use/" target="_blank">Planet Participant License Agreement</a>`
       });
@@ -487,14 +487,14 @@ export const useMapStore = defineStore('map', () => {
       //   maxZoom: 14,
       // });
       
-      //  Composite forest cover map - new
-      const colormap = getEncodedColormap('CFWForestCoverPalette');
+      // //  Composite forest cover map - new
+      // const colormap = getEncodedColormap('CFWForestCoverPalette');
 
 
-      source = new XYZ({
-        url: `${titilerURL}/collections/nicfi-pred-northern_choco_test_2025_06_16-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
-        maxZoom: 14,
-      });
+      // source = new XYZ({
+      //   url: `${titilerURL}/collections/nicfi-pred-northern_choco_test_2025_06_20-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
+      //   maxZoom: 14,
+      // });
 
 
       // Testing out hansen tree cover benchmark
@@ -576,143 +576,6 @@ export const useMapStore = defineStore('map', () => {
     selectedBasemapDate.value = date;
     // Ensure the layer order is updated in the store
     updateLayers();
-  };
-
-
-
-  // Display predictions or deforesation maps
-  const displayPrediction = async (predictionFilePath, layerId, layerName, mode = 'landcover', mapId = null, visible = false) => {
-    console.log(`Displaying ${mode} on map:`, mapId);
-    console.log('Prediction file path:', predictionFilePath);
-
-    try {
-      // Check if predictionFilePath is valid
-      if (!predictionFilePath) {
-        throw new Error('Invalid prediction file path');
-      }
-
-      // const tiff = await fromUrl(predictionFilePath).catch(error => {
-      //   console.error('Error loading TIFF:', error);
-      //   throw new Error(`Failed to load TIFF file: ${error.message}`);
-      // });
-
-      const response = await fetch(predictionFilePath, { cache: 'no-store' });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch TIFF file: ${response.statusText}`);
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      const tiff = await fromArrayBuffer(arrayBuffer);
-
-      const image = await tiff.getImage();
-      const width = image.getWidth();
-      const height = image.getHeight();
-      const bbox = image.getBoundingBox();
-
-      const rasterData = await image.readRasters();
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext('2d');
-      const imageData = context.createImageData(width, height);
-      const data = imageData.data;
-
-      let colorMapping;
-      const noDataValue = 255;
-
-      if (mode === 'landcover') {
-        const project = projectStore.currentProject;
-        colorMapping = project.classes.reduce((acc, cls) => {
-          acc[cls.name] = cls.color;
-          return acc;
-        }, {});
-
-        console.log("Color mapping: ", colorMapping);
-      } else if (mode === 'deforestation') {
-        colorMapping = {
-          0: '#00FF00',
-          1: '#FF0000',
-          [noDataValue]: '#808080'
-        };
-      }
-
-      for (let i = 0; i < width * height; i++) {
-        const value = rasterData[0][i];
-        let color;
-
-        if (value === noDataValue) {
-          data[i * 4] = 0;
-          data[i * 4 + 1] = 0;
-          data[i * 4 + 2] = 0;
-          data[i * 4 + 3] = 0;
-          continue;
-        }
-
-        if (mode === 'landcover') {
-          color = colorMapping[projectStore.currentProject.classes[value].name];
-        } else {
-          color = colorMapping[value];
-        }
-        const rgb = hexToRgb(color);
-        data[i * 4] = rgb.r;
-        data[i * 4 + 1] = rgb.g;
-        data[i * 4 + 2] = rgb.b;
-        data[i * 4 + 3] = 255;
-      }
-      context.putImageData(imageData, 0, 0);
-
-      const imageUrl = canvas.toDataURL();
-      const extent = bbox;
-
-      const newLayer = new ImageLayer({
-        source: new ImageStatic({
-          url: imageUrl,
-          imageExtent: extent,
-        }),
-        title: layerName,
-        id: layerId,
-        visible: visible,
-        zIndex: 1,
-        opacity: 0.7
-      });
-
-      // Handle layer addition based on map type
-      if (mapId && maps.value[mapId]) {
-        // Add to specific dual map
-        maps.value[mapId].addLayer(newLayer);
-      } else if (map.value) {
-        // Add to single map
-        map.value.addLayer(newLayer);
-
-
-        // Get current number of layers
-        const numLayers = map.value.getLayers().getArray().length;
-
-        // Reorder layers to make sure the new layer is above the AOI layer
-        // This takes the last layer and moves it to the top
-        // Need to do numLayers - 1 because of 0 based indexing
-        reorderLayers(numLayers - 1, 0) // This also updates the layers
-      }
-    } catch (error) {
-      console.error(`Error displaying ${mode}:`, error);
-      console.error('Full error details:', {
-        predictionFilePath,
-        layerId,
-        layerName,
-        mode,
-        mapId
-      });
-      throw new Error(`Failed to display ${mode}: ${error.message}`);
-    }
-  };
-
-  // Helper function to convert hex color to RGB
-  const hexToRgb = (hex) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-    } : null;
   };
 
 
@@ -1163,8 +1026,11 @@ export const useMapStore = defineStore('map', () => {
   const setSelectedBasemapDate = async (date) => {
     selectedBasemapDate.value = date;
     await updateBasemap(date, 'planet');
-    await updateBasemap(date, 'predictions');
-    await loadTrainingPolygonsForDate(date);
+    const isAdmin = authService.getCurrentUser()?.user?.is_superuser === true;
+    if (isAdmin) {
+      await updateBasemap(date, 'predictions');
+      await loadTrainingPolygonsForDate(date);
+    }
   };
 
   const moveToNextDate = async () => {
@@ -1658,7 +1524,7 @@ export const useMapStore = defineStore('map', () => {
     const colormap = getEncodedColormap('CFWForestCoverPalette');
 
     const source = new XYZ({
-      url: `${titilerURL}/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&expression=${encodedExpression}&asset_as_band=true&colormap=${colormap}`,
+      url: `${titilerURL}/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
       maxZoom: 14,
     });
 
@@ -2004,7 +1870,6 @@ export const useMapStore = defineStore('map', () => {
     setClassLabel,
     getDrawnPolygonsGeoJSON,
     loadPolygons,
-    displayPrediction,
     getLayers,
     addLayer,
     removeLayer,

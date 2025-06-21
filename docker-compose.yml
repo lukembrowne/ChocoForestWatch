@@ -132,7 +132,7 @@ services:
     #   dockerfile: Dockerfile
     ports:
       - "8081:8081"
-    command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "titiler.pgstac.main:app", "--bind", "0.0.0.0:8081", "--workers", "1"]
+    command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "titiler.pgstac.main:app", "--bind", "0.0.0.0:8081", "--workers", "2"]
 
 
   tiler-uvicorn:
@@ -140,7 +140,7 @@ services:
     container_name: tiler-pgstac-uvicorn
     ports:
       - "8083:8083"
-    command: ["uvicorn", "titiler.pgstac.main:app", "--host", "0.0.0.0", "--port", "8083", "--workers", "1"]
+    command: ["uvicorn", "titiler.pgstac.main:app", "--host", "0.0.0.0", "--port", "8083", "--workers", "2"]
     networks:
           - app-network
 

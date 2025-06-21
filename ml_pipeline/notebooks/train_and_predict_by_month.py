@@ -9,18 +9,15 @@ import numpy as np
 from ml_pipeline.extractor import TitilerExtractor
 from ml_pipeline.trainer import ModelTrainer, TrainerConfig
 from ml_pipeline.predictor import ModelPredictor
-from ml_pipeline.stac_builder import STACBuilder, STACBuilderConfig
+from ml_pipeline.stac_builder import STACManager, STACManagerConfig
 from ml_pipeline.db_utils import get_db_connection
 import argparse
+import logging
 from ml_pipeline.run_manager import RunManager    
-from pathlib import PosixPath
-import json
 
-
-# Read in IP address of Digital Ocean droplet for connecting to database
-
-# Set up database connection
-engine = get_db_connection(host="remote")
+# Configure logging for better pipeline visibility
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 #%% 
@@ -32,6 +29,8 @@ if __name__ == "__main__":
     parser.add_argument("--month", type=str, required=True, help="Month for the pipeline (e.g., '06')")
     parser.add_argument("--run_dir", type=str, required=True, help="Run directory for the pipeline")
     parser.add_argument("--project_id", type=str, required=True, help="Project ID for the training polygons")
+    parser.add_argument("--db-host", type=str, choices=["local", "remote"], default="local", 
+                       help="Database host configuration: 'local' for localhost, 'remote' for production database")
     args = parser.parse_args()
 
     year = args.year
@@ -39,6 +38,12 @@ if __name__ == "__main__":
     run_dir = Path(args.run_dir) if args.run_dir else None
     run_id = run_dir.parts[1]
     project_id = args.project_id
+    db_host = getattr(args, 'db_host', 'local')  # Handle hyphenated argument
+    
+    # Set up database connection based on configuration
+    logger.info(f"🗄️  Connecting to {db_host} database...")
+    engine = get_db_connection(host=db_host)
+    logger.info(f"✅ Database connection established")
 
 #%% 
 # Default values for interactive IPython session if not run from command line
@@ -52,6 +57,8 @@ if __name__ == "__main__":
 
 
 #%% 
+# --- Load Training Data ---
+logger.info(f"📊 Loading training polygons for project {project_id}, date {year}-{month}...")
 gdf = load_training_polygons(
     engine,
     project_id=project_id,
@@ -61,48 +68,55 @@ gdf = load_training_polygons(
 gdf.head()
 
 # Print number of training polygons
-print(f"Number of training polygons: {len(gdf)}")
+logger.info(f"📊 Loaded {len(gdf)} training polygons")
 
 # If no data, break out of script
 if len(gdf) == 0:
-    print(f"No training polygons found for {year}-{month}. Exiting...")
+    logger.warning(f"⚠️  No training polygons found for {year}-{month}. Exiting...")
     import sys
     sys.exit(0)
 
 
 
 #%% 
-# Extract pixels from NICFI collection
+# --- Initialize Data Extractor ---
+logger.info(f"🛰️  Initializing TiTiler extractor for NICFI collection {year}-{month}...")
 extractor = TitilerExtractor(
     base_url="http://localhost:8083",
     collection=f"nicfi-{year}-{month}",
-    band_indexes=[1, 2, 3, 4]  # Example band indexes for RGB+NIR
+    band_indexes=[1, 2, 3, 4]  # RGB + Near-Infrared bands
 )
+logger.info("✅ Extractor initialized")
 
 
 #%% 
-# Train model
-config = TrainerConfig(cache_dir=run_dir / "data_cache") # Set cache dir
+# --- Initialize Model Trainer ---
+logger.info(f"🤖 Setting up model trainer with cache directory: {run_dir / 'data_cache'}...")
+config = TrainerConfig(cache_dir=run_dir / "data_cache") 
 
 trainer = ModelTrainer(
     extractor=extractor,
     run_dir=run_dir,
     cfg=config
 )
+logger.info("✅ Trainer initialized")
 
 # %% 
-# Train model
-print("Preparing training data...")
+# --- Prepare Training Data ---
+logger.info(f"🔄 Preparing training data from {len(gdf)} polygons...")
 npz = trainer.prepare_training_data(training_sets = [{"gdf": gdf, "basemap_date": f"{year}-{month}"}], 
                                     cache_name = f"pixels_{year}_{month}.npz",)
+logger.info("✅ Training data prepared")
 
 
 #%% 
-print("Fitting model...")
+# --- Train Model ---
+logger.info("🎯 Training model on prepared data...")
 model_path, metrics = trainer.fit_prepared_data(npz, 
                                                 model_name=f"nicfi-{year}-{month}")  
 
-print(metrics)
+logger.info(f"✅ Model training completed. Accuracy: {metrics.get('accuracy', 'N/A')}")
+logger.info(f"📊 Model metrics: {metrics}")
 
 # Save metrics to run_dir
 # with open(run_dir / "metrics.json", "w") as f:
@@ -111,17 +125,19 @@ print(metrics)
 
 # %% 
 
-print("Initializing ModelPredictor...")
+# --- Initialize Model Predictor ---
+logger.info("🔮 Initializing model predictor...")
 predictor = ModelPredictor(
     model_path=trainer.saved_model_path, # Path to the saved model
     extractor=extractor, # TitilerExtractor object
-    upload_to_s3=True, # Whether to upload to S3
-    s3_path=f"predictions/{run_id}", # No trailing slash 
+    upload_to_s3=True, # Upload predictions to cloud storage
+    s3_path=f"predictions/{run_id}", # S3 path prefix
 )
+logger.info("✅ Predictor initialized")
 
 #%% 
-
-print("Predicting across entire collection...")
+# --- Generate Predictions ---
+logger.info(f"🌍 Generating predictions across entire NICFI collection for {year}-{month}...")
 
 # Predict across entire collection
 predictor.predict_collection(
@@ -130,20 +146,23 @@ predictor.predict_collection(
     pred_dir=run_dir / f"prediction_cogs/{year}/{month}",
     save_local=True
 )
+logger.info("✅ Predictions generated and saved")
 
 
 
 # %%
 
-# Add predictions to the pgstac database
-builder = STACBuilder(STACBuilderConfig(use_remote_db=True))
+# --- Add Predictions to STAC Database ---
+# Use same database configuration as training data
+use_remote_stac = (db_host == "remote")
+logger.info(f"📚 Adding predictions to {'remote' if use_remote_stac else 'local'} STAC database...")
 
-print("Adding predictions to the STAC database...")
+builder = STACManager(STACManagerConfig(use_remote_db=use_remote_stac))
 
 builder.process_month(
     year=year,
     month=month,
-    prefix_on_s3=f"predictions/{run_id}", ## do not need year and month here
+    prefix_on_s3=f"predictions/{run_id}", # S3 prefix for predictions
     collection_id=f"{run_id}-pred-{year}-{month}",
     asset_key="data",
     asset_roles=["classification"],
@@ -161,4 +180,5 @@ builder.process_month(
         ],
     }
 )
+logger.info(f"✅ Pipeline completed successfully for {year}-{month}")
 # %%

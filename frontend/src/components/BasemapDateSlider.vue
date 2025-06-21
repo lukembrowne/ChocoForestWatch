@@ -97,12 +97,14 @@ export default {
             // Update the Planet basemap to the selected date
             mapStore.updateBasemap(dates.value[value], 'planet');
 
-            // Update the predictions basemap to the selected date
-            mapStore.updateBasemap(dates.value[value], 'predictions');
+            // Only update predictions and load training polygons if user is admin
+            if (isAdmin) {
+                // Update the predictions basemap to the selected date
 
-            // Load training polygons for the selected date
-            console.log("Loading training polygons for date:", dates.value[value]);
-            mapStore.loadTrainingPolygonsForDate(dates.value[value]);
+                // Load training polygons for the selected date
+                console.log("Loading training polygons for date:", dates.value[value]);
+                mapStore.loadTrainingPolygonsForDate(dates.value[value]);
+            }
         };
 
         const formatDate = (date) => {

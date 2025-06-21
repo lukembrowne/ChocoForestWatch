@@ -1,7 +1,7 @@
 #%%
-from ml_pipeline.stac_builder import STACBuilder, STACBuilderConfig
+from ml_pipeline.stac_builder import STACManager, STACManagerConfig
 
-builder = STACBuilder(STACBuilderConfig(use_remote_db=True))
+builder = STACManager(STACManagerConfig(use_remote_db=True))
 
 # Test to make sure URLs are correct
 # builder.list_cogs(prefix="NICFI Monthly Mosaics/2022/01")

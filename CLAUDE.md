@@ -50,6 +50,7 @@ docker compose exec backend python manage.py precalculate_western_ecuador_stats 
 
 ## Development Memories
 - No need to test functionality using `docker compose up --build` because it uses too many tokens with the logging
+- NEVER add "Generated with Claude Code" or "Co-Authored-By: Claude" attribution in commit messages or PR descriptions
 
 ## Architecture Overview
 

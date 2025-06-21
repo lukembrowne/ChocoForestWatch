@@ -14,7 +14,7 @@ from ml_pipeline.benchmark_metrics_io import (
 from ml_pipeline.s3_utils import upload_file
 from pathlib import Path
 from ml_pipeline.db_utils import get_db_connection
-from ml_pipeline.stac_builder import STACBuilder
+from ml_pipeline.stac_builder import STACManager
 
 
 

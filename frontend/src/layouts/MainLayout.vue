@@ -414,7 +414,7 @@ export default {
           mapStore.updateBasemap('2022-01', 'planet')
 
           // Auto-load CFW Composite 2022 forest cover map
-          mapStore.addBenchmarkLayer('nicfi-pred-northern_choco_test_2025_06_16-composite-2022')
+          mapStore.addBenchmarkLayer('nicfi-pred-northern_choco_test_2025_06_20-composite-2022')
         } catch (err) {
           console.error('Failed to load default project:', err)
           $q.notify({
