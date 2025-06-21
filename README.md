@@ -149,7 +149,7 @@ Choco Forest Watch is a comprehensive forest monitoring system that helps track 
    git push origin dev
    ```
 
-2. **Hotfix Process**
+2. **Hotfix ProcessProcess**
    ```bash
    # Create hotfix branch from main
    git checkout main
@@ -239,23 +239,172 @@ The system includes automated workflows for processing NICFI (Norway's Internati
    - Provides standardized access to imagery through STAC API endpoints
 
 
-### Establish training set
+## ML Pipeline Workflows
 
-   - Make new project if needed
-   - Use 'training module' to draw training polygons
-   - Uses stratified random sampling across quads
-   - aiming for ~50 features per class per month
+The ML pipeline supports flexible execution with multiple entry points depending on your needs.
 
-### Fit model
-   - Use `run_train_predict_pipeline.py` to start an overall modeling run and fit separate moodels for each month
-      - will call `train_and_predict_by_month.py` for each month
-      - will upload prediction COGs to DO Spaces and add collection to PGStac
+### Complete Training and Prediction Pipeline
 
-### Create composite image
-   - run `create_composite 2025_05_19.py` to create an annual compose of Forest / Non-forest based on monthly data
+For a full end-to-end model training and evaluation workflow:
 
-### Test against benchmarks
-   - run `test_benchmarks 2025_05_19.py` to test accuracy against training data / comparea to other forest cover datasets
+```bash
+# Navigate to ML pipeline directory
+cd ml_pipeline/notebooks
+
+# Full pipeline: train models, generate composites, run benchmarks
+poetry run python run_train_predict_pipeline.py \
+  --start_month 1 --end_month 12 \
+  --year 2022 \
+  --project_id 6 \
+  --run_id "northern_choco_2022" \
+  --db-host local
+```
+
+This will:
+1. Train separate Random Forest models for each month using training polygons
+2. Generate predictions as Cloud Optimized GeoTIFFs (COGs)
+3. Create annual forest/non-forest composites
+4. Evaluate accuracy against benchmark datasets
+
+### Flexible Pipeline Execution
+
+Skip specific steps based on your needs:
+
+```bash
+# Skip composite generation (useful for monthly-only analysis)
+poetry run python run_train_predict_pipeline.py \
+  --start_month 1 --end_month 12 \
+  --year 2022 \
+  --project_id 6 \
+  --run_id "northern_choco_2022" \
+  --skip-composites
+
+# Skip benchmarking (faster execution)
+poetry run python run_train_predict_pipeline.py \
+  --start_month 1 --end_month 12 \
+  --year 2022 \
+  --project_id 6 \
+  --run_id "northern_choco_2022" \
+  --skip-benchmarks
+
+# Run only benchmarks (requires existing STAC collections)
+poetry run python run_train_predict_pipeline.py \
+  --benchmarks-only \
+  --year 2022 \
+  --project_id 6 \
+  --run_id "existing_run_2022"
+```
+
+### Standalone Benchmark Evaluation
+
+For independent benchmark evaluation without running the full pipeline:
+
+```bash
+# Evaluate a single dataset
+poetry run python run_benchmarks_only.py \
+  --collection "benchmarks-hansen-tree-cover-2022" \
+  --project-id 6 \
+  --year 2022 \
+  --output-dir ./benchmark_results
+
+# Evaluate multiple datasets
+poetry run python run_benchmarks_only.py \
+  --collections "benchmarks-hansen-tree-cover-2022" "benchmarks-mapbiomes-2022" \
+  --project-id 6 \
+  --year 2022
+
+# Evaluate all benchmark datasets
+poetry run python run_benchmarks_only.py \
+  --all-benchmarks \
+  --project-id 6 \
+  --year 2022
+
+# Use custom validation data
+poetry run python run_benchmarks_only.py \
+  --collection "benchmarks-hansen-tree-cover-2022" \
+  --project-id 6 \
+  --year 2022 \
+  --validation-dir ./custom_validation_csvs
+
+# Dry run to check dataset availability
+poetry run python run_benchmarks_only.py \
+  --all-benchmarks \
+  --project-id 6 \
+  --year 2022 \
+  --dry-run
+```
+
+### Available Benchmark Datasets
+
+The pipeline includes several reference forest cover datasets for comparison:
+
+- **`benchmarks-hansen-tree-cover-2022`** - Hansen Global Forest Change (University of Maryland)
+- **`benchmarks-mapbiomes-2022`** - MapBiomas Ecuador (local ecosystem mapping)
+- **`benchmarks-esa-landcover-2020`** - ESA WorldCover (European Space Agency)
+- **`benchmarks-jrc-forestcover-2020`** - JRC Global Forest Cover (European Commission)
+- **`benchmarks-palsar-2020`** - ALOS PALSAR Forest/Non-Forest Map (JAXA)
+- **`benchmarks-wri-treecover-2020`** - WRI Tropical Tree Cover (World Resources Institute)
+
+### Training Data Preparation
+
+Before running the pipeline, establish training data:
+
+1. **Create Project**: Use the web interface to create a new project
+2. **Draw Training Polygons**: Use the training module to digitize forest/non-forest areas
+3. **Stratified Sampling**: The system uses stratified random sampling across Planet quads
+4. **Target**: Aim for ~50 features per class per month for optimal model performance
+
+### Pipeline Outputs
+
+The ML pipeline generates several types of outputs organized in the `runs/` directory:
+
+```
+runs/
+└── {run_id}/
+    ├── {year}_{month}/           # Monthly results
+    │   ├── saved_models/         # Trained Random Forest models (.pkl files)
+    │   ├── data_cache/          # Cached training data
+    │   └── prediction_cogs/     # Monthly prediction rasters (COGs)
+    ├── composites/              # Annual composites
+    │   └── {quad}_forest_cover.tif
+    ├── benchmark_results/       # Accuracy metrics
+    │   ├── benchmarks-hansen-tree-cover-2022.csv
+    │   ├── benchmarks-mapbiomes-2022.csv
+    │   └── ...
+    └── feature_ids_testing/     # Held-out validation data
+        ├── test_features_2022-01.csv
+        └── ...
+```
+
+**Key Output Files:**
+- **Models**: Monthly Random Forest models saved as pickle files
+- **Predictions**: Cloud Optimized GeoTIFFs uploaded to DigitalOcean Spaces
+- **Composites**: Annual forest/non-forest maps merged from monthly predictions
+- **Benchmarks**: CSV files with accuracy metrics (accuracy, F1, precision, recall)
+- **STAC Collections**: Metadata entries for integration with TiTiler tile server
+
+### Process Forest Cover Rasters
+
+The `ml_pipeline/notebooks/process_forest_cover_rasters.py` script re-processes forest cover benchmark datasets with optimization and standardization:
+
+```bash
+# Navigate to ml_pipeline/notebooks directory
+cd ml_pipeline/notebooks
+
+# Process all datasets with boundary masking
+poetry run python process_forest_cover_rasters.py --boundary-geojson boundaries/Ecuador-DEM-900m-contour.geojson
+
+# Process a specific dataset
+poetry run python process_forest_cover_rasters.py --dataset hansen-tree-cover-2022
+
+# Dry run to see what would be processed
+poetry run python process_forest_cover_rasters.py --dry-run --verbose
+
+# Process from custom input directory
+poetry run python process_forest_cover_rasters.py --input-dir ./my_rasters --dataset mapbiomes-2022
+```
+
+Available datasets: `cfw-2022`, `hansen-tree-cover-2022`, `mapbiomes-2022`, `esa-landcover-2020`, `jrc-forestcover-2020`, `palsar-2020`, `wri-treecover-2020`
 
 ## Western Ecuador Statistics Caching
 
@@ -311,7 +460,7 @@ python scripts/precalculate_stats.py --help
 - `benchmarks-jrc-forestcover-2020` - JRC Forest Cover
 - `benchmarks-palsar-2020` - ALOS PALSAR Forest Map
 - `benchmarks-wri-treecover-2020` - WRI Tropical Tree Cover
-- `nicfi-pred-northern_choco_test_2025_06_16-composite-2022` - Choco Forest Watch 2022
+- `northern_choco_test_2025_06_20_2022_merged_composite` - Choco Forest Watch 2022
 
 ### Caching Details
 

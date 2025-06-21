@@ -5,9 +5,10 @@ from pathlib import Path
 from osgeo import gdal, gdalconst
 import rasterio
 from ml_pipeline.stac_builder import STACManager, STACManagerConfig
-from ml_pipeline.s3_utils import upload_file
+from ml_pipeline.s3_utils import upload_file, list_files, download_file
 import tempfile
 import shutil
+import logging
 
 class CompositeGenerator:
     def __init__(self, run_id: str, year: str, root: str = "runs"):
@@ -169,28 +170,228 @@ class CompositeGenerator:
         cover_remote_key = f"predictions/{self.run_id}-composites/{self.year}/{quad_name}_{self.year}_forest_cover.tif"
         upload_file(cover_path, cover_remote_key)
         
-    def _create_stac_collection(self, use_remote_db: bool):
+    def merge_composites(self):
+        """Merge all individual composite COGs into a single mosaic COG."""
+        if not self.temp_dir:
+            raise RuntimeError("CompositeGenerator must be used as a context manager")
+            
+        logger = logging.getLogger(__name__)
+        logger.info(f"🔄 Starting merge of composite COGs for {self.run_id}-{self.year}")
+        
+        # List all individual composite COGs from S3
+        s3_prefix = f"predictions/{self.run_id}-composites/{self.year}/"
+        s3_files = list_files(prefix=s3_prefix)
+        
+        if not s3_files:
+            logger.warning(f"⚠️  No composite files found at {s3_prefix}")
+            return None
+            
+        cog_files = [f for f in s3_files if f['key'].endswith('_forest_cover.tif')]
+        logger.info(f"📊 Found {len(cog_files)} individual composite COGs to merge")
+        
+        if len(cog_files) <= 1:
+            logger.info("ℹ️  Only one or no COG files found, skipping merge")
+            return None
+            
+        # Download all COGs to temp directory
+        logger.info("⬇️  Downloading individual COGs...")
+        local_cog_paths = []
+        
+        for i, cog_file in enumerate(cog_files):
+            local_path = Path(self.temp_dir) / f"composite_{i:04d}.tif"
+            download_file(cog_file['key'], local_path)
+            local_cog_paths.append(str(local_path))
+            
+        logger.info(f"✅ Downloaded {len(local_cog_paths)} COG files")
+        
+        # Create merged COG using GDAL
+        merged_path = Path(self.temp_dir) / f"{self.run_id}_{self.year}_merged_composite.tif"
+        logger.info(f"🔗 Merging COGs into: {merged_path.name}")
+        
+        # Use GDAL BuildVRT and Translate for efficient merging
+        vrt_path = Path(self.temp_dir) / f"{self.run_id}_{self.year}_temp.vrt"
+        
+        # Initialize intermediate_path for finally block
+        intermediate_path = Path(self.temp_dir) / f"{self.run_id}_{self.year}_intermediate.tif"
+        
+        try:
+            # Build VRT first for efficient handling of overlapping regions
+            vrt_options = gdal.BuildVRTOptions(
+                resampleAlg='nearest',
+                addAlpha=False,
+                hideNodata=True
+            )
+            gdal.BuildVRT(str(vrt_path), local_cog_paths, options=vrt_options)
+            
+            # Translate VRT to intermediate GeoTIFF
+            translate_options = gdal.TranslateOptions(
+                format='GTiff',
+                creationOptions=[
+                    'TILED=YES',
+                    'COMPRESS=DEFLATE',
+                    'PREDICTOR=1',
+                    'BIGTIFF=IF_SAFER'
+                ]
+            )
+            
+            gdal.Translate(str(intermediate_path), str(vrt_path), options=translate_options)
+            
+            # Add overviews to intermediate file
+            logger.info("📈 Adding overviews to merged raster...")
+            ds = gdal.Open(str(intermediate_path), gdal.GA_Update)
+            if ds is None:
+                raise RuntimeError(f"Failed to open intermediate file: {intermediate_path}")
+            ds.BuildOverviews("NEAREST", [2, 4, 8, 16, 32])
+            ds = None
+            
+            # Convert to proper COG format
+            logger.info("🔄 Converting to Cloud Optimized GeoTIFF...")
+            cog_options = gdal.TranslateOptions(
+                format='GTiff',
+                creationOptions=[
+                    'COPY_SRC_OVERVIEWS=YES',
+                    'TILED=YES',
+                    'COMPRESS=DEFLATE',
+                    'PREDICTOR=1',
+                    'BIGTIFF=IF_SAFER'
+                ]
+            )
+            
+            gdal.Translate(str(merged_path), str(intermediate_path), options=cog_options)
+            
+            logger.info(f"✅ Successfully merged {len(cog_files)} COGs into single file")
+            
+            # Upload merged COG to S3
+            merged_s3_key = f"predictions/{self.run_id}-composites/{self.year}/{self.run_id}_{self.year}_merged_composite.tif"
+            logger.info(f"⬆️  Uploading merged COG to S3: {merged_s3_key}")
+            upload_file(merged_path, merged_s3_key)
+            
+            logger.info("🎉 Merge and upload completed successfully")
+            return merged_s3_key
+            
+        except Exception as e:
+            logger.error(f"❌ Error during COG merge: {str(e)}")
+            raise
+        finally:
+            # Clean up temp files
+            if vrt_path.exists():
+                vrt_path.unlink()
+            if intermediate_path.exists():
+                intermediate_path.unlink()
+            for local_path in local_cog_paths:
+                if Path(local_path).exists():
+                    Path(local_path).unlink()
+            if merged_path.exists():
+                merged_path.unlink()
+        
+    def _create_stac_collection(self, use_remote_db: bool, use_merged_cog: bool = False):
+        """Create STAC collection for either individual COGs or merged COG."""
+        logger = logging.getLogger(__name__)
+        
         # Create STAC
-        print(f"Creating STAC collection for {self.run_id} with remote db: {use_remote_db}")
+        logger.info(f"Creating STAC collection for {self.run_id} with remote db: {use_remote_db}, merged: {use_merged_cog}")
         builder = STACManager(STACManagerConfig(use_remote_db=use_remote_db))
 
-        # Create STAC collection
-        print(f"Processing year {self.year} for {self.run_id}")
-        builder.process_year(
-            year=self.year,
-            prefix_on_s3=f"predictions/{self.run_id}-composites",
-            collection_id=f"nicfi-pred-{self.run_id}-composite-{self.year}",
-            asset_key="data",
-            asset_roles=["classification"],
-            asset_title=f"Annual Forest Cover Composite for {self.run_id}",
-            extra_asset_fields={
-                "raster:bands": [
-                    {
-                        "name": "forest_flag",
-                        "nodata": 255,
-                        "data_type": "uint8",
-                        "description": "Forest flag (1=Forest, 0=Non-Forest, 255=No Data)"
+        if use_merged_cog:
+            # For merged COG, we need to create a collection with just the merged file
+            logger.info(f"Processing merged COG for {self.run_id}")
+            
+            # Check if merged COG exists
+            merged_key = f"predictions/{self.run_id}-composites/{self.year}/{self.run_id}_{self.year}_merged_composite.tif"
+            s3_files = list_files(prefix=f"predictions/{self.run_id}-composites/{self.year}/")
+            merged_files = [f for f in s3_files if f['key'].endswith('_merged_composite.tif')]
+            
+            if not merged_files:
+                logger.warning(f"⚠️  No merged COG found, falling back to individual COGs")
+                use_merged_cog = False
+            else:
+                logger.info(f"✅ Found merged COG: {merged_files[0]['key']}")
+        
+        if use_merged_cog:
+            # For merged COG, temporarily rename individual files or adjust the approach
+            # Since process_year doesn't support file filtering, we'll use a different strategy
+            logger.info("📚 Creating STAC collection for merged COG...")
+            
+            # Create a temporary custom collection for the merged file
+            self._create_merged_stac_collection(builder)
+        else:
+            # Create STAC collection for individual COGs (original behavior)
+            logger.info(f"Processing individual COGs for {self.run_id}")
+            builder.process_year(
+                year=self.year,
+                prefix_on_s3=f"predictions/{self.run_id}-composites",
+                collection_id=f"nicfi-pred-{self.run_id}-composite-{self.year}",
+                asset_key="data",
+                asset_roles=["classification"],
+                asset_title=f"Annual Forest Cover Composite for {self.run_id}",
+                extra_asset_fields={
+                    "raster:bands": [
+                        {
+                            "name": "forest_flag",
+                            "nodata": 255,
+                            "data_type": "uint8",
+                            "description": "Forest flag (1=Forest, 0=Non-Forest, 255=No Data)"
+                        }
+                    ]
+                }
+            )
+    
+    def _create_merged_stac_collection(self, builder):
+        """Create STAC collection specifically for merged COG files."""
+        logger = logging.getLogger(__name__)
+        
+        # Get the merged file from S3
+        s3_files = list_files(prefix=f"predictions/{self.run_id}-composites/{self.year}/")
+        merged_files = [f for f in s3_files if f['key'].endswith('_merged_composite.tif')]
+        
+        if not merged_files:
+            logger.error("❌ No merged COG files found for STAC collection creation")
+            return
+            
+        # Process only the merged files manually
+        collection_id = f"nicfi-pred-{self.run_id}-composite-{self.year}"
+        
+        # Use the existing process_year method but with a prefix that only matches merged files
+        # We'll temporarily copy the merged file to a separate location to isolate it
+        temp_prefix = f"predictions/{self.run_id}-composites-merged/{self.year}/"
+        
+        # Copy merged file to temporary location for STAC processing
+        from ml_pipeline.s3_utils import copy_s3_object
+        
+        for merged_file in merged_files:
+            source_key = merged_file['key']
+            filename = source_key.split('/')[-1]
+            dest_key = f"{temp_prefix}{filename}"
+            
+            try:
+                copy_s3_object(source_key, dest_key)
+                logger.info(f"📁 Copied merged file for STAC: {dest_key}")
+                
+                # Now process with the isolated prefix
+                builder.process_year(
+                    year=self.year,
+                    prefix_on_s3=f"predictions/{self.run_id}-composites-merged",
+                    collection_id=collection_id,
+                    asset_key="data",
+                    asset_roles=["classification"],
+                    asset_title=f"Annual Forest Cover Composite for {self.run_id} (Merged)",
+                    extra_asset_fields={
+                        "raster:bands": [
+                            {
+                                "name": "forest_flag",
+                                "nodata": 255,
+                                "data_type": "uint8",
+                                "description": "Forest flag (1=Forest, 0=Non-Forest, 255=No Data)"
+                            }
+                        ]
                     }
-                ]
-            }
-        ) 
+                )
+                
+                # Clean up temporary copy
+                from ml_pipeline.s3_utils import delete_s3_object
+                delete_s3_object(dest_key)
+                logger.info(f"🗑️  Cleaned up temporary file: {dest_key}")
+                
+            except Exception as e:
+                logger.error(f"❌ Error processing merged COG for STAC: {str(e)}")
+                raise 

@@ -132,8 +132,9 @@ class STACManager:
             # Override for local database connection
             self.cfg.pg_env_vars["PGHOST"] = 'localhost'
         
-        # ensure pypgstac can see DB creds
-        os.environ.update(cfg.pg_env_vars)
+        # Note: We no longer update global os.environ here to avoid conflicts
+        # when multiple STACManager instances are used. The upsert_to_pgstac 
+        # method now passes the environment explicitly to pypgstac commands.
 
     # ------------------------------------------------------------------
     #  Database connection management
@@ -603,7 +604,7 @@ class STACManager:
             raise
 
     def upsert_to_pgstac(self, collection: Collection, items: Iterable[Item]) -> None:
-        """Write temp JSON / ndjson and call pypgstac CLI."""
+        """Write temp JSON / ndjson and call pypgstac CLI with explicit connection parameters."""
         with tempfile.TemporaryDirectory() as tmp:
             col_path = Path(tmp) / "collection.json"
             items_path = Path(tmp) / "items.ndjson"
@@ -613,13 +614,21 @@ class STACManager:
                 for it in items:
                     f.write(json.dumps(it.to_dict()) + "\n")
 
+            # Create environment with explicit database connection settings
+            env = os.environ.copy()
+            env.update(self.cfg.pg_env_vars)
+            
+            print(f"Using database connection: {self.cfg.pg_env_vars['PGHOST']}:{self.cfg.pg_env_vars['PGPORT']}/{self.cfg.pg_env_vars['PGDATABASE']}")
+
             subprocess.run(
                 ["pypgstac", "load", "collections", "--method", "upsert", str(col_path)],
                 check=True,
+                env=env,
             )
             subprocess.run(
                 ["pypgstac", "load", "items", "--method", "upsert", str(items_path)],
                 check=True,
+                env=env,
             )
             print(f"✅ Upserted ⟨{collection.id}⟩ and {len(list(items))} items")
 

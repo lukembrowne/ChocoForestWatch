@@ -96,4 +96,75 @@ def list_files(prefix: str, bucket: Optional[str] = None) -> list[dict]:
         {"key": o["Key"], "url": f"s3://{bucket}/{o['Key']}"}
         for o in resp.get("Contents", [])
         if o["Key"].lower().endswith((".tif", ".tiff"))
-    ] 
+    ]
+
+def copy_s3_object(
+    source_key: str,
+    dest_key: str,
+    source_bucket: Optional[str] = None,
+    dest_bucket: Optional[str] = None
+) -> None:
+    """
+    Copy an object from one S3 location to another.
+    
+    Parameters
+    ----------
+    source_key : str
+        The source key to copy from
+    dest_key : str
+        The destination key to copy to
+    source_bucket : str, optional
+        The source bucket. If None, uses the default bucket.
+    dest_bucket : str, optional
+        The destination bucket. If None, uses the default bucket.
+    """
+    s3, default_bucket = get_s3_client()
+    source_bucket = source_bucket or default_bucket
+    dest_bucket = dest_bucket or default_bucket
+    
+    copy_source = {"Bucket": source_bucket, "Key": source_key}
+    s3.copy_object(CopySource=copy_source, Bucket=dest_bucket, Key=dest_key)
+    print(f"✓ Copied {source_key} to {dest_key}")
+
+def delete_s3_object(key: str, bucket: Optional[str] = None) -> None:
+    """
+    Delete an object from S3.
+    
+    Parameters
+    ----------
+    key : str
+        The key of the object to delete
+    bucket : str, optional
+        The bucket to delete from. If None, uses the default bucket.
+    """
+    s3, default_bucket = get_s3_client()
+    bucket = bucket or default_bucket
+    
+    s3.delete_object(Bucket=bucket, Key=key)
+    print(f"✓ Deleted {key}")
+
+def download_file(
+    remote_key: str,
+    local_path: Path,
+    bucket: Optional[str] = None
+) -> None:
+    """
+    Download a file from S3 to local storage.
+    
+    Parameters
+    ----------
+    remote_key : str
+        The S3 key to download
+    local_path : Path
+        The local path to save the file to
+    bucket : str, optional
+        The bucket to download from. If None, uses the default bucket.
+    """
+    s3, default_bucket = get_s3_client()
+    bucket = bucket or default_bucket
+    
+    # Ensure parent directory exists
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    s3.download_file(bucket, remote_key, str(local_path))
+    print(f"✓ Downloaded {remote_key} to {local_path.name}") 

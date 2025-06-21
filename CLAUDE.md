@@ -51,6 +51,7 @@ docker compose exec backend python manage.py precalculate_western_ecuador_stats 
 ## Development Memories
 - No need to test functionality using `docker compose up --build` because it uses too many tokens with the logging
 - NEVER add "Generated with Claude Code" or "Co-Authored-By: Claude" attribution in commit messages or PR descriptions
+- **Spatial Operations**: All spatial operations must handle mixed coordinate reference systems (CRS) automatically. The pipeline should detect raster and boundary CRS, reproject geometries as needed, and provide clear logging for debugging projection issues. Never assume consistent projections across datasets.
 
 ## Architecture Overview
 
@@ -145,6 +146,7 @@ docker compose exec backend python manage.py precalculate_western_ecuador_stats 
 - XGBoost for additional model options
 - Rasterio for geospatial raster processing
 - GDAL for coordinate transformations and projections
+- **Projection Handling**: All spatial operations automatically detect and handle different coordinate reference systems (CRS) through reprojection
 
 ## Internationalization Requirements
 

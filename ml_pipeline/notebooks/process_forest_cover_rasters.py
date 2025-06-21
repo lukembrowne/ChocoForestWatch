@@ -31,12 +31,15 @@ import rasterio
 from rasterio.mask import mask
 from rasterio.features import geometry_mask
 from rasterio.enums import Resampling
-from rasterio.warp import calculate_default_transform, reproject
+from rasterio.warp import calculate_default_transform, reproject, transform_geom
+from rasterio.crs import CRS
 # Removed rasterio.cog import - using simpler gdaladdo approach
 import subprocess
 from rasterio.profiles import default_gtiff_profile
 from shapely.geometry import shape
 import numpy as np
+import pyproj
+from pyproj import Transformer
 
 # Configure logging
 logging.basicConfig(
@@ -47,6 +50,15 @@ logger = logging.getLogger(__name__)
 
 # Dataset configurations - each dataset has specific processing parameters
 DATASET_CONFIGS = {
+    "cfw-2022": {
+        "input_path": "./benchmark_rasters/northern_choco_test_2025_06_20_2022_merged_composite.tif",
+        "s3_prefix": "benchmarks/CFW",
+        "collection_id": "northern_choco_test_2025_06_20_2022_merged_composite",
+        "asset_title": "CFW 2022",
+        "year": 2022,
+        "description": "CFW 2022 for Western Ecuador"
+    },
+
     "hansen-tree-cover-2022": {
         "input_path": "./benchmark_rasters/TreeCover2022-Hansen_wec.tif",
         "s3_prefix": "benchmarks/HansenTreeCover",
@@ -111,16 +123,33 @@ class RasterProcessor:
         """
         self.boundary_geojson_path = boundary_geojson_path
         self.boundary_geom = None
+        self.boundary_crs = None
         
         if boundary_geojson_path:
             self._load_boundary()
     
     def _load_boundary(self):
-        """Load boundary geometry from GeoJSON file"""
+        """Load boundary geometry from GeoJSON file with CRS detection"""
         try:
             logger.info(f"Loading boundary from: {self.boundary_geojson_path}")
             with open(self.boundary_geojson_path, 'r') as f:
                 geojson = json.load(f)
+            
+            # Detect CRS from GeoJSON
+            crs_info = geojson.get('crs')
+            if crs_info:
+                # Handle CRS from GeoJSON CRS object
+                if 'properties' in crs_info and 'name' in crs_info['properties']:
+                    crs_name = crs_info['properties']['name']
+                    self.boundary_crs = CRS.from_string(crs_name)
+                else:
+                    self.boundary_crs = CRS.from_dict(crs_info)
+            else:
+                # Default to WGS84 (lat/long) for GeoJSON without explicit CRS
+                self.boundary_crs = CRS.from_epsg(4326)
+                logger.info("No CRS found in GeoJSON, assuming WGS84 (EPSG:4326)")
+            
+            logger.info(f"Boundary CRS: {self.boundary_crs}")
             
             # Combine all features into a single geometry
             geoms = [shape(feat['geometry']) for feat in geojson.get('features', [])]
@@ -138,6 +167,86 @@ class RasterProcessor:
         except Exception as e:
             logger.error(f"Failed to load boundary: {str(e)}")
             raise
+    
+    def _reproject_boundary_to_raster_crs(self, raster_crs: CRS):
+        """
+        Reproject boundary geometry to match raster CRS if needed.
+        
+        Parameters
+        ----------
+        raster_crs : CRS
+            The CRS of the raster to match
+            
+        Returns
+        -------
+        shapely.geometry
+            Boundary geometry in raster CRS
+        """
+        if not self.boundary_geom or not self.boundary_crs:
+            return self.boundary_geom
+            
+        if self.boundary_crs == raster_crs:
+            logger.info("Boundary and raster CRS match, no reprojection needed")
+            return self.boundary_geom
+            
+        logger.info(f"Reprojecting boundary from {self.boundary_crs} to {raster_crs}")
+        
+        try:
+            # Use shapely's __geo_interface__ to get proper GeoJSON representation
+            # This handles complex geometries like MultiPolygon correctly
+            geom_dict = self.boundary_geom.__geo_interface__
+            
+            # Use rasterio's transform_geom for reprojection
+            reprojected_geom_dict = transform_geom(
+                self.boundary_crs, 
+                raster_crs, 
+                geom_dict
+            )
+            
+            # Convert back to shapely geometry
+            reprojected_geom = shape(reprojected_geom_dict)
+            
+            logger.info(f"Successfully reprojected boundary geometry from {self.boundary_crs.to_string()} to {raster_crs.to_string()}")
+            return reprojected_geom
+            
+        except Exception as e:
+            logger.error(f"Failed to reproject boundary geometry: {str(e)}")
+            logger.warning("Using original boundary geometry (may cause incorrect masking)")
+            return self.boundary_geom
+    
+    def get_projection_info(self, raster_path: str) -> dict:
+        """
+        Get projection information for debugging purposes.
+        
+        Parameters
+        ----------
+        raster_path : str
+            Path to raster file
+            
+        Returns
+        -------
+        dict
+            Dictionary with projection information
+        """
+        info = {}
+        
+        try:
+            with rasterio.open(raster_path) as src:
+                info['raster_crs'] = src.crs
+                info['raster_crs_string'] = src.crs.to_string() if src.crs else 'Unknown'
+                info['raster_bounds'] = src.bounds
+                
+        except Exception as e:
+            info['raster_error'] = str(e)
+        
+        if self.boundary_crs:
+            info['boundary_crs'] = self.boundary_crs
+            info['boundary_crs_string'] = self.boundary_crs.to_string()
+        else:
+            info['boundary_crs'] = None
+            info['boundary_crs_string'] = 'No boundary loaded'
+            
+        return info
     
     def process_raster(self, input_path: str, output_path: str, collection_id: str) -> bool:
         """
@@ -162,6 +271,7 @@ class RasterProcessor:
             
             with rasterio.open(input_path) as src:
                 logger.info(f"Input raster info: {src.width}x{src.height}, CRS: {src.crs}")
+                logger.info(f"Raster bounds: {src.bounds}")
                 
                 # Read the data
                 data = src.read(1)
@@ -173,12 +283,13 @@ class RasterProcessor:
                     data = self._apply_boundary_mask(data, src)
                 
                 # Step 2: Convert pixels to forest/non-forest labels
-                logger.info("Converting pixels to forest/non-forest labels...")
-                data = self._convert_to_forest_labels(data, collection_id)
+                if collection_id not in ["northern_choco_test_2025_06_20_2022_merged_composite"]:
+                    logger.info("Converting pixels to forest/non-forest labels...")
+                    data = self._convert_to_forest_labels(data, collection_id)  
                 
-                # Step 3: Set missing data consistently to 255
-                logger.info("Standardizing missing data values...")
-                data = self._standardize_missing_data(data)
+                    # Step 3: Set missing data consistently to 255
+                    logger.info("Standardizing missing data values...")
+                    data = self._standardize_missing_data(data)
                 
                 # Step 4: Update profile for COG output
                 profile.update({
@@ -213,9 +324,16 @@ class RasterProcessor:
     def _apply_boundary_mask(self, data: np.ndarray, src: rasterio.DatasetReader) -> np.ndarray:
         """Apply boundary mask to set values outside bounds to missing data"""
         try:
+            # Reproject boundary geometry to match raster CRS
+            boundary_in_raster_crs = self._reproject_boundary_to_raster_crs(src.crs)
+            
+            if boundary_in_raster_crs is None:
+                logger.warning("No boundary geometry available for masking")
+                return data
+                
             # Create a mask where True means outside the boundary
             out_mask = geometry_mask(
-                [self.boundary_geom],
+                [boundary_in_raster_crs],
                 transform=src.transform,
                 invert=False,  # False means inside is False, outside is True
                 out_shape=data.shape
@@ -226,7 +344,10 @@ class RasterProcessor:
             data_masked[out_mask] = 255
             
             masked_count = np.sum(out_mask)
-            logger.info(f"Masked {masked_count} pixels outside boundary")
+            total_pixels = data.size
+            masked_percentage = (masked_count / total_pixels) * 100
+            
+            logger.info(f"Masked {masked_count:,} pixels outside boundary ({masked_percentage:.1f}% of total)")
             
             return data_masked
             
@@ -324,7 +445,7 @@ class ForestCoverProcessor:
         """
         self.dry_run = dry_run
         self.raster_processor = RasterProcessor(boundary_geojson_path)
-        self.stac_manager = STACManager()
+        self.stac_manager = STACManager(STACManagerConfig(use_remote_db=True))
         self.s3_client, self.bucket = get_s3_client()
         
         logger.info(f"Initialized ForestCoverProcessor (dry_run={dry_run})")
@@ -386,12 +507,22 @@ class ForestCoverProcessor:
                 else:
                     logger.info(f"[DRY RUN] Would upload to: {config['s3_prefix']}/{config['year']}/{Path(input_path).name}")
                 
-                # Step 4: Delete existing STAC collection
-                logger.info("Step 4: Deleting existing STAC collection...")
+                # Step 4: Delete existing STAC collection from both databases
+                logger.info("Step 4: Deleting existing STAC collection from both databases...")
                 if not self.dry_run:
+                    # Delete from remote database (default)
+                    logger.info(f"Deleting collection from remote database: {config['collection_id']}")
+                    logger.info(f"Remote DB Host: {self.stac_manager.cfg.pg_env_vars['PGHOST']}")
                     self.stac_manager.delete_collection(config["collection_id"])
+                    
+                    # Delete from local database  
+                    logger.info(f"Deleting collection from local database: {config['collection_id']}")
+                    local_stac_config = STACManagerConfig(use_remote_db=False)
+                    local_stac_manager = STACManager(local_stac_config)
+                    logger.info(f"Local DB Host: {local_stac_manager.cfg.pg_env_vars['PGHOST']}")
+                    local_stac_manager.delete_collection(config["collection_id"])
                 else:
-                    logger.info(f"[DRY RUN] Would delete collection: {config['collection_id']}")
+                    logger.info(f"[DRY RUN] Would delete collection from both databases: {config['collection_id']}")
                 
                 # Step 5: Create new STAC collection
                 logger.info("Step 5: Creating new STAC collection...")
@@ -426,8 +557,18 @@ class ForestCoverProcessor:
             logger.error(f"Error backing up collection {collection_id}: {str(e)}")
     
     def _create_stac_collection(self, config: Dict):
-        """Create new STAC collection for the processed dataset"""
+        """Create new STAC collection for the processed dataset in both local and remote databases"""
         try:
+            # Create collection in remote database (default)
+            logger.info(f"Creating STAC collection in remote database: {config['collection_id']}")
+            logger.info(f"Remote DB connection details: Host={self.stac_manager.cfg.pg_env_vars['PGHOST']}, DB={self.stac_manager.cfg.pg_env_vars['PGDATABASE']}")
+            
+            # Test remote connection
+            if self.stac_manager.test_connection():
+                logger.info("✅ Remote database connection verified")
+            else:
+                logger.error("❌ Remote database connection failed")
+                
             self.stac_manager.process_year(
                 year=str(config["year"]),
                 prefix_on_s3=config["s3_prefix"],
@@ -436,7 +577,30 @@ class ForestCoverProcessor:
                 asset_roles=["benchmark"],
                 asset_title=config["asset_title"]
             )
-            logger.info(f"Created STAC collection: {config['collection_id']}")
+            logger.info(f"✅ Created STAC collection in remote database: {config['collection_id']}")
+            
+            # Create collection in local database
+            logger.info(f"Creating STAC collection in local database: {config['collection_id']}")
+            local_stac_config = STACManagerConfig(use_remote_db=False)
+            local_stac_manager = STACManager(local_stac_config)
+            logger.info(f"Local DB connection details: Host={local_stac_manager.cfg.pg_env_vars['PGHOST']}, DB={local_stac_manager.cfg.pg_env_vars['PGDATABASE']}")
+            
+            # Test local connection
+            if local_stac_manager.test_connection():
+                logger.info("✅ Local database connection verified")
+            else:
+                logger.error("❌ Local database connection failed")
+            
+            local_stac_manager.process_year(
+                year=str(config["year"]),
+                prefix_on_s3=config["s3_prefix"],
+                collection_id=config["collection_id"],
+                asset_key="data",
+                asset_roles=["benchmark"],
+                asset_title=config["asset_title"]
+            )
+            logger.info(f"✅ Created STAC collection in local database: {config['collection_id']}")
+            
         except Exception as e:
             logger.error(f"Failed to create STAC collection {config['collection_id']}: {str(e)}")
             raise
@@ -523,6 +687,11 @@ def main():
         action='store_true',
         help='Enable verbose logging'
     )
+    parser.add_argument(
+        '--show-projections',
+        action='store_true',
+        help='Show projection information for datasets and exit'
+    )
     
     args = parser.parse_args()
     
@@ -535,6 +704,40 @@ def main():
             dry_run=args.dry_run
         )
         
+        # Show projection information if requested
+        if args.show_projections:
+            logger.info("=== PROJECTION INFORMATION ===")
+            
+            if args.dataset == 'all':
+                datasets_to_check = list(DATASET_CONFIGS.keys())
+            else:
+                datasets_to_check = [args.dataset]
+            
+            for dataset_key in datasets_to_check:
+                if dataset_key not in DATASET_CONFIGS:
+                    logger.error(f"Unknown dataset: {dataset_key}")
+                    continue
+                    
+                config = DATASET_CONFIGS[dataset_key]
+                input_path = Path(args.input_dir) / config["input_path"]
+                
+                logger.info(f"\nDataset: {dataset_key}")
+                logger.info(f"Input file: {input_path}")
+                
+                if input_path.exists():
+                    proj_info = processor.raster_processor.get_projection_info(str(input_path))
+                    logger.info(f"Raster CRS: {proj_info['raster_crs_string']}")
+                    logger.info(f"Raster bounds: {proj_info['raster_bounds']}")
+                    logger.info(f"Boundary CRS: {proj_info['boundary_crs_string']}")
+                    
+                    if 'raster_error' in proj_info:
+                        logger.error(f"Error reading raster: {proj_info['raster_error']}")
+                else:
+                    logger.warning(f"File not found: {input_path}")
+            
+            sys.exit(0)
+        
+        # Normal processing
         if args.dataset == 'all':
             results = processor.process_all_datasets(args.input_dir)
             success = all(results.values())
