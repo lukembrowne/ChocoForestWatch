@@ -4,16 +4,33 @@ import numpy as np
 from shapely.geometry import mapping
 import rasterio
 from rasterio.mask import mask
+from rasterio.features import geometry_mask
+from rasterio.enums import Resampling
+# Removed rio-cogeo imports - using simpler gdaladdo approach for overviews
+import subprocess
+from rasterio.profiles import default_gtiff_profile
+from rasterio.warp import calculate_default_transform, reproject
 from pyproj import Geod
 from shapely.ops import transform
 from pyproj import Transformer
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union
+import tempfile
+import hashlib
 
 _GEOD = Geod(ellps="WGS84")  # reused for geodesic area calculations
 
 def pixels_to_labels(collection: str, pixels: np.ndarray) -> np.ndarray:
     """Dataset-specific mapping ➜ 'Forest' / 'Non-Forest' / 'Unknown'"""
+
+    if collection == "already-processed":
+        # Special case for already-processed data
+        out = np.where(pixels == 0, "Non-Forest", np.where(pixels == 1, "Forest", "Unknown"))
+        return out
+
     if "nicfi" in collection:
         out = np.where(pixels == 0, "Non-Forest", np.where(pixels == 1, "Forest", "Unknown"))
+    
     elif collection == "benchmarks-hansen-tree-cover-2022":
         out = np.where(pixels >= 90, "Forest", "Non-Forest")
 
@@ -232,3 +249,430 @@ def extract_pixels_with_missing(extractor, geom, band_indexes):
         print(f"❌ Critical error in extract_pixels_with_missing: {str(e)}")
         print(f"💥 Error type: {type(e).__name__}")
         raise
+
+
+def validate_raster_integrity(raster_path: Union[str, Path]) -> Dict[str, any]:
+    """
+    Validate raster file integrity and return comprehensive metadata.
+    
+    Parameters
+    ----------
+    raster_path : str or Path
+        Path to the raster file to validate
+        
+    Returns
+    -------
+    dict
+        Dictionary containing validation results and metadata
+    """
+    results = {
+        "valid": False,
+        "error": None,
+        "metadata": {},
+        "statistics": {},
+        "warnings": []
+    }
+    
+    try:
+        with rasterio.open(raster_path) as src:
+            # Basic metadata
+            results["metadata"] = {
+                "driver": src.driver,
+                "width": src.width,
+                "height": src.height,
+                "count": src.count,
+                "dtype": str(src.dtypes[0]),
+                "crs": str(src.crs) if src.crs else None,
+                "nodata": src.nodata,
+                "transform": src.transform,
+                "bounds": src.bounds,
+                "compression": src.compression.name if src.compression else None,
+                "tiled": src.is_tiled,
+                "blocksize": (src.block_shapes[0] if src.block_shapes else None),
+                "overviews": [src.overviews(i) for i in range(1, src.count + 1)]
+            }
+            
+            # Read first band for statistics
+            data = src.read(1)
+            
+            # Calculate statistics
+            valid_data = data[data != src.nodata] if src.nodata is not None else data
+            
+            results["statistics"] = {
+                "total_pixels": data.size,
+                "valid_pixels": valid_data.size,
+                "missing_pixels": data.size - valid_data.size,
+                "missing_percentage": ((data.size - valid_data.size) / data.size) * 100,
+                "min_value": float(np.min(valid_data)) if valid_data.size > 0 else None,
+                "max_value": float(np.max(valid_data)) if valid_data.size > 0 else None,
+                "mean_value": float(np.mean(valid_data)) if valid_data.size > 0 else None,
+                "std_value": float(np.std(valid_data)) if valid_data.size > 0 else None,
+                "unique_values": len(np.unique(valid_data)) if valid_data.size > 0 else 0
+            }
+            
+            # Validation checks
+            if src.crs is None:
+                results["warnings"].append("No CRS defined")
+            
+            if src.nodata is None:
+                results["warnings"].append("No nodata value defined")
+            
+            if not src.is_tiled:
+                results["warnings"].append("Raster is not tiled (not optimal for COG)")
+            
+            if not any(src.overviews(i) for i in range(1, src.count + 1)):
+                results["warnings"].append("No overviews present")
+            
+            if src.width > 10000 or src.height > 10000:
+                results["warnings"].append("Large raster dimensions may cause performance issues")
+            
+            results["valid"] = True
+            
+    except Exception as e:
+        results["error"] = str(e)
+        results["valid"] = False
+    
+    return results
+
+
+def compute_file_checksum(file_path: Union[str, Path], algorithm: str = 'md5') -> str:
+    """
+    Compute checksum for a file.
+    
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to the file
+    algorithm : str, optional
+        Hash algorithm to use (default: 'md5')
+        
+    Returns
+    -------
+    str
+        Hexadecimal digest of the file
+    """
+    hash_func = hashlib.new(algorithm)
+    
+    with open(file_path, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_func.update(chunk)
+    
+    return hash_func.hexdigest()
+
+
+def apply_geometry_mask_to_raster(
+    raster_path: Union[str, Path],
+    geometry,
+    output_path: Union[str, Path],
+    nodata_value: Union[int, float] = -999,
+    inside: bool = True
+) -> bool:
+    """
+    Apply a geometry mask to a raster file.
+    
+    Parameters
+    ----------
+    raster_path : str or Path
+        Path to input raster
+    geometry : shapely geometry
+        Geometry to use for masking
+    output_path : str or Path
+        Path for output masked raster
+    nodata_value : int or float, optional
+        Value to use for masked areas (default: -999)
+    inside : bool, optional
+        If True, keep values inside geometry. If False, keep values outside (default: True)
+        
+    Returns
+    -------
+    bool
+        True if masking succeeded, False otherwise
+    """
+    try:
+        with rasterio.open(raster_path) as src:
+            # Create mask
+            mask_array = geometry_mask(
+                [geometry],
+                transform=src.transform,
+                invert=inside,  # invert=True means inside is True, outside is False
+                out_shape=(src.height, src.width)
+            )
+            
+            # Read data and apply mask
+            data = src.read()
+            
+            # Apply mask to all bands
+            for band_idx in range(data.shape[0]):
+                data[band_idx][mask_array] = nodata_value
+            
+            # Update profile
+            profile = src.profile.copy()
+            profile.update(nodata=nodata_value)
+            
+            # Write masked raster
+            with rasterio.open(output_path, 'w', **profile) as dst:
+                dst.write(data)
+        
+        return True
+        
+    except Exception as e:
+        print(f"Failed to apply geometry mask: {str(e)}")
+        return False
+
+
+def add_overviews_simple(
+    raster_path: Union[str, Path],
+    levels: List[int] = [2, 4, 8, 16, 32, 64],
+    resampling: str = "average"
+) -> bool:
+    """
+    Add overviews to a raster using gdaladdo command.
+    
+    Parameters
+    ----------
+    raster_path : str or Path
+        Path to the raster file to add overviews to
+    levels : List[int], optional
+        Overview levels to create (default: [2, 4, 8, 16, 32, 64])
+    resampling : str, optional
+        Resampling method (default: "average")
+        
+    Returns
+    -------
+    bool
+        True if overview creation succeeded, False otherwise
+    """
+    try:
+        cmd = ["gdaladdo", "-r", resampling, str(raster_path)] + [str(level) for level in levels]
+        
+        print(f"Adding overviews to {raster_path} with levels {levels}")
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        
+        print(f"Successfully added overviews to: {raster_path}")
+        return True
+        
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to add overviews: {e.stderr}")
+        return False
+    except Exception as e:
+        print(f"Failed to add overviews: {str(e)}")
+        return False
+
+
+def create_optimized_raster(
+    input_path: Union[str, Path],
+    output_path: Union[str, Path],
+    compression: str = 'lzw',
+    add_overviews: bool = True,
+    overview_levels: List[int] = [2, 4, 8, 16, 32, 64],
+    blocksize: int = 512
+) -> bool:
+    """
+    Create an optimized raster with optional overviews using standard GDAL tools.
+    
+    Parameters
+    ----------
+    input_path : str or Path
+        Path to input raster
+    output_path : str or Path
+        Path for output optimized raster
+    compression : str, optional
+        Compression method (default: 'lzw')
+    add_overviews : bool, optional
+        Whether to add overviews (default: True)
+    overview_levels : List[int], optional
+        Overview levels to create (default: [2, 4, 8, 16, 32, 64])
+    blocksize : int, optional
+        Block size for tiling (default: 512)
+        
+    Returns
+    -------
+    bool
+        True if optimization succeeded, False otherwise
+    """
+    try:
+        # Copy the input to output with optimized settings using gdal_translate
+        cmd = [
+            "gdal_translate",
+            "-co", f"COMPRESS={compression.upper()}",
+            "-co", "TILED=YES",
+            "-co", f"BLOCKXSIZE={blocksize}",
+            "-co", f"BLOCKYSIZE={blocksize}",
+            str(input_path),
+            str(output_path)
+        ]
+        
+        print(f"Creating optimized raster: {output_path}")
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        
+        # Add overviews if requested
+        if add_overviews:
+            if not add_overviews_simple(output_path, overview_levels):
+                return False
+        
+        print(f"Successfully created optimized raster: {output_path}")
+        return True
+        
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to create optimized raster: {e.stderr}")
+        return False
+    except Exception as e:
+        print(f"Failed to create optimized raster: {str(e)}")
+        return False
+
+
+def standardize_forest_labels(
+    data: np.ndarray,
+    collection_id: str,
+    nodata_value: Union[int, float] = -999
+) -> np.ndarray:
+    """
+    Standardize pixel values to forest (1) / non-forest (0) / nodata (-999) labels.
+    
+    Parameters
+    ----------
+    data : np.ndarray
+        Input raster data
+    collection_id : str
+        Collection ID for pixel interpretation
+    nodata_value : int or float, optional
+        Value to use for nodata (default: -999)
+        
+    Returns
+    -------
+    np.ndarray
+        Standardized array with values 0, 1, or nodata_value
+    """
+    try:
+        # Use existing pixels_to_labels function
+        labels = pixels_to_labels(collection_id, data)
+        
+        # Convert to standardized numeric format
+        standardized = np.full_like(data, nodata_value, dtype=np.int16)
+        
+        forest_mask = (labels == "Forest")
+        non_forest_mask = (labels == "Non-Forest")
+        
+        standardized[forest_mask] = 1
+        standardized[non_forest_mask] = 0
+        # Keep nodata_value for unknown/missing areas
+        
+        return standardized
+        
+    except Exception as e:
+        print(f"Failed to standardize forest labels: {str(e)}")
+        raise
+
+
+def compare_raster_statistics(
+    raster1_path: Union[str, Path],
+    raster2_path: Union[str, Path]
+) -> Dict[str, any]:
+    """
+    Compare statistics between two rasters.
+    
+    Parameters
+    ----------
+    raster1_path : str or Path
+        Path to first raster
+    raster2_path : str or Path
+        Path to second raster
+        
+    Returns
+    -------
+    dict
+        Comparison results
+    """
+    results = {
+        "compatible": False,
+        "differences": [],
+        "statistics_comparison": {}
+    }
+    
+    try:
+        stats1 = validate_raster_integrity(raster1_path)
+        stats2 = validate_raster_integrity(raster2_path)
+        
+        if not (stats1["valid"] and stats2["valid"]):
+            results["differences"].append("One or both rasters are invalid")
+            return results
+        
+        # Check spatial compatibility
+        meta1 = stats1["metadata"]
+        meta2 = stats2["metadata"]
+        
+        if (meta1["width"] != meta2["width"] or 
+            meta1["height"] != meta2["height"]):
+            results["differences"].append("Different dimensions")
+        
+        if meta1["crs"] != meta2["crs"]:
+            results["differences"].append("Different CRS")
+        
+        if meta1["transform"] != meta2["transform"]:
+            results["differences"].append("Different transform/resolution")
+        
+        # Compare statistics
+        stat1 = stats1["statistics"]
+        stat2 = stats2["statistics"]
+        
+        for key in ["total_pixels", "valid_pixels", "missing_pixels"]:
+            if stat1[key] != stat2[key]:
+                results["differences"].append(f"Different {key}")
+        
+        results["statistics_comparison"] = {
+            "raster1": stat1,
+            "raster2": stat2
+        }
+        
+        results["compatible"] = len(results["differences"]) == 0
+        
+    except Exception as e:
+        results["differences"].append(f"Comparison failed: {str(e)}")
+    
+    return results
+
+
+def get_raster_overview_info(raster_path: Union[str, Path]) -> Dict[str, any]:
+    """
+    Get detailed information about raster overviews.
+    
+    Parameters
+    ----------
+    raster_path : str or Path
+        Path to the raster file
+        
+    Returns
+    -------
+    dict
+        Overview information
+    """
+    info = {
+        "has_overviews": False,
+        "overview_count": 0,
+        "overview_levels": [],
+        "overview_sizes": []
+    }
+    
+    try:
+        with rasterio.open(raster_path) as src:
+            for band_idx in range(1, src.count + 1):
+                overviews = src.overviews(band_idx)
+                if overviews:
+                    info["has_overviews"] = True
+                    info["overview_count"] = len(overviews)
+                    info["overview_levels"] = overviews
+                    
+                    # Calculate overview sizes
+                    overview_sizes = []
+                    for level in overviews:
+                        ov_width = src.width // level
+                        ov_height = src.height // level
+                        overview_sizes.append((ov_width, ov_height))
+                    
+                    info["overview_sizes"] = overview_sizes
+                break  # Just check first band
+    
+    except Exception as e:
+        info["error"] = str(e)
+    
+    return info

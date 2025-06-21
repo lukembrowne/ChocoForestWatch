@@ -6237,4 +6237,4 @@ dev = ["ipykernel", "jupyterlab"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4"
-content-hash = "c64cfa8085e2dfb0604d18670ef554404f038fef5e069e2e244f0172bcee6d42"
+content-hash = "36a8fa370444c7813200f6ec7f59ddf69a7ab8b95cbc19bff81e130cdcbc3d89"

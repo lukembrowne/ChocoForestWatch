@@ -34,8 +34,8 @@ class AOISummaryStats:
         if px.size == 0:
             raise RuntimeError("AOI has no valid pixels in this collection.")
 
-        logging.info("Converting pixels to labels...")
-        labels = pixels_to_labels(self.collection, px.squeeze())
+        logging.info("Converting pixels to labels assuming they are already 0/1 encoded...")
+        labels = pixels_to_labels("already-processed", px.squeeze())
         forest_px = (labels == "Forest").sum()
         nonforest_px = (labels == "Non-Forest").sum()
         unknown_px = (labels == "Unknown").sum()

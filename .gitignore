@@ -123,6 +123,7 @@ ml_pipeline/notebooks/benchmark_results/*
 ml_pipeline/notebooks/runs.csv
 ml_pipeline/notebooks/runs/*
 ml_pipeline/notebooks/shapefiles/*
+ml_pipeline/runs/*
 .claude/settings.local.json
 *.djcache
 scripts/copy_localdb_to_production.sh
