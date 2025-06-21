@@ -103,7 +103,7 @@ def extract_quad_name(s3_file: dict) -> str:
     # Split on underscore and take first part
     return filename.split('_')[0]
 
-def generate_composites(run_id: str, year: str):
+def generate_composites(run_id: str, year: str, db_host: str = "local"):
     """Generate annual composites from monthly predictions."""
     logger.info("\n🧩 Generating annual composites...")
     
@@ -133,7 +133,8 @@ def generate_composites(run_id: str, year: str):
         
         # Create STAC collection for composites
         logger.info("📚 Creating STAC collection for composites...")
-        CompositeGenerator(run_id=run_id, year=year)._create_stac_collection(use_remote_db=False)
+        use_remote_db = (db_host == "remote")
+        CompositeGenerator(run_id=run_id, year=year)._create_stac_collection(use_remote_db=use_remote_db)
         logger.info("✅ STAC collection created")
         
     except Exception as e:
@@ -292,7 +293,7 @@ def main():
         return
     
     # Generate annual composites
-    generate_composites(run_id, year)
+    generate_composites(run_id, year, db_host)
     
     # Skip benchmark evaluation if requested
     if args.skip_benchmarks:
