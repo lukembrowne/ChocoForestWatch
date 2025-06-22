@@ -102,18 +102,51 @@
         
         <!-- Area Info -->
         <div class="area-info" v-if="stats">
-          <q-icon name="place" size="xs" />
-          <span>{{ stats.area_name ? stats.area_name : t('sidebar.landCover.customArea') }}</span>
+          <q-icon :name="stats.area_name === 'Western Ecuador' ? 'public' : 'place'" size="sm" />
+          <span class="area-name" :class="{ 'regional-stats': stats.area_name === 'Western Ecuador' }">
+            {{ stats.area_name === 'Western Ecuador' ? 'All of Western Ecuador' : (stats.area_name ? stats.area_name : t('sidebar.landCover.customArea')) }}
+          </span>
+          <q-chip 
+            v-if="stats.area_name === 'Western Ecuador'" 
+            size="sm" 
+            color="green" 
+            text-color="white"
+            icon="analytics"
+            class="regional-chip"
+          >
+            {{ t('sidebar.landCover.regional') }}
+          </q-chip>
         </div>
         
         <!-- Action Buttons -->
         <div class="action-bar">
           <q-btn 
-            icon="refresh" 
+            v-if="!isDrawing"
+            icon="crop_free" 
             color="primary" 
             :label="t('sidebar.landCover.analyzeNewArea')" 
             @click="clear"
             outline
+            class="action-btn"
+            size="sm"
+          />
+          <q-btn 
+            v-if="isDrawing"
+            icon="close" 
+            color="negative" 
+            :label="t('sidebar.landCover.cancelDrawing')" 
+            @click="cancelDrawing"
+            outline
+            class="action-btn"
+            size="sm"
+          />
+          <q-btn 
+            v-if="!isDrawing && stats.area_name !== 'Western Ecuador'"
+            icon="public" 
+            color="green" 
+            :label="t('sidebar.landCover.showRegionalStats')" 
+            @click="loadRegionalStats"
+            flat
             class="action-btn"
             size="sm"
           />
@@ -185,10 +218,10 @@ watch(benchmark, async (newBenchmark, oldBenchmark) => {
     mapStore.addBenchmarkLayer(newBenchmark)
     
     // Automatically load western Ecuador stats for the new benchmark
-    // unless the user has drawn their own area
-    // if (!mapStore.summaryAOILayer) {
-    //   await mapStore.loadWesternEcuadorStats()
-    // }
+    // unless the user has drawn their own custom area
+    if (!mapStore.summaryAOILayer) {
+      await mapStore.loadWesternEcuadorStats()
+    }
   }
   
   // Auto-refresh stats if user has drawn a rectangle
@@ -203,16 +236,26 @@ function startDraw() {
 
 async function clear() {
   mapStore.clearSummaryAOI()
-  // Automatically reload western Ecuador stats after clearing custom area
-  // await mapStore.loadWesternEcuadorStats()
+  // Start drawing a new area instead of auto-loading regional stats
+  startDraw()
+}
+
+function cancelDrawing() {
+  mapStore.clearSummaryAOI()
+  // Load regional stats after canceling drawing
+  loadRegionalStats()
+}
+
+async function loadRegionalStats() {
+  await mapStore.loadWesternEcuadorStats()
 }
 
 // Automatically load western Ecuador stats when component mounts
 onMounted(async () => {
-  // Only load if no custom area has been drawn
-  // if (!mapStore.summaryAOILayer && !stats.value) {
-  //   await mapStore.loadWesternEcuadorStats()
-  // }
+  // Only load if no custom area has been drawn and we have a selected benchmark
+  if (!mapStore.summaryAOILayer && !stats.value && benchmark.value) {
+    await mapStore.loadWesternEcuadorStats()
+  }
 })
 
 </script>
@@ -417,11 +460,34 @@ onMounted(async () => {
 .area-info {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 12px;
   font-size: 13px;
   color: #666;
-  font-style: italic;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 3px solid #e0e0e0;
+}
+
+.area-name {
+  font-weight: 500;
+  flex: 1;
+}
+
+.area-name.regional-stats {
+  color: #2e7d32;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.area-info:has(.regional-stats) {
+  background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
+  border-left-color: #4caf50;
+}
+
+.regional-chip {
+  margin-left: auto;
 }
 
 .action-bar {

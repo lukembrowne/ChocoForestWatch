@@ -10,7 +10,7 @@ from core.services.western_ecuador_stats import (
 logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
-    help = 'Pre-calculate western Ecuador summary statistics for all benchmark collections'
+    help = 'Pre-calculate western Ecuador summary statistics for all benchmark collections using simplified calculation for pre-processed datasets'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -56,7 +56,8 @@ class Command(BaseCommand):
 
         # Pre-calculate statistics
         try:
-            self.stdout.write(self.style.SUCCESS("🚀 Starting pre-calculation process..."))
+            self.stdout.write(self.style.SUCCESS("🚀 Starting pre-calculation process with simplified mode..."))
+            self.stdout.write("✨ Using optimized calculation for pre-processed datasets")
             self.stdout.write("💡 Tip: You can monitor detailed progress in the Django logs")
             self.stdout.write("")
             
@@ -84,10 +85,13 @@ class Command(BaseCommand):
             elif results['successful'] > 0:
                 self.stdout.write("")
                 self.stdout.write(
-                    self.style.SUCCESS("🎉 All calculations completed successfully!")
+                    self.style.SUCCESS("🎉 All simplified calculations completed successfully!")
                 )
                 self.stdout.write(
                     "✨ Western Ecuador statistics are now cached and ready for instant access"
+                )
+                self.stdout.write(
+                    "🚀 Benefiting from optimized calculation for pre-processed datasets"
                 )
             else:
                 self.stdout.write("")

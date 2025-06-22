@@ -6,7 +6,6 @@ import os
 import json
 import logging
 import requests
-import signal
 from django.core.cache import cache
 from django.utils import timezone
 from pyproj import Transformer
@@ -36,6 +35,20 @@ ALLOWED_BENCHMARK_COLLECTIONS = [
 def get_cache_key(collection_id):
     """Get the cache key for a collection ID."""
     return f"western_ecuador_stats_{collection_id}"
+
+
+def _is_preprocessed_collection(collection_id):
+    """
+    Determine if a collection is pre-processed and already clipped to Western Ecuador.
+    These collections can use simplified pixel counting without boundary clipping.
+    
+    As of the latest update, all datasets are now pre-processed to be clipped to 
+    western Ecuador with no data outside of that range.
+    """
+    # All collections are now pre-processed and clipped to Western Ecuador
+    # We can assume the data sets are already clipped to western Ecuador 
+    # with no data outside of that range
+    return True  # All collections are now pre-processed
 
 
 
@@ -207,7 +220,7 @@ def get_western_ecuador_stats(collection_id, force_recalculate=False):
             return cached_stats
     
     # Calculate new stats
-    logger.info(f"🔄 Starting calculation of western Ecuador stats for collection {collection_id}")
+    logger.info(f"🔄 Starting simplified calculation of western Ecuador stats for collection {collection_id}")
     
     try:
         # Get required environment variables
@@ -217,51 +230,38 @@ def get_western_ecuador_stats(collection_id, force_recalculate=False):
         
         logger.info(f"📍 Using TiTiler URL: {titiler_url}")
         
-        # Get the boundary polygon
-        logger.info("📦 Loading western Ecuador boundary polygon...")
-        boundary_polygon = _load_boundary_polygon()
-        if not boundary_polygon:
-            raise Exception("Could not load western Ecuador boundary")
+        # Check if this is a pre-processed collection that's already clipped to Western Ecuador
+        is_preprocessed = _is_preprocessed_collection(collection_id)
         
-        # Log geometry info safely  
-        geom_type = boundary_polygon.geom_type
-        logger.info(f"✓ Boundary polygon loaded: {geom_type}")
-        
-        # Convert to GeoJSON
-        logger.info("🗺️  Converting boundary to GeoJSON format...")
-        try:
-            boundary_geojson = _convert_boundary_to_geojson(boundary_polygon)
-            logger.info("✓ Boundary converted to GeoJSON")
-        except Exception as e:
-            logger.error(f"❌ Failed in boundary conversion step: {str(e)}")
-            logger.error(f"💥 Conversion error type: {type(e).__name__}")
-            raise
-        
-        # Calculate statistics using AOISummaryStats
-        logger.info(f"📊 Initializing AOISummaryStats for collection: {collection_id}")
-        aoi_stats = AOISummaryStats(titiler_url, collection_id)
-        
-        logger.info("🧮 Starting summary computation (this may take 30-120 seconds)...")
-        logger.info("⏳ If this hangs, check TiTiler service availability and collection data")
-        
-        def timeout_handler(_signum, _frame):
-            raise TimeoutError(f"AOI summary computation timed out after 300 seconds for collection {collection_id}")
-        
-        # Set up timeout (5 minutes) - only on Unix systems
-        timeout_set = False
-        if hasattr(signal, 'SIGALRM'):
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(300)  # 5 minutes timeout
-            timeout_set = True
-            logger.info("⏰ Timeout set to 5 minutes for this computation")
+        if is_preprocessed:
+            logger.info("🚀 Using simplified mode for pre-processed collection")
+            # Calculate statistics using simplified mode (no boundary clipping needed)
+            aoi_stats = AOISummaryStats(titiler_url, collection_id, simplified_mode=True)
+            
+            logger.info("🧮 Starting simplified summary computation...")
+            
+            try:
+                # No boundary needed for simplified mode
+                stats_df = aoi_stats.summary({})
+            except Exception as e:
+                logger.error(f"❌ Simplified summary computation failed: {str(e)}")
+                raise
+                    
         else:
-            logger.warning("⚠️  Timeout not available on this system - computation may hang indefinitely")
-        
-        try:
-            stats_df = aoi_stats.summary(boundary_geojson)
-        finally:
-            if timeout_set:
-                signal.alarm(0)  # Cancel the alarm
+            logger.info("📦 Using standard mode with boundary clipping for non-preprocessed collection")
+            # Fall back to standard boundary-based calculation
+            boundary_polygon = _load_boundary_polygon()
+            if not boundary_polygon:
+                raise Exception("Could not load western Ecuador boundary")
+            
+            boundary_geojson = _convert_boundary_to_geojson(boundary_polygon)
+            aoi_stats = AOISummaryStats(titiler_url, collection_id, simplified_mode=False)
+            
+            try:
+                stats_df = aoi_stats.summary(boundary_geojson)
+            except Exception as e:
+                logger.error(f"❌ Standard summary computation failed: {str(e)}")
+                raise
         
         if stats_df is None or stats_df.empty:
             raise Exception("AOISummaryStats returned empty results")
@@ -324,21 +324,6 @@ def precalculate_all_stats(force_recalculate=False, collection_filter=None):
             # Check if already cached (unless force flag is used)
             if not force_recalculate and cache.get(cache_key):
                 logger.info(f"⏭️  Skipping {collection_id} (already cached)")
-                results['skipped'] += 1
-                continue
-
-            if collection_id == "benchmarks-esa-landcover-2020":
-                logger.info("⚠️  Skipping ESA Landcover 2020 - not supported in this pre-calculation")
-                results['skipped'] += 1
-                continue
-
-            if collection_id == "benchmarks-jrc-forestcover-2020":
-                logger.info("⚠️  Skipping JRC Forest Cover 2020 - not supported in this pre-calculation")
-                results['skipped'] += 1
-                continue
-
-            if collection_id == "benchmarks-wri-treecover-2020":
-                logger.info("⚠️  Skipping WRI Tree Cover 2020 - not supported in this pre-calculation")
                 results['skipped'] += 1
                 continue
             
