@@ -296,7 +296,6 @@ poetry run python run_train_predict_pipeline.py \
   --run_id "existing_run_2022"
 ```
 
-
 ### Available Benchmark Datasets
 
 The pipeline includes several reference forest cover datasets for comparison:
