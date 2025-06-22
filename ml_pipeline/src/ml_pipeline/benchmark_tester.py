@@ -78,7 +78,9 @@ class BenchmarkTester:
         if test_features_dir is not None:
             self.test_features_dir = Path(test_features_dir)
         elif run_id is not None:
-            self.test_features_dir = Path("runs") / run_id / "feature_ids_testing"
+            # Look for runs directory in ml_pipeline folder (go up from current location)
+            ml_pipeline_dir = Path(__file__).parent.parent.parent  # Go up from src/ml_pipeline to ml_pipeline
+            self.test_features_dir = ml_pipeline_dir / "runs" / run_id / "feature_ids_testing"
         else:
             self.test_features_dir = None
 
@@ -156,23 +158,51 @@ class BenchmarkTester:
                 )
 
             # ------------------------------------------------------------------
-            # Extract pixels & classify
+            # Extract pixels & classify for each polygon
             # ------------------------------------------------------------------
-            pixels, fids, missing_px = extract_pixels_with_missing(self.extractor, gdf_month.geometry.iloc[0], self.band_indexes)
-            if pixels.size == 0:
+            predictions = []
+            total_missing_px = 0
+            
+            for idx, row in gdf_month.iterrows():
+                try:
+                    pixels, missing_px, _ = extract_pixels_with_missing(self.extractor, row.geometry, self.band_indexes)
+                    total_missing_px += missing_px
+                    
+                    if pixels.size > 0:
+                        y_pred = pixels_to_labels(self.collection, pixels.squeeze())
+                        # Take majority vote if multiple pixels
+                        if len(y_pred) > 1:
+                            unique, counts = np.unique(y_pred, return_counts=True)
+                            predicted_label = unique[np.argmax(counts)]
+                        else:
+                            predicted_label = y_pred[0]
+                        
+                        predictions.append({
+                            "id": str(row["id"]),  # Ensure string type
+                            "predicted_label": predicted_label
+                        })
+                except Exception as e:
+                    print(f"  ⚠️  Failed to extract pixels for polygon {row['id']}: {e}")
+                    continue
+            
+            if not predictions:
                 raise RuntimeError(
-                    f"❌  No valid pixels extracted for {month}. Check if the raster has coverage "
+                    f"❌  No valid predictions extracted for {month}. Check if the raster has coverage "
                     "or if all pixels are nodata."
                 )
 
-            y_pred = pixels_to_labels(self.collection, pixels.squeeze())
-            pred_df = pd.DataFrame({"id": fids, "predicted_label": y_pred})
-
+            pred_df = pd.DataFrame(predictions)
+            
+            # Convert gdf_month id to string for consistent merge
+            gdf_month["id"] = gdf_month["id"].astype(str)
+            
             # Merge predictions into GeoDataFrame
             gdf_month = gdf_month.merge(pred_df, on="id", how="left")
+            
+            missing_px = total_missing_px
 
             # Pixel-based missing-data metric
-            valid_px = len(pixels)
+            valid_px = len(predictions)  # Number of successful predictions
             missing_px_pct = missing_px / (missing_px + valid_px) if (missing_px + valid_px) else 0.0
             print(
                 f"Pixel-level missing data: {missing_px} missing vs {valid_px} valid "

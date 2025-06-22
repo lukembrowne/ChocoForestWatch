@@ -788,7 +788,10 @@
       "noData": "No Data",
       "missingPixels": "Missing pixels",
       "completeCoverage": "Complete coverage",
-      "customArea": "Custom Area"
+      "customArea": "Custom Area",
+      "regional": "Regional",
+      "cancelDrawing": "Cancel Drawing",
+      "showRegionalStats": "Show Regional Stats"
     },
     "upload": {
       "title": "Upload Boundaries",

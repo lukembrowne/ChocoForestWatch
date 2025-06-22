@@ -788,7 +788,10 @@
       "noData": "Sin Datos",
       "missingPixels": "Píxeles faltantes",
       "completeCoverage": "Cobertura completa",
-      "customArea": "Área Personalizada"
+      "customArea": "Área Personalizada",
+      "regional": "Regional",
+      "cancelDrawing": "Cancelar Dibujo",
+      "showRegionalStats": "Mostrar Estadísticas Regionales"
     },
     "upload": {
       "title": "Subir Límites",
