@@ -74,3 +74,6 @@ jobs:
 
             # 5. Optional: prune dangling images to save disk
             docker image prune -f
+
+            #6. Calculate forest cover stats for western Ecuador in cache
+            docker compose exec backend python manage.py precalculate_western_ecuador_stats
