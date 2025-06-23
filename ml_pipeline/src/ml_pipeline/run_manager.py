@@ -5,8 +5,26 @@ from datetime import datetime
 import json, csv, subprocess, os, uuid
 
 class RunManager:
-    def __init__(self, run_id: str, root: str | Path = "runs"):
-        self.root = Path(root)
+    def __init__(self, run_id: str, root: str | Path = None):
+        """
+        Initialize RunManager with consistent path resolution.
+        
+        Parameters
+        ----------
+        run_id : str
+            Unique identifier for this run
+        root : str | Path, optional
+            Root directory for runs. If None, automatically resolves to 
+            <ml_pipeline_root>/runs for consistency across different script locations.
+        """
+        if root is None:
+            # Automatically resolve to ml_pipeline root runs folder
+            # Go up from src/ml_pipeline to ml_pipeline root
+            ml_pipeline_root = Path(__file__).parent.parent.parent
+            self.root = ml_pipeline_root / "runs"
+        else:
+            self.root = Path(root)
+        
         self.root.mkdir(exist_ok=True)
         self.runs_csv = self.root.parent / "runs.csv"
         self.run_id = run_id

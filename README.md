@@ -293,7 +293,8 @@ poetry run python run_train_predict_pipeline.py \
   --start_month 1 --end_month 12 \
   --year 2022 \
   --project_id 6 \
-  --run_id "existing_run_2022"
+  --run_id "northern_choco_test_2025_06_20" \
+  --db-host "remote"
 ```
 
 ### Available Benchmark Datasets
