@@ -58,6 +58,7 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 from ml_pipeline.s3_utils import list_files
 from ml_pipeline.benchmark_tester import BenchmarkTester
+from ml_pipeline.benchmark_metrics_io import create_benchmark_summary_charts
 
 # Configure logging for better pipeline visibility
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -175,7 +176,7 @@ def generate_composites(run_id: str, year: str, db_host: str = "local"):
     except Exception as e:
         logger.error(f"❌ Error during composite generation: {str(e)}")
 
-def run_benchmarks(run_id: str, year: str, project_id: int):
+def run_benchmarks(run_id: str, year: str, project_id: int, db_host: str = "local"):
     """Run benchmark evaluation against reference datasets."""
     logger.info("\n🏆 Running benchmark evaluation...")
     
@@ -208,6 +209,8 @@ def run_benchmarks(run_id: str, year: str, project_id: int):
                 year=year,
                 project_id=project_id,
                 run_id=run_id,
+                db_host=db_host,
+                verbose=False,
             )
             tester.run()
             successful_benchmarks += 1
@@ -217,6 +220,21 @@ def run_benchmarks(run_id: str, year: str, project_id: int):
             continue
     
     logger.info(f"\n🏁 Benchmark evaluation completed: {successful_benchmarks}/{len(benchmark_collections)} successful")
+    
+    # Generate summary visualizations if we have results
+    if successful_benchmarks > 0:
+        logger.info("\n📊 Generating benchmark summary charts...")
+        try:
+            create_benchmark_summary_charts(
+                run_id=run_id,
+                save_charts=True,
+                show_charts=False  # Don't show interactively in pipeline mode
+            )
+            logger.info("✅ Summary charts generated successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to generate summary charts: {str(e)}")
+    else:
+        logger.warning("⚠️ No successful benchmarks - skipping summary chart generation")
 
 def main():
     """Main pipeline execution function."""
@@ -239,7 +257,7 @@ def main():
     logger.info("=" * 60)
     
     # Create run manager for organizing results
-    rm = RunManager(run_id=run_id, root="runs")
+    rm = RunManager(run_id=run_id)  # Uses ml_pipeline/runs/ automatically
     logger.info(f"📁 Run directory: {rm.run_path}")
 
     # Skip training if requested
@@ -340,7 +358,7 @@ def main():
         return
     
     # Run benchmark evaluation
-    run_benchmarks(run_id, year, project_id)
+    run_benchmarks(run_id, year, project_id, db_host)
     
     logger.info(f"\n🎉 Pipeline completed successfully at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 

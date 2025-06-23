@@ -16,7 +16,7 @@ from ml_pipeline.benchmark_metrics_io import (
     plot_accuracy,
 )
 from ml_pipeline.db_utils import get_db_connection
-from ml_pipeline.raster_utils import pixels_to_labels, extract_pixels_with_missing
+from ml_pipeline.raster_utils import extract_pixels_with_missing
 
 # Suppress boto3 logging
 logging.getLogger('boto3').setLevel(logging.WARNING)
@@ -26,6 +26,48 @@ logging.getLogger('urllib3').setLevel(logging.WARNING)
 
 class BenchmarkTester:
     """Run inference against a (raster) benchmark dataset and capture metrics.
+    
+    Pixel-Level Evaluation Logic
+    ---------------------------
+    This class performs pixel-level accuracy assessment by comparing individual raster 
+    pixels against polygon-based ground truth labels. The evaluation methodology is:
+    
+    1. **Ground Truth**: Training polygons with human-annotated class labels 
+       (Forest/Non-Forest) serve as ground truth regions.
+    
+    2. **Pixel Extraction**: For each polygon, all raster pixels falling within 
+       the polygon boundary are extracted from the benchmark dataset.
+    
+    3. **Individual Pixel Classification**: Each extracted pixel is classified 
+       based on the benchmark raster's pre-processed values:
+       - Value 1 = Forest
+       - Value 0 = Non-Forest  
+       - Value 255 = Missing/NoData (excluded from evaluation)
+    
+    4. **Pixel-Level Comparison**: Each individual pixel prediction is compared 
+       against the polygon's ground truth label. This means:
+       - If a Forest polygon contains 100 pixels, each of those 100 pixels 
+         is individually tested against the "Forest" label
+       - No majority voting or aggregation is performed within polygons
+    
+    5. **Metrics Calculation**: Accuracy metrics reflect the percentage of 
+       individual pixels correctly classified, providing a granular assessment 
+       of model performance at the pixel level.
+    
+    This approach differs from polygon-level evaluation where predictions are 
+    aggregated (e.g., majority vote) within each polygon before comparison. 
+    Pixel-level evaluation provides a more detailed assessment of classification 
+    accuracy and is particularly important for:
+    - Understanding spatial heterogeneity within ground truth polygons
+    - Assessing model performance on mixed land cover areas
+    - Comparing different benchmark datasets with varying spatial resolutions
+    
+    Output Metrics
+    -------------
+    - n_pixels: Total number of individual pixels evaluated (not polygons)
+    - accuracy: Fraction of pixels correctly classified
+    - Precision/Recall/F1: Calculated at the pixel level for each class
+    - missing_pct: Percentage of pixels with missing/nodata values
     """
 
     # ------------------------------------------------------------------
@@ -42,6 +84,8 @@ class BenchmarkTester:
         engine=None,
         run_id: str | None = None,
         test_features_dir: str | Path | None = None,
+        db_host: str = "local",
+        verbose: bool = False,
     ) -> None:
         """Parameters
         ----------
@@ -65,20 +109,27 @@ class BenchmarkTester:
         test_features_dir
             Override for the directory containing the held-out CSVs. Takes
             precedence over *run_id*.
+        db_host
+            Database host configuration: "local" for localhost, "remote" for 
+            production database (defaults to "local").
+        verbose
+            Enable verbose logging for pixel extraction (defaults to False).
         """
         self.base_url = base_url.rstrip("/")
         self.collection = collection
         self.year = str(year)
         self.project_id = project_id
         self.band_indexes = band_indexes or [1]
-        self.engine = engine or get_db_connection()
+        self.engine = engine or get_db_connection(host=db_host)
         self.run_id = run_id
+        self.verbose = verbose
 
         # Where are the held-out feature-ID CSVs?
         if test_features_dir is not None:
             self.test_features_dir = Path(test_features_dir)
         elif run_id is not None:
-            # Look for runs directory in ml_pipeline folder (go up from current location)
+            # Look for runs directory in ml_pipeline root folder (consistent with RunManager)
+            # Path: <ml_pipeline_root>/runs/<run_id>/feature_ids_testing/
             ml_pipeline_dir = Path(__file__).parent.parent.parent  # Go up from src/ml_pipeline to ml_pipeline
             self.test_features_dir = ml_pipeline_dir / "runs" / run_id / "feature_ids_testing"
         else:
@@ -160,49 +211,56 @@ class BenchmarkTester:
             # ------------------------------------------------------------------
             # Extract pixels & classify for each polygon
             # ------------------------------------------------------------------
-            predictions = []
+            # IMPORTANT: We perform PIXEL-LEVEL evaluation, not polygon-level.
+            # Each pixel within a polygon is individually compared against that 
+            # polygon's ground truth label. No aggregation/majority voting is done.
+            pixel_predictions = []  # Store individual pixel predictions
             total_missing_px = 0
             
             for idx, row in gdf_month.iterrows():
                 try:
-                    pixels, missing_px, _ = extract_pixels_with_missing(self.extractor, row.geometry, self.band_indexes)
+                    pixels, missing_px, _ = extract_pixels_with_missing(self.extractor, row.geometry, self.band_indexes, verbose=self.verbose)
                     total_missing_px += missing_px
                     
                     if pixels.size > 0:
-                        y_pred = pixels_to_labels(self.collection, pixels.squeeze())
-                        # Take majority vote if multiple pixels
-                        if len(y_pred) > 1:
-                            unique, counts = np.unique(y_pred, return_counts=True)
-                            predicted_label = unique[np.argmax(counts)]
-                        else:
-                            predicted_label = y_pred[0]
+                        # Handle pre-processed raster values: 1=Forest, 0=Non-Forest, 255=Missing
+                        pixels_flat = pixels.squeeze()
+                        # Filter out missing data (255)
+                        valid_pixels = pixels_flat[pixels_flat != 255]
                         
-                        predictions.append({
-                            "id": str(row["id"]),  # Ensure string type
-                            "predicted_label": predicted_label
-                        })
+                        if len(valid_pixels) > 0:
+                            # Convert pixel values to labels: 1 -> "Forest", 0 -> "Non-Forest"
+                            predicted_labels = ["Forest" if px == 1 else "Non-Forest" for px in valid_pixels]
+                            
+                            # Store each individual pixel prediction with polygon's true label
+                            # This creates one entry per pixel, allowing pixel-level accuracy assessment
+                            polygon_true_label = row["classLabel"]
+                            for predicted_label in predicted_labels:
+                                pixel_predictions.append({
+                                    "polygon_id": str(row["id"]),
+                                    "true_label": polygon_true_label,  # Polygon's ground truth
+                                    "predicted_label": predicted_label  # Individual pixel prediction
+                                })
+                        else:
+                            # All pixels are missing data, skip this polygon
+                            continue
                 except Exception as e:
                     print(f"  ⚠️  Failed to extract pixels for polygon {row['id']}: {e}")
                     continue
             
-            if not predictions:
+            if not pixel_predictions:
                 raise RuntimeError(
                     f"❌  No valid predictions extracted for {month}. Check if the raster has coverage "
                     "or if all pixels are nodata."
                 )
 
-            pred_df = pd.DataFrame(predictions)
-            
-            # Convert gdf_month id to string for consistent merge
-            gdf_month["id"] = gdf_month["id"].astype(str)
-            
-            # Merge predictions into GeoDataFrame
-            gdf_month = gdf_month.merge(pred_df, on="id", how="left")
+            # Convert to DataFrame for easier processing
+            pixel_df = pd.DataFrame(pixel_predictions)
             
             missing_px = total_missing_px
 
             # Pixel-based missing-data metric
-            valid_px = len(predictions)  # Number of successful predictions
+            valid_px = len(pixel_predictions)  # Number of individual pixel predictions
             missing_px_pct = missing_px / (missing_px + valid_px) if (missing_px + valid_px) else 0.0
             print(
                 f"Pixel-level missing data: {missing_px} missing vs {valid_px} valid "
@@ -215,16 +273,10 @@ class BenchmarkTester:
             total_polygons_considered += len(gdf_month)
 
             # ------------------------------------------------------------------
-            # Calculate metrics – drop polygons without predictions
+            # Calculate metrics based on individual pixels
             # ------------------------------------------------------------------
-            gdf_valid = gdf_month[gdf_month["predicted_label"].notna()]
-            if gdf_valid.empty:
-                raise RuntimeError(
-                    f"❌  Predictions failed for every polygon in {month}."
-                )
-
-            y_true = gdf_valid["classLabel"]
-            y_pred_valid = gdf_valid["predicted_label"]
+            y_true = pixel_df["true_label"]
+            y_pred_valid = pixel_df["predicted_label"]
 
             acc = accuracy_score(y_true, y_pred_valid)
             report = classification_report(
@@ -241,7 +293,7 @@ class BenchmarkTester:
                     "collection": self.collection,
                     "month": month,
                     "n_polygons": len(gdf_month),
-                    "n_pixels": len(y_pred),
+                    "n_pixels": len(y_pred_valid),
                     "accuracy": acc,
                     "f1_forest": report["Forest"]["f1-score"],
                     "f1_nonforest": report["Non-Forest"]["f1-score"],
@@ -298,6 +350,6 @@ class BenchmarkTester:
                 raise ValueError("run_id must be provided to save benchmark metrics inside the run folder.")
             save_metrics_csv(metrics_df, benchmark_name=self.collection, run_id=self.run_id)
             show_accuracy_table(metrics_df)
-            plot_accuracy(metrics_df)
+          #  plot_accuracy(metrics_df)
 
         return metrics_df

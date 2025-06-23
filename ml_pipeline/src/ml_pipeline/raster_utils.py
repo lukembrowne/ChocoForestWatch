@@ -6,7 +6,6 @@ import rasterio
 from rasterio.mask import mask
 from rasterio.features import geometry_mask
 from rasterio.enums import Resampling
-# Removed rio-cogeo imports - using simpler gdaladdo approach for overviews
 import subprocess
 from rasterio.profiles import default_gtiff_profile
 from rasterio.warp import calculate_default_transform, reproject
@@ -70,7 +69,7 @@ def pixels_to_labels(collection: str, pixels: np.ndarray) -> np.ndarray:
 
     return out
 
-def extract_pixels_with_missing(extractor, geom, band_indexes):
+def extract_pixels_with_missing(extractor, geom, band_indexes, verbose=True):
     """
     Extract pixels that fall inside *geom* (WGS-84) from every COG returned
     by *extractor*.  Also counts nodata pixels.
@@ -83,48 +82,53 @@ def extract_pixels_with_missing(extractor, geom, band_indexes):
     """
     pixels, missing_px = [], 0
     px_area_m2 = None
+    
+    def vprint(*args, **kwargs):
+        """Verbose print - only prints if verbose=True"""
+        if verbose:
+            print(*args, **kwargs)
 
     try:
-        print(f"🔍 Starting pixel extraction with band_indexes: {band_indexes}")
-        print(f"📐 Input geometry type: {geom.geom_type}, bounds: {geom.bounds}")
+        vprint(f"🔍 Starting pixel extraction with band_indexes: {band_indexes}")
+        vprint(f"📐 Input geometry type: {geom.geom_type}, bounds: {geom.bounds}")
 
         # Pre-transform geometry to both coordinate systems
         # Assume input geometry is in WGS84 (EPSG:4326)
         geom_wgs84 = geom
         
         # Transform to Web Mercator (EPSG:3857)
-        print("🗺️  Transforming geometry to Web Mercator...")
+        vprint("🗺️  Transforming geometry to Web Mercator...")
         transformer_to_3857 = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
         geom_3857 = transform(transformer_to_3857.transform, geom)
-        print(f"✓ Web Mercator bounds: {geom_3857.bounds}")
+        vprint(f"✓ Web Mercator bounds: {geom_3857.bounds}")
 
         # Get COG URLs for the given geometry
-        print(f"🔍 Fetching COG URLs for geometry bounds: {geom.bounds}")
+        vprint(f"🔍 Fetching COG URLs for geometry bounds: {geom.bounds}")
         cogs = extractor.get_cog_urls(geom)
-        print(f"📦 Found {len(cogs)} COGs for the given geometry")
+        vprint(f"📦 Found {len(cogs)} COGs for the given geometry")
         
         if not cogs:
-            print("⚠️  No COGs found for this geometry")
+            vprint("⚠️  No COGs found for this geometry")
             return np.empty((0, len(band_indexes))), missing_px, px_area_m2
 
         for i, cog in enumerate(cogs):
-            print(f"\n📊 Processing COG {i+1}/{len(cogs)}: {cog}")
+            vprint(f"\n📊 Processing COG {i+1}/{len(cogs)}: {cog}")
             
             try:
                 with rasterio.open(cog) as src:
-                    print(f"  📋 COG info: CRS={src.crs}, shape={src.shape}, dtype={src.dtypes[0]}")
-                    print(f"  📏 Resolution: {src.res}, bounds: {src.bounds}")
+                    vprint(f"  📋 COG info: CRS={src.crs}, shape={src.shape}, dtype={src.dtypes[0]}")
+                    vprint(f"  📏 Resolution: {src.res}, bounds: {src.bounds}")
                     
                     # Choose appropriate geometry based on raster CRS
                     mask_geom = geom_wgs84 if src.crs.to_epsg() == 4326 else geom_3857
-                    print(f"  🎯 Using {'WGS84' if src.crs.to_epsg() == 4326 else 'Web Mercator'} geometry for masking")
+                    vprint(f"  🎯 Using {'WGS84' if src.crs.to_epsg() == 4326 else 'Web Mercator'} geometry for masking")
                     
                     # Check if raster is extremely large and might cause memory issues
                     total_pixels = src.width * src.height
                     if total_pixels > 100_000_000:  # 100M pixels
-                        print(f"  ⚠️  Large raster detected - this may take several minutes or cause memory issues")
+                        vprint(f"  ⚠️  Large raster detected - this may take several minutes or cause memory issues")
                     
-                    print(f"  ✂️  Applying rasterio mask...")
+                    vprint(f"  ✂️  Applying rasterio mask...")
                     try:
                         # Add explicit memory and error handling for the mask operation
                         import gc
@@ -138,29 +142,29 @@ def extract_pixels_with_missing(extractor, geom, band_indexes):
                             all_touched=True,
                             nodata=src.nodata
                         )
-                        print(f"  ✓ Mask result shape: {out.shape}, dtype: {out.dtype}")
+                        vprint(f"  ✓ Mask result shape: {out.shape}, dtype: {out.dtype}")
                         
                         # Check if mask result is reasonable
                         if out.size == 0:
-                            print(f"  ⚠️  Mask returned empty array - geometry may not intersect raster")
+                            vprint(f"  ⚠️  Mask returned empty array - geometry may not intersect raster")
                             continue
                         elif out.size > 50_000_000:  # 50M pixels in result
-                            print(f"  ⚠️  Large mask result ({out.size:,} pixels) - processing may be slow")
+                            vprint(f"  ⚠️  Large mask result ({out.size:,} pixels) - processing may be slow")
                             
                     except MemoryError as e:
-                        print(f"  ❌ Memory error during masking: {str(e)}")
-                        print(f"  💡 Raster too large for available memory - skipping this COG")
+                        vprint(f"  ❌ Memory error during masking: {str(e)}")
+                        vprint(f"  💡 Raster too large for available memory - skipping this COG")
                         continue
                     except Exception as e:
-                        print(f"  ❌ Error during masking operation: {str(e)}")
-                        print(f"  💥 Mask error type: {type(e).__name__}")
+                        vprint(f"  ❌ Error during masking operation: {str(e)}")
+                        vprint(f"  💥 Mask error type: {type(e).__name__}")
                         raise
 
                     # ------------------------------------------------------------------
                     # Build a 2-D nodata mask (rows, cols)
                     # ------------------------------------------------------------------
                     nodata = src.nodata
-                    print(f"  🚫 Nodata value: {nodata}")
+                    vprint(f"  🚫 Nodata value: {nodata}")
                     
                     if nodata is not None and not np.isnan(nodata):
                         if out.ndim == 3:                         # multi-band
@@ -173,7 +177,7 @@ def extract_pixels_with_missing(extractor, geom, band_indexes):
 
                     cog_missing = int(nodata_mask.sum())
                     missing_px += cog_missing
-                    print(f"  📊 Missing pixels in this COG: {cog_missing}")
+                    vprint(f"  📊 Missing pixels in this COG: {cog_missing}")
 
                     # ------------------------------------------------------------------
                     # Move bands to the last axis so mask lines up with first two dims
@@ -188,16 +192,16 @@ def extract_pixels_with_missing(extractor, geom, band_indexes):
                     arr = arr[~nodata_mask]                      # (n_valid_px, bands)
                     valid_pixels_after = arr.size
                     
-                    print(f"  📈 Valid pixels: {valid_pixels_after} (from {valid_pixels_before} total)")
+                    vprint(f"  📈 Valid pixels: {valid_pixels_after} (from {valid_pixels_before} total)")
 
                     if arr.size:
                         if px_area_m2 is None:
-                            print("  📐 Calculating pixel area...")
+                            vprint("  📐 Calculating pixel area...")
                             resx, resy = src.res
 
                             if src.crs and src.crs.is_geographic:
                                 # CRS units are degrees – compute geodesic area of one pixel at tile centre
-                                print("  🌍 Geographic CRS - calculating geodesic area")
+                                vprint("  🌍 Geographic CRS - calculating geodesic area")
                                 bounds = src.bounds
                                 center_lon = (bounds.left + bounds.right) / 2.0
                                 center_lat = (bounds.top + bounds.bottom) / 2.0
@@ -213,152 +217,42 @@ def extract_pixels_with_missing(extractor, geom, band_indexes):
                                 # polygon_area_perimeter returns negative area when ring is CW; take abs
                                 area_m2, _ = _GEOD.polygon_area_perimeter(lons, lats)
                                 px_area_m2 = abs(area_m2)
-                                print(f"    ✓ Pixel area: {px_area_m2:.2f} m²")
+                                vprint(f"    ✓ Pixel area: {px_area_m2:.2f} m²")
                             else:
                                 # CRS units are metres – area = resx * resy
-                                print("  📏 Projected CRS - using resolution for area")
+                                vprint("  📏 Projected CRS - using resolution for area")
                                 px_area_m2 = abs(resx * resy)
-                                print(f"    ✓ Pixel area: {px_area_m2:.2f} m²")
+                                vprint(f"    ✓ Pixel area: {px_area_m2:.2f} m²")
                         
                         reshaped_arr = arr.reshape(-1, len(band_indexes))
                         pixels.append(reshaped_arr)
-                        print(f"  ✅ Added {reshaped_arr.shape[0]} pixels to collection")
+                        vprint(f"  ✅ Added {reshaped_arr.shape[0]} pixels to collection")
                     else:
-                        print("  ⚠️  No valid pixels in this COG")
+                        vprint("  ⚠️  No valid pixels in this COG")
                         
             except Exception as e:
-                print(f"  ❌ Error processing COG {cog}: {str(e)}")
-                print(f"  💥 Error type: {type(e).__name__}")
+                vprint(f"  ❌ Error processing COG {cog}: {str(e)}")
+                vprint(f"  💥 Error type: {type(e).__name__}")
                 # Continue with next COG instead of failing entirely
                 continue
 
-        print(f"\n📊 Final summary:")
-        print(f"  Total COGs processed: {len(cogs)}")
-        print(f"  Total missing pixels: {missing_px}")
-        print(f"  Pixel collections: {len(pixels)}")
+        vprint(f"\n📊 Final summary:")
+        vprint(f"  Total COGs processed: {len(cogs)}")
+        vprint(f"  Total missing pixels: {missing_px}")
+        vprint(f"  Pixel collections: {len(pixels)}")
         
         if not pixels:
-            print("⚠️  No valid pixels found in any COG")
+            vprint("⚠️  No valid pixels found in any COG")
             return np.empty((0, len(band_indexes))), missing_px, px_area_m2
 
         final_pixels = np.vstack(pixels)
-        print(f"✅ Successfully extracted {final_pixels.shape[0]} total pixels")
+        vprint(f"✅ Successfully extracted {final_pixels.shape[0]} total pixels")
         return final_pixels, missing_px, px_area_m2
         
     except Exception as e:
-        print(f"❌ Critical error in extract_pixels_with_missing: {str(e)}")
-        print(f"💥 Error type: {type(e).__name__}")
+        vprint(f"❌ Critical error in extract_pixels_with_missing: {str(e)}")
+        vprint(f"💥 Error type: {type(e).__name__}")
         raise
-
-
-def validate_raster_integrity(raster_path: Union[str, Path]) -> Dict[str, any]:
-    """
-    Validate raster file integrity and return comprehensive metadata.
-    
-    Parameters
-    ----------
-    raster_path : str or Path
-        Path to the raster file to validate
-        
-    Returns
-    -------
-    dict
-        Dictionary containing validation results and metadata
-    """
-    results = {
-        "valid": False,
-        "error": None,
-        "metadata": {},
-        "statistics": {},
-        "warnings": []
-    }
-    
-    try:
-        with rasterio.open(raster_path) as src:
-            # Basic metadata
-            results["metadata"] = {
-                "driver": src.driver,
-                "width": src.width,
-                "height": src.height,
-                "count": src.count,
-                "dtype": str(src.dtypes[0]),
-                "crs": str(src.crs) if src.crs else None,
-                "nodata": src.nodata,
-                "transform": src.transform,
-                "bounds": src.bounds,
-                "compression": src.compression.name if src.compression else None,
-                "tiled": src.is_tiled,
-                "blocksize": (src.block_shapes[0] if src.block_shapes else None),
-                "overviews": [src.overviews(i) for i in range(1, src.count + 1)]
-            }
-            
-            # Read first band for statistics
-            data = src.read(1)
-            
-            # Calculate statistics
-            valid_data = data[data != src.nodata] if src.nodata is not None else data
-            
-            results["statistics"] = {
-                "total_pixels": data.size,
-                "valid_pixels": valid_data.size,
-                "missing_pixels": data.size - valid_data.size,
-                "missing_percentage": ((data.size - valid_data.size) / data.size) * 100,
-                "min_value": float(np.min(valid_data)) if valid_data.size > 0 else None,
-                "max_value": float(np.max(valid_data)) if valid_data.size > 0 else None,
-                "mean_value": float(np.mean(valid_data)) if valid_data.size > 0 else None,
-                "std_value": float(np.std(valid_data)) if valid_data.size > 0 else None,
-                "unique_values": len(np.unique(valid_data)) if valid_data.size > 0 else 0
-            }
-            
-            # Validation checks
-            if src.crs is None:
-                results["warnings"].append("No CRS defined")
-            
-            if src.nodata is None:
-                results["warnings"].append("No nodata value defined")
-            
-            if not src.is_tiled:
-                results["warnings"].append("Raster is not tiled (not optimal for COG)")
-            
-            if not any(src.overviews(i) for i in range(1, src.count + 1)):
-                results["warnings"].append("No overviews present")
-            
-            if src.width > 10000 or src.height > 10000:
-                results["warnings"].append("Large raster dimensions may cause performance issues")
-            
-            results["valid"] = True
-            
-    except Exception as e:
-        results["error"] = str(e)
-        results["valid"] = False
-    
-    return results
-
-
-def compute_file_checksum(file_path: Union[str, Path], algorithm: str = 'md5') -> str:
-    """
-    Compute checksum for a file.
-    
-    Parameters
-    ----------
-    file_path : str or Path
-        Path to the file
-    algorithm : str, optional
-        Hash algorithm to use (default: 'md5')
-        
-    Returns
-    -------
-    str
-        Hexadecimal digest of the file
-    """
-    hash_func = hashlib.new(algorithm)
-    
-    with open(file_path, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_func.update(chunk)
-    
-    return hash_func.hexdigest()
-
 
 def apply_geometry_mask_to_raster(
     raster_path: Union[str, Path],
@@ -416,7 +310,7 @@ def apply_geometry_mask_to_raster(
         return True
         
     except Exception as e:
-        print(f"Failed to apply geometry mask: {str(e)}")
+        vprint(f"Failed to apply geometry mask: {str(e)}")
         return False
 
 
@@ -445,17 +339,17 @@ def add_overviews_simple(
     try:
         cmd = ["gdaladdo", "-r", resampling, str(raster_path)] + [str(level) for level in levels]
         
-        print(f"Adding overviews to {raster_path} with levels {levels}")
+        vprint(f"Adding overviews to {raster_path} with levels {levels}")
         subprocess.run(cmd, check=True, capture_output=True, text=True)
         
-        print(f"Successfully added overviews to: {raster_path}")
+        vprint(f"Successfully added overviews to: {raster_path}")
         return True
         
     except subprocess.CalledProcessError as e:
-        print(f"Failed to add overviews: {e.stderr}")
+        vprint(f"Failed to add overviews: {e.stderr}")
         return False
     except Exception as e:
-        print(f"Failed to add overviews: {str(e)}")
+        vprint(f"Failed to add overviews: {str(e)}")
         return False
 
 
@@ -502,7 +396,7 @@ def create_optimized_raster(
             str(output_path)
         ]
         
-        print(f"Creating optimized raster: {output_path}")
+        vprint(f"Creating optimized raster: {output_path}")
         subprocess.run(cmd, check=True, capture_output=True, text=True)
         
         # Add overviews if requested
@@ -510,169 +404,12 @@ def create_optimized_raster(
             if not add_overviews_simple(output_path, overview_levels):
                 return False
         
-        print(f"Successfully created optimized raster: {output_path}")
+        vprint(f"Successfully created optimized raster: {output_path}")
         return True
         
     except subprocess.CalledProcessError as e:
-        print(f"Failed to create optimized raster: {e.stderr}")
+        vprint(f"Failed to create optimized raster: {e.stderr}")
         return False
     except Exception as e:
-        print(f"Failed to create optimized raster: {str(e)}")
+        vprint(f"Failed to create optimized raster: {str(e)}")
         return False
-
-
-def standardize_forest_labels(
-    data: np.ndarray,
-    collection_id: str,
-    nodata_value: Union[int, float] = -999
-) -> np.ndarray:
-    """
-    Standardize pixel values to forest (1) / non-forest (0) / nodata (-999) labels.
-    
-    Parameters
-    ----------
-    data : np.ndarray
-        Input raster data
-    collection_id : str
-        Collection ID for pixel interpretation
-    nodata_value : int or float, optional
-        Value to use for nodata (default: -999)
-        
-    Returns
-    -------
-    np.ndarray
-        Standardized array with values 0, 1, or nodata_value
-    """
-    try:
-        # Use existing pixels_to_labels function
-        labels = pixels_to_labels(collection_id, data)
-        
-        # Convert to standardized numeric format
-        standardized = np.full_like(data, nodata_value, dtype=np.int16)
-        
-        forest_mask = (labels == "Forest")
-        non_forest_mask = (labels == "Non-Forest")
-        
-        standardized[forest_mask] = 1
-        standardized[non_forest_mask] = 0
-        # Keep nodata_value for unknown/missing areas
-        
-        return standardized
-        
-    except Exception as e:
-        print(f"Failed to standardize forest labels: {str(e)}")
-        raise
-
-
-def compare_raster_statistics(
-    raster1_path: Union[str, Path],
-    raster2_path: Union[str, Path]
-) -> Dict[str, any]:
-    """
-    Compare statistics between two rasters.
-    
-    Parameters
-    ----------
-    raster1_path : str or Path
-        Path to first raster
-    raster2_path : str or Path
-        Path to second raster
-        
-    Returns
-    -------
-    dict
-        Comparison results
-    """
-    results = {
-        "compatible": False,
-        "differences": [],
-        "statistics_comparison": {}
-    }
-    
-    try:
-        stats1 = validate_raster_integrity(raster1_path)
-        stats2 = validate_raster_integrity(raster2_path)
-        
-        if not (stats1["valid"] and stats2["valid"]):
-            results["differences"].append("One or both rasters are invalid")
-            return results
-        
-        # Check spatial compatibility
-        meta1 = stats1["metadata"]
-        meta2 = stats2["metadata"]
-        
-        if (meta1["width"] != meta2["width"] or 
-            meta1["height"] != meta2["height"]):
-            results["differences"].append("Different dimensions")
-        
-        if meta1["crs"] != meta2["crs"]:
-            results["differences"].append("Different CRS")
-        
-        if meta1["transform"] != meta2["transform"]:
-            results["differences"].append("Different transform/resolution")
-        
-        # Compare statistics
-        stat1 = stats1["statistics"]
-        stat2 = stats2["statistics"]
-        
-        for key in ["total_pixels", "valid_pixels", "missing_pixels"]:
-            if stat1[key] != stat2[key]:
-                results["differences"].append(f"Different {key}")
-        
-        results["statistics_comparison"] = {
-            "raster1": stat1,
-            "raster2": stat2
-        }
-        
-        results["compatible"] = len(results["differences"]) == 0
-        
-    except Exception as e:
-        results["differences"].append(f"Comparison failed: {str(e)}")
-    
-    return results
-
-
-def get_raster_overview_info(raster_path: Union[str, Path]) -> Dict[str, any]:
-    """
-    Get detailed information about raster overviews.
-    
-    Parameters
-    ----------
-    raster_path : str or Path
-        Path to the raster file
-        
-    Returns
-    -------
-    dict
-        Overview information
-    """
-    info = {
-        "has_overviews": False,
-        "overview_count": 0,
-        "overview_levels": [],
-        "overview_sizes": []
-    }
-    
-    try:
-        with rasterio.open(raster_path) as src:
-            for band_idx in range(1, src.count + 1):
-                overviews = src.overviews(band_idx)
-                if overviews:
-                    info["has_overviews"] = True
-                    info["overview_count"] = len(overviews)
-                    info["overview_levels"] = overviews
-                    
-                    # Calculate overview sizes
-                    overview_sizes = []
-                    for level in overviews:
-                        ov_width = src.width // level
-                        ov_height = src.height // level
-                        overview_sizes.append((ov_width, ov_height))
-                    
-                    info["overview_sizes"] = overview_sizes
-                break  # Just check first band
-    
-    except Exception as e:
-        info["error"] = str(e)
-    
-    return info
