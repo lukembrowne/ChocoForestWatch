@@ -230,38 +230,18 @@ def get_western_ecuador_stats(collection_id, force_recalculate=False):
         
         logger.info(f"📍 Using TiTiler URL: {titiler_url}")
         
-        # Check if this is a pre-processed collection that's already clipped to Western Ecuador
-        is_preprocessed = _is_preprocessed_collection(collection_id)
+        # All collections now use the unified boundary-based approach
+        logger.info("🚀 Using unified boundary-based calculation")
+        aoi_stats = AOISummaryStats(titiler_url, collection_id)
         
-        if is_preprocessed:
-            logger.info("🚀 Using simplified mode for pre-processed collection")
-            # Calculate statistics using simplified mode (no boundary clipping needed)
-            aoi_stats = AOISummaryStats(titiler_url, collection_id, simplified_mode=True)
-            
-            logger.info("🧮 Starting simplified summary computation...")
-            
-            try:
-                # No boundary needed for simplified mode
-                stats_df = aoi_stats.summary({})
-            except Exception as e:
-                logger.error(f"❌ Simplified summary computation failed: {str(e)}")
-                raise
-                    
-        else:
-            logger.info("📦 Using standard mode with boundary clipping for non-preprocessed collection")
-            # Fall back to standard boundary-based calculation
-            boundary_polygon = _load_boundary_polygon()
-            if not boundary_polygon:
-                raise Exception("Could not load western Ecuador boundary")
-            
-            boundary_geojson = _convert_boundary_to_geojson(boundary_polygon)
-            aoi_stats = AOISummaryStats(titiler_url, collection_id, simplified_mode=False)
-            
-            try:
-                stats_df = aoi_stats.summary(boundary_geojson)
-            except Exception as e:
-                logger.error(f"❌ Standard summary computation failed: {str(e)}")
-                raise
+        logger.info("🧮 Starting summary computation...")
+        
+        try:
+            # Use the unified summary method (loads boundary automatically if no AOI provided)
+            stats_df = aoi_stats.summary()
+        except Exception as e:
+            logger.error(f"❌ Summary computation failed: {str(e)}")
+            raise
         
         if stats_df is None or stats_df.empty:
             raise Exception("AOISummaryStats returned empty results")
