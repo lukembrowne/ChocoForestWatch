@@ -89,23 +89,68 @@ const { t } = useI18n()
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .map-legend {
-    top: 12px;
-    left: 12px;
-    padding: 10px;
-    min-width: 120px;
+    position: absolute;
+  bottom: 125px;
+  right: 16px;
+    padding: 8px;
+    min-width: 110px;
+    max-width: 140px;
+  }
+  
+  .legend-header {
+    margin-bottom: 6px;
   }
   
   .legend-title {
-    font-size: 11px;
+    font-size: 10px;
+  }
+  
+  .legend-items {
+    gap: 4px;
   }
   
   .legend-label {
-    font-size: 11px;
+    font-size: 10px;
   }
   
   .legend-color {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .map-legend {
+    top: 8px;
+    left: 8px;
+    padding: 6px;
+    min-width: 100px;
+    max-width: 120px;
+  }
+  
+  .legend-header {
+    margin-bottom: 4px;
+  }
+  
+  .legend-title {
+    font-size: 9px;
+  }
+  
+  .legend-items {
+    gap: 3px;
+  }
+  
+  .legend-item {
+    gap: 6px;
+  }
+  
+  .legend-label {
+    font-size: 9px;
+  }
+  
+  .legend-color {
+    width: 10px;
+    height: 10px;
   }
 }
 </style>
