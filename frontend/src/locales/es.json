@@ -35,6 +35,67 @@
     "runAnalysis": "Ejecutar Análisis",
     "selectArea": "Seleccionar Área",
     "title": "Análisis",
+    "panel": {
+      "chooseMap": "Elegir Mapa de Cobertura Forestal",
+      "chooseMapTooltip": "Seleccione qué conjunto de datos de cobertura forestal usar para el análisis. El mapa seleccionado aparecerá automáticamente en el mapa principal.",
+      "selectMapPlaceholder": "Seleccionar mapa de cobertura forestal",
+      "selectMapFirst": "Por favor seleccione primero un mapa de cobertura forestal",
+      "defineArea": "Definir Área de Análisis",
+      "defineAreaTooltip": "Elija cómo desea definir el área para el análisis de cobertura forestal. Puede usar límites regionales, dibujar su propia área o cargar un archivo de límites personalizado.",
+      "methods": {
+        "regional": "Regional",
+        "draw": "Dibujar",
+        "upload": "Cargar"
+      },
+      "regional": {
+        "title": "Todo el Ecuador Occidental",
+        "description": "Analice la cobertura forestal para toda la región del Ecuador Occidental usando estadísticas precalculadas.",
+        "calculate": "Calcular Estadísticas Regionales"
+      },
+      "draw": {
+        "title": "Dibujar Área Personalizada",
+        "description": "Dibuje un límite personalizado en el mapa para analizar la cobertura forestal de un área específica de interés.",
+        "start": "Comenzar a Dibujar",
+        "cancel": "Cancelar Dibujo"
+      },
+      "upload": {
+        "title": "Cargar Archivo de Límites",
+        "description": "Cargue un archivo GeoJSON o Shapefile comprimido para analizar la cobertura forestal de límites personalizados.",
+        "dragDrop": "Arrastre y suelte su archivo aquí",
+        "clickToSelect": "o haga clic para seleccionar archivo",
+        "supportedFormats": "Soporta: GeoJSON, Shapefile (ZIP)",
+        "reading": "Leyendo archivo...",
+        "processing": "Procesando geometría...",
+        "complete": "¡Carga completa!",
+        "error": "Error al cargar archivo",
+        "unsupportedFormat": "Formato de archivo no soportado. Por favor use GeoJSON o Shapefile comprimido.",
+        "invalidGeoJSON": "Formato GeoJSON inválido",
+        "invalidShapefile": "Shapefile inválido o corrupto",
+        "readError": "Error al leer archivo",
+        "noFeatures": "No se encontraron características en el archivo",
+        "noValidFeatures": "No se encontraron características geométricas válidas",
+        "success": "Se cargaron exitosamente {count} característica(s)",
+        "features": "Características",
+        "area": "Área Total",
+        "calculateStats": "Calcular Estadísticas Forestales",
+        "multipleFeatures": "Se detectaron múltiples características. Usando la primera característica para el análisis.",
+        "statsCalculated": "Estadísticas forestales calculadas exitosamente",
+        "statsError": "Error al calcular estadísticas forestales"
+      },
+      "results": {
+        "title": "Resultados del Análisis",
+        "allWesternEcuador": "Todo el Ecuador Occidental",
+        "customArea": "Área Personalizada",
+        "regional": "Regional",
+        "analyzeNew": "Analizar Nueva Área",
+        "showRegional": "Mostrar Estadísticas Regionales",
+        "forestCover": "Cobertura Forestal",
+        "nonForest": "No Forestal",
+        "noData": "Sin Datos",
+        "missingPixels": "Algunas áreas tienen datos faltantes",
+        "completeCoverage": "Cobertura completa de datos"
+      }
+    },
     "unified": {
       "deforestation": {
         "existing": {
@@ -762,11 +823,18 @@
     }
   },
   "sidebar": {
+    "expand": "Expandir sección",
+    "collapse": "Contraer sección",
     "search": {
       "title": "Búsqueda de Ubicación",
       "placeholder": "Buscar cualquier ubicación...",
       "noResults": "No se encontraron ubicaciones",
-      "tryDifferent": "Prueba con un término de búsqueda diferente"
+      "tryDifferent": "Prueba con un término de búsqueda diferente",
+      "minChars": "Ingresa al menos 3 caracteres para buscar",
+      "noResultsFor": "No se encontraron resultados para '{query}'",
+      "foundResults": "Se encontraron {count} ubicación(es)",
+      "error": "Ocurrió un error en la búsqueda",
+      "navigatedTo": "Navegado a {location}"
     },
     "landCover": {
       "chooseMap": "Elegir Mapa de Cobertura Forestal",
@@ -813,9 +881,11 @@
       "features": "Características",
       "area": "Área Total",
       "calculateStats": "Calcular Estadísticas Forestales",
+      "calculating": "Calculando...",
       "statsCalculated": "Estadísticas forestales calculadas exitosamente",
       "statsError": "Error al calcular estadísticas forestales",
-      "multipleFeatures": "Se detectaron múltiples características. Calculando estadísticas solo para la primera característica."
+      "multipleFeatures": "Se detectaron múltiples características. Calculando estadísticas solo para la primera característica.",
+      "fileCleared": "Archivo cargado eliminado"
     }
   },
   "welcome": {

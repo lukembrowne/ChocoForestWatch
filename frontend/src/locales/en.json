@@ -35,6 +35,67 @@
     "runAnalysis": "Run Analysis",
     "selectArea": "Select Area",
     "title": "Analysis",
+    "panel": {
+      "chooseMap": "Choose Forest Cover Map",
+      "chooseMapTooltip": "Select which forest cover dataset to use for analysis. The selected map will automatically appear on the main map.",
+      "selectMapPlaceholder": "Select forest cover map",
+      "selectMapFirst": "Please select a forest cover map first",
+      "defineArea": "Define Analysis Area",
+      "defineAreaTooltip": "Choose how you want to define the area for forest cover analysis. You can use regional boundaries, draw your own area, or upload a custom boundary file.",
+      "methods": {
+        "regional": "Regional",
+        "draw": "Draw",
+        "upload": "Upload"
+      },
+      "regional": {
+        "title": "All of Western Ecuador",
+        "description": "Analyze forest cover for the entire Western Ecuador region using pre-calculated statistics.",
+        "calculate": "Calculate Regional Statistics"
+      },
+      "draw": {
+        "title": "Draw Custom Area",
+        "description": "Draw a custom boundary on the map to analyze forest cover for a specific area of interest.",
+        "start": "Start Drawing",
+        "cancel": "Cancel Drawing"
+      },
+      "upload": {
+        "title": "Upload Boundary File",
+        "description": "Upload a GeoJSON file or zipped Shapefile to analyze forest cover for custom boundaries.",
+        "dragDrop": "Drag & drop your file here",
+        "clickToSelect": "or click to select file",
+        "supportedFormats": "Supports: GeoJSON, Shapefile (ZIP)",
+        "reading": "Reading file...",
+        "processing": "Processing geometry...",
+        "complete": "Upload complete!",
+        "error": "Failed to upload file",
+        "unsupportedFormat": "Unsupported file format. Please use GeoJSON or zipped Shapefile.",
+        "invalidGeoJSON": "Invalid GeoJSON format",
+        "invalidShapefile": "Invalid or corrupted Shapefile",
+        "readError": "Error reading file",
+        "noFeatures": "No features found in file",
+        "noValidFeatures": "No valid geometric features found",
+        "success": "Successfully uploaded {count} feature(s)",
+        "features": "Features",
+        "area": "Total Area",
+        "calculateStats": "Calculate Forest Statistics",
+        "multipleFeatures": "Multiple features detected. Using the first feature for analysis.",
+        "statsCalculated": "Forest statistics calculated successfully",
+        "statsError": "Error calculating forest statistics"
+      },
+      "results": {
+        "title": "Analysis Results",
+        "allWesternEcuador": "All of Western Ecuador",
+        "customArea": "Custom Area",
+        "regional": "Regional",
+        "analyzeNew": "Analyze New Area",
+        "showRegional": "Show Regional Stats",
+        "forestCover": "Forest Cover",
+        "nonForest": "Non-Forest",
+        "noData": "No Data",
+        "missingPixels": "Some areas have missing data",
+        "completeCoverage": "Complete data coverage"
+      }
+    },
     "unified": {
       "deforestation": {
         "existing": {
@@ -762,11 +823,18 @@
     }
   },
   "sidebar": {
+    "expand": "Expand section",
+    "collapse": "Collapse section",
     "search": {
       "title": "Location Search",
       "placeholder": "Search for any location...",
       "noResults": "No locations found",
-      "tryDifferent": "Try a different search term"
+      "tryDifferent": "Try a different search term",
+      "minChars": "Enter at least 3 characters to search",
+      "noResultsFor": "No results found for '{query}'",
+      "foundResults": "Found {count} location(s)",
+      "error": "Search error occurred",
+      "navigatedTo": "Navigated to {location}"
     },
     "landCover": {
       "chooseMap": "Choose Forest Cover Map",
@@ -813,9 +881,11 @@
       "features": "Features",
       "area": "Total Area",
       "calculateStats": "Calculate Forest Statistics",
+      "calculating": "Calculating...",
       "statsCalculated": "Forest statistics calculated successfully",
       "statsError": "Error calculating forest statistics",
-      "multipleFeatures": "Multiple features detected. Calculating statistics for the first feature only."
+      "multipleFeatures": "Multiple features detected. Calculating statistics for the first feature only.",
+      "fileCleared": "Uploaded file cleared"
     }
   },
   "welcome": {
