@@ -108,7 +108,7 @@ def process_quad(quad_name: str, run_id: str, year: str):
     """Process a single quad for composite generation."""
     try:
         with CompositeGenerator(run_id=run_id, year=year) as composite_gen:
-            composite_gen.generate_composite(quad_name=quad_name)
+            composite_gen.generate_composite(quad_name=quad_name, skip_s3_upload=True )
         return True
     except Exception as e:
         logger.error(f"Error processing quad {quad_name}: {str(e)}")
@@ -153,7 +153,7 @@ def generate_composites(run_id: str, year: str, db_host: str = "local"):
         if successful > 1:
             logger.info("🔗 Merging individual composite COGs into single file...")
             with CompositeGenerator(run_id=run_id, year=year) as composite_gen:
-                merged_key = composite_gen.merge_composites()
+                merged_key = composite_gen.merge_composites(use_local_files=True)
                 if merged_key:
                     logger.info(f"✅ Successfully merged composites: {merged_key}")
                     use_merged = True
