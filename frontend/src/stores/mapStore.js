@@ -461,7 +461,7 @@ export const useMapStore = defineStore('map', () => {
     if (type === 'planet') {
       const year = date.split('-')[0];
       source = new XYZ({
-        url: `${titilerURL}/collections/nicfi-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C2500`,
+        url: `${titilerURL}/collections/nicfi-${date}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&pixel_selection=first&bidx=3&bidx=2&bidx=1&rescale=0%2C1500`,
         maxZoom: 14,
         attributions: `Imagery © ${year} Planet Labs Inc. All use subject to the <a href="https://www.planet.com/terms-of-use/" target="_blank">Planet Participant License Agreement</a>`
       });
