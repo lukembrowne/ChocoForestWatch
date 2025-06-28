@@ -17,6 +17,7 @@ class CompositeGenerator:
         self.root = Path(root)
         self.run_path = self.root / run_id
         self.temp_dir = None
+        self.local_composite_files = []  # Track local composite files for merging
         
     def __enter__(self):
         """Create temporary directory when entering context."""
@@ -25,10 +26,12 @@ class CompositeGenerator:
         
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Clean up temporary directory when exiting context."""
+        # Clean up any remaining local composite files
+        self.cleanup_local_files()
         if self.temp_dir:
             shutil.rmtree(self.temp_dir)
         
-    def generate_composite(self, quad_name: str, min_pixels: int = 10):
+    def generate_composite(self, quad_name: str, min_pixels: int = 10, skip_s3_upload: bool = False):
         """Generate annual composite for a given quad."""
         if not self.temp_dir:
             raise RuntimeError("CompositeGenerator must be used as a context manager")
@@ -59,16 +62,27 @@ class CompositeGenerator:
         print("Created output files.")
         
         try:
-            # Upload to S3
-            print("Uploading to S3...")
-            self._upload_to_s3(quad_name, cover_path)
-            print("Uploaded to S3.")
+            if skip_s3_upload:
+                # Keep local file for later merging
+                print("Skipping S3 upload, keeping file for local merging...")
+                self.local_composite_files.append(cover_path)
+                return str(cover_path)  # Return path for tracking
+            else:
+                # Upload to S3
+                print("Uploading to S3...")
+                self._upload_to_s3(quad_name, cover_path)
+                print("Uploaded to S3.")
 
-        finally:
-            # Clean up temp files
-            # if stacked_path.exists():
-            #     stacked_path.unlink()
+        except Exception as e:
+            # Clean up on error, even if skip_s3_upload is True
             if cover_path.exists():
+                cover_path.unlink()
+            if skip_s3_upload and cover_path in self.local_composite_files:
+                self.local_composite_files.remove(cover_path)
+            raise
+        finally:
+            # Clean up temp files only if not keeping for local merge
+            if not skip_s3_upload and cover_path.exists():
                 cover_path.unlink()
         
     def _stack_monthly_data(self, cogs):
@@ -135,6 +149,13 @@ class CompositeGenerator:
         self._apply_sieve_filter(cover_path, min_pixels)
         
         return stacked_path, cover_path
+    
+    def cleanup_local_files(self):
+        """Clean up locally stored composite files."""
+        for file_path in self.local_composite_files:
+            if Path(file_path).exists():
+                Path(file_path).unlink()
+        self.local_composite_files.clear()
         
     def _apply_sieve_filter(self, tif_path, min_pixels):
         """Apply sieve filter to remove small objects."""
@@ -170,7 +191,7 @@ class CompositeGenerator:
         cover_remote_key = f"predictions/{self.run_id}-composites/{self.year}/{quad_name}_{self.year}_forest_cover.tif"
         upload_file(cover_path, cover_remote_key)
         
-    def merge_composites(self):
+    def merge_composites(self, use_local_files: bool = False):
         """Merge all individual composite COGs into a single mosaic COG."""
         if not self.temp_dir:
             raise RuntimeError("CompositeGenerator must be used as a context manager")
@@ -178,31 +199,53 @@ class CompositeGenerator:
         logger = logging.getLogger(__name__)
         logger.info(f"🔄 Starting merge of composite COGs for {self.run_id}-{self.year}")
         
-        # List all individual composite COGs from S3
-        s3_prefix = f"predictions/{self.run_id}-composites/{self.year}/"
-        s3_files = list_files(prefix=s3_prefix)
-        
-        if not s3_files:
-            logger.warning(f"⚠️  No composite files found at {s3_prefix}")
-            return None
+        if use_local_files:
+            # Use locally stored composite files
+            if not self.local_composite_files:
+                logger.warning("⚠️  No local composite files available for merging")
+                return None
+                
+            # Filter out files that no longer exist
+            existing_files = [f for f in self.local_composite_files if Path(f).exists()]
+            if not existing_files:
+                logger.warning("⚠️  No existing local composite files found")
+                return None
+                
+            logger.info(f"📊 Found {len(existing_files)} local composite files to merge")
             
-        cog_files = [f for f in s3_files if f['key'].endswith('_forest_cover.tif')]
-        logger.info(f"📊 Found {len(cog_files)} individual composite COGs to merge")
-        
-        if len(cog_files) <= 1:
-            logger.info("ℹ️  Only one or no COG files found, skipping merge")
-            return None
+            if len(existing_files) <= 1:
+                logger.info("ℹ️  Only one or no local files found, skipping merge")
+                return None
+                
+            local_cog_paths = [str(f) for f in existing_files]
+            logger.info(f"✅ Using {len(local_cog_paths)} local COG files")
+        else:
+            # Original S3-based workflow
+            # List all individual composite COGs from S3
+            s3_prefix = f"predictions/{self.run_id}-composites/{self.year}/"
+            s3_files = list_files(prefix=s3_prefix)
             
-        # Download all COGs to temp directory
-        logger.info("⬇️  Downloading individual COGs...")
-        local_cog_paths = []
-        
-        for i, cog_file in enumerate(cog_files):
-            local_path = Path(self.temp_dir) / f"composite_{i:04d}.tif"
-            download_file(cog_file['key'], local_path)
-            local_cog_paths.append(str(local_path))
+            if not s3_files:
+                logger.warning(f"⚠️  No composite files found at {s3_prefix}")
+                return None
+                
+            cog_files = [f for f in s3_files if f['key'].endswith('_forest_cover.tif')]
+            logger.info(f"📊 Found {len(cog_files)} individual composite COGs to merge")
             
-        logger.info(f"✅ Downloaded {len(local_cog_paths)} COG files")
+            if len(cog_files) <= 1:
+                logger.info("ℹ️  Only one or no COG files found, skipping merge")
+                return None
+                
+            # Download all COGs to temp directory
+            logger.info("⬇️  Downloading individual COGs...")
+            local_cog_paths = []
+            
+            for i, cog_file in enumerate(cog_files):
+                local_path = Path(self.temp_dir) / f"composite_{i:04d}.tif"
+                download_file(cog_file['key'], local_path)
+                local_cog_paths.append(str(local_path))
+                
+            logger.info(f"✅ Downloaded {len(local_cog_paths)} COG files")
         
         # Create merged COG using GDAL
         merged_path = Path(self.temp_dir) / f"{self.run_id}_{self.year}_merged_composite.tif"
@@ -278,11 +321,19 @@ class CompositeGenerator:
                 vrt_path.unlink()
             if intermediate_path.exists():
                 intermediate_path.unlink()
-            for local_path in local_cog_paths:
-                if Path(local_path).exists():
-                    Path(local_path).unlink()
+            
+            # Clean up downloaded files (but not local composite files if using local workflow)
+            if not use_local_files:
+                for local_path in local_cog_paths:
+                    if Path(local_path).exists():
+                        Path(local_path).unlink()
+            
             if merged_path.exists():
                 merged_path.unlink()
+                
+            # Clean up local composite files after successful merge
+            if use_local_files:
+                self.cleanup_local_files()
         
     def _create_stac_collection(self, use_remote_db: bool, use_merged_cog: bool = False):
         """Create STAC collection for either individual COGs or merged COG."""
