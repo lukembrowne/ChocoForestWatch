@@ -18,6 +18,11 @@ Add the following environment variables to your `.env` file on the server:
 UMAMI_APP_SECRET=your-super-secret-key-here-32-chars-min
 VITE_UMAMI_WEBSITE_ID=your-website-id-from-umami-dashboard
 VITE_UMAMI_URL=http://localhost:3001  # Development: http://localhost:3001, Production: https://your-domain.com/umami
+
+# Umami Database Configuration (Production)
+UMAMI_DB_NAME=umami
+UMAMI_DB_USER=umami_user
+UMAMI_DB_PASSWORD=your-secure-database-password-here
 ```
 
 ### Generating UMAMI_APP_SECRET

@@ -176,19 +176,21 @@ services:
     image: postgres:15-alpine
     container_name: umami-database
     environment:
-      - POSTGRES_DB=umami
-      - POSTGRES_USER=umami
-      - POSTGRES_PASSWORD=umami
+      - POSTGRES_DB=${UMAMI_DB_NAME}
+      - POSTGRES_USER=${UMAMI_DB_USER}
+      - POSTGRES_PASSWORD=${UMAMI_DB_PASSWORD}
     volumes:
       - umami-db-data:/var/lib/postgresql/data
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U umami -d umami"]
+      test: ["CMD-SHELL", "pg_isready -U ${UMAMI_DB_USER} -d ${UMAMI_DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - app-network
+    env_file:
+      - ./.env
 
   umami:
     image: docker.umami.is/umami-software/umami:postgresql-latest
@@ -196,7 +198,7 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - DATABASE_URL=postgresql://umami:umami@umami-db:5432/umami
+      - DATABASE_URL=postgresql://${UMAMI_DB_USER}:${UMAMI_DB_PASSWORD}@umami-db:5432/${UMAMI_DB_NAME}
       - DATABASE_TYPE=postgresql
       - APP_SECRET=${UMAMI_APP_SECRET}
     env_file:

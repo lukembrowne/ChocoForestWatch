@@ -71,7 +71,10 @@ jobs:
               --build-arg VITE_DEFAULT_PUBLIC_PROJECT_ID="${VITE_DEFAULT_PUBLIC_PROJECT_ID}" \
               --build-arg UMAMI_APP_SECRET="${UMAMI_APP_SECRET}" \
               --build-arg VITE_UMAMI_WEBSITE_ID="${VITE_UMAMI_WEBSITE_ID}" \
-              --build-arg VITE_UMAMI_URL="${VITE_UMAMI_URL}"
+              --build-arg VITE_UMAMI_URL="${VITE_UMAMI_URL}" \
+              --build-arg UMAMI_DB_NAME="${UMAMI_DB_NAME}" \
+              --build-arg UMAMI_DB_USER="${UMAMI_DB_USER}" \
+              --build-arg UMAMI_DB_PASSWORD="${UMAMI_DB_PASSWORD}"
             
             docker compose -f docker-compose.prod.yml up -d --build
 
