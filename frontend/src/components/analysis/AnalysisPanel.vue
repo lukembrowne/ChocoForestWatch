@@ -6,26 +6,9 @@
         <span class="section-title-compact">{{ t('analysis.panel.chooseMap') }}</span>
       </div>
       
-      <q-select
-        outlined
-        v-model="benchmark"
-        :options="benchmarkOptions"
-        option-label="label"
-        option-value="value"
-        emit-value
-        map-options
-        :disable="isMapLoading"
-        class="benchmark-select"
-        :placeholder="t('analysis.panel.selectMapPlaceholder')"
-        dense
-      >
-        <template v-slot:prepend>
-          <q-icon name="layers" color="primary" size="sm" />
-        </template>
-        <template v-slot:append v-if="isMapLoading">
-          <q-spinner color="primary" size="sm" />
-        </template>
-      </q-select>
+      <div class="benchmark-selector-container">
+        <CompactDatasetSelector />
+      </div>
     </div>
 
     <!-- Area Selection Section -->
@@ -219,6 +202,7 @@ import VectorSource from 'ol/source/Vector'
 import { Style, Fill, Stroke } from 'ol/style'
 import shp from 'shpjs'
 import api from 'src/services/api'
+import CompactDatasetSelector from '../sidebar/CompactDatasetSelector.vue'
 
 const mapStore = useMapStore()
 const { t } = useI18n()
@@ -231,12 +215,8 @@ const isLoading = computed(() => mapStore.isLoading)
 const isDrawing = computed(() => mapStore.isDrawingSummaryAOI)
 const isMapLoading = computed(() => mapStore.isLoading)
 
-// Benchmark selection
-const benchmarkOptions = computed(() => mapStore.availableBenchmarks)
-const benchmark = computed({
-  get: () => mapStore.selectedBenchmark,
-  set: (val) => mapStore.selectedBenchmark = val,
-})
+// Get the current benchmark from store
+const benchmark = computed(() => mapStore.selectedBenchmark)
 
 // File upload state
 const fileInput = ref(null)
@@ -262,20 +242,18 @@ const getAreaDisplayName = () => {
   return t('analysis.panel.results.customArea')
 }
 
-// Auto-refresh stats and load forest cover map when benchmark changes
+// Auto-refresh stats when benchmark changes (dataset selection handled by CompactDatasetSelector)
 watch(benchmark, async (newBenchmark, oldBenchmark) => {
   if (newBenchmark && newBenchmark !== oldBenchmark) {
-    mapStore.addBenchmarkLayer(newBenchmark)
-    
     // Automatically load western Ecuador stats for the new benchmark
     if (!mapStore.summaryAOILayer && selectedMethod.value === 'regional') {
       await mapStore.loadWesternEcuadorStats()
     }
-  }
-  
-  // Auto-refresh stats if user has drawn a rectangle
-  if (stats.value && mapStore.summaryAOILayer) {
-    await mapStore.startSummaryAOIDraw()
+    
+    // Auto-refresh stats if user has drawn a rectangle
+    if (stats.value && mapStore.summaryAOILayer) {
+      await mapStore.startSummaryAOIDraw()
+    }
   }
 })
 
@@ -617,19 +595,8 @@ onMounted(async () => {
   margin-bottom: 8px;
 }
 
-.benchmark-select {
+.benchmark-selector-container {
   margin: 8px 12px 0;
-  border-radius: 6px;
-}
-
-.benchmark-select :deep(.q-field__control) {
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  font-size: 13px;
-}
-
-.benchmark-select :deep(.q-field--focused .q-field__control) {
-  box-shadow: 0 1px 4px rgba(76, 175, 80, 0.15);
 }
 
 /* Area Selection Compact */

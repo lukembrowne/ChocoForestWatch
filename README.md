@@ -492,6 +492,18 @@ Note: `BOUNDARY_GEOJSON_PATH` is no longer required for the simplified calculati
 3. Users can still draw custom areas to override the default regional statistics
 
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+
+- **[Setup Guides](docs/setup/)** - Installation and configuration instructions
+  - [Umami Analytics Setup](docs/setup/umami-analytics.md) - Complete analytics integration guide
+- **[Architecture Documentation](docs/architecture/)** - Technical design and system overview
+- **[Development Workflows](docs/workflows/)** - Testing, CI/CD, and troubleshooting
+- **[User Guides](docs/user-guides/)** - End-user documentation
+
+See the [Documentation Index](docs/README.md) for a complete overview.
+
 ## Contributing
 
 1. Follow the development workflow outlined above
