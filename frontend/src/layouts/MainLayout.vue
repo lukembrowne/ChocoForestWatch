@@ -381,6 +381,21 @@ export default {
 
     onMounted(async () => {
       console.log("Mounted MainLayout")
+      
+      // Debug Umami Analytics
+      console.log('🔍 Umami Debug - Environment Variables:')
+      console.log('VITE_UMAMI_URL:', import.meta.env.VITE_UMAMI_URL)
+      console.log('VITE_UMAMI_WEBSITE_ID:', import.meta.env.VITE_UMAMI_WEBSITE_ID)
+
+      // Create and append Umami script
+      const script = document.createElement('script')
+      script.async = true
+      script.src = `${import.meta.env.VITE_UMAMI_URL}/script.js`
+      script.setAttribute('data-website-id', import.meta.env.VITE_UMAMI_WEBSITE_ID)
+      script.onload = () => console.log('✅ Umami script loaded successfully')
+      script.onerror = (error) => console.error('❌ Umami script failed to load:', error)
+      document.head.appendChild(script)
+      console.log('📝 Umami script tag added to DOM')
       try {
         // Load language preference from localStorage
         const savedLocale = localStorage.getItem('preferred_language')

@@ -53,6 +53,14 @@ docker compose exec backend python manage.py precalculate_western_ecuador_stats 
 - NEVER add "Generated with Claude Code" or "Co-Authored-By: Claude" attribution in commit messages or PR descriptions
 - **Spatial Operations**: All spatial operations must handle mixed coordinate reference systems (CRS) automatically. The pipeline should detect raster and boundary CRS, reproject geometries as needed, and provide clear logging for debugging projection issues. Never assume consistent projections across datasets.
 - Always use this approach to internal documentation moving forward: carefully document code, provide clear guidance, and maintain a comprehensive yet concise documentation strategy
+- **Frontend Plugins/Packages**: When adding new plugins or packages to the frontend:
+  1. Use `docker compose exec frontend npm install [package-name]` to install within the container
+  2. Verify the package is added to `frontend/package.json`
+  3. Rebuild the frontend container with `docker compose up --build frontend`
+  4. If the package requires global configuration (e.g., Vue plugin), update `frontend/src/boot/` with appropriate initialization
+  5. Always test the package integration thoroughly within the Docker environment
+  6. For Quasar-specific plugins, use `quasar ext add [plugin-name]` when applicable
+  7. Ensure all new packages are compatible with the current Vue 3 and Quasar setup
 
 ## Architecture Overview
 
