@@ -58,6 +58,8 @@ services:
         DJANGO_DEBUG: "False"  # Default to production
         VITE_TITILER_URL: ${VITE_TITILER_URL}
         VITE_DEFAULT_PUBLIC_PROJECT_ID: ${VITE_DEFAULT_PUBLIC_PROJECT_ID}
+        VITE_UMAMI_WEBSITE_ID: ${VITE_UMAMI_WEBSITE_ID}
+        VITE_UMAMI_URL: ${VITE_UMAMI_URL}
       target: "production"       # Use 'development' or 'production'
     ports:
       - "9000:9000"
@@ -170,6 +172,42 @@ services:
       - "8082:8082"
     command: bash -c "uvicorn titiler.pgstac.main:app --host 0.0.0.0 --port 8082 --proxy-headers --forwarded-allow-ips='*' --root-path=/api/v1/titiler"
 
+  umami-db:
+    image: postgres:15-alpine
+    container_name: umami-database
+    environment:
+      - POSTGRES_DB=umami
+      - POSTGRES_USER=umami
+      - POSTGRES_PASSWORD=umami
+    volumes:
+      - umami-db-data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umami -d umami"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  umami:
+    image: docker.umami.is/umami-software/umami:postgresql-latest
+    container_name: umami-analytics
+    ports:
+      - "3001:3000"
+    environment:
+      - DATABASE_URL=postgresql://umami:umami@umami-db:5432/umami
+      - DATABASE_TYPE=postgresql
+      - APP_SECRET=${UMAMI_APP_SECRET}
+    env_file:
+      - ./.env
+    depends_on:
+      umami-db:
+        condition: service_healthy
+    restart: always
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
@@ -177,3 +215,4 @@ networks:
 volumes:
   postgres_data:
   planet_data:
+  umami-db-data:
