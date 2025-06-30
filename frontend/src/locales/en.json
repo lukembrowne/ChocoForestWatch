@@ -37,6 +37,10 @@
     "title": "Analysis",
     "panel": {
       "chooseMap": "Choose Forest Cover Map",
+      "chooseDataset": "Choose Dataset",
+      "changeDataset": "Change Dataset",
+      "clickToChange": "Click to change",
+      "currentDataset": "Current",
       "chooseMapTooltip": "Select which forest cover dataset to use for analysis. The selected map will automatically appear on the main map.",
       "selectMapPlaceholder": "Select forest cover map",
       "selectMapFirst": "Please select a forest cover map first",

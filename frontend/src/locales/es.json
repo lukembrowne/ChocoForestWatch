@@ -37,6 +37,10 @@
     "title": "Análisis",
     "panel": {
       "chooseMap": "Elegir Mapa de Cobertura Forestal",
+      "chooseDataset": "Elegir Conjunto de Datos",
+      "changeDataset": "Cambiar Datos",
+      "clickToChange": "Haga clic para cambiar",
+      "currentDataset": "Actual",
       "chooseMapTooltip": "Seleccione qué conjunto de datos de cobertura forestal usar para el análisis. El mapa seleccionado aparecerá automáticamente en el mapa principal.",
       "selectMapPlaceholder": "Seleccionar mapa de cobertura forestal",
       "selectMapFirst": "Por favor seleccione primero un mapa de cobertura forestal",

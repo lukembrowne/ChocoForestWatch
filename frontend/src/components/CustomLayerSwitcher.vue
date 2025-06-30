@@ -20,10 +20,6 @@
         </q-btn>
       </div>
       
-      <!-- Add Dataset Section -->
-      <div class="add-dataset-section" v-show="isExpanded">
-        <BenchmarkSelector />
-      </div>
     </div>
     <!-- Layers List Section -->
     <q-slide-transition>
@@ -116,7 +112,6 @@ import { ref, computed, reactive } from 'vue';
 import { useMapStore } from 'src/stores/mapStore';
 import { Sortable } from 'sortablejs-vue3';
 import { useI18n } from 'vue-i18n';
-import BenchmarkSelector from './sidebar/BenchmarkSelector.vue'
 
 
 
@@ -124,7 +119,6 @@ export default {
   name: 'CustomLayerSwitcher',
   components: {
     Sortable,
-    BenchmarkSelector,
   },
   props: {
     mapId: {
@@ -206,10 +200,6 @@ export default {
       mapStore.removeLayer(layerId, props.mapId);
     };
 
-    const addBenchmark = (benchmarkValue) => {
-      if (!benchmarkValue) return;
-      mapStore.addBenchmarkLayer(benchmarkValue, props.mapId);
-    };
 
     const toggleOpacityVisibility = (layerId) => {
       if (!layerOpacityStates[layerId]) {
@@ -308,10 +298,6 @@ export default {
   }
 }
 
-.add-dataset-section {
-  margin-top: 8px;
-  animation: fadeInUp 0.3s ease-out;
-}
 
 // Layers Section
 .layers-container {
