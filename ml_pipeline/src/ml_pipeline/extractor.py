@@ -1,7 +1,7 @@
 # ml_pipeline/extractor.py
 """
 Utility class for pixel extraction and sampling from Planet-NICFI COG mosaics
-served by a TiTiler/pgSTAC API.
+using PostgreSQL/PostGIS database queries.
 """
 from __future__ import annotations
 
@@ -10,166 +10,146 @@ from pathlib import Path
 from typing import Iterator, Optional, List, Dict, Any
 
 import numpy as np
-import requests
 import rasterio
 from rasterio.mask import mask
 from shapely.geometry import Point, mapping
+from sqlalchemy import text
+import pandas as pd
+from ml_pipeline.db_utils import get_db_connection
 
 
 class TitilerExtractor:
-    """High-level helper for listing COGs, extracting pixels, and sampling."""
+    """High-level helper for listing COGs from database, extracting pixels, and sampling."""
 
-    def __init__(self, base_url: str, collection: str, band_indexes: list[int]):
+    def __init__(self, collection: str, band_indexes: list[int], db_host: str = "local"):
         """
         Parameters
         ----------
-        base_url : str
-            Root of the TiTiler service (e.g. ``http://localhost:8083``).
         collection : str
             STAC collection ID that contains the monthly quads.
         band_indexes : list[int]
             1-based band indexes to read from each COG.
+        db_host : str, optional
+            Database host configuration: 'local' or 'remote', by default "local"
         """
-        self.base_url = base_url.rstrip("/")
         self.collection = collection
         self.band_indexes = band_indexes
+        self.db_host = db_host
+        self._db_engine = None
 
     # ------------------------------------------------------------------ #
     #  Metadata helpers
     # ------------------------------------------------------------------ #
 
 
-    def get_cog_urls(self, polygon_wgs84) -> list[str]:
-        """Return COG URLs intersecting *polygon_wgs84* (EPSG:4326)."""
-        minx, miny, maxx, maxy = polygon_wgs84.bounds
-        bbox = f"{minx},{miny},{maxx},{maxy}"
-        r = requests.get(
-            f"{self.base_url}/collections/{self.collection}/bbox/{bbox}/assets",
-            headers={"accept": "application/json"},
-            timeout=30,
-        )
-        r.raise_for_status()
-        return [a["assets"]["data"]["href"] for a in r.json()]
+    def get_cog_urls(self, polygon_wgs84=None, collection: Optional[str] = None) -> list[str]:
+        """
+        Return COG URLs, optionally filtered by polygon intersection.
+        
+        Parameters
+        ----------
+        polygon_wgs84 : shapely.geometry, optional
+            Polygon in EPSG:4326 to filter COGs by intersection. If None, returns all COGs.
+        collection : str, optional
+            Collection to query. If None, uses self.collection.
+            
+        Returns
+        -------
+        list[str]
+            List of COG URLs
+        """
+        collection = collection or self.collection
+        
+        if polygon_wgs84 is None:
+            # Return all COGs in collection
+            return self._get_cogs_from_database(collection)
+        else:
+            # Return COGs intersecting the polygon
+            return self._get_cogs_from_database(collection, polygon_wgs84)
 
 
 
-    def get_all_cog_urls(self, collection: Optional[str] = None,
-                         bbox: Optional[str] = None,
-                         scan_limit: int = 100_000) -> list[str]:
+    def get_all_cog_urls(self, collection: Optional[str] = None) -> list[str]:
         """Return every COG URL in *collection* (defaults to ``self.collection``).
         
         Parameters
         ----------
         collection : str, optional
             The collection ID to query. If None, uses self.collection.
-        bbox : str, optional
-            Bounding box in format "minx,miny,maxx,maxy". If None, uses the whole world.
-        scan_limit : int, optional
-            Maximum number of items to scan, by default 100_000.
             
         Returns
         -------
         list[str]
-            List of COG URLs in the collection within the bbox.
+            List of COG URLs in the collection.
         """
         collection = collection or self.collection
-        bbox = bbox or "-180,-90,180,90"  # whole world if no bbox provided
-
-        print(f"Getting all COG URLs for collection {collection} with bbox {bbox}")
-        
-        # If bbox is the whole world, query database directly to get all URLs
-        if bbox == "-180,-90,180,90":
-            return self._get_all_cog_urls_from_db(collection, scan_limit)
-        else:
-            # Use the bbox endpoint for spatial filtering
-            r = requests.get(
-                f"{self.base_url}/collections/{collection}/bbox/{bbox}/assets",
-                params={"scan_limit": scan_limit},
-                headers={"accept": "application/json"},
-                timeout=60,
-            )
-            r.raise_for_status()
-            return [a["assets"]["data"]["href"] for a in r.json()]
+        print(f"Getting all COG URLs for collection {collection}")
+        return self._get_cogs_from_database(collection)
     
-    def _get_all_cog_urls_from_db(self, collection: str, scan_limit: int) -> list[str]:
-        """Get all COG URLs directly from the database when no bbox filtering is needed."""
-        import psycopg2
-        import os
+    @property
+    def db_engine(self):
+        """Lazy-load database engine."""
+        if self._db_engine is None:
+            self._db_engine = get_db_connection(host=self.db_host)
+        return self._db_engine
+    
+    def _get_cogs_from_database(self, collection: str, polygon_wgs84=None) -> list[str]:
+        """Get COG URLs from database, optionally filtered by spatial intersection.
         
-        try:
-            # Connect to the database
-            conn = psycopg2.connect(
-                host=os.getenv("PGHOST", "localhost"),
-                port=os.getenv("PGPORT", "5432"),
-                database=os.getenv("POSTGRES_DB", "postgis"),
-                user=os.getenv("POSTGRES_USER", "postgres"),
-                password=os.getenv("POSTGRES_PASSWORD", "")
-            )
+        Parameters
+        ----------
+        collection : str
+            STAC collection ID
+        polygon_wgs84 : shapely.geometry, optional
+            Polygon in WGS84 to filter by intersection. If None, returns all COGs.
             
-            with conn.cursor() as cur:
-                # Query all items from the collection
-                cur.execute("""
+        Returns
+        -------
+        list[str]
+            List of COG URLs
+        """
+        try:
+            if polygon_wgs84 is None:
+                # Query all COGs in collection
+                query = text("""
                     SELECT content->'assets'->'data'->>'href' as href
                     FROM items 
-                    WHERE collection = %s 
+                    WHERE collection = :collection
                     AND content->'assets'->'data' IS NOT NULL
-                    LIMIT %s
-                """, (collection, scan_limit))
+                """)
                 
-                urls = [row[0] for row in cur.fetchall() if row[0]]
+                df = pd.read_sql(query, self.db_engine, params={"collection": collection})
+                urls = df['href'].tolist()
                 print(f"Retrieved {len(urls)} COGs from database")
-                return urls
                 
-        except Exception as e:
-            print(f"Database query failed: {e}")
-            print("Falling back to API method with smaller chunks...")
-            return self._get_all_cog_urls_chunked(collection, scan_limit)
-        finally:
-            if 'conn' in locals():
-                conn.close()
-    
-    def _get_all_cog_urls_chunked(self, collection: str, scan_limit: int) -> list[str]:
-        """Get all COG URLs by splitting the world into smaller chunks to work around API limits."""
-        all_urls = set()  # Use set to avoid duplicates
-        
-        # Split world into 4x4 grid (16 chunks)
-        lon_step = 90  # 360/4
-        lat_step = 45  # 180/4
-        
-        for lon_start in range(-180, 180, lon_step):
-            for lat_start in range(-90, 90, lat_step):
-                lon_end = lon_start + lon_step
-                lat_end = lat_start + lat_step
-                chunk_bbox = f"{lon_start},{lat_start},{lon_end},{lat_end}"
+            else:
+                # Spatial intersection query
+                ecuador_wkt = polygon_wgs84.wkt
                 
-                try:
-                    r = requests.get(
-                        f"{self.base_url}/collections/{collection}/bbox/{chunk_bbox}/assets",
-                        params={"scan_limit": scan_limit},
-                        headers={"accept": "application/json"},
-                        timeout=30,
-                    )
-                    r.raise_for_status()
-                    chunk_urls = [a["assets"]["data"]["href"] for a in r.json()]
-                    all_urls.update(chunk_urls)
-                    
-                    if chunk_urls:
-                        print(f"Chunk {chunk_bbox}: {len(chunk_urls)} COGs (total unique: {len(all_urls)})")
-                        
-                except Exception as e:
-                    print(f"Failed to query chunk {chunk_bbox}: {e}")
-                    continue
-                    
-                # Stop if we've reached the scan limit
-                if len(all_urls) >= scan_limit:
-                    break
+                query = text("""
+                    SELECT content->'assets'->'data'->>'href' as href,
+                           content->'id' as item_id
+                    FROM items 
+                    WHERE collection = :collection
+                    AND content->'assets'->'data' IS NOT NULL
+                    AND ST_Intersects(geometry, ST_GeomFromText(:ecuador_wkt, 4326))
+                """)
+                
+                df = pd.read_sql(query, self.db_engine, params={
+                    "collection": collection,
+                    "ecuador_wkt": ecuador_wkt
+                })
+                
+                urls = df['href'].tolist()
+                print(f"Retrieved {len(urls)} COGs intersecting polygon from database")
             
-            if len(all_urls) >= scan_limit:
-                break
-        
-        result = list(all_urls)[:scan_limit]
-        print(f"Total unique COGs retrieved: {len(result)}")
-        return result
+            return urls
+            
+        except Exception as e:
+            print(f"❌ Database query failed: {e}")
+            print("❌ No fallback available - database connection required")
+            return []
+    
 
     # ------------------------------------------------------------------ #
     #  Random point generation
