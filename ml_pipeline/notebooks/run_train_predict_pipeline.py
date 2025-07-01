@@ -208,7 +208,6 @@ def run_benchmarks(run_id: str, year: str, project_id: int, db_host: str = "loca
         
         try:
             tester = BenchmarkTester(
-                base_url="http://localhost:8083",
                 collection=collection,
                 year=year,
                 project_id=project_id,
