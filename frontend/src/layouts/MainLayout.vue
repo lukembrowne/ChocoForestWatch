@@ -382,11 +382,6 @@ export default {
     onMounted(async () => {
       console.log("Mounted MainLayout")
       
-      // Debug Umami Analytics
-      console.log('🔍 Umami Debug - Environment Variables:')
-      console.log('VITE_UMAMI_URL:', import.meta.env.VITE_UMAMI_URL)
-      console.log('VITE_UMAMI_WEBSITE_ID:', import.meta.env.VITE_UMAMI_WEBSITE_ID)
-
       // Create and append Umami script
       const script = document.createElement('script')
       script.async = true

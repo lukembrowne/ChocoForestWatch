@@ -63,6 +63,7 @@ Choco Forest Watch is a comprehensive forest monitoring system that helps track 
 5. Access the application:
    - Frontend: http://localhost:9000
    - Backend API: http://localhost:8000
+   - Analytics Dashboard: https://analytics.chocoforestwatch.fcat-ecuador.org (production only)
 
 ### Development Workflow
 
@@ -256,8 +257,8 @@ poetry run python run_train_predict_pipeline.py \
   --start_month 1 --end_month 12 \
   --year 2022 \
   --project_id 6 \
-  --run_id "northern_choco_2022" \
-  --db-host local
+  --run_id "test_2025_07_01" \
+  --db-host remote
 ```
 
 This will:
@@ -491,6 +492,36 @@ Note: `BOUNDARY_GEOJSON_PATH` is no longer required for the simplified calculati
 2. Users will then see instant western Ecuador statistics when they select different forest cover datasets
 3. Users can still draw custom areas to override the default regional statistics
 
+
+## Analytics Dashboard
+
+The application includes integrated web analytics powered by Umami, providing insights into user behavior and site performance.
+
+### Accessing Analytics
+
+**Production Environment:**
+- **URL:** https://analytics.chocoforestwatch.fcat-ecuador.org
+- **Setup:** Self-hosted Umami instance running on subdomain
+- **Authentication:** Secure login required (contact admin for access)
+
+### Implementation Details
+
+The analytics system is deployed using:
+- **Umami:** Privacy-focused, open-source web analytics
+- **Database:** Dedicated PostgreSQL instance for analytics data
+- **Infrastructure:** Docker container with SSL certificate via Let's Encrypt
+- **Network:** Nginx reverse proxy on dedicated subdomain
+
+### Features
+
+- Real-time visitor tracking
+- Page view analytics
+- Referrer statistics
+- Geographic visitor distribution
+- Privacy-compliant (no cookies, GDPR friendly)
+- Custom event tracking capabilities
+
+For detailed setup instructions, see the [Umami Analytics Setup Guide](docs/setup/umami-analytics.md).
 
 ## 📚 Documentation
 
