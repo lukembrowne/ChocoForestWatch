@@ -196,7 +196,7 @@ services:
     image: docker.umami.is/umami-software/umami:postgresql-latest
     container_name: umami-analytics
     ports:
-      - "3001:3000"
+      - "127.0.0.1:3001:3000"  # Only bind to localhost - no external access
     environment:
       - DATABASE_URL=postgresql://${UMAMI_DB_USER}:${UMAMI_DB_PASSWORD}@umami-db:5432/${UMAMI_DB_NAME}
       - DATABASE_TYPE=postgresql

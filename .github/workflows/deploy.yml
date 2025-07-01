@@ -44,7 +44,7 @@ jobs:
             
             docker compose -f docker-compose.prod.yml down
 
-              docker compose -f docker-compose.prod.yml build \
+            docker compose -f docker-compose.prod.yml build \
               --build-arg VITE_API_URL="${VITE_API_URL}" \
               --build-arg VITE_SENTRY_DSN="${VITE_SENTRY_DSN}" \
               --build-arg DJANGO_DEBUG="${DJANGO_DEBUG}" \
