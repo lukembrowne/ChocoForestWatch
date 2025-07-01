@@ -38,6 +38,7 @@ from pystac import (
 )
 
 from ml_pipeline.s3_utils import get_s3_client, list_files
+from ml_pipeline.version import get_version_metadata
 
 # ---------------------------------------------------------------------
 #  Custom exceptions
@@ -516,6 +517,12 @@ class STACManager:
                 TemporalExtent([[first, last]]),
             ),
         )
+        
+        # Add version metadata to collection extra fields
+        version_metadata = get_version_metadata()
+        col.extra_fields["version"] = version_metadata["pipeline_version"]
+        col.extra_fields["created_at"] = version_metadata["created_at"]
+        col.extra_fields["processing:software"] = version_metadata["software"]
 
         col.add_link(
             Link(
@@ -557,6 +564,14 @@ class STACManager:
                 
             item_id = Path(cog["key"]).stem
 
+            # Add version metadata to properties
+            version_metadata = get_version_metadata()
+            properties = {
+                "version": version_metadata["pipeline_version"],
+                "created_at": version_metadata["created_at"],
+                "processing:software": version_metadata["software"],
+            }
+            
             itm = Item(
                 id=item_id,
                 geometry={
@@ -573,7 +588,7 @@ class STACManager:
                 },
                 bbox=list(wgs_bounds),
                 datetime=dt,
-                properties={},
+                properties=properties,
             )
 
             asset_dict = {

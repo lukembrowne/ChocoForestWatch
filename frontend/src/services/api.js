@@ -219,6 +219,11 @@ const api = {
             params: { collection_id: collectionId }
         });
     },
+
+    // Version endpoint
+    getVersion() {
+        return apiClient.get('/version/');
+    },
 };
 
 // Initialize function for boot

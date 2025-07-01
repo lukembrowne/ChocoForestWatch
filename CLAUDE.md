@@ -51,6 +51,38 @@ docker compose exec backend python manage.py precalculate_western_ecuador_stats 
 ## Development Memories
 - No need to test functionality using `docker compose up --build` because it uses too many tokens with the logging
 - NEVER add "Generated with Claude Code" or "Co-Authored-By: Claude" attribution in commit messages or PR descriptions
+
+## Versioning and Changelog Guidelines
+
+### Application Versioning
+- **Semantic Versioning**: Use MAJOR.MINOR.PATCH format (e.g., 0.1.0)
+- **Version Synchronization**: All components (frontend, backend, ML pipeline) maintain the same version
+- **Version Files**: 
+  - Frontend: `package.json`
+  - Backend: `djangocfw/version.py`
+  - ML Pipeline: `pyproject.toml`
+
+### Dataset Versioning
+- **Format**: YYYY.MM.patch (e.g., 2024.01.0)
+  - `YYYY`: Target year for predictions
+  - `MM`: Model version for that year  
+  - `patch`: Minor updates or corrections
+- **Tracking**: Version information stored in STAC collections, COG metadata, and Django models
+- **Display**: Version numbers shown in frontend dataset selectors and layer information
+
+### Changelog Maintenance
+- **Format**: Follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) standard
+- **Location**: `/CHANGELOG.md` in project root
+- **Sections**: Added, Changed, Fixed, Deprecated, Removed, Security
+- **Updates**: Add entries for major changes as they are implemented
+- **Release Process**: Update changelog before creating releases
+
+### Version Tracking Implementation
+- **STAC Collections**: Include `version`, `created_at`, and `processing:software` metadata
+- **COG Files**: Add version information to GeoTIFF tags (`TIFFTAG_SOFTWARE`, `TIFFTAG_DATETIME`)
+- **Database Models**: TrainedModel and Prediction models include version tracking fields
+- **Frontend Display**: Version information shown in dataset selectors and about modal
+- **API Endpoint**: `/api/version/` provides application version information
 - **Spatial Operations**: All spatial operations must handle mixed coordinate reference systems (CRS) automatically. The pipeline should detect raster and boundary CRS, reproject geometries as needed, and provide clear logging for debugging projection issues. Never assume consistent projections across datasets.
 - Always use this approach to internal documentation moving forward: carefully document code, provide clear guidance, and maintain a comprehensive yet concise documentation strategy
 - **Frontend Plugins/Packages**: When adding new plugins or packages to the frontend:

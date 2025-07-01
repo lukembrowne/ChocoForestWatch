@@ -29,7 +29,11 @@
       "title": "Satellite Imagery"
     },
     "title": "About Choco Forest Watch",
-    "version": "Version"
+    "version": {
+      "title": "Version Information",
+      "number": "Version",
+      "environment": "Environment"
+    }
   },
   "analysis": {
     "runAnalysis": "Run Analysis",
@@ -261,6 +265,14 @@
     }
   },
   "auth": {
+    "modal": {
+      "title": "Login to Your Account",
+      "close": "Close",
+      "tabs": {
+        "login": "Login",
+        "register": "Register"
+      }
+    },
     "login": {
       "alreadyHaveAccount": "Already have an account?",
       "createAccount": "Create Account",
@@ -921,7 +933,7 @@
       "featuresTitle": "Key Features:",
       "features": {
         "imagery": "High-resolution forest imagery",
-        "analysis": "Detailed forest cover analysis", 
+        "analysis": "Detailed forest cover analysis",
         "openSource": "Free and open source"
       },
       "descriptions": {

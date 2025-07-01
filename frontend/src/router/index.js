@@ -3,12 +3,7 @@ import authService from '../services/auth'
 import MainLayout from '../layouts/MainLayout.vue'
 
 const routes = [
-  {
-    path: '/login',
-    name: 'LoginForm',
-    component: () => import('../components/auth/LoginForm.vue'),
-    meta: { requiresAuth: false }
-  },
+
   {
     path: '/reset-password/:uid/:token',
     name: 'ResetPassword',
@@ -37,8 +32,6 @@ router.beforeEach((to, from, next) => {
   const currentUser = authService.getCurrentUser();
 
   if (requiresAuth && !currentUser) {
-    next('/login');
-  } else if (to.path === '/login' && currentUser) {
     next('/');
   } else {
     next();
