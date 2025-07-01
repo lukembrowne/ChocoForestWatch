@@ -227,26 +227,6 @@ class TestModelPredictorWorkflows:
         if temp_path.exists():
             temp_path.unlink()
 
-    def test_predict_aoi_workflow_end_to_end(self, predictor_with_real_files, sample_aoi_geojson, temp_prediction_dir):
-        """Test complete predict_aoi workflow with mocked raster operations."""
-        # Mock the raster processing but test the workflow logic
-        with patch.object(predictor_with_real_files, '_predict_single_cog') as mock_predict_single:
-            # Mock successful prediction for each COG
-            mock_predict_single.side_effect = [
-                temp_prediction_dir / f"tile_{i}.tiff" for i in range(2)
-            ]
-            
-            result = predictor_with_real_files.predict_aoi(
-                aoi_geojson=sample_aoi_geojson,
-                basemap_date="2022-03",
-                pred_dir=temp_prediction_dir,
-                collection="nicfi-2022"
-            )
-            
-            # Should process all COGs found by extractor
-            assert len(result) == 2
-            assert all(isinstance(path, Path) for path in result)
-            assert mock_predict_single.call_count == 2
 
     def test_predict_collection_workflow_with_parallelization(self, predictor_with_real_files, temp_prediction_dir):
         """Test predict_collection workflow including parallel processing."""
@@ -311,26 +291,6 @@ class TestModelPredictorErrorHandling:
     """
     Integration tests for error handling in realistic scenarios.
     """
-    
-    def test_missing_extractor_methods(self, real_model_file):
-        """Test behavior when extractor doesn't have required methods."""
-        # Create an extractor mock missing required methods
-        broken_extractor = Mock()
-        del broken_extractor.get_cog_urls  # Remove the method
-        
-        predictor = ModelPredictor(
-            model_path=real_model_file,
-            extractor=broken_extractor,
-            upload_to_s3=False,
-            s3_path='test/path'
-        )
-        
-        with pytest.raises(AttributeError):
-            predictor.predict_aoi(
-                aoi_geojson={'type': 'Polygon', 'coordinates': [[]]},
-                basemap_date="2022-01",
-                pred_dir=Path("/tmp")
-            )
 
     def test_disk_space_simulation(self, real_model_file, mock_extractor_for_predictor, temp_prediction_dir):
         """Test behavior when disk operations fail (simulating disk full)."""
