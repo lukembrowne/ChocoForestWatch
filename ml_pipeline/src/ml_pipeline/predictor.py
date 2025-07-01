@@ -18,7 +18,10 @@ from datetime import datetime
 
 import numpy as np
 import rasterio
-from shapely.geometry import shape, mapping
+from shapely.geometry import shape, mapping, box
+from shapely.ops import unary_union
+import json
+import requests
 
 from tqdm import tqdm
 
@@ -28,7 +31,9 @@ import shutil
 
 from ml_pipeline.s3_utils import upload_file
 
-from joblib import Parallel, delayed
+from multiprocessing import Pool
+from functools import partial
+from ml_pipeline.prediction_worker import predict_single_cog_standalone
 
 
 # ---------------------------------------------------------------------------
@@ -62,6 +67,9 @@ class ModelPredictor:
         PredictorConfig with I/O settings.
     """
 
+    # Global cache for western Ecuador boundary polygon
+    _western_ecuador_boundary = None
+
     def __init__(
         self,
         model_path: str | Path,
@@ -85,6 +93,57 @@ class ModelPredictor:
     #  Public API
     # ------------------------------------------------------------------
 
+    def _load_western_ecuador_boundary(self):
+        """Load and cache the western Ecuador boundary polygon in WGS84."""
+        if ModelPredictor._western_ecuador_boundary is not None:
+            return ModelPredictor._western_ecuador_boundary
+        
+        try:
+            # Read from path
+            boundary_path = "/Users/luke/apps/ChocoForestWatch/ml_pipeline/notebooks/boundaries/Ecuador-DEM-900m-contour.geojson"
+            print(f"⚠️ Using boundary path: {boundary_path}")
+
+            if not os.path.exists(boundary_path):
+                raise FileNotFoundError(f"Boundary file not found: {boundary_path}")
+            
+            # Load GeoJSON file
+            if boundary_path.startswith(("http://", "https://")):
+                resp = requests.get(boundary_path, timeout=30)
+                resp.raise_for_status()
+                geojson = resp.json()
+            else:
+                with open(boundary_path, "r", encoding="utf-8") as f:
+                    geojson = json.load(f)
+            
+            print(f"📄 Loaded GeoJSON with {len(geojson.get('features', []))} features")
+            
+            # Load geometries and combine them
+            geoms = []
+            for feat in geojson.get("features", []):
+                geom = shape(feat["geometry"])
+                geoms.append(geom)
+            
+            # Combine geometries if multiple
+            if len(geoms) == 1:
+                boundary_polygon = geoms[0]
+            else:
+                boundary_polygon = unary_union(geoms)
+            
+            # Cache the boundary
+            ModelPredictor._western_ecuador_boundary = boundary_polygon
+            print(f"✓ Western Ecuador boundary loaded and cached: {boundary_polygon.geom_type}")
+            
+            # Debug boundary info
+            bounds = boundary_polygon.bounds
+            print(f"🗺️  Boundary bounds: {bounds}")
+            print(f"🌍 Boundary covers: {bounds[2] - bounds[0]:.2f}° longitude × {bounds[3] - bounds[1]:.2f}° latitude")
+            
+            return boundary_polygon
+            
+        except Exception as e:
+            print(f"❌ Failed to load western Ecuador boundary: {str(e)}")
+            return None
+
     def predict_aoi(
         self,
         aoi_geojson: dict,
@@ -99,7 +158,7 @@ class ModelPredictor:
         """
         # 1️⃣ get all COG URLs intersecting the AOI bbox
         bbox_poly = shape(aoi_geojson)  # EPSG:3857 polygon
-        cog_urls = self.extractor.get_cog_urls(collection, bbox_poly)
+        cog_urls = self.extractor.get_cog_urls(polygon_wgs84=bbox_poly, collection=collection)
 
         # Print cog_urls
         print(f"Found {len(cog_urls)} COG URLs")
@@ -121,9 +180,24 @@ class ModelPredictor:
         collection: str,
         pred_dir: str | Path,
         save_local: bool = True,
+        filter_western_ecuador: bool = True,
     ) -> list[Path]:
         """
-        Run the model on *every* COG in a STAC collection.
+        Run the model on COGs in a STAC collection.
+        
+        Parameters
+        ----------
+        basemap_date : str
+            Date of the basemap for organizing predictions.
+        collection : str
+            STAC collection ID to process.
+        pred_dir : str | Path
+            Directory to save prediction files.
+        save_local : bool, default True
+            Whether to save files locally after processing.
+        filter_western_ecuador : bool, default True
+            If True, only process COGs that intersect western Ecuador.
+            If False, process all COGs in the collection.
         
         Warning: This will overwrite any existing prediction files with the same names
         in the prediction directory.
@@ -134,14 +208,22 @@ class ModelPredictor:
             Paths to the saved prediction COGs.
         """
 
-        # Limit to northern Choco for now
-       #  bbox = "-80.325,-0.175,-78.2523342311799439,1.4466469335460774"
+        # Get COG URLs - either filtered by western Ecuador or all COGs
+        if filter_western_ecuador:
+            print("🔍 Loading western Ecuador boundary for COG filtering...")
+            western_ecuador_boundary = self._load_western_ecuador_boundary()
+            if western_ecuador_boundary is None:
+                print("⚠️  Could not load western Ecuador boundary, falling back to all COGs")
+                cog_urls = self.extractor.get_cog_urls(collection=collection)
+            else:
+                print("📊 Getting COGs that intersect with western Ecuador...")
+                # Use the new database-based spatial filtering
+                cog_urls = self.extractor.get_cog_urls(polygon_wgs84=western_ecuador_boundary, collection=collection)
+        else:
+            print("📊 Getting all COGs in collection (no spatial filtering)...")
+            cog_urls = self.extractor.get_cog_urls(collection=collection)
 
-        # Get all COG URLs intersecting the bounding box
-        cog_urls = self.extractor.get_all_cog_urls(collection)
-
-
-        print(f"Found {len(cog_urls)} COGs in collection '{collection}'")
+        print(f"🎯 Processing {len(cog_urls)} COGs in collection '{collection}'")
         print(f"Warning: This will overwrite any existing prediction files in {pred_dir}")
 
         # If pred_dir is a string, convert it to a Path object
@@ -163,10 +245,24 @@ class ModelPredictor:
         #         )
         #     )
 
-        saved = Parallel(n_jobs=8, prefer="processes")(
-            delayed(self._predict_single_cog)(u, basemap_date, pred_dir, save_local)
-            for u in tqdm(cog_urls)
+        # Use multiprocessing.Pool for true parallel processing
+        predict_func = partial(
+            predict_single_cog_standalone,
+            model_path=self.model_path,
+            basemap_date=basemap_date,
+            pred_dir=pred_dir,
+            save_local=save_local,
+            cfg_dict=self.cfg.__dict__,  # Convert dataclass to dict for pickling
+            s3_path=self.s3_path,
+            upload_to_s3=self.upload_to_s3
         )
+        
+        with Pool(8) as pool:
+            saved = list(tqdm(
+                pool.imap(predict_func, cog_urls), 
+                total=len(cog_urls),
+                desc=f"Predicting {collection}"
+            ))
 
         # Remove prediction directory if not saving locally
         if not save_local:

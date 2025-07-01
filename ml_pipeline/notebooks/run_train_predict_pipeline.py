@@ -22,8 +22,11 @@ which handles:
 - Saving results and uploading to cloud storage
 
 Usage:
-    # Full pipeline
+    # Full pipeline with local database
     python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --db-host local
+    
+    # Full pipeline with remote database
+    python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --db-host remote
     
     # Skip specific steps
     python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --skip-composites --skip-benchmarks
@@ -34,6 +37,7 @@ Usage:
 Database Configuration:
 - Use --db-host local for development with local database
 - Use --db-host remote for production with remote database
+- COG spatial filtering is now done directly via database queries (no SSH tunnel needed)
 
 The results are organized as:
     runs/
