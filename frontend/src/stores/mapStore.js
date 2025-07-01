@@ -92,13 +92,64 @@ export const useMapStore = defineStore('map', () => {
 
   // Forest Cover Maps selection (formerly benchmarks)
   const availableBenchmarks = [
-    { value: 'northern_choco_test_2025_06_20_2022_merged_composite', label: 'Choco Forest Watch 2022' },
-    { value: 'benchmarks-hansen-tree-cover-2022', label: 'Hansen Global Forest Change' },
-    { value: 'benchmarks-mapbiomes-2022', label: 'MapBiomas Ecuador' },
-    { value: 'benchmarks-esa-landcover-2020', label: 'ESA WorldCover' },
-    { value: 'benchmarks-jrc-forestcover-2020', label: 'JRC Forest Cover' },
-    { value: 'benchmarks-palsar-2020', label: 'ALOS PALSAR Forest Map' },
-    { value: 'benchmarks-wri-treecover-2020', label: 'WRI Tropical Tree Cover' },
+    { 
+      value: 'northern_choco_test_2025_06_20_2022_merged_composite', 
+      label: 'Choco Forest Watch 2022',
+      version: '2022.01.0',
+      year: '2022',
+      resolution: '4.7m',
+      description: 'High-resolution forest cover predictions for Choco region',
+      created: '2025-06-20',
+      type: 'prediction'
+    },
+    { 
+      value: 'benchmarks-hansen-tree-cover-2022', 
+      label: 'Hansen Global Forest Change',
+      year: '2022',
+      resolution: '30m',
+      description: 'Global forest change dataset from University of Maryland',
+      type: 'benchmark'
+    },
+    { 
+      value: 'benchmarks-mapbiomes-2022', 
+      label: 'MapBiomas Ecuador',
+      year: '2022',
+      resolution: '30m',
+      description: 'Annual land cover and land use mapping for Ecuador',
+      type: 'benchmark'
+    },
+    { 
+      value: 'benchmarks-esa-landcover-2020', 
+      label: 'ESA WorldCover',
+      year: '2020',
+      resolution: '10m',
+      description: 'Global land cover map from European Space Agency',
+      type: 'benchmark'
+    },
+    { 
+      value: 'benchmarks-jrc-forestcover-2020', 
+      label: 'JRC Forest Cover',
+      year: '2020',
+      resolution: '10m',
+      description: 'Forest cover map from Joint Research Centre',
+      type: 'benchmark'
+    },
+    { 
+      value: 'benchmarks-palsar-2020', 
+      label: 'ALOS PALSAR Forest Map',
+      year: '2020',
+      resolution: '25m',
+      description: 'Forest/non-forest map from ALOS PALSAR data',
+      type: 'benchmark'
+    },
+    { 
+      value: 'benchmarks-wri-treecover-2020', 
+      label: 'WRI Tropical Tree Cover',
+      year: '2020',
+      resolution: '30m',
+      description: 'Tropical tree cover from World Resources Institute',
+      type: 'benchmark'
+    },
   ];
   const selectedBenchmark = ref(availableBenchmarks[0].value);
 

@@ -159,7 +159,7 @@
               </q-item-section>
             </q-item>
 
-            <q-item v-else clickable v-ripple @click="router.push('/login')" class="menu-action-item login-item">
+            <q-item v-else clickable v-ripple @click="showLoginModal = true" class="menu-action-item login-item">
               <q-item-section avatar>
                 <q-icon name="login" class="action-icon login-icon" />
               </q-item-section>
@@ -252,6 +252,14 @@
     
     <!-- About Modal -->
     <WelcomeAboutModal mode="about" />
+
+    <!-- Login Modal -->
+    <LoginModal 
+      v-model="showLoginModal" 
+      @login-success="handleLoginSuccess"
+      @register-success="handleRegisterSuccess"
+    />
+
   </q-layout>
 </template>
 
@@ -276,6 +284,8 @@ import { useI18n } from 'vue-i18n'
 import { useWelcomeStore } from 'src/stores/welcomeStore'
 import SystemDashboard from 'src/components/admin/SystemDashboard.vue'
 import WelcomeAboutModal from 'src/components/welcome/WelcomeAboutModal.vue'
+import LoginModal from 'src/components/auth/LoginModal.vue'
+
 
 
 export default {
@@ -290,7 +300,8 @@ export default {
     ProjectSelection,
     UnifiedAnalysis,
     SystemDashboard,
-    WelcomeAboutModal
+    WelcomeAboutModal,
+    LoginModal
   },
   setup() {
     const $q = useQuasar()
@@ -595,6 +606,8 @@ export default {
     const feedbackType = ref('bug')
     const feedbackMessage = ref('')
     const submittingFeedback = ref(false)
+    const showLoginModal = ref(false)
+
 
     const feedbackOptions = [
       { label: t('feedback.types.bug'), value: 'bug' },
@@ -650,6 +663,19 @@ export default {
       throw new Error('Test Sentry Error from Frontend');
     }
 
+      const handleLoginSuccess = (user) => {
+      console.log('Login successful for user:', user)
+      // Force reactivity update for current user
+      location.reload()
+    }
+
+    const handleRegisterSuccess = (user) => {
+      console.log('Registration successful for user:', user)
+      // Force reactivity update for current user
+      location.reload()
+    }
+
+
     return {
       currentSection,
       sections,
@@ -684,7 +710,10 @@ export default {
       showAdminDashboard,
       router,
       isAdmin,
-      welcomeStore
+      welcomeStore,
+      showLoginModal,
+      handleLoginSuccess,
+      handleRegisterSuccess
     }
   }
 }

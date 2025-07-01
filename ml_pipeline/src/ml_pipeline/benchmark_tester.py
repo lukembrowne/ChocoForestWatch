@@ -75,7 +75,6 @@ class BenchmarkTester:
     # ------------------------------------------------------------------
     def __init__(
         self,
-        base_url: str,
         collection: str,
         year: str,
         project_id: int,
@@ -89,8 +88,6 @@ class BenchmarkTester:
     ) -> None:
         """Parameters
         ----------
-        base_url
-            Root of the TiTiler service (e.g. ``http://localhost:8083``).
         collection
             STAC collection ID of the **benchmark raster** you want to evaluate
             (e.g. ``nicfi-pred-composite-2022`` or Hansen tree-cover, etc.).
@@ -115,7 +112,6 @@ class BenchmarkTester:
         verbose
             Enable verbose logging for pixel extraction (defaults to False).
         """
-        self.base_url = base_url.rstrip("/")
         self.collection = collection
         self.year = str(year)
         self.project_id = project_id
@@ -136,7 +132,7 @@ class BenchmarkTester:
             self.test_features_dir = None
 
         self.extractor = TitilerExtractor(
-            base_url=self.base_url, collection=self.collection, band_indexes=self.band_indexes
+            collection=self.collection, band_indexes=self.band_indexes, db_host=db_host
         )
 
         # Quick fail-fast – does the collection exist?

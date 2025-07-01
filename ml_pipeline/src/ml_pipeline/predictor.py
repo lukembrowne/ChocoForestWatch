@@ -30,6 +30,7 @@ import tempfile
 import shutil
 
 from ml_pipeline.s3_utils import upload_file
+from ml_pipeline.version import get_version_metadata
 
 from multiprocessing import Pool
 from functools import partial
@@ -280,12 +281,17 @@ class ModelPredictor:
         try:
             with rasterio.open(cog_url) as src:
                 profile = src.profile.copy()
+                # Add version metadata to profile
+                version_metadata = get_version_metadata()
                 profile.update(
                     count=1,
                     dtype=self.cfg.dtype,
                     compress=self.cfg.compress,
                     predictor=self.cfg.predictor,
                     nodata=self.cfg.nodata,
+                    # Add custom GDAL tags for version tracking
+                    TIFFTAG_SOFTWARE=version_metadata["software"],
+                    TIFFTAG_DATETIME=version_metadata["created_at"],
                 )
 
                 # build output filename

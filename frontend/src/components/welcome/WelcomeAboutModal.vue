@@ -121,6 +121,23 @@
                 <div class="funding-item">{{ t('about.funding.sources.caids') }}</div>
               </div>
             </div>
+
+            <div class="info-card version-card">
+              <div class="card-header">
+                <q-icon name="info" />
+                <h3>{{ t('about.version.title') }}</h3>
+              </div>
+              <div class="version-info">
+                <div class="version-item">
+                  <span class="version-label">{{ t('about.version.number') }}:</span>
+                  <span class="version-value">{{ version || 'Loading...' }}</span>
+                </div>
+                <div class="version-item">
+                  <span class="version-label">{{ t('about.version.environment') }}:</span>
+                  <span class="version-value">{{ environment || 'Loading...' }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </q-card-section>
@@ -154,6 +171,7 @@
 import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWelcomeStore } from 'src/stores/welcomeStore';
+import { useVersion } from 'src/composables/useVersion';
 
 export default {
   name: 'WelcomeAboutModal',
@@ -170,6 +188,7 @@ export default {
     const { t } = useI18n();
     const dontShowAgain = ref(false);
     const welcomeStore = useWelcomeStore();
+    const { version, environment } = useVersion();
     
     const isWelcomeMode = computed(() => props.mode === 'welcome');
     
@@ -197,6 +216,8 @@ export default {
       isWelcomeMode,
       dontShowAgain,
       closeModal,
+      version,
+      environment,
       t
     };
   }

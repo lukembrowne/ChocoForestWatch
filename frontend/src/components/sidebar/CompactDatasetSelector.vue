@@ -11,6 +11,7 @@
           <div class="current-dataset-meta">
             <span class="current-dataset-year">{{ getDatasetYear(currentBenchmark) }}</span>
             <span class="current-dataset-resolution">{{ getDatasetResolution(currentBenchmark) }}</span>
+            <span v-if="getDatasetVersion(currentBenchmark)" class="current-dataset-version">v{{ getDatasetVersion(currentBenchmark) }}</span>
           </div>
         </div>
         <q-btn 
@@ -113,6 +114,10 @@
                       <q-icon name="straighten" size="xs" />
                       <span>{{ getDatasetResolution(benchmark.value) }}</span>
                     </div>
+                    <div v-if="getDatasetVersion(benchmark.value)" class="compact-meta-item version-badge">
+                      <q-icon name="label" size="xs" />
+                      <span>v{{ getDatasetVersion(benchmark.value) }}</span>
+                    </div>
                   </div>
                 </q-card-section>
                 
@@ -163,16 +168,20 @@ export default {
     const showDialog = ref(false)
     const selectedBenchmark = ref(null)
     
-    const benchmarkOptions = [
-      { label: 'Choco Forest Watch 2022', value: 'northern_choco_test_2025_06_20_2022_merged_composite' },
-      { label: 'Hansen Global Forest Change', value: 'benchmarks-hansen-tree-cover-2022' },
-      { label: 'MapBiomas Ecuador', value: 'benchmarks-mapbiomes-2022' },
-      { label: 'ESA WorldCover', value: 'benchmarks-esa-landcover-2020' },
-      { label: 'JRC Forest Cover', value: 'benchmarks-jrc-forestcover-2020' },
-      { label: 'ALOS PALSAR Forest Map', value: 'benchmarks-palsar-2020' },
-      { label: 'WRI Tropical Tree Cover', value: 'benchmarks-wri-treecover-2020' },
-      { label: 'GFW Deforestation Alerts 2022', value: 'gfw-alerts-2022' },
-    ]
+    // Use benchmarks from mapStore with version information
+    const benchmarkOptions = computed(() => [
+      ...mapStore.availableBenchmarks,
+      { 
+        label: 'GFW Deforestation Alerts 2022', 
+        value: 'gfw-alerts-2022',
+        version: '2022',
+        year: '2022',
+        resolution: '30m',
+        description: 'Real-time deforestation alerts from Global Forest Watch',
+        created: '2022-01-01',
+        type: 'alerts'
+      },
+    ])
     
     // Get currently selected benchmark from store
     const currentBenchmark = computed(() => mapStore.selectedBenchmark)
@@ -180,7 +189,7 @@ export default {
     // Get the display name for current benchmark
     const currentDatasetName = computed(() => {
       if (!currentBenchmark.value) return null
-      const dataset = benchmarkOptions.find(option => option.value === currentBenchmark.value)
+      const dataset = benchmarkOptions.value.find(option => option.value === currentBenchmark.value)
       if (!dataset) return null
       return t(`layers.switcher.benchmarks.datasets.${getDatasetKey(currentBenchmark.value)}.title`)
     })
@@ -219,20 +228,23 @@ export default {
     }
 
     const getDatasetYear = (value) => {
-      if (value.includes('2022')) return '2022'
-      if (value.includes('2020')) return '2020'
-      return 'Various'
+      const dataset = benchmarkOptions.value.find(b => b.value === value)
+      return dataset ? dataset.year : 'Various'
     }
 
     const getDatasetResolution = (value) => {
-      if (value.includes('hansen')) return '30m'
-      if (value.includes('mapbiomes')) return '30m'
-      if (value.includes('esa')) return '10m'
-      if (value.includes('jrc')) return '10m'
-      if (value.includes('palsar')) return '25m'
-      if (value.includes('wri')) return '10m'
-      if (value.includes('nicfi-pred')) return '4.7m'
-      return 'Various'
+      const dataset = benchmarkOptions.value.find(b => b.value === value)
+      return dataset ? dataset.resolution : 'Various'
+    }
+    
+    const getDatasetVersion = (value) => {
+      const dataset = benchmarkOptions.value.find(b => b.value === value)
+      return dataset ? dataset.version : null
+    }
+    
+    const getDatasetType = (value) => {
+      const dataset = benchmarkOptions.value.find(b => b.value === value)
+      return dataset ? dataset.type : 'dataset'
     }
 
     return {
@@ -246,6 +258,8 @@ export default {
       getDatasetIcon,
       getDatasetYear,
       getDatasetResolution,
+      getDatasetVersion,
+      getDatasetType,
       t
     }
   }

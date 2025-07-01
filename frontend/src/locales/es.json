@@ -29,7 +29,11 @@
       "title": "Imágenes Satelitales"
     },
     "title": "Acerca de Choco Forest Watch",
-    "version": "Versión"
+    "version": {
+      "title": "Información de Versión",
+      "number": "Versión",
+      "environment": "Entorno"
+    }
   },
   "analysis": {
     "runAnalysis": "Ejecutar Análisis",
@@ -261,6 +265,14 @@
     }
   },
   "auth": {
+    "modal": {
+      "title": "Inicie Sesión en Su Cuenta",
+      "close": "Cerrar",
+      "tabs": {
+        "login": "Iniciar Sesión",
+        "register": "Registrarse"
+      }
+    },
     "login": {
       "alreadyHaveAccount": "¿Ya tienes una cuenta?",
       "createAccount": "Crear Cuenta",
