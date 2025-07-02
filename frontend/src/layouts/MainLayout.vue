@@ -247,8 +247,8 @@
       </q-card>
     </q-dialog>
 
-    <!-- Welcome Modal for first-time users -->
-    <WelcomeAboutModal v-if="!isAdmin" mode="welcome" />
+    <!-- Welcome Modal for first-time users and help button -->
+    <WelcomeAboutModal mode="welcome" />
     
     <!-- About Modal -->
     <WelcomeAboutModal mode="about" />
@@ -370,23 +370,8 @@ export default {
     const welcomeStore = useWelcomeStore();
 
     const showHelp = () => {
-      if (!isAdmin.value) {
-        // Public visitors: no contextual help yet
-        return;
-      }
-      
-      if (showProjectSelection.value) {
-        welcomeStore.showHelp('projects');
-      } else if (showTrainingAndPolygonManager.value) {
-        welcomeStore.showHelp('training');
-      } else if (showUnifiedAnalysis.value) {
-        welcomeStore.showHelp('analysis');
-      }
-      console.log('Component visibility:', {
-        projects: showProjectSelection.value,
-        training: showTrainingAndPolygonManager.value,
-        analysis: showUnifiedAnalysis.value
-      });
+      // Open the main welcome modal for all users
+      welcomeStore.showWelcomeModal = true;
     };
 
 
