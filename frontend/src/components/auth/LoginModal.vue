@@ -127,7 +127,7 @@
                 type="email"
                 :rules="[
                   val => !!val || t('auth.register.emailRequired'),
-                  val => /^\\w+([.-]?\\w+)*@\\w+([.-]?\\w+)*(\\.\\w{2,3})+$/.test(val) || t('auth.register.invalidEmail')
+                  val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) || t('auth.register.invalidEmail')
                 ]"
               >
                 <template v-slot:prepend>
@@ -219,7 +219,7 @@
             outlined
             :rules="[
               val => !!val || t('auth.resetPassword.emailRequired'),
-              val => /.+@.+\\..+/.test(val) || t('auth.resetPassword.invalidEmail')
+              val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) || t('auth.resetPassword.invalidEmail')
             ]"
           >
             <template v-slot:prepend>
@@ -248,6 +248,7 @@ import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import authService from '../../services/auth'
+import { useAuthStore } from '../../stores/authStore'
 
 const props = defineProps({
   modelValue: {
@@ -266,6 +267,7 @@ const emit = defineEmits(['update:modelValue', 'login-success', 'register-succes
 const $q = useQuasar()
 const router = useRouter()
 const { t, locale } = useI18n()
+const authStore = useAuthStore()
 
 // Modal state
 const activeTab = ref(props.defaultTab)
@@ -313,7 +315,7 @@ const closeModal = () => {
 const handleLogin = async () => {
   try {
     loginLoading.value = true
-    const response = await authService.login(loginForm.value.username, loginForm.value.password)
+    const response = await authStore.login(loginForm.value.username, loginForm.value.password)
     
     if (response.user?.preferred_language) {
       locale.value = response.user.preferred_language
@@ -344,7 +346,7 @@ const handleLogin = async () => {
 const handleRegister = async () => {
   try {
     registerLoading.value = true
-    await authService.register(
+    await authStore.register(
       registerForm.value.username,
       registerForm.value.email,
       registerForm.value.password,
@@ -352,7 +354,7 @@ const handleRegister = async () => {
     )
     
     // Auto login after registration
-    await authService.login(registerForm.value.username, registerForm.value.password)
+    await authStore.login(registerForm.value.username, registerForm.value.password)
     
     $q.notify({
       color: 'positive',
