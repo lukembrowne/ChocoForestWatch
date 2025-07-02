@@ -27,6 +27,28 @@
             </q-btn>
           </template>
 
+          <!-- Language Selection -->
+          <div class="language-selector">
+            <q-btn
+              :class="['language-btn', { 'active': currentLocale === 'en' }]"
+              flat
+              no-caps
+              dense
+              @click="handleLocaleChange('en')"
+            >
+              EN
+            </q-btn>
+            <q-btn
+              :class="['language-btn', { 'active': currentLocale === 'es' }]"
+              flat
+              no-caps
+              dense
+              @click="handleLocaleChange('es')"
+            >
+              ES
+            </q-btn>
+          </div>
+
           <!-- Feedback button always visible -->
           <q-btn
             flat
@@ -98,35 +120,6 @@
               <q-separator class="profile-separator" />
             </div>
 
-            <!-- Language Selection -->
-            <q-item class="language-section">
-              <q-item-section avatar>
-                <q-icon name="language" class="section-icon" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="section-label">{{ t('common.language') || 'Language' }}</q-item-label>
-                <div class="language-buttons">
-                  <q-btn
-                    :class="['language-btn', { 'active': currentLocale === 'en' }]"
-                    flat
-                    no-caps
-                    @click="handleLocaleChange('en')"
-                  >
-                     English
-                  </q-btn>
-                  <q-btn
-                    :class="['language-btn', { 'active': currentLocale === 'es' }]"
-                    flat
-                    no-caps
-                    @click="handleLocaleChange('es')"
-                  >
-                     Español
-                  </q-btn>
-                </div>
-              </q-item-section>
-            </q-item>
-
-            <q-separator />
 
             <!-- Menu Actions -->
             <q-item clickable v-ripple @click="showHelp" class="menu-action-item">
@@ -369,6 +362,11 @@ export default {
 
     const { t, locale } = useI18n()
     const currentLocale = ref('en')
+
+    // Watch for locale changes to update currentLocale
+    watch(locale, (newLocale) => {
+      currentLocale.value = newLocale
+    }, { immediate: true })
 
     const route = useRoute();
     const welcomeStore = useWelcomeStore();
@@ -754,6 +752,46 @@ export default {
   &.q-btn--flat {
     min-height: 36px;
     padding: 0 16px;
+  }
+}
+
+.language-selector {
+  display: flex;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-right: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  
+  .language-btn {
+    min-width: 32px;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 4px 10px;
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 0;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+    
+    &.active {
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--primary-color);
+      font-weight: 700;
+    }
+    
+    &:first-child {
+      border-top-left-radius: 4px;
+      border-bottom-left-radius: 4px;
+    }
+    
+    &:last-child {
+      border-top-right-radius: 4px;
+      border-bottom-right-radius: 4px;
+    }
   }
 }
 
