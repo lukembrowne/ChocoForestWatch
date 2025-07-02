@@ -55,7 +55,7 @@
                 class="user-avatar"
                 :class="{ 'admin-avatar': isAdmin }"
               >
-                <span class="avatar-text">{{ currentUser.user.username.charAt(0).toUpperCase() }}</span>
+                <span class="avatar-text">{{ currentUser?.user?.username?.charAt(0)?.toUpperCase() || '?' }}</span>
                 <q-badge 
                   v-if="isAdmin" 
                   color="amber" 
@@ -76,7 +76,7 @@
               <q-item class="user-profile-item">
                 <q-item-section avatar>
                   <q-avatar size="42px" class="profile-avatar" :class="{ 'admin-avatar': isAdmin }">
-                    <span class="avatar-text">{{ currentUser.user.username.charAt(0).toUpperCase() }}</span>
+                    <span class="avatar-text">{{ currentUser?.user?.username?.charAt(0)?.toUpperCase() || '?' }}</span>
                     <q-badge 
                       v-if="isAdmin" 
                       color="amber" 
@@ -89,7 +89,7 @@
                   </q-avatar>
                 </q-item-section>
                 <q-item-section>
-                  <q-item-label class="username">{{ currentUser.user.username }}</q-item-label>
+                  <q-item-label class="username">{{ currentUser?.user?.username || 'Unknown User' }}</q-item-label>
                   <q-item-label caption class="user-role">
                     {{ isAdmin ? 'Administrator' : 'User' }}
                   </q-item-label>
@@ -278,6 +278,7 @@ import MapLegend from 'components/MapLegend.vue'
 import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
 import { useRouter, useRoute } from 'vue-router'
 import authService from '../services/auth'
+import { useAuthStore } from '../stores/authStore'
 import api from '../services/api'
 import { GeoJSON } from 'ol/format'
 import { useI18n } from 'vue-i18n'
@@ -307,6 +308,7 @@ export default {
     const $q = useQuasar()
     const projectStore = useProjectStore()
     const mapStore = useMapStore()
+    const authStore = useAuthStore()
     const currentSection = ref('aoi')
     const currentProject = computed(() => projectStore.currentProject)
     const showAOICard = ref(false)
@@ -347,7 +349,9 @@ export default {
     )
 
     const router = useRouter()
-    const currentUser = computed(() => authService.getCurrentUser())
+    // Initialize auth store on component mount
+    authStore.initializeAuth()
+    const currentUser = computed(() => authStore.currentUser)
 
     const showAnyPanel = computed(() => 
       showProjectSelection.value || 
@@ -556,8 +560,7 @@ export default {
         cancel: true,
         persistent: true
       }).onOk(() => {
-        authService.logout()
-        router.push('/login')
+        authStore.logout()
         $q.notify({
           message: t('common.logoutSuccess'),
           color: 'positive',
@@ -618,9 +621,9 @@ export default {
           type: feedbackType.value,
           message: feedbackMessage.value,
           pageUrl: window.location.href,
-          user_id: currentUser.value.user.id,
-          user_name: currentUser.value.user.username,
-          user_email: currentUser.value.user.email,
+          user_id: currentUser.value?.user?.id,
+          user_name: currentUser.value?.user?.username,
+          user_email: currentUser.value?.user?.email,
           project: currentProject.value.id,
           browserInfo: {
             ...getBrowserInfo(),
@@ -650,14 +653,12 @@ export default {
 
       const handleLoginSuccess = (user) => {
       console.log('Login successful for user:', user)
-      // Force reactivity update for current user
-      location.reload()
+      // Auth store is already updated by the login modal
     }
 
     const handleRegisterSuccess = (user) => {
       console.log('Registration successful for user:', user)
-      // Force reactivity update for current user
-      location.reload()
+      // Auth store will be updated by the login that happens after registration
     }
 
 
