@@ -535,6 +535,11 @@
             "title": "Alertas Integradas de Deforestación GFW",
             "url": "https://www.globalforestwatch.org/help/map/guides/forest-change-analysis/"
           },
+          "alerts": {
+            "description": "Alertas integradas de deforestación de Global Forest Watch incluyendo GLAD, RADD y otros sistemas que proporcionan detección de perturbaciones forestales en tiempo casi real.",
+            "title": "Alertas de Deforestación GFW",
+            "url": "https://www.globalforestwatch.org/help/map/guides/forest-change-analysis/"
+          },
           "cfw-composite": {
             "description": "Mapa de cobertura forestal generado por aprendizaje automático de ChocoForestWatch para 2022, específicamente entrenado para la región del Chocó Norte de Ecuador usando imágenes satelitales NICFI.",
             "title": "CFW Compuesto 2022",
