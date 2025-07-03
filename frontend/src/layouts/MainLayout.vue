@@ -169,6 +169,9 @@
       <q-page class="relative-position">
         <div class="z-layers">
           <div id="map" class="map-container" :class="{ 'with-sidebar': showSidebar }" v-if="!showUnifiedAnalysis && !showAdminDashboard"></div>
+          
+          <!-- GFW Alert Popup -->
+          <GFWAlertPopup v-if="!showUnifiedAnalysis && !showAdminDashboard" />
           <div class="sidebar-container" v-if="showSidebar && !showUnifiedAnalysis && !showAdminDashboard">
             <ProjectSelection 
               v-if="isAdmin && showProjectSelection" 
@@ -269,6 +272,7 @@ import SidebarPanel from 'components/sidebar/SidebarPanel.vue'
 import BasemapDateSlider from 'components/BasemapDateSlider.vue'
 import MapLegend from 'components/MapLegend.vue'
 import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
+import GFWAlertPopup from 'components/map/GFWAlertPopup.vue'
 import { useRouter, useRoute } from 'vue-router'
 import authService from '../services/auth'
 import { useAuthStore } from '../stores/authStore'
@@ -295,7 +299,8 @@ export default {
     UnifiedAnalysis,
     SystemDashboard,
     WelcomeAboutModal,
-    LoginModal
+    LoginModal,
+    GFWAlertPopup
   },
   setup() {
     const $q = useQuasar()

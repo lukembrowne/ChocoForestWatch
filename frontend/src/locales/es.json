@@ -35,6 +35,22 @@
       "environment": "Entorno"
     }
   },
+  "alerts": {
+    "gfw": {
+      "title": "Alerta de Deforestación",
+      "description": "Alertas integradas de deforestación de Global Forest Watch",
+      "clickToQuery": "Haz clic en el mapa para ver detalles de la alerta",
+      "noAlertsFound": "No se encontraron alertas de deforestación en esta ubicación",
+      "date": "Fecha de Alerta",
+      "confidence": "Confianza",
+      "confidenceLevels": {
+        "low": "Baja",
+        "medium": "Media",
+        "high": "Alta",
+        "veryHigh": "Muy Alta"
+      }
+    }
+  },
   "analysis": {
     "runAnalysis": "Ejecutar Análisis",
     "selectArea": "Seleccionar Área",
@@ -533,12 +549,12 @@
           "gfw-alerts": {
             "description": "Alertas integradas de deforestación de Global Forest Watch incluyendo GLAD, RADD y otros sistemas que proporcionan detección de perturbaciones forestales en tiempo casi real.",
             "title": "Alertas Integradas de Deforestación GFW",
-            "url": "https://www.globalforestwatch.org/help/map/guides/forest-change-analysis/"
+            "url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
           },
           "alerts": {
             "description": "Alertas integradas de deforestación de Global Forest Watch incluyendo GLAD, RADD y otros sistemas que proporcionan detección de perturbaciones forestales en tiempo casi real.",
             "title": "Alertas de Deforestación GFW",
-            "url": "https://www.globalforestwatch.org/help/map/guides/forest-change-analysis/"
+            "url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
           },
           "cfw-composite": {
             "description": "Mapa de cobertura forestal generado por aprendizaje automático de ChocoForestWatch para 2022, específicamente entrenado para la región del Chocó Norte de Ecuador usando imágenes satelitales NICFI.",
@@ -548,7 +564,8 @@
         },
         "description": "Agregue conjuntos de datos de cobertura forestal para comparar y analizar",
         "title": "Agregar Conjunto de Datos",
-        "featured": "Destacado"
+        "featured": "Destacado",
+        "availableYears": "Años Disponibles"
       },
       "opacity": "Opacidad",
       "title": "Capas del Mapa",

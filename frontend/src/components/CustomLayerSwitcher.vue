@@ -24,9 +24,6 @@
     <!-- Layers List Section -->
     <q-slide-transition>
       <div v-show="isExpanded" class="layers-container">
-        <div class="layers-header">
-          <span class="layers-count">{{ mapLayers.length }} {{ t('layers.switcher.layersCount') }}</span>
-        </div>
         
         <div class="layers-list">
           <Sortable :list="mapLayers" item-key="id" @end="onDragEnd" :options="{ handle: '.drag-handle' }">
@@ -228,13 +225,13 @@ export default {
   top: 10px;
   right: 10px;
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   z-index: 1000;
-  width: 280px;
-  max-height: 85vh;
+  width: 240px;
+  max-height: 70vh;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -247,15 +244,14 @@ export default {
 .switcher-header {
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-  padding: 16px;
-  border-radius: 12px 12px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px 8px 0 0;
 }
 
 .header-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
 }
 
 .header-title {
@@ -265,7 +261,7 @@ export default {
 }
 
 .title-icon {
-  font-size: 20px;
+  font-size: 16px;
   color: #4ade80;
   background: linear-gradient(135deg, #22c55e, #16a34a);
   -webkit-background-clip: text;
@@ -274,8 +270,8 @@ export default {
 }
 
 .title-text {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: #1e293b;
   letter-spacing: -0.025em;
 }
@@ -302,7 +298,7 @@ export default {
 // Layers Section
 .layers-container {
   padding: 0;
-  max-height: calc(85vh - 120px);
+  max-height: calc(70vh - 80px);
   overflow-y: auto;
   
   &::-webkit-scrollbar {
@@ -323,30 +319,17 @@ export default {
   }
 }
 
-.layers-header {
-  padding: 12px 16px 8px;
-  background: rgba(248, 250, 252, 0.5);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.3);
-}
-
-.layers-count {
-  font-size: 12px;
-  font-weight: 500;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
 
 .layers-list {
-  padding: 8px 12px 12px;
+  padding: 6px 8px 8px;
 }
 
 // Layer Items
 .layer-item {
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(226, 232, 240, 0.4);
-  border-radius: 8px;
-  margin-bottom: 6px;
+  border-radius: 6px;
+  margin-bottom: 4px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 
@@ -368,10 +351,10 @@ export default {
 }
 
 .layer-main {
-  padding: 8px 12px;
+  padding: 6px 10px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .drag-handle {
@@ -406,7 +389,7 @@ export default {
 
 .layer-checkbox {
   .q-checkbox__label {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     color: #374151;
     line-height: 1.3;
@@ -454,7 +437,7 @@ export default {
 
 // Opacity Controls
 .opacity-controls {
-  padding: 8px 16px 12px;
+  padding: 6px 12px 8px;
   background: rgba(248, 250, 252, 0.8);
   border-top: 1px solid rgba(226, 232, 240, 0.3);
   animation: fadeInDown 0.2s ease-out;
@@ -515,17 +498,17 @@ export default {
 // Responsive Design
 @media (max-width: 768px) {
   .custom-layer-switcher {
-    width: 260px;
+    width: 220px;
     right: 8px;
     top: 8px;
   }
   
   .title-text {
-    font-size: 14px;
+    font-size: 12px;
   }
   
   .layer-checkbox .q-checkbox__label {
-    font-size: 12px;
+    font-size: 11px;
   }
 }
 </style>

@@ -14,17 +14,7 @@
             <span v-if="getDatasetVersion(currentBenchmark)" class="current-dataset-version">v{{ getDatasetVersion(currentBenchmark) }}</span>
           </div>
         </div>
-        <q-btn 
-          flat 
-          round 
-          dense 
-          size="sm" 
-          icon="edit" 
-          class="change-dataset-btn"
-          @click.stop="showDialog = true"
-        >
-          <q-tooltip>{{ t('analysis.panel.clickToChange') }}</q-tooltip>
-        </q-btn>
+       
       </div>
       <div class="current-dataset-actions">
         <q-btn 

@@ -1870,6 +1870,7 @@ export const useMapStore = defineStore('map', () => {
       summaryStats.value = response.data;
     } catch (error) {
       console.error('Failed to load western Ecuador stats:', error);
+      summaryStats.value = null; // Clear statistics on error
       $q.notify({
         type: 'negative',
         message: 'Failed to load regional statistics.',
@@ -1971,6 +1972,9 @@ export const useMapStore = defineStore('map', () => {
       const coordinate = event.coordinate;
       const lonLat = toLonLat(coordinate);
       
+      // Flag to track if we found any alerts
+      let foundAlert = false;
+      
       // Query each visible GFW layer
       for (const layer of gfwLayers) {
         const collectionId = layer.get('collectionId');
@@ -1991,6 +1995,7 @@ export const useMapStore = defineStore('map', () => {
             if (pixelValue && pixelValue > 0) {
               // Display alert information
               showGFWAlertPopup(coordinate, pixelValue, layer.get('title'));
+              foundAlert = true;
               break; // Only show popup for first matching layer
             }
           }
@@ -1998,14 +2003,19 @@ export const useMapStore = defineStore('map', () => {
           console.error('Error querying GFW pixel value:', error);
         }
       }
+      
+      // If no alerts were found, hide any existing popup
+      if (!foundAlert) {
+        hideGFWAlertPopup();
+      }
     };
 
     targetMap.on('singleclick', targetMap.gfwClickHandler);
   };
 
   // State for GFW alert popup
-  const gfwAlertPopup = ref(null);
   const gfwAlertInfo = ref(null);
+  const gfwAlertVisible = ref(false);
 
   const showGFWAlertPopup = (coordinate, pixelValue, layerTitle) => {
     const alertData = decodeGFWDate(pixelValue);
@@ -2017,22 +2027,13 @@ export const useMapStore = defineStore('map', () => {
       formattedInfo: formatGFWAlert(pixelValue)
     };
     
-    // You can emit an event or set a reactive property for the UI to display the popup
-    $q.notify({
-      type: 'info',
-      message: `${layerTitle}: ${formatGFWAlert(pixelValue)}`,
-      timeout: 5000,
-      actions: [
-        {
-          label: 'Details',
-          color: 'white',
-          handler: () => {
-            // Could open a detailed modal here
-            console.log('GFW Alert Details:', gfwAlertInfo.value);
-          }
-        }
-      ]
-    });
+    // Show the popup - Vue component will handle positioning
+    gfwAlertVisible.value = true;
+  };
+
+  const hideGFWAlertPopup = () => {
+    gfwAlertVisible.value = false;
+    gfwAlertInfo.value = null;
   };
 
   return {
@@ -2126,6 +2127,8 @@ export const useMapStore = defineStore('map', () => {
     decodeGFWDate,
     formatGFWAlert,
     gfwAlertInfo,
+    gfwAlertVisible,
+    hideGFWAlertPopup,
     // Getters
     getMap,
     maps,
