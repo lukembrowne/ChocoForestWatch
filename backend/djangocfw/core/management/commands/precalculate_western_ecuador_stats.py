@@ -33,6 +33,13 @@ class Command(BaseCommand):
             action='store_true',
             help='Test with first collection only to verify setup',
         )
+        parser.add_argument(
+            '--db-host',
+            type=str,
+            choices=['local', 'remote'],
+            required=True,
+            help='Database host configuration: "local" for Docker environment, "remote" for external database',
+        )
 
     def handle(self, *args, **options):
         # Validate collection option
@@ -63,7 +70,8 @@ class Command(BaseCommand):
             
             results = precalculate_all_stats(
                 force_recalculate=options['force'],
-                collection_filter=options['collection']
+                collection_filter=options['collection'],
+                db_host=options['db_host']
             )
 
             # Summary

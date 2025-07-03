@@ -787,9 +787,9 @@ def get_random_points_within_collection(request, collection_id):
     try:
         # Initialize the extractor with default band indexes
         extractor = TitilerExtractor(
-            base_url=titiler_url,
             collection=collection_id,
-            band_indexes=[1, 2, 3, 4]
+            band_indexes=[1, 2, 3, 4],
+            db_host="local"
         )
 
         # Limit to northern Choco for now
@@ -893,7 +893,7 @@ def aoi_summary(request):
         logger.info(f"Using collection ID: {collection_id}")
 
         logger.info("Computing summary statistics")
-        stats_df = AOISummaryStats(titiler_url, collection_id).summary(aoi_geojson)
+        stats_df = AOISummaryStats(collection_id, "localhost").summary(aoi_geojson)
 
         # Convert single-row dataframe to plain dict
         stats_dict = stats_df.iloc[0].to_dict()

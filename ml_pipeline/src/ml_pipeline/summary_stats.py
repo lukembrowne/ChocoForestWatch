@@ -18,15 +18,15 @@ class AOISummaryStats:
     """
     Compute % forest / non-forest + area (ha) + missing % inside an arbitrary AOI.
     Example:
-        stats = AOISummaryStats("http://localhost:8083", "datasets-hansen-tree-cover-2022")
+        stats = AOISummaryStats("datasets-hansen-tree-cover-2022", "local")
         df = stats.summary(aoi_geojson)
     """
 
-    def __init__(self, base_url: str, collection: str, *, band_indexes=[1]):
+    def __init__(self, collection: str, db_host: str, *, band_indexes=[1]):
         self.collection = collection
         self.band_indexes = band_indexes
-        self.extractor = TitilerExtractor(base_url.rstrip("/"), collection, band_indexes)
-        print(f"Initialized AOISummaryStats with base_url={base_url}, collection={collection}, band_indexes={band_indexes}")
+        self.extractor = TitilerExtractor(collection, band_indexes, db_host=db_host)
+        print(f"Initialized AOISummaryStats with collection={collection}, band_indexes={band_indexes}, db_host={db_host}")
 
     def summary(self, aoi_geojson: dict = None) -> pd.DataFrame:
         # Load Western Ecuador boundary if no AOI provided
@@ -85,22 +85,105 @@ class AOISummaryStats:
 
     def _extract_pixels_with_boundary_windowed(self, boundary_polygon):
         """
-        Extract pixels within boundary using windowed reading for memory efficiency.
+        Extract pixels within boundary. Uses fast direct masking for small AOIs 
+        and windowed reading for large areas (like full Western Ecuador).
         """
         try:
             print(f"🔍 Starting boundary-based pixel extraction for collection: {self.collection}")
             print(f"✓ Boundary loaded: {boundary_polygon.geom_type}")
             
-            # Get COGs for western Ecuador bbox
-            ecuador_bbox = "-81.5,-5.5,-75.0,1.5"
-            print(f"📊 Getting COGs for Western Ecuador bbox: {ecuador_bbox}")
+            # Check if this is likely a small custom AOI vs full regional analysis
+            # Approximate area calculation (rough estimate in square degrees)
+            bounds = boundary_polygon.bounds
+            area_deg2 = (bounds[2] - bounds[0]) * (bounds[3] - bounds[1])
+            is_small_aoi = area_deg2 < 0.5  # Less than ~0.5 square degrees
             
+            if is_small_aoi:
+                print(f"🚀 Small AOI detected (area: {area_deg2:.4f} deg²), using fast direct masking")
+                return self._extract_pixels_fast(boundary_polygon)
+            else:
+                print(f"🗺️ Large region detected (area: {area_deg2:.4f} deg²), using windowed processing")
+                return self._extract_pixels_windowed_impl(boundary_polygon)
+                
+        except Exception as e:
+            print(f"❌ Error in boundary pixel extraction: {str(e)}")
+            raise RuntimeError(f"Failed to extract pixels from collection {self.collection}: {str(e)}")
+
+    def _extract_pixels_fast(self, boundary_polygon):
+        """Fast extraction for small AOIs using direct rasterio masking."""
+        try:
             # Get COG URLs using extractor
             cog_urls = list(self.extractor.get_cog_urls(boundary_polygon))
             print(f"📊 Found {len(cog_urls)} COGs intersecting boundary")
             
             if not cog_urls:
-                raise RuntimeError(f"No COGs found for collection {self.collection} in Western Ecuador")
+                raise RuntimeError(f"No COGs found for collection {self.collection}")
+
+            total_forest_px = 0
+            total_nonforest_px = 0
+            total_missing_px = 0
+            px_area_m2 = None
+            
+            print(f"⚡ Fast processing {len(cog_urls)} COGs with direct masking")
+            
+            for i, cog_url in enumerate(cog_urls):
+                try:
+                    with rasterio.open(cog_url) as src:
+                        # Calculate pixel area from first COG
+                        if px_area_m2 is None:
+                            px_area_m2 = self._calculate_pixel_area(src)
+                        
+                        # Transform boundary to match raster CRS
+                        mask_geom = boundary_polygon
+                        if src.crs and src.crs.to_epsg() != 4326:
+                            transformer = Transformer.from_crs("EPSG:4326", src.crs, always_xy=True)
+                            mask_geom = transform(transformer.transform, boundary_polygon)
+                        
+                        # Use rasterio's fast mask function
+                        masked_data, masked_transform = mask(
+                            src, [mapping(mask_geom)], crop=True, indexes=[1]
+                        )
+                        
+                        # Count pixels
+                        data = masked_data[0]  # Get the first (and only) band
+                        valid_mask = data != src.nodata if src.nodata is not None else data != 255
+                        
+                        forest_count = np.sum((data == 1) & valid_mask)
+                        nonforest_count = np.sum((data == 0) & valid_mask)
+                        missing_count = np.sum(~valid_mask)
+                        
+                        total_forest_px += forest_count
+                        total_nonforest_px += nonforest_count
+                        total_missing_px += missing_count
+                        
+                        print(f"  COG {i+1}: Forest={forest_count:,}, Non-Forest={nonforest_count:,}, Missing={missing_count:,}")
+                        
+                except Exception as cog_error:
+                    print(f"⚠️ Error processing COG {i+1}: {str(cog_error)}")
+                    continue
+            
+            if px_area_m2 is None:
+                px_area_m2 = 30 * 30  # Default 30m resolution
+            
+            total_ha = (total_forest_px + total_nonforest_px) * px_area_m2 / 10000
+            print(f"✅ Final pixel counts — Forest: {total_forest_px:,}, Non-Forest: {total_nonforest_px:,}, Missing: {total_missing_px:,}")
+            print(f"✅ Total area: {total_ha:,.1f} hectares")
+            
+            return self._create_summary_dataframe(total_forest_px, total_nonforest_px, total_missing_px, px_area_m2)
+            
+        except Exception as e:
+            print(f"❌ Error in fast pixel extraction: {str(e)}")
+            raise
+    
+    def _extract_pixels_windowed_impl(self, boundary_polygon):
+        """Windowed extraction for large regions like full Western Ecuador."""
+        try:
+            # Get COG URLs using extractor
+            cog_urls = list(self.extractor.get_cog_urls(boundary_polygon))
+            print(f"📊 Found {len(cog_urls)} COGs intersecting boundary")
+            
+            if not cog_urls:
+                raise RuntimeError(f"No COGs found for collection {self.collection}")
 
             total_forest_px = 0
             total_nonforest_px = 0
@@ -223,8 +306,8 @@ class AOISummaryStats:
             return self._create_summary_dataframe(total_forest_px, total_nonforest_px, total_missing_px, px_area_m2)
                 
         except Exception as e:
-            print(f"❌ Error in boundary pixel extraction: {str(e)}")
-            raise RuntimeError(f"Failed to extract pixels from collection {self.collection}: {str(e)}")
+            print(f"❌ Error in windowed pixel extraction: {str(e)}")
+            raise
     
     def _calculate_pixel_area(self, src):
         """Calculate pixel area in square meters."""

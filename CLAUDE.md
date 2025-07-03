@@ -42,10 +42,10 @@ docker compose logs frontend            # View frontend service logs
 docker compose restart frontend         # Restart specific service
 
 # Pre-calculate western Ecuador statistics for all datasets
-docker compose exec backend python manage.py precalculate_western_ecuador_stats
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --db-host local
 
-# Force recalculation of cached statistics
-docker compose exec backend python manage.py precalculate_western_ecuador_stats --force
+# Force recalculation of cached statistics  
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --force --db-host local
 ```
 
 ## Development Memories
