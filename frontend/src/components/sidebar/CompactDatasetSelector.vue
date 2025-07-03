@@ -91,13 +91,9 @@
                 <q-td v-for="col in props.cols" :key="col.name" :props="props">
                   <div v-if="col.name === 'dataset'" class="table-dataset-info">
                     <div class="table-dataset-name">
-                      <q-icon :name="getDatasetIcon(props.row.value)" class="dataset-inline-icon" />
+                      <q-icon :name="props.row.icon" class="dataset-inline-icon" />
                       <span>{{ props.row.name }}</span>
-                      <div v-if="props.row.isCurrent" class="current-badge-inline">
-                        <q-icon name="check_circle" />
-                        <span>{{ t('analysis.panel.currentDataset') }}</span>
-                      </div>
-                      <div v-else-if="props.row.isFeatured" class="featured-badge-inline">
+                      <div v-if="props.row.isFeatured" class="featured-badge-inline">
                         <q-icon name="star" />
                         <span>{{ t('layers.switcher.benchmarks.featured') }}</span>
                       </div>
@@ -113,19 +109,27 @@
                       </a>
                     </div>
                   </div>
-                  <div v-else-if="col.name === 'year'" class="table-year-badge">{{ props.row.year }}</div>
-                  <div v-else-if="col.name === 'resolution'" class="table-resolution-badge">{{ props.row.resolution }}</div>
-                  <div v-else-if="col.name === 'actions'" class="table-actions">
-                    <q-btn
-                      color="primary"
-                      size="sm"
-                      @click.stop="addBenchmark(props.row.value)"
-                      class="table-add-btn"
-                      no-caps
-                    >
-                      <q-icon name="add" size="xs" class="btn-icon" />
-                      <span class="btn-text">{{ t('layers.switcher.benchmarks.add') }}</span>
-                    </q-btn>
+                  <div v-else-if="col.name === 'years'" class="table-years-container">
+                    <div class="year-chips">
+                      <div 
+                        v-for="yearData in props.row.years" 
+                        :key="yearData.year"
+                        :class="{ 
+                          'year-chip': true,
+                          'year-chip-current': yearData.isCurrent 
+                        }"
+                        @click.stop="addBenchmark(yearData.value)"
+                        :title="`Click to add ${props.row.name} ${yearData.year}`"
+                      >
+                        {{ yearData.year }}
+                        <q-icon 
+                          v-if="yearData.isCurrent" 
+                          name="check_circle" 
+                          size="xs" 
+                          class="current-year-icon" 
+                        />
+                      </div>
+                    </div>
                   </div>
                 </q-td>
               </q-tr>
@@ -159,21 +163,42 @@ export default {
       ...mapStore.availableDatasets
     ])
     
-    // Create table rows from dataset options
+    // Create table rows from dataset options, grouping by dataset type
     const tableRows = computed(() => {
-      return benchmarkOptions.value.map((dataset, index) => ({
+      const groupedDatasets = {}
+      
+      // Group datasets by their base key
+      benchmarkOptions.value.forEach(dataset => {
+        const key = getDatasetKey(dataset.value)
+        if (!groupedDatasets[key]) {
+          groupedDatasets[key] = {
+            key,
+            datasets: [],
+            name: t(`layers.switcher.benchmarks.datasets.${key}.title`),
+            description: t(`layers.switcher.benchmarks.datasets.${key}.description`),
+            resolution: dataset.resolution,
+            learnMoreUrl: t(`layers.switcher.benchmarks.datasets.${key}.url`),
+            isFeatured: dataset.value.includes('nicfi-pred'),
+            icon: getDatasetIcon(dataset.value)
+          }
+        }
+        groupedDatasets[key].datasets.push(dataset)
+      })
+      
+      // Convert to array and create table rows
+      return Object.values(groupedDatasets).map((group, index) => ({
         id: index,
-        value: dataset.value,
-        name: t(`layers.switcher.benchmarks.datasets.${getDatasetKey(dataset.value)}.title`),
-        description: t(`layers.switcher.benchmarks.datasets.${getDatasetKey(dataset.value)}.description`),
-        year: dataset.year,
-        resolution: dataset.resolution,
-        version: dataset.version,
-        type: dataset.type,
-        isCurrent: currentBenchmark.value === dataset.value,
-        isFeatured: dataset.value.includes('nicfi-pred'),
-        icon: getDatasetIcon(dataset.value),
-        learnMoreUrl: t(`layers.switcher.benchmarks.datasets.${getDatasetKey(dataset.value)}.url`)
+        key: group.key,
+        name: group.name,
+        description: `${group.description} (${group.resolution})`,
+        years: group.datasets.map(d => ({
+          year: d.year,
+          value: d.value,
+          isCurrent: currentBenchmark.value === d.value
+        })).sort((a, b) => b.year.localeCompare(a.year)), // Sort years descending
+        isFeatured: group.isFeatured,
+        icon: group.icon,
+        learnMoreUrl: group.learnMoreUrl
       }))
     })
 
@@ -184,30 +209,14 @@ export default {
         label: t('analysis.panel.table.dataset'),
         field: 'name',
         align: 'left',
-        style: 'min-width: 300px;'
+        style: 'min-width: 400px;'
       },
       {
-        name: 'year',
-        label: t('analysis.panel.table.year'),
-        field: 'year',
+        name: 'years',
+        label: t('analysis.panel.table.years'),
+        field: 'years',
         align: 'center',
-        style: 'width: 80px',
-        sortable: true
-      },
-      {
-        name: 'resolution',
-        label: t('analysis.panel.table.resolution'),
-        field: 'resolution',
-        align: 'center',
-        style: 'width: 100px',
-        sortable: true
-      },
-      {
-        name: 'actions',
-        label: t('analysis.panel.table.actions'),
-        field: 'actions',
-        align: 'center',
-        style: 'width: 100px'
+        style: 'width: 200px'
       }
     ]
     
@@ -443,7 +452,7 @@ export default {
 }
 
 .compact-dataset-dialog-card {
-  min-width: 900px;
+  min-width: 800px;
   max-width: 90vw;
   max-height: 90vh;
   border-radius: 12px;
@@ -656,92 +665,86 @@ export default {
   text-decoration: underline;
 }
 
-/* Table Badge Styles */
-.table-year-badge,
-.table-resolution-badge {
+/* Year Chips Styles */
+.table-years-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+}
+
+.year-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.year-chip {
   display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 11px;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
   font-weight: 600;
   text-align: center;
-  min-width: 40px;
-  justify-content: center;
-  white-space: nowrap;
-}
-
-.table-year-badge {
   background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
   color: #1565c0;
-  border: 1px solid #90caf9;
-}
-
-.table-resolution-badge {
-  background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
-  color: #7b1fa2;
-  border: 1px solid #ce93d8;
-}
-
-
-
-/* Table Actions */
-.table-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.table-add-btn {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  text-transform: none;
-  min-width: 70px;
-  min-height: 32px;
-  font-size: 11px;
-  padding: 6px 12px;
-  color: white;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  border: 2px solid #90caf9;
+  cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
   position: relative;
   overflow: hidden;
 }
 
-.table-add-btn::before {
+.year-chip::before {
   content: '';
   position: absolute;
   top: 0;
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   transition: left 0.5s;
 }
 
-.table-add-btn:hover {
+.year-chip:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 4px 12px rgba(21, 101, 192, 0.3);
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  color: white;
+  border-color: #1976d2;
 }
 
-.table-add-btn:hover::before {
+.year-chip:hover::before {
   left: 100%;
 }
 
-.table-add-btn:active {
+.year-chip:active {
   transform: translateY(0);
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
 }
 
-.table-add-btn .btn-icon {
-  margin-right: 4px;
+.year-chip-current {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border-color: #10b981;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
-.table-add-btn .btn-text {
-  line-height: 1;
+.year-chip-current:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border-color: #059669;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
+
+.current-year-icon {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+
+
 
 /* Dialog Actions */
 .dialog-actions {
@@ -759,7 +762,7 @@ export default {
 /* Responsive Design */
 @media (max-width: 1200px) {
   .compact-dataset-dialog-card {
-    min-width: 700px;
+    min-width: 600px;
   }
   
   .dataset-table :deep(thead th) {
@@ -787,18 +790,8 @@ export default {
     font-size: 11px;
   }
   
-  .table-year-badge,
-  .table-resolution-badge {
+  .year-chip {
     font-size: 10px;
-    padding: 3px 6px;
-    min-width: 35px;
-  }
-  
-  
-  .table-add-btn {
-    font-size: 10px;
-    min-width: 60px;
-    min-height: 28px;
     padding: 4px 8px;
   }
 }
@@ -848,25 +841,19 @@ export default {
     line-clamp: 2;
   }
   
-  .table-year-badge,
-  .table-resolution-badge {
-    font-size: 9px;
-    padding: 2px 4px;
-    min-width: 30px;
-  }
-  
   .current-badge-inline,
   .featured-badge-inline {
     font-size: 8px;
     padding: 1px 4px;
   }
   
-  
-  .table-add-btn {
+  .year-chip {
     font-size: 9px;
-    min-height: 24px;
     padding: 3px 6px;
-    min-width: 50px;
+  }
+  
+  .year-chips {
+    gap: 4px;
   }
 }
 </style>

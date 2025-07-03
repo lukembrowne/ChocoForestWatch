@@ -67,6 +67,7 @@
       "table": {
         "dataset": "Dataset",
         "year": "Year",
+        "years": "Years",
         "resolution": "Resolution",
         "status": "Status",
         "actions": "Add",
@@ -126,15 +127,6 @@
         "noData": "No Data",
         "missingPixels": "Some areas have missing data",
         "completeCoverage": "Complete data coverage"
-      },
-      "table": {
-        "dataset": "Dataset",
-        "year": "Year",
-        "resolution": "Resolution",
-        "version": "Version",
-        "status": "Status",
-        "actions": "Actions",
-        "learnMore": "Learn More"
       }
     },
     "unified": {

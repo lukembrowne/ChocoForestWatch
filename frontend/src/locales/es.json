@@ -67,6 +67,7 @@
       "table": {
         "dataset": "Conjunto de Datos",
         "year": "Año",
+        "years": "Años",
         "resolution": "Resolución",
         "status": "Estado",
         "actions": "Agregar",
@@ -126,15 +127,6 @@
         "noData": "Sin Datos",
         "missingPixels": "Algunas áreas tienen datos faltantes",
         "completeCoverage": "Cobertura completa de datos"
-      },
-      "table": {
-        "dataset": "Conjunto de Datos",
-        "year": "Año",
-        "resolution": "Resolución",
-        "version": "Versión",
-        "status": "Estado",
-        "actions": "Acciones",
-        "learnMore": "Más Info"
       }
     },
     "unified": {
