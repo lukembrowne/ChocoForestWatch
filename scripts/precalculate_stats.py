@@ -6,7 +6,7 @@ This can be run from the project root directory.
 Usage:
     python scripts/precalculate_stats.py
     python scripts/precalculate_stats.py --force
-    python scripts/precalculate_stats.py --collection benchmarks-hansen-tree-cover-2022
+    python scripts/precalculate_stats.py --collection datasets-hansen-tree-cover-2022
 """
 
 import os

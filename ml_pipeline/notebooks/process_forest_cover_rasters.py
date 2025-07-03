@@ -2,14 +2,15 @@
 """
 Enhanced Forest Cover Raster Re-processing Script
 
-This script re-processes forest cover benchmark datasets with:
+This script re-processes forest cover datasets with:
 - Building overviews for optimal map display
 - Masking values outside geojson bounds to missing data (255)
 - Converting pixels to standardized forest/non-forest labels (0/1)
 - Uploading optimized COGs to S3
 - Managing STAC collections with backup/restore functionality
 
-Based on the original build_benchmarks_stac.py but with significant enhancements.
+Uses the unified dataset structure where all datasets (external + ChocoForestWatch) are stored
+under the 'datasets/' folder with consistent naming conventions.
 """
 
 import argparse
@@ -49,60 +50,53 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Dataset configurations - each dataset has specific processing parameters
+# Note: ChocoForestWatch datasets are now handled dynamically via custom configs
 DATASET_CONFIGS = {
-    "cfw-2022": {
-        "input_path": "./benchmark_rasters/northern_choco_test_2025_06_20_2022_merged_composite.tif",
-        "s3_prefix": "benchmarks/CFW",
-        "collection_id": "northern_choco_test_2025_06_20_2022_merged_composite",
-        "asset_title": "CFW 2022",
-        "year": 2022,
-        "description": "CFW 2022 for Western Ecuador"
-    },
 
     "hansen-tree-cover-2022": {
-        "input_path": "./benchmark_rasters/TreeCover2022-Hansen_wec.tif",
-        "s3_prefix": "benchmarks/HansenTreeCover",
-        "collection_id": "benchmarks-hansen-tree-cover-2022",
+        "input_path": "./dataset_rasters/TreeCover2022-Hansen_wec.tif",
+        "s3_prefix": "datasets/hansen-tree-cover",
+        "collection_id": "datasets-hansen-tree-cover-2022",
         "asset_title": "Hansen Tree Cover 2022",
         "year": 2022,
         "description": "Hansen Global Forest Change Tree Cover 2022 for Western Ecuador"
     },
     "mapbiomes-2022": {
-        "input_path": "./benchmark_rasters/ecuador_coverage_2022_wec.tif",
-        "s3_prefix": "benchmarks/MapBiomes",
-        "collection_id": "benchmarks-mapbiomes-2022",
+        "input_path": "./dataset_rasters/ecuador_coverage_2022_wec.tif",
+        "s3_prefix": "datasets/mapbiomes",
+        "collection_id": "datasets-mapbiomes-2022",
         "asset_title": "MapBiomes 2022",
         "year": 2022,
         "description": "MapBiomes Ecuador Land Cover 2022 for Western Ecuador"
     },
     "esa-landcover-2020": {
-        "input_path": "./benchmark_rasters/LandCover2020-ESA_wec_merged.tif",
-        "s3_prefix": "benchmarks/ESA-Landcover",
-        "collection_id": "benchmarks-esa-landcover-2020",
+        "input_path": "./dataset_rasters/LandCover2020-ESA_wec_merged.tif",
+        "s3_prefix": "datasets/esa-landcover",
+        "collection_id": "datasets-esa-landcover-2020",
         "asset_title": "ESA Land Cover 2020",
         "year": 2020,
         "description": "ESA Land Cover Classification 2020 for Western Ecuador"
     },
     "jrc-forestcover-2020": {
-        "input_path": "./benchmark_rasters/ForestCover2020-JRC_wec_merged.tif",
-        "s3_prefix": "benchmarks/JRC-ForestCover",
-        "collection_id": "benchmarks-jrc-forestcover-2020",
+        "input_path": "./dataset_rasters/ForestCover2020-JRC_wec_merged.tif",
+        "s3_prefix": "datasets/jrc-forestcover",
+        "collection_id": "datasets-jrc-forestcover-2020",
         "asset_title": "JRC Forest Cover 2020",
         "year": 2020,
         "description": "JRC Forest Cover Classification 2020 for Western Ecuador"
     },
     "palsar-2020": {
-        "input_path": "./benchmark_rasters/PALSAR2020_wec.tif",
-        "s3_prefix": "benchmarks/PALSAR",
-        "collection_id": "benchmarks-palsar-2020",
+        "input_path": "./dataset_rasters/PALSAR2020_wec.tif",
+        "s3_prefix": "datasets/palsar",
+        "collection_id": "datasets-palsar-2020",
         "asset_title": "PALSAR 2020",
         "year": 2020,
         "description": "PALSAR-2 Forest/Non-Forest Classification 2020 for Western Ecuador"
     },
     "wri-treecover-2020": {
-        "input_path": "./benchmark_rasters/TreeCover2020-WRI_wec_merged.tif",
-        "s3_prefix": "benchmarks/WRI-TreeCover",
-        "collection_id": "benchmarks-wri-treecover-2020",
+        "input_path": "./dataset_rasters/TreeCover2020-WRI_wec_merged.tif",
+        "s3_prefix": "datasets/wri-treecover",
+        "collection_id": "datasets-wri-treecover-2020",
         "asset_title": "WRI Tree Cover 2020",
         "year": 2020,
         "description": "WRI Tree Cover Classification 2020 for Western Ecuador"
@@ -283,13 +277,16 @@ class RasterProcessor:
                     data = self._apply_boundary_mask(data, src)
                 
                 # Step 2: Convert pixels to forest/non-forest labels
-                if collection_id not in ["northern_choco_test_2025_06_20_2022_merged_composite"]:
+                # Skip conversion for ChocoForestWatch datasets (they're already in 0/1 format)
+                if not collection_id.startswith("datasets-cfw-"):
                     logger.info("Converting pixels to forest/non-forest labels...")
                     data = self._convert_to_forest_labels(data, collection_id)  
                 
                     # Step 3: Set missing data consistently to 255
                     logger.info("Standardizing missing data values...")
                     data = self._standardize_missing_data(data)
+                else:
+                    logger.info("Skipping pixel conversion for ChocoForestWatch dataset (already in 0/1 format)")
                 
                 # Step 4: Update profile for COG output
                 profile.update({
@@ -430,9 +427,9 @@ class RasterProcessor:
             raise
 
 class ForestCoverProcessor:
-    """Main class for processing forest cover datasets"""
+    """Main class for processing forest cover datasets using unified dataset structure"""
     
-    def __init__(self, boundary_geojson_path: Optional[str] = None, dry_run: bool = False):
+    def __init__(self, boundary_geojson_path: Optional[str] = None, dry_run: bool = False, use_remote_db: bool = True):
         """
         Initialize the forest cover processor.
         
@@ -442,40 +439,53 @@ class ForestCoverProcessor:
             Path to GeoJSON file for boundary masking
         dry_run : bool, optional
             If True, only simulate operations without making changes
+        use_remote_db : bool, optional
+            If True, connect to remote database, otherwise use localhost
         """
         self.dry_run = dry_run
         self.raster_processor = RasterProcessor(boundary_geojson_path)
-        self.stac_manager = STACManager(STACManagerConfig(use_remote_db=True))
+        self.stac_manager = STACManager(STACManagerConfig(use_remote_db=use_remote_db))
         self.s3_client, self.bucket = get_s3_client()
         
-        logger.info(f"Initialized ForestCoverProcessor (dry_run={dry_run})")
+        logger.info(f"Initialized ForestCoverProcessor (dry_run={dry_run}, use_remote_db={use_remote_db})")
     
-    def process_dataset(self, dataset_key: str, input_dir: str = ".") -> bool:
+    def process_dataset(self, dataset_key: str, input_dir: str = ".", custom_config: Optional[Dict] = None) -> bool:
         """
         Process a single dataset.
         
         Parameters
         ----------
         dataset_key : str
-            Key for the dataset in DATASET_CONFIGS
+            Key for the dataset in DATASET_CONFIGS, or "custom" for custom config
         input_dir : str, optional
             Directory containing input raster files
+        custom_config : dict, optional
+            Custom dataset configuration (overrides DATASET_CONFIGS)
             
         Returns
         -------
         bool
             True if processing succeeded, False otherwise
         """
-        if dataset_key not in DATASET_CONFIGS:
-            logger.error(f"Unknown dataset: {dataset_key}")
+        # Use custom config if provided, otherwise look up in DATASET_CONFIGS
+        if custom_config:
+            config = custom_config
+            logger.info(f"Processing custom dataset: {config.get('collection_id', 'unknown')}")
+        elif dataset_key in DATASET_CONFIGS:
+            config = DATASET_CONFIGS[dataset_key]
+            logger.info(f"Processing dataset: {dataset_key}")
+        else:
+            logger.error(f"Unknown dataset: {dataset_key} and no custom config provided")
             return False
         
-        config = DATASET_CONFIGS[dataset_key]
-        logger.info(f"Processing dataset: {dataset_key}")
-        
         try:
-            # Resolve input path
-            input_path = Path(input_dir) / config["input_path"]
+            # Resolve input path - handle both relative and absolute paths
+            input_path_str = config["input_path"]
+            if Path(input_path_str).is_absolute():
+                input_path = Path(input_path_str)
+            else:
+                input_path = Path(input_dir) / input_path_str
+                
             if not input_path.exists():
                 logger.error(f"Input file not found: {input_path}")
                 return False
@@ -500,7 +510,7 @@ class ForestCoverProcessor:
                 # Step 3: Upload processed raster to S3
                 logger.info("Step 3: Uploading processed raster to S3...")
                 if not self.dry_run:
-                    # Add year to S3 path for proper nesting (e.g., "benchmarks/HansenTreeCover/2022/file.tif")
+                    # Add year to S3 path for proper nesting (e.g., "datasets/hansen-tree-cover/2022/file.tif")
                     remote_key = f"{config['s3_prefix']}/{config['year']}/{Path(input_path).name}"
                     upload_file(Path(output_path), remote_key)
                     logger.info(f"Uploaded to S3: {remote_key}")
@@ -574,7 +584,7 @@ class ForestCoverProcessor:
                 prefix_on_s3=config["s3_prefix"],
                 collection_id=config["collection_id"],
                 asset_key="data",
-                asset_roles=["benchmark"],
+                asset_roles=["data"],
                 asset_title=config["asset_title"]
             )
             logger.info(f"✅ Created STAC collection in remote database: {config['collection_id']}")
@@ -596,7 +606,7 @@ class ForestCoverProcessor:
                 prefix_on_s3=config["s3_prefix"],
                 collection_id=config["collection_id"],
                 asset_key="data",
-                asset_roles=["benchmark"],
+                asset_roles=["data"],
                 asset_title=config["asset_title"]
             )
             logger.info(f"✅ Created STAC collection in local database: {config['collection_id']}")
@@ -657,10 +667,113 @@ class ForestCoverProcessor:
         
         return results
 
+def create_cfw_dataset_config(run_id: str, year: str, input_path: str, 
+                             asset_title: Optional[str] = None, 
+                             description: Optional[str] = None) -> Dict:
+    """
+    Create a dataset configuration for a ChocoForestWatch dataset.
+    
+    Parameters
+    ----------
+    run_id : str
+        The run ID for this CFW dataset
+    year : str
+        The year for this dataset
+    input_path : str
+        Path to the input raster file (can be relative or absolute)
+    asset_title : str, optional
+        Custom asset title (defaults to auto-generated)
+    description : str, optional
+        Custom description (defaults to auto-generated)
+        
+    Returns
+    -------
+    dict
+        Dataset configuration dictionary
+    """
+    if asset_title is None:
+        asset_title = f"ChocoForestWatch - {run_id.replace('_', ' ').title()} {year}"
+    
+    if description is None:
+        description = f"ChocoForestWatch {run_id} Dataset {year} for Western Ecuador"
+    
+    return {
+        "input_path": input_path,
+        "s3_prefix": f"datasets/cfw-{run_id}",
+        "collection_id": f"datasets-cfw-{run_id}-{year}",
+        "asset_title": asset_title,
+        "year": int(year),
+        "description": description
+    }
+
+def process_cfw_dataset(run_id: str, year: str, input_path: str, 
+                       boundary_geojson_path: Optional[str] = None,
+                       dry_run: bool = False,
+                       db_host: str = "local",
+                       asset_title: Optional[str] = None,
+                       description: Optional[str] = None) -> bool:
+    """
+    Process a ChocoForestWatch dataset with custom configuration.
+    
+    This function can be called from other scripts to process CFW datasets
+    without hardcoding configurations.
+    
+    Parameters
+    ----------
+    run_id : str
+        The run ID for this CFW dataset
+    year : str
+        The year for this dataset
+    input_path : str
+        Path to the input raster file (can be relative or absolute)
+    boundary_geojson_path : str, optional
+        Path to GeoJSON file for boundary masking
+    dry_run : bool, optional
+        If True, only simulate operations without making changes
+    db_host : str, optional
+        Database host configuration ("local" or "remote")
+    asset_title : str, optional
+        Custom asset title (defaults to auto-generated)
+    description : str, optional
+        Custom description (defaults to auto-generated)
+        
+    Returns
+    -------
+    bool
+        True if processing succeeded, False otherwise
+    """
+    logger.info(f"🔄 Processing ChocoForestWatch dataset: cfw-{run_id}-{year}")
+    
+    try:
+        # Create custom configuration
+        config = create_cfw_dataset_config(run_id, year, input_path, asset_title, description)
+        
+        # Initialize processor based on db_host
+        use_remote_db = (db_host == "remote")
+        processor = ForestCoverProcessor(
+            boundary_geojson_path=boundary_geojson_path,
+            dry_run=dry_run,
+            use_remote_db=use_remote_db
+        )
+        
+        # Process the dataset with custom config
+        success = processor.process_dataset("custom", custom_config=config)
+        
+        if success:
+            logger.info(f"✅ Successfully processed ChocoForestWatch dataset: cfw-{run_id}-{year}")
+        else:
+            logger.error(f"❌ Failed to process ChocoForestWatch dataset: cfw-{run_id}-{year}")
+            
+        return success
+        
+    except Exception as e:
+        logger.error(f"❌ Error processing ChocoForestWatch dataset: {str(e)}")
+        return False
+
 def main():
     """Main entry point for the script"""
     parser = argparse.ArgumentParser(
-        description="Re-process forest cover rasters with optimization and standardization"
+        description="Re-process forest cover datasets with optimization and standardization for unified dataset structure"
     )
     parser.add_argument(
         '--dataset', 
@@ -699,9 +812,11 @@ def main():
         logging.getLogger().setLevel(logging.DEBUG)
     
     try:
+        # Default to remote database for main script (backward compatibility)
         processor = ForestCoverProcessor(
             boundary_geojson_path=args.boundary_geojson,
-            dry_run=args.dry_run
+            dry_run=args.dry_run,
+            use_remote_db=True
         )
         
         # Show projection information if requested

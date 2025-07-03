@@ -14,7 +14,7 @@ docker compose exec backend python manage.py precalculate_western_ecuador_stats
 docker compose exec backend python manage.py precalculate_western_ecuador_stats --force
 
 # Calculate for specific collection only
-docker compose exec backend python manage.py precalculate_western_ecuador_stats --collection benchmarks-hansen-tree-cover-2022
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --collection datasets-hansen-tree-cover-2022
 
 # Clear all cached stats before calculating
 docker compose exec backend python manage.py precalculate_western_ecuador_stats --clear
@@ -33,7 +33,7 @@ python scripts/precalculate_stats.py
 python scripts/precalculate_stats.py --force
 
 # Calculate for specific collection only
-python scripts/precalculate_stats.py --collection benchmarks-hansen-tree-cover-2022
+python scripts/precalculate_stats.py --collection datasets-hansen-tree-cover-2022
 
 # Clear all cached stats before calculating
 python scripts/precalculate_stats.py --clear
@@ -46,12 +46,12 @@ python scripts/precalculate_stats.py --help
 
 The following benchmark collections are supported:
 
-- `benchmarks-hansen-tree-cover-2022` - Hansen Global Forest Change
-- `benchmarks-mapbiomes-2022` - MapBiomas Ecuador
-- `benchmarks-esa-landcover-2020` - ESA WorldCover
-- `benchmarks-jrc-forestcover-2020` - JRC Forest Cover
-- `benchmarks-palsar-2020` - ALOS PALSAR Forest Map
-- `benchmarks-wri-treecover-2020` - WRI Tropical Tree Cover
+- `datasets-hansen-tree-cover-2022` - Hansen Global Forest Change
+- `datasets-mapbiomes-2022` - MapBiomas Ecuador
+- `datasets-esa-landcover-2020` - ESA WorldCover
+- `datasets-jrc-forestcover-2020` - JRC Forest Cover
+- `datasets-palsar-2020` - ALOS PALSAR Forest Map
+- `datasets-wri-treecover-2020` - WRI Tropical Tree Cover
 - `nicfi-pred-northern_choco_test_2025_06_16-composite-2022` - Choco Forest Watch 2022
 
 ## Environment Requirements

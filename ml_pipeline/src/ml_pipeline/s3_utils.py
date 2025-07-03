@@ -13,7 +13,7 @@ from pathlib import Path
 import os
 import boto3
 from dotenv import load_dotenv
-from typing import Optional
+from typing import Optional, Union
 
 def get_s3_client(bucket: str = "choco-forest-watch") -> tuple[boto3.client, str]:
     """
@@ -40,7 +40,7 @@ def get_s3_client(bucket: str = "choco-forest-watch") -> tuple[boto3.client, str
     return s3, bucket
 
 def upload_file(
-    local_path: Path,
+    local_path: Union[Path, str],
     remote_key: str,
     content_type: str = "image/tiff",
     bucket: Optional[str] = None
@@ -50,7 +50,7 @@ def upload_file(
     
     Parameters
     ----------
-    local_path : Path
+    local_path : Union[Path, str]
         Path to the local file to upload
     remote_key : str
         The key (path) where the file should be stored in the bucket
@@ -61,6 +61,9 @@ def upload_file(
     """
     s3, default_bucket = get_s3_client()
     bucket = bucket or default_bucket
+    
+    # Convert to Path object if needed
+    local_path = Path(local_path)
     
     print(f"⤴️  Uploading {local_path.name} → {remote_key}")
     s3.upload_file(

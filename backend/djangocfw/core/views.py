@@ -13,7 +13,6 @@ import json
 from django.conf import settings
 from django.http import JsonResponse
 from .services.deforestation import analyze_change, get_deforestation_hotspots
-from .services.gfw_alerts import gfw_service, get_or_create_gfw_alerts
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
@@ -51,12 +50,12 @@ DEFAULT_PUBLIC_PROJECT_ID = int(os.getenv("DEFAULT_PUBLIC_PROJECT_ID"))
 # ---------------------------------------------------------------------------
 
 ALLOWED_BENCHMARK_COLLECTIONS = [
-    "benchmarks-hansen-tree-cover-2022",
-    "benchmarks-mapbiomes-2022",
-    "benchmarks-esa-landcover-2020",
-    "benchmarks-jrc-forestcover-2020",
-    "benchmarks-palsar-2020",
-    "benchmarks-wri-treecover-2020",
+    "datasets-hansen-tree-cover-2022",
+    "datasets-mapbiomes-2022",
+    "datasets-esa-landcover-2020",
+    "datasets-jrc-forestcover-2020",
+    "datasets-palsar-2020",
+    "datasets-wri-treecover-2020",
     "northern_choco_test_2025_06_20_2022_merged_composite",  # CFW composite
 ]
 
@@ -788,9 +787,9 @@ def get_random_points_within_collection(request, collection_id):
     try:
         # Initialize the extractor with default band indexes
         extractor = TitilerExtractor(
-            base_url=titiler_url,
             collection=collection_id,
-            band_indexes=[1, 2, 3, 4]
+            band_indexes=[1, 2, 3, 4],
+            db_host="local"
         )
 
         # Limit to northern Choco for now
@@ -894,7 +893,7 @@ def aoi_summary(request):
         logger.info(f"Using collection ID: {collection_id}")
 
         logger.info("Computing summary statistics")
-        stats_df = AOISummaryStats(titiler_url, collection_id).summary(aoi_geojson)
+        stats_df = AOISummaryStats(collection_id, "localhost").summary(aoi_geojson)
 
         # Convert single-row dataframe to plain dict
         stats_dict = stats_df.iloc[0].to_dict()
@@ -908,61 +907,6 @@ def aoi_summary(request):
         return Response({"error": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def gfw_alerts_2022(request):
-    """Get Global Forest Watch deforestation alerts for 2022 within Ecuador boundary."""
-    try:
-        logger.info("Fetching GFW 2022 alerts from database")
-        
-        # Get alerts from database (create if they don't exist)
-        alerts = get_or_create_gfw_alerts(year=2022)
-        
-        # Convert to GeoJSON format
-        features = []
-        for alert in alerts:
-            feature = {
-                "type": "Feature",
-                "id": str(alert.id),
-                "geometry": alert.geometry,
-                "properties": {
-                    "id": str(alert.id),
-                    "area_ha": round(alert.area_ha, 2),
-                    "perimeter_m": round(alert.perimeter_m, 2),
-                    "compactness": round(alert.compactness, 3),
-                    "edge_density": round(alert.edge_density, 3),
-                    "confidence": alert.confidence,
-                    "source": alert.source,
-                    "year": alert.year,
-                    "centroid_lon": alert.centroid_lon,
-                    "centroid_lat": alert.centroid_lat,
-                    "verification_status": alert.verification_status
-                }
-            }
-            features.append(feature)
-        
-        alerts_geojson = {
-            "type": "FeatureCollection",
-            "features": features,
-            "metadata": {
-                "year": 2022,
-                "source": "Global Forest Watch",
-                "total_alerts": len(features),
-                "boundary": "Ecuador DEM 900m contour"
-            }
-        }
-        
-        logger.info(f"Successfully retrieved {len(features)} GFW alerts from database")
-        
-        return Response(alerts_geojson, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f"Error fetching GFW alerts: {str(e)}")
-        capture_exception(e)
-        return Response(
-            {"error": f"Failed to fetch GFW alerts: {str(e)}"}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
 
 
 @api_view(['GET'])

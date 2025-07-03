@@ -22,12 +22,12 @@ _global_boundary_polygon = None
 
 # Allowed benchmark collections
 ALLOWED_BENCHMARK_COLLECTIONS = [
-    "benchmarks-hansen-tree-cover-2022",
-    "benchmarks-mapbiomes-2022", 
-    "benchmarks-esa-landcover-2020",
-    "benchmarks-jrc-forestcover-2020",
-    "benchmarks-palsar-2020",
-    "benchmarks-wri-treecover-2020",
+    "datasets-hansen-tree-cover-2022",
+    "datasets-mapbiomes-2022", 
+    "datasets-esa-landcover-2020",
+    "datasets-jrc-forestcover-2020",
+    "datasets-palsar-2020",
+    "datasets-wri-treecover-2020",
     "northern_choco_test_2025_06_20_2022_merged_composite",  # CFW composite
 ]
 
@@ -192,7 +192,7 @@ def _convert_boundary_to_geojson(boundary_polygon):
         raise Exception(f"Boundary conversion failed: {str(e)}")
 
 
-def get_western_ecuador_stats(collection_id, force_recalculate=False):
+def get_western_ecuador_stats(collection_id, force_recalculate=False, db_host=None):
     """
     Get western Ecuador statistics for a collection, either from cache or by calculating them.
     
@@ -232,7 +232,7 @@ def get_western_ecuador_stats(collection_id, force_recalculate=False):
         
         # All collections now use the unified boundary-based approach
         logger.info("🚀 Using unified boundary-based calculation")
-        aoi_stats = AOISummaryStats(titiler_url, collection_id)
+        aoi_stats = AOISummaryStats(collection_id, db_host or "local")
         
         logger.info("🧮 Starting summary computation...")
         
@@ -269,13 +269,14 @@ def get_western_ecuador_stats(collection_id, force_recalculate=False):
         raise
 
 
-def precalculate_all_stats(force_recalculate=False, collection_filter=None):
+def precalculate_all_stats(force_recalculate=False, collection_filter=None, db_host=None):
     """
     Pre-calculate western Ecuador statistics for all or specified collections.
     
     Args:
         force_recalculate (bool): If True, recalculate even if cached
         collection_filter (str): If provided, only calculate for this collection
+        db_host (str): Database host for AOISummaryStats. Defaults to "local"
         
     Returns:
         dict: Summary of results with 'successful', 'failed', and 'skipped' counts
@@ -311,7 +312,7 @@ def precalculate_all_stats(force_recalculate=False, collection_filter=None):
             logger.info(f"🎯 Starting calculation for {collection_id}...")
             start_time = timezone.now()
             
-            get_western_ecuador_stats(collection_id, force_recalculate=True)
+            get_western_ecuador_stats(collection_id, force_recalculate=True, db_host=db_host)
             
             end_time = timezone.now()
             duration = (end_time - start_time).total_seconds()

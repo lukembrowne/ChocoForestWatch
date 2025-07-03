@@ -90,8 +90,8 @@ export const useMapStore = defineStore('map', () => {
   const isDrawingSummaryAOI = ref(false);
   const summaryStats = ref(null);
 
-  // Forest Cover Maps selection (formerly benchmarks)
-  const availableBenchmarks = [
+  // Forest Cover Maps selection
+  const availableDatasets = [
     { 
       value: 'northern_choco_test_2025_06_20_2022_merged_composite', 
       label: 'Choco Forest Watch 2022',
@@ -103,7 +103,7 @@ export const useMapStore = defineStore('map', () => {
       type: 'prediction'
     },
     { 
-      value: 'benchmarks-hansen-tree-cover-2022', 
+      value: 'datasets-hansen-tree-cover-2022', 
       label: 'Hansen Global Forest Change',
       year: '2022',
       resolution: '30m',
@@ -111,7 +111,7 @@ export const useMapStore = defineStore('map', () => {
       type: 'benchmark'
     },
     { 
-      value: 'benchmarks-mapbiomes-2022', 
+      value: 'datasets-mapbiomes-2022', 
       label: 'MapBiomas Ecuador',
       year: '2022',
       resolution: '30m',
@@ -119,7 +119,7 @@ export const useMapStore = defineStore('map', () => {
       type: 'benchmark'
     },
     { 
-      value: 'benchmarks-esa-landcover-2020', 
+      value: 'datasets-esa-landcover-2020', 
       label: 'ESA WorldCover',
       year: '2020',
       resolution: '10m',
@@ -127,7 +127,7 @@ export const useMapStore = defineStore('map', () => {
       type: 'benchmark'
     },
     { 
-      value: 'benchmarks-jrc-forestcover-2020', 
+      value: 'datasets-jrc-forestcover-2020', 
       label: 'JRC Forest Cover',
       year: '2020',
       resolution: '10m',
@@ -135,7 +135,7 @@ export const useMapStore = defineStore('map', () => {
       type: 'benchmark'
     },
     { 
-      value: 'benchmarks-palsar-2020', 
+      value: 'datasets-palsar-2020', 
       label: 'ALOS PALSAR Forest Map',
       year: '2020',
       resolution: '25m',
@@ -143,15 +143,39 @@ export const useMapStore = defineStore('map', () => {
       type: 'benchmark'
     },
     { 
-      value: 'benchmarks-wri-treecover-2020', 
+      value: 'datasets-wri-treecover-2020', 
       label: 'WRI Tropical Tree Cover',
       year: '2020',
       resolution: '30m',
       description: 'Tropical tree cover from World Resources Institute',
       type: 'benchmark'
     },
+    { 
+      value: 'datasets-gfw-integrated-alerts-2022', 
+      label: 'GFW Deforestation Alerts 2022',
+      year: '2022',
+      resolution: '10m',
+      description: 'Global Forest Watch integrated deforestation alerts',
+      type: 'alerts'
+    },
+    { 
+      value: 'datasets-gfw-integrated-alerts-2023', 
+      label: 'GFW Deforestation Alerts 2023',
+      year: '2023',
+      resolution: '10m',
+      description: 'Global Forest Watch integrated deforestation alerts',
+      type: 'alerts'
+    },
+    { 
+      value: 'datasets-gfw-integrated-alerts-2024', 
+      label: 'GFW Deforestation Alerts 2024',
+      year: '2024',
+      resolution: '10m',
+      description: 'Global Forest Watch integrated deforestation alerts',
+      type: 'alerts'
+    },
   ];
-  const selectedBenchmark = ref(availableBenchmarks[0].value);
+  const selectedBenchmark = ref(availableDatasets[0].value);
 
   // New computed property for visual indicator
   const modeIndicator = computed(() => {
@@ -172,12 +196,60 @@ export const useMapStore = defineStore('map', () => {
   // Add benchmark expression mapping constant
   const benchmarkExpressionMapping = {
     'northern_choco_test_2025_06_20_2022_merged_composite': 'where((data==1),1,0)',
-    'benchmarks-hansen-tree-cover-2022': 'where(data>=90,1,0)',
-    'benchmarks-mapbiomes-2022': 'where((data==3)|(data==4)|(data==5)|(data==6),1,0)',
-    'benchmarks-esa-landcover-2020': 'where(data==10,1,0)',
-    'benchmarks-jrc-forestcover-2020': 'where(data==1,1,0)',
-    'benchmarks-palsar-2020': 'where((data==1)|(data==2),1,0)',
-    'benchmarks-wri-treecover-2020': 'where(data>=90,1,0)',
+    'datasets-hansen-tree-cover-2022': 'where(data>=90,1,0)',
+    'datasets-mapbiomes-2022': 'where((data==3)|(data==4)|(data==5)|(data==6),1,0)',
+    'datasets-esa-landcover-2020': 'where(data==10,1,0)',
+    'datasets-jrc-forestcover-2020': 'where(data==1,1,0)',
+    'datasets-palsar-2020': 'where((data==1)|(data==2),1,0)',
+    'datasets-wri-treecover-2020': 'where(data>=90,1,0)',
+    // GFW alerts - show as binary alerts (any non-zero value is an alert)
+    'datasets-gfw-integrated-alerts-2022': 'where(data>0,1,0)',
+    'datasets-gfw-integrated-alerts-2023': 'where(data>0,1,0)',
+    'datasets-gfw-integrated-alerts-2024': 'where(data>0,1,0)',
+  };
+
+  // GFW date/confidence decoder functions
+  const decodeGFWDate = (value) => {
+    if (value === 0) return { date: null, confidence: null };
+    
+    const encoded_str = value.toString();
+    
+    // Handle single digit values (confidence only, no date)
+    if (encoded_str.length === 1) {
+      return { date: null, confidence: parseInt(encoded_str) };
+    }
+    
+    // Get confidence level from first digit
+    const confidence = parseInt(encoded_str[0]);
+    
+    // Get days since Dec 31, 2014
+    const days = parseInt(encoded_str.substring(1));
+    
+    // Calculate date
+    const baseDate = new Date(2014, 11, 31); // Month is 0-indexed
+    const alertDate = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
+    
+    return { date: alertDate, confidence: confidence };
+  };
+
+  const formatGFWAlert = (value) => {
+    const decoded = decodeGFWDate(value);
+    if (!decoded.date && !decoded.confidence) return 'No alert';
+    
+    let result = '';
+    if (decoded.date) {
+      result += `Date: ${decoded.date.toLocaleDateString()}`;
+    }
+    if (decoded.confidence) {
+      const confidenceLevels = {
+        1: 'Low',
+        2: 'Medium', 
+        3: 'High',
+        4: 'Very High'
+      };
+      result += `${result ? ', ' : ''}Confidence: ${confidenceLevels[decoded.confidence] || decoded.confidence}`;
+    }
+    return result;
   };
 
   // Actions
@@ -1579,9 +1651,9 @@ export const useMapStore = defineStore('map', () => {
       maxZoom: 14,
     });
 
-    // Get readable title from availableBenchmarks array
-    const benchmarkInfo = availableBenchmarks.find(b => b.value === collectionId);
-    const title = benchmarkInfo ? benchmarkInfo.label : collectionId.replace('benchmarks-', '').replace(/-/g, ' ');
+    // Get readable title from availableDatasets array
+    const benchmarkInfo = availableDatasets.find(b => b.value === collectionId);
+    const title = benchmarkInfo ? benchmarkInfo.label : collectionId.replace('datasets-', '').replace(/-/g, ' ');
 
     return new TileLayer({
       source,
@@ -1798,6 +1870,7 @@ export const useMapStore = defineStore('map', () => {
       summaryStats.value = response.data;
     } catch (error) {
       console.error('Failed to load western Ecuador stats:', error);
+      summaryStats.value = null; // Clear statistics on error
       $q.notify({
         type: 'negative',
         message: 'Failed to load regional statistics.',
@@ -1812,38 +1885,34 @@ export const useMapStore = defineStore('map', () => {
   // GFW Alerts functionality  
   // -------------------------------------------
   
-  const createGFWAlertsLayer = () => {
-    // Create a vector layer for GFW alerts using GeoJSON data
-    const vectorSource = new VectorSource({
-      url: `${import.meta.env.VITE_API_URL}/gfw/alerts/2022/`,
-      format: new GeoJSON(),
-      attributions: '© Global Forest Watch'
+  const createGFWAlertsLayer = (collectionId, year) => {
+    // Create a raster layer for GFW alerts using TiTiler
+    const tileUrl = `${import.meta.env.VITE_TITILER_URL || 'http://localhost:8081'}/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?expression=where(data>0,1,0)&asset_as_band=True&colormap_name=reds&rescale=0,1`;
+    
+    const source = new XYZ({
+      url: tileUrl,
+      attributions: '© Global Forest Watch',
+      crossOrigin: 'anonymous'
     });
 
-    // Style for GFW alert polygons
-    const alertStyle = new Style({
-      stroke: new Stroke({
-        color: '#FF6B35', // Orange-red for deforestation alerts
-        width: 2
-      }),
-      fill: new Fill({
-        color: 'rgba(255, 107, 53, 0.3)' // Semi-transparent orange-red
-      })
-    });
-
-    return new VectorLayer({
-      source: vectorSource,
-      style: alertStyle,
-      title: 'GFW Deforestation Alerts 2022',
-      id: 'gfw-alerts-2022',
+    const layer = new TileLayer({
+      source: source,
+      title: `GFW Deforestation Alerts ${year}`,
+      id: `gfw-alerts-${year}`,
       visible: true,
       zIndex: 4, // Higher than benchmark layers
       opacity: 0.8
     });
+
+    // Store collection ID for later use in click queries
+    layer.set('collectionId', collectionId);
+    layer.set('datasetType', 'alerts');
+    
+    return layer;
   };
 
-  const addGFWAlertsLayer = (mapId = null) => {
-    const layerId = 'gfw-alerts-2022';
+  const addGFWAlertsLayer = (collectionId, year, mapId = null) => {
+    const layerId = `gfw-alerts-${year}`;
     let targetMap;
     
     if (mapId && maps.value[mapId]) {
@@ -1863,12 +1932,16 @@ export const useMapStore = defineStore('map', () => {
     }
 
     try {
-      const newLayer = createGFWAlertsLayer();
+      const newLayer = createGFWAlertsLayer(collectionId, year);
       targetMap.addLayer(newLayer);
       updateLayers();
+      
+      // Add click-to-query functionality for GFW alerts
+      setupGFWClickHandler(targetMap);
+      
       $q.notify({
         type: 'positive',
-        message: 'GFW Deforestation Alerts 2022 layer added successfully',
+        message: `GFW Deforestation Alerts ${year} layer added successfully`,
         timeout: 2000
       });
     } catch (error) {
@@ -1879,6 +1952,88 @@ export const useMapStore = defineStore('map', () => {
         timeout: 3000
       });
     }
+  };
+
+  // GFW click-to-query functionality
+  const setupGFWClickHandler = (targetMap) => {
+    // Remove existing GFW click handler if it exists
+    if (targetMap.gfwClickHandler) {
+      targetMap.un('singleclick', targetMap.gfwClickHandler);
+    }
+
+    targetMap.gfwClickHandler = async (event) => {
+      // Only process clicks when a GFW alerts layer is visible
+      const gfwLayers = targetMap.getLayers().getArray().filter(layer => 
+        layer.get('datasetType') === 'alerts' && layer.getVisible()
+      );
+      
+      if (gfwLayers.length === 0) return;
+
+      const coordinate = event.coordinate;
+      const lonLat = toLonLat(coordinate);
+      
+      // Flag to track if we found any alerts
+      let foundAlert = false;
+      
+      // Query each visible GFW layer
+      for (const layer of gfwLayers) {
+        const collectionId = layer.get('collectionId');
+        if (!collectionId) continue;
+
+        try {
+          // Query pixel value from TiTiler
+          const response = await fetch(
+            `${import.meta.env.VITE_TITILER_URL || 'http://localhost:8081'}/collections/${collectionId}/point/${lonLat[0]},${lonLat[1]}?assets=data&asset_as_band=true`,
+            { method: 'GET' }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            // TiTiler returns: { values: [[collection_id, [pixel_value], [asset_name]]] }
+            const pixelValue = data.values?.[0]?.[1]?.[0];
+            
+            if (pixelValue && pixelValue > 0) {
+              // Display alert information
+              showGFWAlertPopup(coordinate, pixelValue, layer.get('title'));
+              foundAlert = true;
+              break; // Only show popup for first matching layer
+            }
+          }
+        } catch (error) {
+          console.error('Error querying GFW pixel value:', error);
+        }
+      }
+      
+      // If no alerts were found, hide any existing popup
+      if (!foundAlert) {
+        hideGFWAlertPopup();
+      }
+    };
+
+    targetMap.on('singleclick', targetMap.gfwClickHandler);
+  };
+
+  // State for GFW alert popup
+  const gfwAlertInfo = ref(null);
+  const gfwAlertVisible = ref(false);
+
+  const showGFWAlertPopup = (coordinate, pixelValue, layerTitle) => {
+    const alertData = decodeGFWDate(pixelValue);
+    gfwAlertInfo.value = {
+      coordinate,
+      layerTitle,
+      ...alertData,
+      pixelValue,
+      formattedInfo: formatGFWAlert(pixelValue)
+    };
+    
+    // Show the popup - Vue component will handle positioning
+    gfwAlertVisible.value = true;
+  };
+
+  const hideGFWAlertPopup = () => {
+    gfwAlertVisible.value = false;
+    gfwAlertInfo.value = null;
   };
 
   return {
@@ -1968,6 +2123,12 @@ export const useMapStore = defineStore('map', () => {
     // new benchmark actions
     addBenchmarkLayer,
     addGFWAlertsLayer,
+    // GFW alerts functionality
+    decodeGFWDate,
+    formatGFWAlert,
+    gfwAlertInfo,
+    gfwAlertVisible,
+    hideGFWAlertPopup,
     // Getters
     getMap,
     maps,
@@ -1975,7 +2136,7 @@ export const useMapStore = defineStore('map', () => {
     addLayerToDualMaps,
     removeLayerFromDualMaps,
     // Benchmark selection
-    availableBenchmarks,
+    availableDatasets,
     selectedBenchmark,
   };
 });
