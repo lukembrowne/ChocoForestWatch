@@ -30,10 +30,10 @@ def pixels_to_labels(collection: str, pixels: np.ndarray) -> np.ndarray:
     if "nicfi" in collection:
         out = np.where(pixels == 0, "Non-Forest", np.where(pixels == 1, "Forest", "Unknown"))
     
-    elif collection == "benchmarks-hansen-tree-cover-2022":
+    elif collection == "datasets-hansen-tree-cover-2022":
         out = np.where(pixels >= 90, "Forest", "Non-Forest")
 
-    elif collection == "benchmarks-mapbiomes-2022":
+    elif collection == "datasets-mapbiomes-2022":
         out = np.where(
                 np.logical_or.reduce([
                     pixels == 3,
@@ -45,13 +45,13 @@ def pixels_to_labels(collection: str, pixels: np.ndarray) -> np.ndarray:
                 "Non-Forest",
             )
 
-    elif collection == "benchmarks-esa-landcover-2020":
+    elif collection == "datasets-esa-landcover-2020":
         out = np.where(pixels == 10, "Forest", "Non-Forest")
 
-    elif collection == "benchmarks-jrc-forestcover-2020":
+    elif collection == "datasets-jrc-forestcover-2020":
         out = np.where(pixels == 1, "Forest", "Non-Forest")
  
-    elif collection == "benchmarks-palsar-2020":
+    elif collection == "datasets-palsar-2020":
         out = np.where(
                 np.logical_or.reduce([
                     pixels == 1,
@@ -61,7 +61,7 @@ def pixels_to_labels(collection: str, pixels: np.ndarray) -> np.ndarray:
                 "Non-Forest",
             )
 
-    elif collection == "benchmarks-wri-treecover-2020":
+    elif collection == "datasets-wri-treecover-2020":
         out = np.where(pixels >= 90, "Forest", "Non-Forest")
 
     else:

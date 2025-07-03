@@ -170,17 +170,7 @@ export default {
     
     // Use benchmarks from mapStore with version information
     const benchmarkOptions = computed(() => [
-      ...mapStore.availableBenchmarks,
-      { 
-        label: 'GFW Deforestation Alerts 2022', 
-        value: 'gfw-alerts-2022',
-        version: '2022',
-        year: '2022',
-        resolution: '30m',
-        description: 'Real-time deforestation alerts from Global Forest Watch',
-        created: '2022-01-01',
-        type: 'alerts'
-      },
+      ...mapStore.availableDatasets
     ])
     
     // Get currently selected benchmark from store
@@ -195,8 +185,10 @@ export default {
     })
 
     const addBenchmark = (val) => {
-      if (val === 'gfw-alerts-2022') {
-        mapStore.addGFWAlertsLayer('primary')
+      // Handle GFW alerts datasets
+      if (val.startsWith('datasets-gfw-integrated-alerts-')) {
+        const year = val.split('-').pop(); // Extract year from collection ID
+        mapStore.addGFWAlertsLayer(val, year, 'primary')
       } else {
         mapStore.addBenchmarkLayer(val, 'primary')
       }
@@ -206,8 +198,8 @@ export default {
     }
 
     const getDatasetKey = (value) => {
-      if (value === 'gfw-alerts-2022') {
-        return 'gfw-alerts'
+      if (value.startsWith('datasets-gfw-integrated-alerts-')) {
+        return 'alerts'
       }
       if (value === 'northern_choco_test_2025_06_20_2022_merged_composite') {
         return 'cfw-composite'

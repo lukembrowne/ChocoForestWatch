@@ -11,7 +11,8 @@ across specified months of a year. It:
    - Runs the training and prediction pipeline
    - Saves metrics for that month
 3. Optionally generates annual composites from monthly predictions
-4. Optionally runs benchmark evaluations
+4. Optionally processes ChocoForestWatch dataset into unified dataset structure
+5. Optionally runs dataset evaluations
 
 The script uses subprocess to run train_and_predict_by_month.py for each month,
 which handles:
@@ -29,9 +30,9 @@ Usage:
     python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --db-host remote
     
     # Skip specific steps
-    python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --skip-composites --skip-benchmarks
+    python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --skip-composites --skip-benchmarks --skip-cfw-processing
     
-    # Run only benchmarks (requires existing STAC collections)
+    # Run only dataset evaluation (requires existing STAC collections)
     python run_train_predict_pipeline.py --benchmarks-only --year 2023 --project_id 6 --run_id "experiment_name"
 
 Database Configuration:
@@ -81,11 +82,13 @@ def parse_arguments():
     parser.add_argument("--skip-composites", action="store_true", 
                        help="Skip composite generation after monthly processing")
     parser.add_argument("--skip-benchmarks", action="store_true", 
-                       help="Skip benchmark evaluation after composite generation")
+                       help="Skip dataset evaluation after composite generation")
     parser.add_argument("--skip-training", action="store_true", 
                        help="Skip training and prediction, go directly to composites/benchmarks")
     parser.add_argument("--benchmarks-only", action="store_true", 
-                       help="Skip training, prediction, and composites - only run benchmarks")
+                       help="Skip training, prediction, and composites - only run dataset evaluation")
+    parser.add_argument("--skip-cfw-processing", action="store_true", 
+                       help="Skip ChocoForestWatch dataset processing after composite generation")
     
     return parser.parse_args()
 
@@ -180,30 +183,83 @@ def generate_composites(run_id: str, year: str, db_host: str = "local"):
     except Exception as e:
         logger.error(f"❌ Error during composite generation: {str(e)}")
 
-def run_benchmarks(run_id: str, year: str, project_id: int, db_host: str = "local"):
-    """Run benchmark evaluation against reference datasets."""
-    logger.info("\n🏆 Running benchmark evaluation...")
+def process_cfw_dataset_for_pipeline(run_id: str, year: str, db_host: str = "local"):
+    """Process the ChocoForestWatch dataset created by this pipeline run."""
+    logger.info("\n🎨 Processing ChocoForestWatch dataset for unified dataset structure...")
     
-    # List of benchmark collections to evaluate
-    benchmark_collections = [
-        # Our own predictions
-        f"nicfi-pred-{run_id}-composite-{year}",  # Our annual composite
+    try:
+        # Import here to avoid circular imports
+        sys.path.append(str(Path(__file__).parent))
+        from process_forest_cover_rasters import process_cfw_dataset
         
-        # External benchmarks
-        "benchmarks-hansen-tree-cover-2022",      # Hansen Global Forest Change
-        "benchmarks-mapbiomes-2022",              # MapBiomas
-        "benchmarks-esa-landcover-2020",          # ESA WorldCover
-        "benchmarks-jrc-forestcover-2020",        # JRC Global Forest Cover
-        "benchmarks-palsar-2020",                 # PALSAR Forest/Non-Forest
-        "benchmarks-wri-treecover-2020",          # WRI Tree Cover
+        # Look for merged composite file from this run
+        ml_pipeline_dir = Path(__file__).parent.parent  # Go up from notebooks to ml_pipeline
+        runs_dir = ml_pipeline_dir / "runs" / run_id / "composites"
+        
+        # Find the merged composite file
+        merged_files = list(runs_dir.glob(f"{run_id}_{year}_merged_composite.tif"))
+        
+        if not merged_files:
+            logger.warning(f"⚠️  No merged composite found for {run_id}-{year}, looking for individual composites...")
+            # Look for any composite files if merged doesn't exist
+            composite_files = list(runs_dir.glob(f"*_{year}_forest_cover.tif"))
+            if composite_files:
+                input_path = str(composite_files[0])  # Use first one found
+                logger.info(f"📄 Using individual composite: {input_path}")
+            else:
+                logger.error(f"❌ No composite files found in {runs_dir}")
+                return False
+        else:
+            input_path = str(merged_files[0])
+            logger.info(f"📄 Using merged composite: {input_path}")
+        
+        # Process the CFW dataset
+        success = process_cfw_dataset(
+            run_id=run_id,
+            year=year,
+            input_path=input_path,
+            boundary_geojson_path=None,  # Could be made configurable
+            dry_run=False,
+            db_host=db_host,
+            asset_title=f"ChocoForestWatch - {run_id.replace('_', ' ').title()} {year}",
+            description=f"ChocoForestWatch {run_id} Annual Forest Cover Dataset {year} for Western Ecuador"
+        )
+        
+        if success:
+            logger.info(f"✅ Successfully processed ChocoForestWatch dataset: cfw-{run_id}-{year}")
+        else:
+            logger.error(f"❌ Failed to process ChocoForestWatch dataset: cfw-{run_id}-{year}")
+            
+        return success
+        
+    except Exception as e:
+        logger.error(f"❌ Error processing ChocoForestWatch dataset: {str(e)}")
+        return False
+
+def run_dataset_evaluation(run_id: str, year: str, project_id: int, db_host: str = "local"):
+    """Run evaluation against all datasets (external + ChocoForestWatch)."""
+    logger.info("\n🏆 Running dataset evaluation...")
+    
+    # List of dataset collections to evaluate
+    dataset_collections = [
+        # Our own ChocoForestWatch predictions
+        f"datasets-cfw-{run_id}-{year}",          # Our annual composite
+        
+        # External datasets
+        "datasets-hansen-tree-cover-2022",        # Hansen Global Forest Change
+        "datasets-mapbiomes-2022",                # MapBiomas
+        "datasets-esa-landcover-2020",            # ESA WorldCover
+        "datasets-jrc-forestcover-2020",          # JRC Global Forest Cover
+        "datasets-palsar-2020",                   # PALSAR Forest/Non-Forest
+        "datasets-wri-treecover-2020",            # WRI Tree Cover
     ]
     
-    logger.info(f"📊 Evaluating {len(benchmark_collections)} benchmark collections")
+    logger.info(f"📊 Evaluating {len(dataset_collections)} dataset collections")
     
-    # Loop through each benchmark collection
+    # Loop through each dataset collection
     successful_benchmarks = 0
-    for collection in benchmark_collections:
-        logger.info(f"\n📈 Evaluating benchmark: {collection}")
+    for collection in dataset_collections:
+        logger.info(f"\n📈 Evaluating dataset: {collection}")
         logger.info("-" * 80)
         
         try:
@@ -222,11 +278,11 @@ def run_benchmarks(run_id: str, year: str, project_id: int, db_host: str = "loca
             logger.error(f"❌ Failed to evaluate {collection}: {str(e)}")
             continue
     
-    logger.info(f"\n🏁 Benchmark evaluation completed: {successful_benchmarks}/{len(benchmark_collections)} successful")
+    logger.info(f"\n🏁 Dataset evaluation completed: {successful_benchmarks}/{len(dataset_collections)} successful")
     
     # Generate summary visualizations if we have results
     if successful_benchmarks > 0:
-        logger.info("\n📊 Generating benchmark summary charts...")
+        logger.info("\n📊 Generating dataset evaluation summary charts...")
         try:
             create_benchmark_summary_charts(
                 run_id=run_id,
@@ -237,7 +293,7 @@ def run_benchmarks(run_id: str, year: str, project_id: int, db_host: str = "loca
         except Exception as e:
             logger.error(f"❌ Failed to generate summary charts: {str(e)}")
     else:
-        logger.warning("⚠️ No successful benchmarks - skipping summary chart generation")
+        logger.warning("⚠️ No successful dataset evaluations - skipping summary chart generation")
 
 def main():
     """Main pipeline execution function."""
@@ -355,13 +411,22 @@ def main():
         # Generate annual composites
         generate_composites(run_id, year, db_host)
     
-    # Skip benchmark evaluation if requested
+    # Process ChocoForestWatch dataset for unified structure (unless skipped or benchmarks-only)
+    if not args.skip_cfw_processing and not args.benchmarks_only:
+        if args.skip_composites:
+            logger.info("⏭️ Skipping ChocoForestWatch dataset processing (composites were skipped)")
+        else:
+            process_cfw_dataset_for_pipeline(run_id, year, db_host)
+    else:
+        logger.info("⏭️ Skipping ChocoForestWatch dataset processing as requested")
+    
+    # Skip dataset evaluation if requested
     if args.skip_benchmarks:
-        logger.info("⏭️ Skipping benchmark evaluation as requested")
+        logger.info("⏭️ Skipping dataset evaluation as requested")
         return
     
-    # Run benchmark evaluation
-    run_benchmarks(run_id, year, project_id, db_host)
+    # Run dataset evaluation
+    run_dataset_evaluation(run_id, year, project_id, db_host)
     
     logger.info(f"\n🎉 Pipeline completed successfully at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 

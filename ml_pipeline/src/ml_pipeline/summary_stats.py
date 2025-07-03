@@ -18,7 +18,7 @@ class AOISummaryStats:
     """
     Compute % forest / non-forest + area (ha) + missing % inside an arbitrary AOI.
     Example:
-        stats = AOISummaryStats("http://localhost:8083", "benchmarks-hansen-tree-cover-2022")
+        stats = AOISummaryStats("http://localhost:8083", "datasets-hansen-tree-cover-2022")
         df = stats.summary(aoi_geojson)
     """
 

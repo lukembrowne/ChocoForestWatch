@@ -187,8 +187,8 @@ class CompositeGenerator:
         # stacked_remote_key = f"predictions/{self.run_id}-composites/{self.year}/{quad_name}_{self.year}_forest_stacked.tif"
         # upload_file(stacked_path, stacked_remote_key)
         
-        # Upload forest cover file
-        cover_remote_key = f"predictions/{self.run_id}-composites/{self.year}/{quad_name}_{self.year}_forest_cover.tif"
+        # Upload forest cover file to unified datasets structure
+        cover_remote_key = f"datasets/cfw-{self.run_id}/{self.year}/{quad_name}_{self.year}_forest_cover.tif"
         upload_file(cover_path, cover_remote_key)
         
     def merge_composites(self, use_local_files: bool = False):
@@ -222,7 +222,7 @@ class CompositeGenerator:
         else:
             # Original S3-based workflow
             # List all individual composite COGs from S3
-            s3_prefix = f"predictions/{self.run_id}-composites/{self.year}/"
+            s3_prefix = f"datasets/cfw-{self.run_id}/{self.year}/"
             s3_files = list_files(prefix=s3_prefix)
             
             if not s3_files:
@@ -305,7 +305,7 @@ class CompositeGenerator:
             logger.info(f"✅ Successfully merged {len(cog_files)} COGs into single file")
             
             # Upload merged COG to S3
-            merged_s3_key = f"predictions/{self.run_id}-composites/{self.year}/{self.run_id}_{self.year}_merged_composite.tif"
+            merged_s3_key = f"datasets/cfw-{self.run_id}/{self.year}/{self.run_id}_{self.year}_merged_composite.tif"
             logger.info(f"⬆️  Uploading merged COG to S3: {merged_s3_key}")
             upload_file(merged_path, merged_s3_key)
             
@@ -348,8 +348,8 @@ class CompositeGenerator:
             logger.info(f"Processing merged COG for {self.run_id}")
             
             # Check if merged COG exists
-            merged_key = f"predictions/{self.run_id}-composites/{self.year}/{self.run_id}_{self.year}_merged_composite.tif"
-            s3_files = list_files(prefix=f"predictions/{self.run_id}-composites/{self.year}/")
+            merged_key = f"datasets/cfw-{self.run_id}/{self.year}/{self.run_id}_{self.year}_merged_composite.tif"
+            s3_files = list_files(prefix=f"datasets/cfw-{self.run_id}/{self.year}/")
             merged_files = [f for f in s3_files if f['key'].endswith('_merged_composite.tif')]
             
             if not merged_files:
@@ -370,11 +370,11 @@ class CompositeGenerator:
             logger.info(f"Processing individual COGs for {self.run_id}")
             builder.process_year(
                 year=self.year,
-                prefix_on_s3=f"predictions/{self.run_id}-composites",
-                collection_id=f"nicfi-pred-{self.run_id}-composite-{self.year}",
+                prefix_on_s3=f"datasets/cfw-{self.run_id}",
+                collection_id=f"datasets-cfw-{self.run_id}-{self.year}",
                 asset_key="data",
                 asset_roles=["classification"],
-                asset_title=f"Annual Forest Cover Composite for {self.run_id}",
+                asset_title=f"ChocoForestWatch Annual Forest Cover - {self.run_id}",
                 extra_asset_fields={
                     "raster:bands": [
                         {
@@ -392,7 +392,7 @@ class CompositeGenerator:
         logger = logging.getLogger(__name__)
         
         # Get the merged file from S3
-        s3_files = list_files(prefix=f"predictions/{self.run_id}-composites/{self.year}/")
+        s3_files = list_files(prefix=f"datasets/cfw-{self.run_id}/{self.year}/")
         merged_files = [f for f in s3_files if f['key'].endswith('_merged_composite.tif')]
         
         if not merged_files:
@@ -400,11 +400,11 @@ class CompositeGenerator:
             return
             
         # Process only the merged files manually
-        collection_id = f"nicfi-pred-{self.run_id}-composite-{self.year}"
+        collection_id = f"datasets-cfw-{self.run_id}-{self.year}"
         
         # Use the existing process_year method but with a prefix that only matches merged files
         # We'll temporarily copy the merged file to a separate location to isolate it
-        temp_prefix = f"predictions/{self.run_id}-composites-merged/{self.year}/"
+        temp_prefix = f"datasets/cfw-{self.run_id}-merged/{self.year}/"
         
         # Copy merged file to temporary location for STAC processing
         from ml_pipeline.s3_utils import copy_s3_object
@@ -421,11 +421,11 @@ class CompositeGenerator:
                 # Now process with the isolated prefix
                 builder.process_year(
                     year=self.year,
-                    prefix_on_s3=f"predictions/{self.run_id}-composites-merged",
+                    prefix_on_s3=f"datasets/cfw-{self.run_id}-merged",
                     collection_id=collection_id,
                     asset_key="data",
                     asset_roles=["classification"],
-                    asset_title=f"Annual Forest Cover Composite for {self.run_id} (Merged)",
+                    asset_title=f"ChocoForestWatch Annual Forest Cover - {self.run_id} (Merged)",
                     extra_asset_fields={
                         "raster:bands": [
                             {

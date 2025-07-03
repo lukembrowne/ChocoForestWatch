@@ -22,12 +22,12 @@ _global_boundary_polygon = None
 
 # Allowed benchmark collections
 ALLOWED_BENCHMARK_COLLECTIONS = [
-    "benchmarks-hansen-tree-cover-2022",
-    "benchmarks-mapbiomes-2022", 
-    "benchmarks-esa-landcover-2020",
-    "benchmarks-jrc-forestcover-2020",
-    "benchmarks-palsar-2020",
-    "benchmarks-wri-treecover-2020",
+    "datasets-hansen-tree-cover-2022",
+    "datasets-mapbiomes-2022", 
+    "datasets-esa-landcover-2020",
+    "datasets-jrc-forestcover-2020",
+    "datasets-palsar-2020",
+    "datasets-wri-treecover-2020",
     "northern_choco_test_2025_06_20_2022_merged_composite",  # CFW composite
 ]
 

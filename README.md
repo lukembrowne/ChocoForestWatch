@@ -298,16 +298,21 @@ poetry run python run_train_predict_pipeline.py \
   --db-host "remote"
 ```
 
-### Available Benchmark Datasets
+### Available Forest Cover Datasets
 
-The pipeline includes several reference forest cover datasets for comparison:
+The pipeline includes several reference forest cover datasets for comparison, all organized under a unified dataset structure:
 
-- **`benchmarks-hansen-tree-cover-2022`** - Hansen Global Forest Change (University of Maryland)
-- **`benchmarks-mapbiomes-2022`** - MapBiomas Ecuador (local ecosystem mapping)
-- **`benchmarks-esa-landcover-2020`** - ESA WorldCover (European Space Agency)
-- **`benchmarks-jrc-forestcover-2020`** - JRC Global Forest Cover (European Commission)
-- **`benchmarks-palsar-2020`** - ALOS PALSAR Forest/Non-Forest Map (JAXA)
-- **`benchmarks-wri-treecover-2020`** - WRI Tropical Tree Cover (World Resources Institute)
+#### External Reference Datasets
+- **`datasets-hansen-tree-cover-2022`** - Hansen Global Forest Change (University of Maryland)
+- **`datasets-mapbiomes-2022`** - MapBiomas Ecuador (local ecosystem mapping)
+- **`datasets-esa-landcover-2020`** - ESA WorldCover (European Space Agency)
+- **`datasets-jrc-forestcover-2020`** - JRC Global Forest Cover (European Commission)
+- **`datasets-palsar-2020`** - ALOS PALSAR Forest/Non-Forest Map (JAXA)
+- **`datasets-wri-treecover-2020`** - WRI Tropical Tree Cover (World Resources Institute)
+
+#### ChocoForestWatch Datasets
+- **`datasets-cfw-{run_id}-{year}`** - ChocoForestWatch model predictions (automatically created for each pipeline run)
+- Example: `datasets-cfw-northern_choco_test-2022`
 
 ### Training Data Preparation
 
@@ -368,7 +373,9 @@ poetry run python process_forest_cover_rasters.py --dry-run --verbose
 poetry run python process_forest_cover_rasters.py --input-dir ./my_rasters --dataset mapbiomes-2022
 ```
 
-Available datasets: `cfw-2022`, `hansen-tree-cover-2022`, `mapbiomes-2022`, `esa-landcover-2020`, `jrc-forestcover-2020`, `palsar-2020`, `wri-treecover-2020`
+Available datasets: `hansen-tree-cover-2022`, `mapbiomes-2022`, `esa-landcover-2020`, `jrc-forestcover-2020`, `palsar-2020`, `wri-treecover-2020`
+
+**Note**: ChocoForestWatch datasets (`cfw-{run_id}`) are processed dynamically via the main pipeline and are no longer hardcoded in the configuration.
 
 ## Western Ecuador Statistics Caching
 
@@ -395,7 +402,7 @@ docker compose exec backend python manage.py precalculate_western_ecuador_stats
 docker compose exec backend python manage.py precalculate_western_ecuador_stats --force
 
 # Calculate for specific collection only
-docker compose exec backend python manage.py precalculate_western_ecuador_stats --collection benchmarks-hansen-tree-cover-2022
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --collection datasets-hansen-tree-cover-2022
 
 # Clear all cached stats before calculating
 docker compose exec backend python manage.py precalculate_western_ecuador_stats --clear
@@ -417,7 +424,7 @@ python scripts/precalculate_stats.py
 python scripts/precalculate_stats.py --force
 
 # Calculate for specific collection only
-python scripts/precalculate_stats.py --collection benchmarks-hansen-tree-cover-2022
+python scripts/precalculate_stats.py --collection datasets-hansen-tree-cover-2022
 
 # Show help
 python scripts/precalculate_stats.py --help
@@ -434,13 +441,13 @@ The new simplified calculation method provides:
 
 ### Available Forest Cover Collections
 
-- `benchmarks-hansen-tree-cover-2022` - Hansen Global Forest Change
-- `benchmarks-mapbiomes-2022` - MapBiomas Ecuador  
-- `benchmarks-esa-landcover-2020` - ESA WorldCover
-- `benchmarks-jrc-forestcover-2020` - JRC Forest Cover
-- `benchmarks-palsar-2020` - ALOS PALSAR Forest Map
-- `benchmarks-wri-treecover-2020` - WRI Tropical Tree Cover
-- `northern_choco_test_2025_06_20_2022_merged_composite` - Choco Forest Watch 2022
+- `datasets-hansen-tree-cover-2022` - Hansen Global Forest Change
+- `datasets-mapbiomes-2022` - MapBiomas Ecuador  
+- `datasets-esa-landcover-2020` - ESA WorldCover
+- `datasets-jrc-forestcover-2020` - JRC Forest Cover
+- `datasets-palsar-2020` - ALOS PALSAR Forest Map
+- `datasets-wri-treecover-2020` - WRI Tropical Tree Cover
+- `datasets-cfw-{run_id}-{year}` - ChocoForestWatch datasets (e.g., `datasets-cfw-northern_choco_test-2022`)
 
 ### Caching Details
 

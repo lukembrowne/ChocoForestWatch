@@ -131,3 +131,5 @@ ml_pipeline/notebooks/xarray_test 2025_05_16.py
 ml_pipeline/notebooks/test_benchmarks 2025_05_19.py
 ml_pipeline/notebooks/create_composite 2025_05_19.py
 ml_pipeline/.coverage
+ml_pipeline/notebooks/dataset_rasters/*
+ml_pipeline/notebooks/gfw_alerts_output/*

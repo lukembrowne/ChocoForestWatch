@@ -78,29 +78,41 @@ class STACManagerConfig:
     # Database connection type
     use_remote_db: bool = True
 
-    # PgSTAC connection is handled through env vars
-    pg_env_vars: dict[str, str] = field(
-        default_factory=lambda: {
-            "PGHOST": os.getenv("DB_IP") if os.getenv("DB_IP") else 'localhost',
-            "PGPORT": os.getenv("DB_PORT"),
-            "PGDATABASE": os.getenv("POSTGRES_DB"),
-            "PGUSER": os.getenv("POSTGRES_USER"),
-            "PGPASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        }
-    )
+    # PgSTAC connection is handled through env vars - will be set in __post_init__
+    pg_env_vars: dict[str, str] = field(default_factory=dict)
+    
+    def __post_init__(self):
+        """Initialize pg_env_vars after instance creation to avoid shared dictionaries."""
+        if not self.pg_env_vars:  # Only set if not already provided
+            # Ensure .env file is loaded from project root
+            project_root = Path(__file__).parent.parent.parent.parent  # Go up from src/ml_pipeline to project root
+            env_path = project_root / ".env"
+            if env_path.exists():
+                load_dotenv(env_path)
+            
+            # Set base connection info from environment
+            base_host = os.getenv("DB_IP")
+            
+            self.pg_env_vars = {
+                "PGHOST": base_host or ('localhost' if not self.use_remote_db else None),
+                "PGPORT": os.getenv("DB_PORT") or "5432",
+                "PGDATABASE": os.getenv("POSTGRES_DB"),
+                "PGUSER": os.getenv("POSTGRES_USER"),
+                "PGPASSWORD": os.getenv("POSTGRES_PASSWORD"),
+            }
+            
+            # Override host for local connections or provide fallback
+            if not self.use_remote_db:
+                self.pg_env_vars["PGHOST"] = 'localhost'
+            elif not self.pg_env_vars["PGHOST"]:
+                raise ValueError(f"DB_IP environment variable not found. Please ensure .env file exists at {env_path} and contains DB_IP setting.")
+                
+            # Debug logging to verify configuration
+            print(f"STACManagerConfig initialized: use_remote_db={self.use_remote_db}, PGHOST={self.pg_env_vars['PGHOST']}")
 
-# Set default database connection environment variables needed by pypgstac
-# These will be overridden by STACManager initialization based on config
-if not os.environ.get('PGHOST'):
-    os.environ['PGHOST'] = os.getenv('DB_IP') if os.getenv('DB_IP') else 'localhost'
-if not os.environ.get('PGPORT'):
-    os.environ['PGPORT'] = os.getenv('DB_PORT') or '5432'
-if not os.environ.get('PGDATABASE'):
-    os.environ['PGDATABASE'] = os.getenv('POSTGRES_DB') or ''
-if not os.environ.get('PGUSER'):
-    os.environ['PGUSER'] = os.getenv('POSTGRES_USER') or ''
-if not os.environ.get('PGPASSWORD'):
-    os.environ['PGPASSWORD'] = os.getenv('POSTGRES_PASSWORD') or ''
+# Note: We no longer set global environment variables here to avoid conflicts.
+# Each STACManager instance now manages its own database connection parameters
+# through the explicit environment dictionary passed to subprocess calls.
 
 
 # ---------------------------------------------------------------------
@@ -124,18 +136,16 @@ class STACManager:
     """
 
     def __init__(self, cfg: STACManagerConfig = STACManagerConfig()):
-        load_dotenv()
+        # Load .env file from project root for S3 credentials
+        project_root = Path(__file__).parent.parent.parent.parent  # Go up from src/ml_pipeline to project root
+        env_path = project_root / ".env"
+        if env_path.exists():
+            load_dotenv(env_path)
+            
         self.cfg = cfg
         self.s3, _ = get_s3_client(cfg.bucket)
         
-        # Set database connection based on config
-        if not cfg.use_remote_db:
-            # Override for local database connection
-            self.cfg.pg_env_vars["PGHOST"] = 'localhost'
-        
-        # Note: We no longer update global os.environ here to avoid conflicts
-        # when multiple STACManager instances are used. The upsert_to_pgstac 
-        # method now passes the environment explicitly to pypgstac commands.
+        # Note: Database connection configuration is handled in STACManagerConfig.__post_init__
 
     # ------------------------------------------------------------------
     #  Database connection management
@@ -373,9 +383,9 @@ class STACManager:
                 "-f", backup_path
             ]
             
-            # Set PGPASSWORD environment variable for pg_dump
+            # Set all database connection environment variables for pg_dump
             env = os.environ.copy()
-            env["PGPASSWORD"] = self.cfg.pg_env_vars["PGPASSWORD"]
+            env.update(self.cfg.pg_env_vars)
             
             result = subprocess.run(pg_dump_cmd, env=env, capture_output=True, text=True)
             

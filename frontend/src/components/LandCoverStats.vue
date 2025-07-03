@@ -205,7 +205,7 @@ const isLoading     = computed(() => mapStore.isLoading)
 const isDrawing     = computed(() => mapStore.isDrawingSummaryAOI)
 const isMapLoading  = computed(() => mapStore.isLoading)
 
-const benchmarkOptions = computed(() => mapStore.availableBenchmarks)
+const benchmarkOptions = computed(() => mapStore.availableDatasets)
 const benchmark        = computed({
   get: () => mapStore.selectedBenchmark,
   set: (val) => mapStore.selectedBenchmark = val,
