@@ -58,7 +58,7 @@
                       </q-btn>
                       
                       <q-btn 
-                        v-if="element.id.includes('landcover') || element.id.includes('deforestation') || element.id.includes('benchmark')" 
+                        v-if="element.id.includes('landcover') || element.id.includes('deforestation') || element.id.includes('benchmark') || element.id.includes('gfw-alerts')" 
                         flat 
                         round 
                         dense
