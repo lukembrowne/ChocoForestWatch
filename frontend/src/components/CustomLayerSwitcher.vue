@@ -244,7 +244,7 @@ export default {
 .switcher-header {
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-  padding: 8px 12px;
+  padding: 2px 12px;
   border-radius: 8px 8px 0 0;
 }
 
@@ -351,7 +351,7 @@ export default {
 }
 
 .layer-main {
-  padding: 6px 10px;
+  padding: 2px 2px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -388,14 +388,14 @@ export default {
 }
 
 .layer-checkbox {
-  .q-checkbox__label {
-    font-size: 12px;
+  :deep(.q-checkbox__label) {
+    font-size: 12px !important;
     font-weight: 500;
     color: #374151;
     line-height: 1.3;
   }
 
-  .q-checkbox__inner {
+  :deep(.q-checkbox__inner) {
     transform: scale(0.9);
   }
 }
@@ -507,8 +507,5 @@ export default {
     font-size: 12px;
   }
   
-  .layer-checkbox .q-checkbox__label {
-    font-size: 11px;
-  }
 }
 </style>

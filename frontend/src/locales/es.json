@@ -564,8 +564,7 @@
         },
         "description": "Agregue conjuntos de datos de cobertura forestal para comparar y analizar",
         "title": "Agregar Conjunto de Datos",
-        "featured": "Destacado",
-        "availableYears": "Años Disponibles"
+        "featured": "Destacado"
       },
       "opacity": "Opacidad",
       "title": "Capas del Mapa",

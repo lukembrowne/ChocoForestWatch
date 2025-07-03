@@ -564,8 +564,7 @@
         },
         "description": "Add forest cover datasets to compare and analyze",
         "title": "Add Dataset",
-        "featured": "Featured",
-        "availableYears": "Available Years"
+        "featured": "Featured"
       },
       "opacity": "Opacity",
       "title": "Map Layers",
