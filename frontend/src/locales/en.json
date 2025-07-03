@@ -64,6 +64,14 @@
       "chooseMapTooltip": "Select which forest cover dataset to use for analysis. The selected map will automatically appear on the main map.",
       "selectMapPlaceholder": "Select forest cover map",
       "selectMapFirst": "Please select a forest cover map first",
+      "table": {
+        "dataset": "Dataset",
+        "year": "Year",
+        "resolution": "Resolution",
+        "status": "Status",
+        "actions": "Add",
+        "learnMore": "Learn More"
+      },
       "defineArea": "Define Analysis Area",
       "defineAreaTooltip": "Choose how you want to define the area for forest cover analysis. You can use regional boundaries, draw your own area, or upload a custom boundary file.",
       "methods": {
@@ -118,6 +126,15 @@
         "noData": "No Data",
         "missingPixels": "Some areas have missing data",
         "completeCoverage": "Complete data coverage"
+      },
+      "table": {
+        "dataset": "Dataset",
+        "year": "Year",
+        "resolution": "Resolution",
+        "version": "Version",
+        "status": "Status",
+        "actions": "Actions",
+        "learnMore": "Learn More"
       }
     },
     "unified": {
@@ -562,14 +579,14 @@
             "url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
           }
         },
-        "description": "Add forest cover datasets to compare and analyze",
+        "description": "Add datasets to compare and analyze different data sources",
         "title": "Add Dataset",
         "featured": "Featured"
       },
       "opacity": "Opacity",
       "title": "Map Layers",
       "tooltips": {
-        "addBenchmark": "Add forest cover datasets to compare and analyze",
+        "addBenchmark": "Add datasets to compare and analyze different data sources",
         "collapse": "Collapse layer list",
         "expand": "Expand layer list",
         "remove": "Remove layer",

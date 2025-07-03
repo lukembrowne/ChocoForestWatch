@@ -64,6 +64,14 @@
       "chooseMapTooltip": "Seleccione qué conjunto de datos de cobertura forestal usar para el análisis. El mapa seleccionado aparecerá automáticamente en el mapa principal.",
       "selectMapPlaceholder": "Seleccionar mapa de cobertura forestal",
       "selectMapFirst": "Por favor seleccione primero un mapa de cobertura forestal",
+      "table": {
+        "dataset": "Conjunto de Datos",
+        "year": "Año",
+        "resolution": "Resolución",
+        "status": "Estado",
+        "actions": "Agregar",
+        "learnMore": "Más Info"
+      },
       "defineArea": "Definir Área de Análisis",
       "defineAreaTooltip": "Elija cómo desea definir el área para el análisis de cobertura forestal. Puede usar límites regionales, dibujar su propia área o cargar un archivo de límites personalizado.",
       "methods": {
@@ -118,6 +126,15 @@
         "noData": "Sin Datos",
         "missingPixels": "Algunas áreas tienen datos faltantes",
         "completeCoverage": "Cobertura completa de datos"
+      },
+      "table": {
+        "dataset": "Conjunto de Datos",
+        "year": "Año",
+        "resolution": "Resolución",
+        "version": "Versión",
+        "status": "Estado",
+        "actions": "Acciones",
+        "learnMore": "Más Info"
       }
     },
     "unified": {
@@ -562,14 +579,14 @@
             "url": "https://github.com/lukembrowne/chocoforestwatch"
           }
         },
-        "description": "Agregue conjuntos de datos de cobertura forestal para comparar y analizar",
+        "description": "Agregue conjuntos de datos para comparar y analizar diferentes fuentes de datos",
         "title": "Agregar Conjunto de Datos",
         "featured": "Destacado"
       },
       "opacity": "Opacidad",
       "title": "Capas del Mapa",
       "tooltips": {
-        "addBenchmark": "Agregar conjuntos de datos de cobertura forestal para comparar y analizar",
+        "addBenchmark": "Agregar conjuntos de datos para comparar y analizar diferentes fuentes de datos",
         "collapse": "Lista de capa de colapso",
         "expand": "Expandir la lista de capas",
         "remove": "Eliminar capa",
