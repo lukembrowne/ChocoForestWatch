@@ -569,6 +569,11 @@
             "description": "Mapa de cobertura forestal generado por aprendizaje automático de ChocoForestWatch para 2022, específicamente entrenado para la región del Chocó Norte de Ecuador usando imágenes satelitales NICFI.",
             "title": "CFW Compuesto 2022",
             "url": "https://github.com/lukembrowne/chocoforestwatch"
+          },
+          "planet-nicfi": {
+            "description": "Imágenes satelitales mensuales de alta resolución (4.7m) de Planet Labs disponibles a través de la Iniciativa de Clima y Bosques Internacional de Noruega.",
+            "title": "Mapa Base Planet NICFI",
+            "url": "https://www.planet.com/nicfi/"
           }
         },
         "description": "Agregue conjuntos de datos para comparar y analizar diferentes fuentes de datos",

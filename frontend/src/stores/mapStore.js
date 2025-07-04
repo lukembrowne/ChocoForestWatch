@@ -103,6 +103,14 @@ export const useMapStore = defineStore('map', () => {
       type: 'prediction'
     },
     { 
+      value: 'planet-nicfi-basemap', 
+      label: 'Planet NICFI Basemap',
+      year: '2022-2024',
+      resolution: '4.7m',
+      description: 'Monthly high-resolution satellite imagery from Planet Labs via Norway\'s International Climate & Forests Initiative',
+      type: 'basemap-imagery'
+    },
+    { 
       value: 'datasets-hansen-tree-cover-2022', 
       label: 'Hansen Global Forest Change',
       year: '2022',
@@ -202,10 +210,10 @@ export const useMapStore = defineStore('map', () => {
     'datasets-jrc-forestcover-2020': 'where(data==1,1,0)',
     'datasets-palsar-2020': 'where((data==1)|(data==2),1,0)',
     'datasets-wri-treecover-2020': 'where(data>=90,1,0)',
-    // GFW alerts - show as binary alerts (any non-zero value is an alert)
-    'datasets-gfw-integrated-alerts-2022': 'where(data>0,1,0)',
-    'datasets-gfw-integrated-alerts-2023': 'where(data>0,1,0)',
-    'datasets-gfw-integrated-alerts-2024': 'where(data>0,1,0)',
+    // GFW alerts - use band 1 (binary alerts: 0=no alert, 1=alert, 255=missing)
+    'datasets-gfw-integrated-alerts-2022': 'where(data==1,1,0)',
+    'datasets-gfw-integrated-alerts-2023': 'where(data==1,1,0)',
+    'datasets-gfw-integrated-alerts-2024': 'where(data==1,1,0)',
   };
 
   // GFW date/confidence decoder functions
@@ -399,6 +407,12 @@ export const useMapStore = defineStore('map', () => {
         map.value.removeLayer(layer);
       }
     }
+    
+    // If removing Planet imagery layer, reset the selected benchmark
+    if (layerId && layerId.includes('planet')) {
+      selectedBenchmark.value = null;
+    }
+    
     updateLayers();
   };
 
@@ -639,7 +653,7 @@ export const useMapStore = defineStore('map', () => {
     const id = type === 'planet' ? `planet-basemap` : `predictions`;
     const zIndex = type === 'planet' ? 1 : 2;
     const opacity = type === 'planet' ? 1 : 0.7;
-    const visible = type === 'planet' ? false : true;
+    const visible = type === 'planet' ? true : true;
 
     return new TileLayer({
       source: source,
@@ -1729,6 +1743,25 @@ export const useMapStore = defineStore('map', () => {
     updateLayers();
   };
 
+  // Add Planet NICFI imagery layer
+  const addPlanetImageryLayer = () => {
+    if (!map.value) return;
+
+    // Set default date for Planet imagery (January 2022)
+    const defaultDate = '2022-01';
+    
+    // Create and add Planet basemap layer
+    updateBasemap(defaultDate, 'planet');
+    
+    // Update the selected benchmark in the store to reflect Planet imagery is active
+    selectedBenchmark.value = 'planet-nicfi-basemap';
+    
+    // Make sure the basemap date slider is visible by setting the selected date
+    selectedBasemapDate.value = defaultDate;
+    
+    updateLayers();
+  };
+
   // -------------------------------------------
   // Search functionality (Nominatim geocoder)
   // -------------------------------------------
@@ -1873,6 +1906,12 @@ export const useMapStore = defineStore('map', () => {
 
   // Load cached western Ecuador statistics for the selected benchmark
   const loadWesternEcuadorStats = async () => {
+    // Skip statistics for Planet basemap - no regional stats available
+    if (selectedBenchmark.value === 'planet-nicfi-basemap') {
+      summaryStats.value = null;
+      return;
+    }
+    
     try {
       isLoading.value = true;
       const response = await api.getWesternEcuadorStats(selectedBenchmark.value);
@@ -1896,7 +1935,9 @@ export const useMapStore = defineStore('map', () => {
   
   const createGFWAlertsLayer = (collectionId, year) => {
     // Create a raster layer for GFW alerts using TiTiler
-    const tileUrl = `${import.meta.env.VITE_TITILER_URL || 'http://localhost:8081'}/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?expression=where(data>0,1,0)&asset_as_band=True&colormap_name=reds&rescale=0,1`;
+    // Use band 1 (binary alerts) for display with custom colormap for alerts only
+
+    const tileUrl = `${import.meta.env.VITE_TITILER_URL || 'http://localhost:8081'}/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?bidx=1&assets=data&colormap_name=reds`;
     
     const source = new XYZ({
       url: tileUrl,
@@ -1990,9 +2031,9 @@ export const useMapStore = defineStore('map', () => {
         if (!collectionId) continue;
 
         try {
-          // Query pixel value from TiTiler
+          // Query pixel value from TiTiler - use band 2 for original encoded values
           const response = await fetch(
-            `${import.meta.env.VITE_TITILER_URL || 'http://localhost:8081'}/collections/${collectionId}/point/${lonLat[0]},${lonLat[1]}?assets=data&asset_as_band=true`,
+            `${import.meta.env.VITE_TITILER_URL || 'http://localhost:8081'}/collections/${collectionId}/point/${lonLat[0]},${lonLat[1]}?bidx=2&assets=data&asset_as_band=true`,
             { method: 'GET' }
           );
           
@@ -2132,6 +2173,7 @@ export const useMapStore = defineStore('map', () => {
     // new benchmark actions
     addBenchmarkLayer,
     addGFWAlertsLayer,
+    addPlanetImageryLayer,
     // GFW alerts functionality
     decodeGFWDate,
     formatGFWAlert,

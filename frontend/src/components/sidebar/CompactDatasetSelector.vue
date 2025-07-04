@@ -237,6 +237,9 @@ export default {
         if (val.startsWith('datasets-gfw-integrated-alerts-')) {
           const year = val.split('-').pop(); // Extract year from collection ID
           mapStore.addGFWAlertsLayer(val, year, 'primary')
+        } else if (val === 'planet-nicfi-basemap') {
+          // Handle Planet NICFI basemap imagery
+          mapStore.addPlanetImageryLayer()
         } else {
           mapStore.addBenchmarkLayer(val, 'primary')
         }
@@ -259,11 +262,15 @@ export default {
       if (value === 'northern_choco_test_2025_06_20_2022_merged_composite') {
         return 'cfw-composite'
       }
+      if (value === 'planet-nicfi-basemap') {
+        return 'planet-nicfi'
+      }
       return value.split('-')[1]
     }
 
     const getDatasetIcon = (value) => {
       if (value.includes('nicfi-pred')) return 'forest'
+      if (value === 'planet-nicfi-basemap') return 'satellite'
       if (value.includes('hansen')) return 'satellite_alt'
       if (value.includes('mapbiomes')) return 'terrain'
       if (value.includes('esa')) return 'public'

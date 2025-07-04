@@ -423,11 +423,8 @@ export default {
           // Load default project automatically
           await projectStore.loadDefaultProject()
 
-          // Show planet & prediction basemaps for a representative date (Jan-2022 for now)
-          mapStore.updateBasemap('2022-01', 'planet')
-
-            // Auto-load CFW Composite 2022 forest cover map
-            mapStore.addBenchmarkLayer('northern_choco_test_2025_06_20_2022_merged_composite')
+          // Auto-load CFW Composite 2022 forest cover map
+          mapStore.addBenchmarkLayer('northern_choco_test_2025_06_20_2022_merged_composite')
         } catch (err) {
           console.error('Failed to load default project:', err)
           $q.notify({
@@ -484,7 +481,6 @@ export default {
         showProjectSelection.value = false
 
         // Set default basemap after loading a project
-        mapStore.updateBasemap('2022-01', 'planet')
         mapStore.updateBasemap('2022-01', 'predictions')
 
         // Load training polygons for the current date
@@ -523,7 +519,6 @@ export default {
         // Set initial basemap date and zoom to AOI
         const initialDate = '2022-01'
         await Promise.all([
-          mapStore.updateBasemap(initialDate, 'planet'),
           mapStore.updateBasemap(initialDate, 'predictions'),
           mapStore.loadTrainingPolygonsForDate(initialDate),
           mapStore.displayAOI(projectStore.currentProject.aoi)
