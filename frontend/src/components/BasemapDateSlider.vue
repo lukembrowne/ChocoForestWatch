@@ -1,5 +1,5 @@
 <template>
-    <div class="basemap-date-slider">
+    <div v-if="showSlider" class="basemap-date-slider">
         <!-- <p class="text-subtitle1" style="margin: 0; padding: 0;">{{ t('layers.basemapDate.title') }}</p> -->
         <div class="slider-container">
             <!-- Add help icon with tooltip -->
@@ -67,6 +67,16 @@ export default {
         });
 
         const hasUnsavedChanges = computed(() => mapStore.hasUnsavedChanges);
+
+        // Show slider when Planet NICFI layer exists on map (regardless of selected dataset)
+        const showSlider = computed(() => {
+            // Check if there's a planet-basemap layer on the map
+            if (!mapStore.map) return false;
+            const planetLayer = mapStore.map.getLayers().getArray().find(layer => 
+                layer.get('id') === 'planet-basemap'
+            );
+            return !!planetLayer;
+        });
 
         onMounted(async () => {
             if (projectStore.currentProject) {
@@ -174,6 +184,7 @@ export default {
             getYearPosition,
             hasTrainingData,
             isDateExcluded,
+            showSlider,
             t,
             isAdmin
         };

@@ -1,5 +1,5 @@
 <template>
-  <div class="map-legend">
+  <div class="map-legend" :class="{ 'with-slider': showBasemapSlider }">
     <div class="legend-header">
       <q-icon name="info" size="14px" class="q-mr-xs" />
       <span class="legend-title">{{ t('legend.title') }}</span>
@@ -19,14 +19,27 @@
 
 <script setup>
 import { useI18n } from 'vue-i18n'
+import { computed } from 'vue'
+import { useMapStore } from 'src/stores/mapStore'
 
 const { t } = useI18n()
+const mapStore = useMapStore()
+
+// Check if basemap slider should be visible (same logic as BasemapDateSlider)
+const showBasemapSlider = computed(() => {
+  // Check if there's a planet-basemap layer on the map
+  if (!mapStore.map) return false;
+  const planetLayer = mapStore.map.getLayers().getArray().find(layer => 
+    layer.get('id') === 'planet-basemap'
+  );
+  return !!planetLayer;
+})
 </script>
 
 <style scoped>
 .map-legend {
   position: absolute;
-  bottom: 125px;
+  bottom: 25px;
   right: 16px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(4px);
@@ -36,6 +49,11 @@ const { t } = useI18n()
   z-index: 1000;
   min-width: 140px;
   border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: bottom 0.3s ease-in-out;
+}
+
+.map-legend.with-slider {
+  bottom: 125px;
 }
 
 .legend-header {
@@ -89,12 +107,15 @@ const { t } = useI18n()
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .map-legend {
-    position: absolute;
-  bottom: 125px;
-  right: 16px;
+    bottom: 16px;
+    right: 16px;
     padding: 8px;
     min-width: 110px;
     max-width: 140px;
+  }
+  
+  .map-legend.with-slider {
+    bottom: 125px;
   }
   
   .legend-header {
@@ -121,8 +142,8 @@ const { t } = useI18n()
 
 @media (max-width: 480px) {
   .map-legend {
-    top: 8px;
-    left: 8px;
+    bottom: 16px;
+    right: 16px;
     padding: 6px;
     min-width: 100px;
     max-width: 120px;

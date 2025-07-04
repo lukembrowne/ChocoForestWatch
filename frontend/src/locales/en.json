@@ -569,6 +569,11 @@
             "description": "Integrated deforestation alerts from Global Forest Watch including GLAD, RADD, and other systems providing near real-time forest disturbance detection.",
             "title": "GFW Deforestation Alerts",
             "url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
+          },
+          "planet-nicfi": {
+            "description": "Monthly high-resolution (4.7m) satellite imagery from Planet Labs available through Norway's International Climate & Forests Initiative.",
+            "title": "Planet NICFI Basemap",
+            "url": "https://www.planet.com/nicfi/"
           }
         },
         "description": "Add datasets to compare and analyze different data sources",

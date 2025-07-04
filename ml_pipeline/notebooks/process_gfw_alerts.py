@@ -15,7 +15,7 @@ The script:
 5. Creates STAC collections for tile serving
 
 Usage:
-    poetry run process_gfw_alerts.py --years 2022 2023 2024 --run-id gfw-alerts-{date}
+    poetry run process_gfw_alerts.py --years 2022 2023 2024
 """
 
 import os
@@ -263,10 +263,13 @@ class GFWAlertsProcessor:
                 total_pixels = clipped_shape[0] * clipped_shape[1]
                 logger.info(f"Clipped to shape: {clipped_shape} ({total_pixels:,} pixels)")
                 
-                # Create year-specific mask
-                logger.info(f"Creating mask for {year} alerts...")
+                # Create year-specific mask and output arrays for two bands
+                logger.info(f"Creating mask and output arrays for {year} alerts...")
                 year_mask = np.zeros_like(clipped_data[0], dtype=bool)
-                output_data = np.zeros_like(clipped_data[0], dtype=np.uint16)
+                # Band 1: Binary alerts (0=no alert, 1=alert, 255=missing data)
+                binary_output = np.zeros_like(clipped_data[0], dtype=np.uint8)
+                # Band 2: Original encoded values
+                original_output = np.zeros_like(clipped_data[0], dtype=np.uint16)
                 
                 # Process pixels to find alerts for the specific year using parallel processing
                 flat_data = clipped_data[0].flatten()
@@ -313,7 +316,13 @@ class GFWAlertsProcessor:
                 for idx in all_alert_indices:
                     row, col = divmod(idx, raster_width)
                     year_mask[row, col] = True
-                    output_data[row, col] = flat_data[idx]  # Preserve original encoded value
+                    binary_output[row, col] = 1  # Binary alert flag
+                    original_output[row, col] = flat_data[idx]  # Preserve original encoded value
+                
+                # Set missing data flag (255) for areas with no valid data
+                # Any pixel that has 0 value in the original data is considered missing
+                missing_mask = (clipped_data[0] == 0)
+                binary_output[missing_mask] = 255
                 
                 logger.info(f"Parallel processing complete - Valid pixels: {total_valid_pixels:,}, "
                           f"Alerts for {year}: {alert_count} ({alert_count/total_pixels*100:.3f}%)")
@@ -325,23 +334,29 @@ class GFWAlertsProcessor:
                 # Create output file
                 output_path = self.output_dir / f"{tile_name}_{year}_alerts.tif"
                 
-                # Create profile for output raster
+                # Create profile for output raster (2 bands)
                 profile = src.profile.copy()
                 profile.update({
                     'height': clipped_data.shape[1],
                     'width': clipped_data.shape[2],
                     'transform': clipped_transform,
-                    'dtype': 'uint16',
+                    'count': 2,  # Two bands
+                    'dtype': 'uint16',  # Use uint16 to accommodate both bands
                     'compress': 'deflate',
                     'tiled': True,
                     'blockxsize': 512,
                     'blockysize': 512,
                 })
                 
-                # Write output raster
+                # Write output raster with two bands
                 with rasterio.open(output_path, 'w', **profile) as dst:
-                    dst.write(output_data, 1)
-                    dst.set_band_description(1, f'GFW Integrated Alerts {year}')
+                    # Band 1: Binary alerts (0=no alert, 1=alert, 255=missing data)
+                    dst.write(binary_output.astype(np.uint16), 1)
+                    dst.set_band_description(1, f'GFW Binary Alerts {year} (0=no alert, 1=alert, 255=missing)')
+                    
+                    # Band 2: Original encoded values for date extraction
+                    dst.write(original_output, 2)
+                    dst.set_band_description(2, f'GFW Original Encoded Values {year}')
                     
                     # Add metadata
                     dst.update_tags(
@@ -349,6 +364,9 @@ class GFWAlertsProcessor:
                         year=str(year),
                         alert_count=str(alert_count),
                         processing_date=datetime.now().isoformat(),
+                        band_1_description='Binary alerts: 0=no alert, 1=alert, 255=missing data',
+                        band_2_description='Original GFW encoded values for date/confidence extraction',
+                        encoding_format='First digit: confidence level (1-4), remaining digits: days since 2014-12-31',
                         **get_version_metadata()
                     )
                 
@@ -388,10 +406,11 @@ class GFWAlertsProcessor:
                 'blockysize': 512,
             })
             
-            # Write merged raster
+            # Write merged raster with two bands
             with rasterio.open(output_path, 'w', **profile) as dst:
                 dst.write(merged_data)
-                dst.set_band_description(1, f'GFW Integrated Alerts {year} - Ecuador')
+                dst.set_band_description(1, f'GFW Binary Alerts {year} - Ecuador (0=no alert, 1=alert, 255=missing)')
+                dst.set_band_description(2, f'GFW Original Encoded Values {year} - Ecuador')
                 
                 # Add metadata
                 dst.update_tags(
@@ -400,6 +419,9 @@ class GFWAlertsProcessor:
                     region='Ecuador',
                     tiles_merged=str(len(tile_paths)),
                     processing_date=datetime.now().isoformat(),
+                    band_1_description='Binary alerts: 0=no alert, 1=alert, 255=missing data',
+                    band_2_description='Original GFW encoded values for date/confidence extraction',
+                    encoding_format='First digit: confidence level (1-4), remaining digits: days since 2014-12-31',
                     **get_version_metadata()
                 )
             
@@ -452,8 +474,10 @@ class GFWAlertsProcessor:
                 asset_roles=["data"],
                 asset_title=config["asset_title"],
                 extra_asset_fields={
-                    "gfw:encoding": "date_conf",
-                    "gfw:decoding_info": "First digit: confidence level (1-4), remaining digits: days since 2014-12-31"
+                    "gfw:encoding": "two_band",
+                    "gfw:band_1_description": "Binary alerts: 0=no alert, 1=alert, 255=missing data",
+                    "gfw:band_2_description": "Original encoded values for date/confidence extraction",
+                    "gfw:decoding_info": "Band 2 encoding - First digit: confidence level (1-4), remaining digits: days since 2014-12-31"
                 }
             )
             logger.info(f"✅ Created STAC collection in remote database: {config['collection_id']}")
@@ -478,8 +502,10 @@ class GFWAlertsProcessor:
                 asset_roles=["data"],
                 asset_title=config["asset_title"],
                 extra_asset_fields={
-                    "gfw:encoding": "date_conf",
-                    "gfw:decoding_info": "First digit: confidence level (1-4), remaining digits: days since 2014-12-31"
+                    "gfw:encoding": "two_band",
+                    "gfw:band_1_description": "Binary alerts: 0=no alert, 1=alert, 255=missing data",
+                    "gfw:band_2_description": "Original encoded values for date/confidence extraction",
+                    "gfw:decoding_info": "Band 2 encoding - First digit: confidence level (1-4), remaining digits: days since 2014-12-31"
                 }
             )
             logger.info(f"✅ Created STAC collection in local database: {config['collection_id']}")
