@@ -1286,21 +1286,30 @@ export const useMapStore = defineStore('map', () => {
     if (mapId && maps.value[mapId]) {
       // Dual map mode
       const layerArray = maps.value[mapId].getLayers().getArray();
-      const [movedLayer] = layerArray.splice(fromIndex, 1);
-      layerArray.splice(toIndex, 0, movedLayer);
+      // Create a sorted array by z-index (descending) to match UI display order
+      const sortedLayers = [...layerArray].sort((a, b) => b.getZIndex() - a.getZIndex());
+      
+      // Move the layer in the sorted array
+      const [movedLayer] = sortedLayers.splice(fromIndex, 1);
+      sortedLayers.splice(toIndex, 0, movedLayer);
 
-      // Update z-index for all layers
-      layerArray.forEach((layer, index) => {
-        layer.setZIndex(layerArray.length - index);
+      // Update z-index for all layers based on new order
+      sortedLayers.forEach((layer, index) => {
+        layer.setZIndex(sortedLayers.length - index);
       });
     } else if (map.value) {
-      // Single map mode - existing behavior
+      // Single map mode
       const layerArray = map.value.getLayers().getArray();
-      const [movedLayer] = layerArray.splice(fromIndex, 1);
-      layerArray.splice(toIndex, 0, movedLayer);
+      // Create a sorted array by z-index (descending) to match UI display order
+      const sortedLayers = [...layerArray].sort((a, b) => b.getZIndex() - a.getZIndex());
+      
+      // Move the layer in the sorted array
+      const [movedLayer] = sortedLayers.splice(fromIndex, 1);
+      sortedLayers.splice(toIndex, 0, movedLayer);
 
-      layerArray.forEach((layer, index) => {
-        layer.setZIndex(layerArray.length - index);
+      // Update z-index for all layers based on new order
+      sortedLayers.forEach((layer, index) => {
+        layer.setZIndex(sortedLayers.length - index);
       });
     }
     updateLayers();
