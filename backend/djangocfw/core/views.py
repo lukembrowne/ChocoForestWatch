@@ -893,7 +893,7 @@ def aoi_summary(request):
         logger.info(f"Using collection ID: {collection_id}")
 
         logger.info("Computing summary statistics")
-        stats_df = AOISummaryStats(collection_id, "localhost").summary(aoi_geojson)
+        stats_df = AOISummaryStats(collection_id, "remote").summary(aoi_geojson)
 
         # Convert single-row dataframe to plain dict
         stats_dict = stats_df.iloc[0].to_dict()
