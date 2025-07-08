@@ -14,6 +14,11 @@
       1: [34, 102, 51],   // Forest – dark green
       0: [205, 170, 125],   // Non-forest – light brown
       255: [0, 0, 0], // No data – black
+    },
+    AlertPalette: {
+      1: [255, 0, 0],   // Alert – red
+      0: [0, 0, 0, 0],   // No alert - transparent
+      255: [0, 0, 0], // No data – black
     }
   };
 

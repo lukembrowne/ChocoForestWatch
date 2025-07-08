@@ -125,6 +125,12 @@
         "forestCover": "Cobertura Forestal",
         "nonForest": "No Forestal",
         "noData": "Sin Datos",
+        "deforestationAlerts": "Alertas de Deforestación",
+        "deforestationRate": "Tasa de Deforestación",
+        "alertsDetected": "alertas detectadas",
+        "totalAnalyzed": "Total Analizado",
+        "totalArea": "Área Total",
+        "hectares": "hectáreas",
         "missingPixels": "Algunas áreas tienen datos faltantes",
         "completeCoverage": "Cobertura completa de datos"
       }

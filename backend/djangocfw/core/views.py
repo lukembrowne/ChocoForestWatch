@@ -57,6 +57,9 @@ ALLOWED_BENCHMARK_COLLECTIONS = [
     "datasets-palsar-2020",
     "datasets-wri-treecover-2020",
     "northern_choco_test_2025_06_20_2022_merged_composite",  # CFW composite
+    "datasets-gfw-integrated-alerts-2022",  # GFW deforestation alerts
+    "datasets-gfw-integrated-alerts-2023",
+    "datasets-gfw-integrated-alerts-2024",
 ]
 
 def _load_boundary_polygon():

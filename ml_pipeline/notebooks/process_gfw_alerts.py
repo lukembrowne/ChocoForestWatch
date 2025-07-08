@@ -232,6 +232,18 @@ class GFWAlertsProcessor:
         
         return alert_date, confidence
     
+    def _build_overviews(self, file_path: str) -> None:
+        """Build overviews (pyramids) for better TiTiler performance."""
+        try:
+            with rasterio.open(file_path, 'r+') as dataset:
+                # Build overviews at multiple levels for both bands
+                overview_levels = [2, 4, 8, 16, 32]
+                dataset.build_overviews(overview_levels, Resampling.nearest)
+                dataset.update_tags(ns='rio_overview', resampling='nearest')
+                logger.info(f"Built overviews for {file_path}")
+        except Exception as e:
+            logger.warning(f"Failed to build overviews for {file_path}: {str(e)}")
+    
     def process_tile_for_year(self, tile_path: str, boundary_shape, year: int) -> Optional[str]:
         """
         Process a single GFW tile to extract alerts for a specific year.
@@ -256,85 +268,137 @@ class GFWAlertsProcessor:
                 return None
             
             try:
-                # Clip tile to boundary
-                logger.info(f"Clipping tile to Ecuador boundary...")
+                # Use the simpler approach: clip the source data to boundary first
+                logger.info(f"Clipping source data to boundary...")
                 clipped_data, clipped_transform = mask(src, [boundary_shape], crop=True, filled=False)
                 clipped_shape = clipped_data[0].shape
                 total_pixels = clipped_shape[0] * clipped_shape[1]
                 logger.info(f"Clipped to shape: {clipped_shape} ({total_pixels:,} pixels)")
+                # Create boundary mask for the clipped raster
+                logger.info("Creating boundary mask for clipped data...")
+                from rasterio.features import geometry_mask
                 
-                # Create year-specific mask and output arrays for two bands
-                logger.info(f"Creating mask and output arrays for {year} alerts...")
-                year_mask = np.zeros_like(clipped_data[0], dtype=bool)
+                boundary_mask = geometry_mask(
+                    [boundary_shape],
+                    transform=clipped_transform,
+                    invert=True,  # True means inside boundary
+                    out_shape=clipped_data[0].shape
+                )
+                
+                # Create output arrays based on clipped dimensions
+                logger.info(f"Creating output arrays for {year} alerts...")
                 # Band 1: Binary alerts (0=no alert, 1=alert, 255=missing data)
-                binary_output = np.zeros_like(clipped_data[0], dtype=np.uint8)
+                # Start with ALL pixels as 255 (missing), then set boundary pixels to 0 (no alerts)
+                binary_output = np.full_like(clipped_data[0], 255, dtype=np.uint8)
                 # Band 2: Original encoded values
                 original_output = np.zeros_like(clipped_data[0], dtype=np.uint16)
                 
-                # Process pixels to find alerts for the specific year using parallel processing
-                flat_data = clipped_data[0].flatten()
-                raster_width = clipped_data[0].shape[1]
+                # Set areas INSIDE boundary to 0 (no alerts by default)
+                binary_output[boundary_mask] = 0
                 
-                logger.info(f"Processing {total_pixels:,} pixels for {year} alerts using parallel processing...")
+                # Count boundary pixels
+                inside_boundary_count = np.sum(boundary_mask)
+                outside_boundary_count = np.sum(~boundary_mask)
+                logger.info(f"Boundary masking: {inside_boundary_count:,} pixels inside, {outside_boundary_count:,} pixels outside")
                 
-                # Determine number of workers and chunk size
-                num_workers = min(cpu_count(), 8)  # Limit to 8 workers max to avoid memory issues
-                chunk_size = max(10000, total_pixels // (num_workers * 4))  # Aim for 4 chunks per worker
+                # Now process the clipped data directly (no coordinate transformation needed)
+                logger.info("Processing clipped GFW data for alerts...")
+                src_data = clipped_data[0]
                 
-                # Create chunks for parallel processing
-                chunks = []
-                for i in range(0, len(flat_data), chunk_size):
-                    chunk_end = min(i + chunk_size, len(flat_data))
-                    pixel_chunk = flat_data[i:chunk_end]
-                    chunks.append((pixel_chunk, i, raster_width, start_date, end_date, year))
+                # Process clipped data directly (no coordinate transformation needed)
+                src_height, src_width = src_data.shape
+                total_src_pixels = src_height * src_width
                 
-                logger.info(f"Created {len(chunks)} chunks of ~{chunk_size:,} pixels each for {num_workers} workers")
+                # Process source data to find alerts for this year
+                alert_count = 0
+                logger.info(f"Scanning {total_src_pixels:,} clipped pixels for {year} alerts...")
                 
-                # Process chunks in parallel
-                all_alert_indices = []
-                total_valid_pixels = 0
+                # First, let's get some sample values to debug
+                sample_values = src_data.flat[:1000]
+                non_zero_values = sample_values[sample_values > 0]
+                logger.info(f"Sample of non-zero values in clipped data: {non_zero_values[:10] if len(non_zero_values) > 0 else 'None found'}")
                 
-                with Pool(processes=num_workers) as pool:
-                    # Process chunks and show progress
-                    results = []
-                    for i, chunk_args in enumerate(chunks):
-                        result = pool.apply_async(process_pixel_chunk, (chunk_args,))
-                        results.append(result)
+                # Test decode a few sample values to see what dates we get
+                if len(non_zero_values) > 0:
+                    logger.info(f"Testing date decoding for {year}:")
+                    for i, val in enumerate(non_zero_values[:5]):
+                        encoded_str = str(val)
+                        if len(encoded_str) > 1:
+                            try:
+                                days = int(encoded_str[1:])
+                                base_date = datetime(2014, 12, 31)
+                                alert_date = base_date + timedelta(days=days)
+                                in_year = start_date <= alert_date <= end_date
+                               # logger.info(f"  Value {val} -> Date {alert_date.strftime('%Y-%m-%d')} -> In {year}: {in_year}")
+                            except Exception as e:
+                                logger.info(f"  Value {val} -> Error: {e}")
+                
+                # Find all pixels with values > 0 (potential alerts)
+                valid_pixels = np.where(src_data > 0)
+                valid_count = len(valid_pixels[0])
+                logger.info(f"Found {valid_count:,} pixels with data in clipped raster")
+                
+                if valid_count == 0:
+                    logger.warning(f"No valid data found in clipped raster for {tile_name}")
                     
-                    # Collect results with progress reporting
-                    for i, result in enumerate(results):
-                        alert_indices, valid_pixel_count = result.get()
-                        all_alert_indices.extend(alert_indices)
-                        total_valid_pixels += valid_pixel_count
+                # Process each valid pixel directly in the clipped coordinate space
+                progress_interval = max(1000, valid_count // 50)  # Report 50 times max
+                
+                for i in range(valid_count):
+                    row, col = valid_pixels[0][i], valid_pixels[1][i]
+                    value = src_data[row, col]
+                    
+                    # Only process pixels that are inside the boundary
+                    if not boundary_mask[row, col]:
+                        continue
+                    
+                    # Decode GFW date and confidence
+                    encoded_str = str(value)
+                    
+                    # Skip single digit values (confidence only, no date)
+                    if len(encoded_str) <= 1:
+                        continue
+                    
+                    try:
+                        # Get days since Dec 31, 2014
+                        days = int(encoded_str[1:])
                         
-                        progress_pct = ((i + 1) / len(chunks)) * 100
-                        logger.info(f"Chunk progress: {progress_pct:.1f}% ({i+1}/{len(chunks)}) - "
-                                  f"Found {len(all_alert_indices)} alerts so far")
+                        # Calculate date
+                        base_date = datetime(2014, 12, 31)
+                        alert_date = base_date + timedelta(days=days)
+                        
+                        # Check if alert is in target year
+                        if start_date <= alert_date <= end_date:
+                            # Set alert directly in the clipped coordinate space
+                            binary_output[row, col] = 1  # Set alert
+                            original_output[row, col] = value
+                            alert_count += 1
+                    
+                    except (ValueError, OverflowError):
+                        continue
+                    
+                    # Progress reporting (much less frequent)
+                    if i % progress_interval == 0 and i > 0:
+                        progress = (i / valid_count) * 100
+                        logger.info(f"  Progress: {progress:.0f}% - Found {alert_count} alerts so far")
+                # Debug: Check what values we ended up with in the output
+                output_unique, output_counts = np.unique(binary_output, return_counts=True)
+                logger.info(f"Output raster value distribution:")
+                for val, count in zip(output_unique, output_counts):
+                    pct = count / binary_output.size * 100
+                    logger.info(f"  Value {val}: {count:,} pixels ({pct:.1f}%)")
                 
-                # Apply results to output arrays
-                alert_count = len(all_alert_indices)
-                for idx in all_alert_indices:
-                    row, col = divmod(idx, raster_width)
-                    year_mask[row, col] = True
-                    binary_output[row, col] = 1  # Binary alert flag
-                    original_output[row, col] = flat_data[idx]  # Preserve original encoded value
+                logger.info(f"Processing complete - Inside boundary: {inside_boundary_count:,}, "
+                          f"Alerts for {year}: {alert_count} ({alert_count/inside_boundary_count*100:.3f}% of analyzed area)")
                 
-                # Set missing data flag (255) for areas with no valid data
-                # Any pixel that has 0 value in the original data is considered missing
-                missing_mask = (clipped_data[0] == 0)
-                binary_output[missing_mask] = 255
-                
-                logger.info(f"Parallel processing complete - Valid pixels: {total_valid_pixels:,}, "
-                          f"Alerts for {year}: {alert_count} ({alert_count/total_pixels*100:.3f}%)")
-                
+                # Always create the file even if no alerts (we want the full raster with 0s)
                 if alert_count == 0:
-                    logger.info(f"No alerts found for {year} in tile {tile_name}")
-                    return None
+                    logger.info(f"No alerts found for {year} in tile {tile_name}, but creating output raster anyway")
+                    # Don't return None - we want the complete raster with 0s
                 
                 # Create output file
                 output_path = self.output_dir / f"{tile_name}_{year}_alerts.tif"
-                
-                # Create profile for output raster (2 bands)
+                # Create profile for Cloud Optimized GeoTIFF (COG) with 2 bands
                 profile = src.profile.copy()
                 profile.update({
                     'height': clipped_data.shape[1],
@@ -342,16 +406,19 @@ class GFWAlertsProcessor:
                     'transform': clipped_transform,
                     'count': 2,  # Two bands
                     'dtype': 'uint16',  # Use uint16 to accommodate both bands
-                    'compress': 'deflate',
+                    'nodata': 255,  # Set nodata value to 255 for missing areas
+                    'compress': 'lzw',  # Better compression for mixed data types
                     'tiled': True,
                     'blockxsize': 512,
                     'blockysize': 512,
+                    'interleave': 'pixel',  # Better for multi-band access
+                    'BIGTIFF': 'IF_SAFER',  # Handle large files properly
                 })
                 
                 # Write output raster with two bands
                 with rasterio.open(output_path, 'w', **profile) as dst:
                     # Band 1: Binary alerts (0=no alert, 1=alert, 255=missing data)
-                    dst.write(binary_output.astype(np.uint16), 1)
+                    dst.write(binary_output.astype(np.uint8), 1)
                     dst.set_band_description(1, f'GFW Binary Alerts {year} (0=no alert, 1=alert, 255=missing)')
                     
                     # Band 2: Original encoded values for date extraction
@@ -370,6 +437,10 @@ class GFWAlertsProcessor:
                         **get_version_metadata()
                     )
                 
+                # Build overviews for better TiTiler performance
+                logger.info(f"Building overviews for {output_path}...")
+                self._build_overviews(output_path)
+                
                 logger.info(f"Saved {year} alerts to {output_path}")
                 return str(output_path)
                 
@@ -381,14 +452,37 @@ class GFWAlertsProcessor:
         """Merge processed tiles for a specific year into a single raster."""
         logger.info(f"Merging {len(tile_paths)} tiles for {year}")
         
+        # Debug: log details about each tile before merging
+        for tile_path in tile_paths:
+            tile_name = Path(tile_path).stem
+            with rasterio.open(tile_path) as src:
+                # Check alert distribution in this tile
+                band1_data = src.read(1)
+                unique_vals, counts = np.unique(band1_data, return_counts=True)
+                alert_count = counts[unique_vals == 1].sum() if 1 in unique_vals else 0
+                no_alert_count = counts[unique_vals == 0].sum() if 0 in unique_vals else 0
+                missing_count = counts[unique_vals == 255].sum() if 255 in unique_vals else 0
+                
+                logger.info(f"  {tile_name}: {alert_count:,} alerts, {no_alert_count:,} no-alerts, {missing_count:,} missing")
+                logger.info(f"    Bounds: {src.bounds}, Transform: {src.transform}")
+        
         # Open all tiles
         src_files = []
         try:
             for tile_path in tile_paths:
                 src_files.append(rasterio.open(tile_path))
             
-            # Merge tiles
+            # Merge tiles with more debugging
+            logger.info("Starting rasterio.merge() operation...")
             merged_data, merged_transform = merge(src_files)
+            logger.info(f"Merge complete - Output shape: {merged_data.shape}")
+            
+            # Debug: Check merged data distribution  
+            unique_vals, counts = np.unique(merged_data[0], return_counts=True)  # Check band 1
+            logger.info("Merged raster distribution:")
+            for val, count in zip(unique_vals, counts):
+                pct = count / merged_data[0].size * 100
+                logger.info(f"  Value {val}: {count:,} pixels ({pct:.1f}%)")
             
             # Create output path
             output_path = self.output_dir / f"gfw_integrated_alerts_{year}_ecuador.tif"
@@ -400,6 +494,7 @@ class GFWAlertsProcessor:
                 'width': merged_data.shape[2],
                 'transform': merged_transform,
                 'dtype': 'uint16',
+                'nodata': 255,  # Set nodata value to 255 for missing areas
                 'compress': 'deflate',
                 'tiled': True,
                 'blockxsize': 512,
@@ -424,6 +519,10 @@ class GFWAlertsProcessor:
                     encoding_format='First digit: confidence level (1-4), remaining digits: days since 2014-12-31',
                     **get_version_metadata()
                 )
+            
+            # Build overviews for the merged raster
+            logger.info(f"Building overviews for merged raster {output_path}...")
+            self._build_overviews(output_path)
             
             logger.info(f"Merged {year} alerts saved to {output_path}")
             return str(output_path)
@@ -514,9 +613,11 @@ class GFWAlertsProcessor:
             logger.error(f"Failed to create STAC collection {config['collection_id']}: {str(e)}")
             raise
     
-    def process_years(self, years: List[int], force_download: bool = False) -> None:
+    def process_years(self, years: List[int], force_download: bool = False, debug_only: bool = False) -> None:
         """Process GFW alerts for multiple years."""
         logger.info(f"Processing GFW alerts for years: {years}")
+        if debug_only:
+            logger.info("DEBUG MODE: Will only process tiles, skipping merge and upload")
         
         # Load Ecuador boundary
         boundary_shape = self.load_ecuador_boundary()
@@ -540,15 +641,21 @@ class GFWAlertsProcessor:
                     year_tile_paths.append(processed_tile_path)
             
             if year_tile_paths:
-                # Merge tiles for this year
-                merged_file_path = self.merge_tiles_for_year(year_tile_paths, year)
+                logger.info(f"Successfully processed {len(year_tile_paths)} tiles for {year}")
                 
-                # Upload to S3 and create STAC collection
-                self.upload_to_s3_and_stac(merged_file_path, year)
+                if not debug_only:
+                    # Merge tiles for this year
+                    merged_file_path = self.merge_tiles_for_year(year_tile_paths, year)
+                    
+                    # Upload to S3 and create STAC collection
+                    self.upload_to_s3_and_stac(merged_file_path, year)
+                else:
+                    logger.info("Skipping merge and upload (debug mode)")
                 
-                # Clean up individual tile files
+                # Keep individual tile files for debugging
+                logger.info(f"Keeping {len(year_tile_paths)} intermediate tile files for debugging:")
                 for tile_path in year_tile_paths:
-                    Path(tile_path).unlink()
+                    logger.info(f"  Kept: {tile_path}")
                     
                 logger.info(f"Completed processing for {year}")
             else:
@@ -564,12 +671,14 @@ def main():
                         help="Output directory for processed files")
     parser.add_argument("--force-download", action="store_true",
                         help="Force re-download of cached tiles")
+    parser.add_argument("--debug-only", action="store_true",
+                        help="Only process tiles, skip merge and upload (for debugging)")
     
     args = parser.parse_args()
     
     # Create processor and run
     processor = GFWAlertsProcessor(args.output_dir)
-    processor.process_years(args.years, args.force_download)
+    processor.process_years(args.years, args.force_download, args.debug_only)
     
     logger.info("GFW alerts processing completed!")
 
