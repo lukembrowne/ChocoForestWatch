@@ -5,6 +5,7 @@ import TileLayer from 'ol/layer/Tile'
 import OSM from 'ol/source/OSM'
 import { Map, View } from 'ol'
 import 'ol/ol.css';
+import { ScaleLine } from 'ol/control';
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
 import GeoJSON from 'ol/format/GeoJSON'
@@ -280,7 +281,17 @@ export const useMapStore = defineStore('map', () => {
         view: new View({
           center: fromLonLat([-79.81822466589962, -0.460628082970743]),
           zoom: 8
-        })
+        }),
+        controls: [
+          new ScaleLine({
+            units: 'metric',
+            bar: false,
+            steps: 4,
+            text: true,
+            minWidth: 140,
+            className: 'ol-scale-line'
+          })
+        ]
       });
 
       const isAdmin = authService.getCurrentUser()?.user?.is_superuser === true;
@@ -1432,7 +1443,17 @@ export const useMapStore = defineStore('map', () => {
       view: new View({
         center: fromLonLat([-79.81822466589962, 0.460628082970743]),
         zoom: 12
-      })
+      }),
+      controls: [
+        new ScaleLine({
+          units: 'metric',
+          bar: true,
+          steps: 4,
+          text: true,
+          minWidth: 140,
+          className: 'ol-scale-line'
+        })
+      ]
     });
 
     maps.value.secondary = new Map({
@@ -1452,7 +1473,17 @@ export const useMapStore = defineStore('map', () => {
       view: new View({
         center: fromLonLat([-79.81822466589962, 0.460628082970743]),
         zoom: 12
-      })
+      }),
+      controls: [
+        new ScaleLine({
+          units: 'metric',
+          bar: true,
+          steps: 4,
+          text: true,
+          minWidth: 140,
+          className: 'ol-scale-line'
+        })
+      ]
     });
 
     // Force a redraw
