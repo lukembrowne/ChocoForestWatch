@@ -274,7 +274,6 @@ class GFWAlertsProcessor:
                 clipped_shape = clipped_data[0].shape
                 total_pixels = clipped_shape[0] * clipped_shape[1]
                 logger.info(f"Clipped to shape: {clipped_shape} ({total_pixels:,} pixels)")
-                
                 # Create boundary mask for the clipped raster
                 logger.info("Creating boundary mask for clipped data...")
                 from rasterio.features import geometry_mask
@@ -382,7 +381,6 @@ class GFWAlertsProcessor:
                     if i % progress_interval == 0 and i > 0:
                         progress = (i / valid_count) * 100
                         logger.info(f"  Progress: {progress:.0f}% - Found {alert_count} alerts so far")
-                
                 # Debug: Check what values we ended up with in the output
                 output_unique, output_counts = np.unique(binary_output, return_counts=True)
                 logger.info(f"Output raster value distribution:")
@@ -400,7 +398,6 @@ class GFWAlertsProcessor:
                 
                 # Create output file
                 output_path = self.output_dir / f"{tile_name}_{year}_alerts.tif"
-                
                 # Create profile for Cloud Optimized GeoTIFF (COG) with 2 bands
                 profile = src.profile.copy()
                 profile.update({

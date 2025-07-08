@@ -1306,7 +1306,6 @@ export const useMapStore = defineStore('map', () => {
       // Move the layer in the sorted array
       const [movedLayer] = sortedLayers.splice(fromIndex, 1);
       sortedLayers.splice(toIndex, 0, movedLayer);
-
       // Update z-index for all layers based on new order
       sortedLayers.forEach((layer, index) => {
         layer.setZIndex(sortedLayers.length - index);
@@ -1320,7 +1319,6 @@ export const useMapStore = defineStore('map', () => {
       // Move the layer in the sorted array
       const [movedLayer] = sortedLayers.splice(fromIndex, 1);
       sortedLayers.splice(toIndex, 0, movedLayer);
-
       // Update z-index for all layers based on new order
       sortedLayers.forEach((layer, index) => {
         layer.setZIndex(sortedLayers.length - index);
@@ -1749,7 +1747,6 @@ export const useMapStore = defineStore('map', () => {
 
     // Set default date for Planet imagery (January 2022)
     const defaultDate = '2022-01';
-
     // Create and add Planet basemap layer
     updateBasemap(defaultDate, 'planet');
 
@@ -1758,7 +1755,6 @@ export const useMapStore = defineStore('map', () => {
 
     // Make sure the basemap date slider is visible by setting the selected date
     selectedBasemapDate.value = defaultDate;
-
     updateLayers();
   };
 
@@ -1911,7 +1907,6 @@ export const useMapStore = defineStore('map', () => {
       summaryStats.value = null;
       return;
     }
-
     try {
       isLoading.value = true;
       const response = await api.getWesternEcuadorStats(selectedBenchmark.value);
@@ -1942,7 +1937,6 @@ export const useMapStore = defineStore('map', () => {
     const colormap = getEncodedColormap('AlertPalette');
 
     const tileUrl = `${import.meta.env.VITE_TITILER_URL || 'http://localhost:8081'}/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?bidx=1&assets=data&colormap=${colormap}`;
-
     const source = new XYZ({
       url: tileUrl,
       attributions: '© Global Forest Watch',
