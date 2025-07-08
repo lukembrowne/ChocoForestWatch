@@ -62,6 +62,7 @@ jobs:
               --build-arg POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
               --build-arg DB_HOST="${DB_HOST}" \
               --build-arg DB_PORT="${DB_PORT}" \
+              --build-arg DB_IP="${DB_IP}" \
               --build-arg POSTGRES_PASS="${POSTGRES_PASS}" \
               --build-arg POSTGRES_DBNAME="${POSTGRES_DBNAME}" \
               --build-arg POSTGRES_HOST="${POSTGRES_HOST}" \
@@ -82,4 +83,4 @@ jobs:
             docker image prune -f
 
             #6. Calculate forest cover stats for western Ecuador in cache
-            docker compose exec backend python manage.py precalculate_western_ecuador_stats --db_host remote
+            docker compose exec backend python manage.py precalculate_western_ecuador_stats --db-host remote
