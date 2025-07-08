@@ -48,7 +48,8 @@
         "medium": "Medium",
         "high": "High",
         "veryHigh": "Very High"
-      }
+      },
+      "loadPlanetImagery": "Load Planet Imagery"
     }
   },
   "analysis": {

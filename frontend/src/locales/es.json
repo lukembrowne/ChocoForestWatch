@@ -48,7 +48,8 @@
         "medium": "Media",
         "high": "Alta",
         "veryHigh": "Muy Alta"
-      }
+      },
+      "loadPlanetImagery": "Cargar Imágenes Satelitales"
     }
   },
   "analysis": {

@@ -38,6 +38,19 @@
           </div>
           
         </div>
+        
+        <!-- Load Planet Imagery Button -->
+        <div v-if="mapStore.gfwAlertInfo.date" class="button-container">
+          <q-btn
+            icon="satellite"
+            :label="$t('alerts.gfw.loadPlanetImagery')"
+            color="primary"
+            outline
+            size="sm"
+            @click="loadPlanetImagery"
+            class="load-imagery-btn"
+          />
+        </div>
       </div>
       
       <!-- Pointer arrow -->
@@ -109,6 +122,42 @@ const getConfidenceClass = (confidence) => {
     4: 'confidence-high'
   }
   return classes[confidence] || ''
+}
+
+// Format date from alert to YYYY-MM format for Planet imagery
+const formatDateForPlanet = (date) => {
+  if (!date) return null
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
+
+// Load Planet imagery for the alert's date
+const loadPlanetImagery = () => {
+  if (!mapStore.gfwAlertInfo?.date) return
+  
+  try {
+    const formattedDate = formatDateForPlanet(mapStore.gfwAlertInfo.date)
+    if (!formattedDate) return
+    
+    // Check if Planet imagery layer already exists
+    const existingLayer = mapStore.map?.getLayers().getArray().find(layer => 
+      layer.get('id') === 'planet-basemap'
+    )
+    
+    // Add Planet imagery layer if it doesn't exist
+    if (!existingLayer) {
+      mapStore.addPlanetImageryLayer()
+    }
+    
+    // Update basemap to the alert's date
+    mapStore.updateBasemap(formattedDate, 'planet')
+    
+    // Close the popup
+    mapStore.hideGFWAlertPopup()
+  } catch (error) {
+    console.error('Error loading Planet imagery:', error)
+  }
 }
 </script>
 
@@ -226,5 +275,17 @@ const getConfidenceClass = (confidence) => {
   border-left: 9px solid transparent;
   border-right: 9px solid transparent;
   border-top: 9px solid #e0e0e0;
+}
+
+.button-container {
+  padding: 12px 16px 0;
+  border-top: 1px solid #f0f0f0;
+  margin-top: 8px;
+}
+
+.load-imagery-btn {
+  width: 100%;
+  font-size: 12px;
+  font-weight: 500;
 }
 </style>
