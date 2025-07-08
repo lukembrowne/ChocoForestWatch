@@ -396,22 +396,22 @@ To ensure instant loading, pre-calculate statistics for all datasets:
 
 ```bash
 # Pre-calculate all statistics using optimized simplified mode
-docker compose exec backend python manage.py precalculate_western_ecuador_stats
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --db-host local
 
 # Force recalculation even if cached
-docker compose exec backend python manage.py precalculate_western_ecuador_stats --force
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --force --db-host local
 
 # Calculate for specific collection only
-docker compose exec backend python manage.py precalculate_western_ecuador_stats --collection datasets-hansen-tree-cover-2022
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --collection datasets-hansen-tree-cover-2022 --db-host local
 
 # Clear all cached stats before calculating
-docker compose exec backend python manage.py precalculate_western_ecuador_stats --clear
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --clear --db-host local
 
 # Test with first collection only (recommended for troubleshooting)
-docker compose exec backend python manage.py precalculate_western_ecuador_stats --test-first
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --test-first --db-host local
 
 # Combine options for fresh calculation
-docker compose exec backend python manage.py precalculate_western_ecuador_stats --clear --force
+docker compose exec backend python manage.py precalculate_western_ecuador_stats --clear --force --db-host local
 ```
 
 #### Using Standalone Script
@@ -463,7 +463,7 @@ If the pre-calculation seems to hang or fail:
 
 1. **Test with one collection first**:
    ```bash
-   docker compose exec backend python manage.py precalculate_western_ecuador_stats --test-first
+   docker compose exec backend python manage.py precalculate_western_ecuador_stats --test-first --db-host local
    ```
 
 2. **Monitor detailed logs** while running:

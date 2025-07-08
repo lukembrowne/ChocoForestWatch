@@ -29,6 +29,9 @@ ALLOWED_BENCHMARK_COLLECTIONS = [
     "datasets-palsar-2020",
     "datasets-wri-treecover-2020",
     "northern_choco_test_2025_06_20_2022_merged_composite",  # CFW composite
+    "datasets-gfw-integrated-alerts-2022",  # GFW deforestation alerts
+    "datasets-gfw-integrated-alerts-2023",
+    "datasets-gfw-integrated-alerts-2024",
 ]
 
 
@@ -232,7 +235,7 @@ def get_western_ecuador_stats(collection_id, force_recalculate=False, db_host=No
         
         # All collections now use the unified boundary-based approach
         logger.info("🚀 Using unified boundary-based calculation")
-        aoi_stats = AOISummaryStats(collection_id, db_host or "local")
+        aoi_stats = AOISummaryStats(collection_id, db_host or "remote")
         
         logger.info("🧮 Starting summary computation...")
         

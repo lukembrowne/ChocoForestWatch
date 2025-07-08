@@ -1,0 +1,18 @@
+# Exclude large ML pipeline output files
+ml_pipeline/runs/
+ml_pipeline/notebooks/data/
+ml_pipeline/notebooks/benchmark_results/
+ml_pipeline/**/*.tiff
+ml_pipeline/**/*.tif
+ml_pipeline/**/*.pkl
+ml_pipeline/**/*.joblib
+
+# Exclude common development files
+.git
+.gitignore
+**/__pycache__
+**/.pytest_cache
+**/.coverage
+**/node_modules
+**/.env
+**/.venv

@@ -26,7 +26,11 @@ class AOISummaryStats:
         self.collection = collection
         self.band_indexes = band_indexes
         self.extractor = TitilerExtractor(collection, band_indexes, db_host=db_host)
-        print(f"Initialized AOISummaryStats with collection={collection}, band_indexes={band_indexes}, db_host={db_host}")
+        
+        # Detect if this is a GFW alerts collection
+        self.is_gfw_alerts = 'gfw-integrated-alerts' in collection.lower()
+        data_type = "GFW deforestation alerts" if self.is_gfw_alerts else "forest cover"
+        print(f"Initialized AOISummaryStats with collection={collection}, data_type={data_type}, band_indexes={band_indexes}, db_host={db_host}")
 
     def summary(self, aoi_geojson: dict = None) -> pd.DataFrame:
         # Load Western Ecuador boundary if no AOI provided
@@ -148,15 +152,28 @@ class AOISummaryStats:
                         data = masked_data[0]  # Get the first (and only) band
                         valid_mask = data != src.nodata if src.nodata is not None else data != 255
                         
-                        forest_count = np.sum((data == 1) & valid_mask)
-                        nonforest_count = np.sum((data == 0) & valid_mask)
-                        missing_count = np.sum(~valid_mask)
-                        
-                        total_forest_px += forest_count
-                        total_nonforest_px += nonforest_count
-                        total_missing_px += missing_count
-                        
-                        print(f"  COG {i+1}: Forest={forest_count:,}, Non-Forest={nonforest_count:,}, Missing={missing_count:,}")
+                        if self.is_gfw_alerts:
+                            # For GFW alerts: 0=no alerts, 1=alerts, 255=missing
+                            alert_count = np.sum(data == 1)
+                            noalert_count = np.sum(data == 0)  # Areas analyzed but no alerts found
+                            missing_count = np.sum(data == 255)  # Areas outside boundary or not analyzed
+                            
+                            total_forest_px += alert_count  # Reuse forest_px for alerts
+                            total_nonforest_px += noalert_count  # Reuse nonforest_px for no-alerts
+                            total_missing_px += missing_count
+                            
+                            print(f"  COG {i+1}: Alerts={alert_count:,}, No-Alerts={noalert_count:,}, Missing={missing_count:,}")
+                        else:
+                            # For forest cover: count forest pixels (value=1) and non-forest pixels (value=0)
+                            forest_count = np.sum((data == 1) & valid_mask)
+                            nonforest_count = np.sum((data == 0) & valid_mask)
+                            missing_count = np.sum(~valid_mask)
+                            
+                            total_forest_px += forest_count
+                            total_nonforest_px += nonforest_count
+                            total_missing_px += missing_count
+                            
+                            print(f"  COG {i+1}: Forest={forest_count:,}, Non-Forest={nonforest_count:,}, Missing={missing_count:,}")
                         
                 except Exception as cog_error:
                     print(f"⚠️ Error processing COG {i+1}: {str(cog_error)}")
@@ -165,9 +182,15 @@ class AOISummaryStats:
             if px_area_m2 is None:
                 px_area_m2 = 30 * 30  # Default 30m resolution
             
-            total_ha = (total_forest_px + total_nonforest_px) * px_area_m2 / 10000
-            print(f"✅ Final pixel counts — Forest: {total_forest_px:,}, Non-Forest: {total_nonforest_px:,}, Missing: {total_missing_px:,}")
-            print(f"✅ Total area: {total_ha:,.1f} hectares")
+            
+            if self.is_gfw_alerts:
+                total_ha = (total_forest_px + total_nonforest_px) * px_area_m2 / 10000
+                print(f"✅ Final pixel counts — Alerts: {total_forest_px:,}, No-Alerts: {total_nonforest_px:,}, Missing: {total_missing_px:,}")
+                print(f"✅ Total alert area: {total_forest_px * px_area_m2 / 10000:,.1f} hectares, Total analyzed area: {total_ha:,.1f} hectares")
+            else:
+                total_ha = (total_forest_px + total_nonforest_px) * px_area_m2 / 10000
+                print(f"✅ Final pixel counts — Forest: {total_forest_px:,}, Non-Forest: {total_nonforest_px:,}, Missing: {total_missing_px:,}")
+                print(f"✅ Total area: {total_ha:,.1f} hectares")
             
             return self._create_summary_dataframe(total_forest_px, total_nonforest_px, total_missing_px, px_area_m2)
             
@@ -259,9 +282,16 @@ class AOISummaryStats:
                                     inside_boundary = window_data[window_mask]
                                     
                                     if inside_boundary.size > 0:
-                                        forest_count += np.sum(inside_boundary == 1)
-                                        nonforest_count += np.sum(inside_boundary == 0)
-                                        missing_count += np.sum(inside_boundary == 255)
+                                        if self.is_gfw_alerts:
+                                            # For GFW alerts: 0=no alerts, 1=alerts, 255=missing
+                                            forest_count += np.sum(inside_boundary == 1)  # alerts
+                                            nonforest_count += np.sum(inside_boundary == 0)  # areas analyzed but no alerts
+                                            missing_count += np.sum(inside_boundary == 255)  # areas outside boundary or not analyzed
+                                        else:
+                                            # For forest cover: count forest and non-forest pixels
+                                            forest_count += np.sum(inside_boundary == 1)
+                                            nonforest_count += np.sum(inside_boundary == 0)
+                                            missing_count += np.sum(inside_boundary == 255)
                                         
                                         # Count nodata pixels if present
                                         if src.nodata is not None:
@@ -273,7 +303,10 @@ class AOISummaryStats:
                                     if processed_windows % max(1, total_windows // 10) == 0 or processed_windows % 100 == 0:
                                         progress = (processed_windows / total_windows) * 100
                                         print(f"    Progress: {progress:.1f}% ({processed_windows}/{total_windows} windows)")
-                                        print(f"    Current counts: Forest={forest_count:,}, Non-Forest={nonforest_count:,}, Missing={missing_count:,}")
+                                        if self.is_gfw_alerts:
+                                            print(f"    Current counts: Alerts={forest_count:,}, No-Alerts={nonforest_count:,}, Missing={missing_count:,}")
+                                        else:
+                                            print(f"    Current counts: Forest={forest_count:,}, Non-Forest={nonforest_count:,}, Missing={missing_count:,}")
                                         
                                 except Exception as window_error:
                                     print(f"    ⚠️ Error reading window at ({row}, {col}): {str(window_error)}")
@@ -286,7 +319,10 @@ class AOISummaryStats:
                         processed_cogs += 1
                         
                         if i < 5 or i % 50 == 0:
-                            print(f"  COG {i+1}: Forest={forest_count:,}, Non-Forest={nonforest_count:,}, Missing={missing_count:,}")
+                            if self.is_gfw_alerts:
+                                print(f"  COG {i+1}: Alerts={forest_count:,}, No-Alerts={nonforest_count:,}, Missing={missing_count:,}")
+                            else:
+                                print(f"  COG {i+1}: Forest={forest_count:,}, Non-Forest={nonforest_count:,}, Missing={missing_count:,}")
                         
                 except Exception as cog_error:
                     print(f"⚠️ Error processing COG {i+1}: {str(cog_error)}")
@@ -299,8 +335,12 @@ class AOISummaryStats:
                 print(f"⚠️ Using default pixel area: {px_area_m2} m²")
             
             total_ha = (total_forest_px + total_nonforest_px) * px_area_m2 / 10000
-            print(f"✅ Final pixel counts — Forest: {total_forest_px:,}, Non-Forest: {total_nonforest_px:,}, Missing: {total_missing_px:,}")
-            print(f"✅ Total area: {total_ha:,.1f} hectares")
+            if self.is_gfw_alerts:
+                print(f"✅ Final pixel counts — Alerts: {total_forest_px:,}, No-Alerts: {total_nonforest_px:,}, Missing: {total_missing_px:,}")
+                print(f"✅ Total alert area: {total_forest_px * px_area_m2 / 10000:,.1f} hectares, Total analyzed area: {total_ha:,.1f} hectares")
+            else:
+                print(f"✅ Final pixel counts — Forest: {total_forest_px:,}, Non-Forest: {total_nonforest_px:,}, Missing: {total_missing_px:,}")
+                print(f"✅ Total area: {total_ha:,.1f} hectares")
             
             # Return summary data
             return self._create_summary_dataframe(total_forest_px, total_nonforest_px, total_missing_px, px_area_m2)
@@ -341,19 +381,42 @@ class AOISummaryStats:
     def _create_summary_dataframe(self, forest_px, nonforest_px, missing_px, px_area_m2):
         """Create summary DataFrame with statistics."""
         m2_to_ha = px_area_m2 / 10_000
-        valid_px = forest_px + nonforest_px
         
-        data = {
-            "forest_px": forest_px,
-            "nonforest_px": nonforest_px,
-            "unknown_px": 0,
-            "missing_px": missing_px,
-            "pct_forest": forest_px / valid_px if valid_px else 0,
-            "pct_missing": missing_px / (valid_px + missing_px) if (valid_px + missing_px) else 0,
-            "forest_ha": forest_px * m2_to_ha,
-            "nonforest_ha": nonforest_px * m2_to_ha,
-            "unknown_ha": 0,
-        }
         
-        print(f"Summary: {data['pct_forest']*100:.1f}% forest, {data['pct_missing']*100:.1f}% missing")
+        if self.is_gfw_alerts:
+            valid_px = forest_px + nonforest_px  # Areas actually analyzed
+            # For GFW alerts: forest_px = alert pixels, nonforest_px = no-alert pixels
+            data = {
+                "forest_px": forest_px,  # Alert pixels (reusing field name)
+                "nonforest_px": nonforest_px,  # No-alert pixels (areas analyzed but no alerts)
+                "unknown_px": 0,
+                "missing_px": missing_px,
+                "pct_forest": forest_px / valid_px if valid_px else 0,  # Percentage of alerts within analyzed area
+                "pct_missing": missing_px / (valid_px + missing_px) if (valid_px + missing_px) else 0,
+                "forest_ha": forest_px * m2_to_ha,  # Alert area in hectares
+                "nonforest_ha": nonforest_px * m2_to_ha,  # No-alert area in hectares
+                "unknown_ha": 0,
+                # Add alert-specific metadata
+                "data_type": "deforestation_alerts",
+                "alert_ha": forest_px * m2_to_ha,  # More explicit field for alert area
+                "total_analyzed_ha": valid_px * m2_to_ha,  # Only areas actually analyzed (alerts + no-alerts)
+            }
+            print(f"Summary: {data['pct_forest']*100:.3f}% alerts ({data['alert_ha']:.1f} ha of {data['total_analyzed_ha']:.1f} ha analyzed), {data['pct_missing']*100:.1f}% missing")
+        else:
+            valid_px = forest_px + nonforest_px
+            # For forest cover: forest_px = forest pixels, nonforest_px = non-forest pixels
+            data = {
+                "forest_px": forest_px,
+                "nonforest_px": nonforest_px,
+                "unknown_px": 0,
+                "missing_px": missing_px,
+                "pct_forest": forest_px / valid_px if valid_px else 0,
+                "pct_missing": missing_px / (valid_px + missing_px) if (valid_px + missing_px) else 0,
+                "forest_ha": forest_px * m2_to_ha,
+                "nonforest_ha": nonforest_px * m2_to_ha,
+                "unknown_ha": 0,
+                "data_type": "forest_cover",
+            }
+            print(f"Summary: {data['pct_forest']*100:.1f}% forest, {data['pct_missing']*100:.1f}% missing")
+        
         return pd.DataFrame([data])

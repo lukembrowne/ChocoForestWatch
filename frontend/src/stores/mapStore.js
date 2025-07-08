@@ -92,8 +92,8 @@ export const useMapStore = defineStore('map', () => {
 
   // Forest Cover Maps selection
   const availableDatasets = [
-    { 
-      value: 'northern_choco_test_2025_06_20_2022_merged_composite', 
+    {
+      value: 'northern_choco_test_2025_06_20_2022_merged_composite',
       label: 'Choco Forest Watch 2022',
       version: '2022.01.0',
       year: '2022',
@@ -102,80 +102,80 @@ export const useMapStore = defineStore('map', () => {
       created: '2025-06-20',
       type: 'prediction'
     },
-    { 
-      value: 'planet-nicfi-basemap', 
+    {
+      value: 'planet-nicfi-basemap',
       label: 'Planet NICFI Basemap',
       year: '2022-2024',
       resolution: '4.7m',
       description: 'Monthly high-resolution satellite imagery from Planet Labs via Norway\'s International Climate & Forests Initiative',
       type: 'basemap-imagery'
     },
-    { 
-      value: 'datasets-hansen-tree-cover-2022', 
+    {
+      value: 'datasets-hansen-tree-cover-2022',
       label: 'Hansen Global Forest Change',
       year: '2022',
       resolution: '30m',
       description: 'Global forest change dataset from University of Maryland',
       type: 'benchmark'
     },
-    { 
-      value: 'datasets-mapbiomes-2022', 
+    {
+      value: 'datasets-mapbiomes-2022',
       label: 'MapBiomas Ecuador',
       year: '2022',
       resolution: '30m',
       description: 'Annual land cover and land use mapping for Ecuador',
       type: 'benchmark'
     },
-    { 
-      value: 'datasets-esa-landcover-2020', 
+    {
+      value: 'datasets-esa-landcover-2020',
       label: 'ESA WorldCover',
       year: '2020',
       resolution: '10m',
       description: 'Global land cover map from European Space Agency',
       type: 'benchmark'
     },
-    { 
-      value: 'datasets-jrc-forestcover-2020', 
+    {
+      value: 'datasets-jrc-forestcover-2020',
       label: 'JRC Forest Cover',
       year: '2020',
       resolution: '10m',
       description: 'Forest cover map from Joint Research Centre',
       type: 'benchmark'
     },
-    { 
-      value: 'datasets-palsar-2020', 
+    {
+      value: 'datasets-palsar-2020',
       label: 'ALOS PALSAR Forest Map',
       year: '2020',
       resolution: '25m',
       description: 'Forest/non-forest map from ALOS PALSAR data',
       type: 'benchmark'
     },
-    { 
-      value: 'datasets-wri-treecover-2020', 
+    {
+      value: 'datasets-wri-treecover-2020',
       label: 'WRI Tropical Tree Cover',
       year: '2020',
       resolution: '30m',
       description: 'Tropical tree cover from World Resources Institute',
       type: 'benchmark'
     },
-    { 
-      value: 'datasets-gfw-integrated-alerts-2022', 
+    {
+      value: 'datasets-gfw-integrated-alerts-2022',
       label: 'GFW Deforestation Alerts 2022',
       year: '2022',
       resolution: '10m',
       description: 'Global Forest Watch integrated deforestation alerts',
       type: 'alerts'
     },
-    { 
-      value: 'datasets-gfw-integrated-alerts-2023', 
+    {
+      value: 'datasets-gfw-integrated-alerts-2023',
       label: 'GFW Deforestation Alerts 2023',
       year: '2023',
       resolution: '10m',
       description: 'Global Forest Watch integrated deforestation alerts',
       type: 'alerts'
     },
-    { 
-      value: 'datasets-gfw-integrated-alerts-2024', 
+    {
+      value: 'datasets-gfw-integrated-alerts-2024',
       label: 'GFW Deforestation Alerts 2024',
       year: '2024',
       resolution: '10m',
@@ -219,31 +219,31 @@ export const useMapStore = defineStore('map', () => {
   // GFW date/confidence decoder functions
   const decodeGFWDate = (value) => {
     if (value === 0) return { date: null, confidence: null };
-    
+
     const encoded_str = value.toString();
-    
+
     // Handle single digit values (confidence only, no date)
     if (encoded_str.length === 1) {
       return { date: null, confidence: parseInt(encoded_str) };
     }
-    
+
     // Get confidence level from first digit
     const confidence = parseInt(encoded_str[0]);
-    
+
     // Get days since Dec 31, 2014
     const days = parseInt(encoded_str.substring(1));
-    
+
     // Calculate date
     const baseDate = new Date(2014, 11, 31); // Month is 0-indexed
     const alertDate = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
-    
+
     return { date: alertDate, confidence: confidence };
   };
 
   const formatGFWAlert = (value) => {
     const decoded = decodeGFWDate(value);
     if (!decoded.date && !decoded.confidence) return 'No alert';
-    
+
     let result = '';
     if (decoded.date) {
       result += `Date: ${decoded.date.toLocaleDateString()}`;
@@ -251,7 +251,7 @@ export const useMapStore = defineStore('map', () => {
     if (decoded.confidence) {
       const confidenceLevels = {
         1: 'Low',
-        2: 'Medium', 
+        2: 'Medium',
         3: 'High',
         4: 'Very High'
       };
@@ -407,12 +407,12 @@ export const useMapStore = defineStore('map', () => {
         map.value.removeLayer(layer);
       }
     }
-    
+
     // If removing Planet imagery layer, reset the selected benchmark
     if (layerId && layerId.includes('planet')) {
       selectedBenchmark.value = null;
     }
-    
+
     updateLayers();
   };
 
@@ -623,7 +623,7 @@ export const useMapStore = defineStore('map', () => {
       //   url: `http://localhost:8083/collections/nicfi-pred-composite-2022/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?assets=data&colormap=${colormap}`,
       //   maxZoom: 14,
       // });
-      
+
       // //  Composite forest cover map - new
       // const colormap = getEncodedColormap('CFWForestCoverPalette');
 
@@ -694,7 +694,7 @@ export const useMapStore = defineStore('map', () => {
       console.log("Creating new basemap layer...");
       const layers = map.value.getLayers();
       const layerCount = layers.getLength();
-      
+
       // Insert at index 2 if we have at least 2 layers, otherwise add to the end
       if (layerCount >= 2) {
         layers.insertAt(2, basemap);
@@ -1302,7 +1302,7 @@ export const useMapStore = defineStore('map', () => {
       const layerArray = maps.value[mapId].getLayers().getArray();
       // Create a sorted array by z-index (descending) to match UI display order
       const sortedLayers = [...layerArray].sort((a, b) => b.getZIndex() - a.getZIndex());
-      
+
       // Move the layer in the sorted array
       const [movedLayer] = sortedLayers.splice(fromIndex, 1);
       sortedLayers.splice(toIndex, 0, movedLayer);
@@ -1316,7 +1316,7 @@ export const useMapStore = defineStore('map', () => {
       const layerArray = map.value.getLayers().getArray();
       // Create a sorted array by z-index (descending) to match UI display order
       const sortedLayers = [...layerArray].sort((a, b) => b.getZIndex() - a.getZIndex());
-      
+
       // Move the layer in the sorted array
       const [movedLayer] = sortedLayers.splice(fromIndex, 1);
       sortedLayers.splice(toIndex, 0, movedLayer);
@@ -1581,10 +1581,10 @@ export const useMapStore = defineStore('map', () => {
 
   const goToNextPoint = () => {
     if (randomPoints.value.length === 0) return;
-    
+
     currentPointIndex.value = (currentPointIndex.value + 1) % randomPoints.value.length;
     const point = randomPoints.value[currentPointIndex.value];
-    
+
     // Zoom to the point
     if (map.value) {
       const view = map.value.getView();
@@ -1594,16 +1594,16 @@ export const useMapStore = defineStore('map', () => {
         duration: 750
       });
     }
-    
+
     return point;
   };
 
   const goToPreviousPoint = () => {
     if (randomPoints.value.length === 0) return;
-    
+
     currentPointIndex.value = (currentPointIndex.value - 1 + randomPoints.value.length) % randomPoints.value.length;
     const point = randomPoints.value[currentPointIndex.value];
-    
+
     // Zoom to the point
     if (map.value) {
       const view = map.value.getView();
@@ -1613,7 +1613,7 @@ export const useMapStore = defineStore('map', () => {
         duration: 750
       });
     }
-    
+
     return point;
   };
 
@@ -1630,9 +1630,9 @@ export const useMapStore = defineStore('map', () => {
   const initBoundaryLayer = async () => {
     if (boundaryLayer.value) return;                 // already added
 
-    const response  = await fetch('/data/Ecuador-DEM-900m-contour.geojson');
+    const response = await fetch('/data/Ecuador-DEM-900m-contour.geojson');
     console.log("Response:", response);
-    const geojson   = await response.json();
+    const geojson = await response.json();
 
     boundaryLayer.value = new VectorLayer({
       source: new VectorSource({
@@ -1640,7 +1640,7 @@ export const useMapStore = defineStore('map', () => {
           featureProjection: 'EPSG:3857',
         }),
       }),
-      id:    'ecuador-boundary',
+      id: 'ecuador-boundary',
       title: 'Western Ecuador Boundary',
       zIndex: 4,                           // above OSM, below polygons
       visible: true,
@@ -1648,7 +1648,7 @@ export const useMapStore = defineStore('map', () => {
         stroke: new Stroke({ color: '#000000', width: 2 }),
       }),
       interactive: false,
-      selectable:  false,
+      selectable: false,
     });
 
     map.value?.addLayer(boundaryLayer.value);
@@ -1706,39 +1706,39 @@ export const useMapStore = defineStore('map', () => {
 
     // Create and add the new layer
     const newLayer = createBenchmarkLayer(collectionId);
-    
+
     // Set loading state and add loading indicator
     isLoading.value = true;
-    
+
     // Add layer loading listeners
     const source = newLayer.getSource();
     let tilesLoading = 0;
     let tilesLoaded = 0;
-    
+
     source.on('tileloadstart', () => {
       console
       tilesLoading++;
     });
-    
+
     source.on('tileloadend', () => {
       tilesLoaded++;
       if (tilesLoaded >= Math.min(tilesLoading, 10)) { // Wait for first few tiles
         isLoading.value = false;
       }
     });
-    
+
     source.on('tileloaderror', () => {
       tilesLoaded++;
       if (tilesLoaded >= Math.min(tilesLoading, 10)) {
         isLoading.value = false;
       }
     });
-    
+
     // Fallback timeout to clear loading state
     setTimeout(() => {
       isLoading.value = false;
     }, 5000);
-    
+
     targetMap.addLayer(newLayer);
     updateLayers();
   };
@@ -1749,16 +1749,16 @@ export const useMapStore = defineStore('map', () => {
 
     // Set default date for Planet imagery (January 2022)
     const defaultDate = '2022-01';
-    
+
     // Create and add Planet basemap layer
     updateBasemap(defaultDate, 'planet');
-    
+
     // Update the selected benchmark in the store to reflect Planet imagery is active
     selectedBenchmark.value = 'planet-nicfi-basemap';
-    
+
     // Make sure the basemap date slider is visible by setting the selected date
     selectedBasemapDate.value = defaultDate;
-    
+
     updateLayers();
   };
 
@@ -1911,7 +1911,7 @@ export const useMapStore = defineStore('map', () => {
       summaryStats.value = null;
       return;
     }
-    
+
     try {
       isLoading.value = true;
       const response = await api.getWesternEcuadorStats(selectedBenchmark.value);
@@ -1932,13 +1932,17 @@ export const useMapStore = defineStore('map', () => {
   // -------------------------------------------
   // GFW Alerts functionality  
   // -------------------------------------------
-  
+
   const createGFWAlertsLayer = (collectionId, year) => {
     // Create a raster layer for GFW alerts using TiTiler
     // Use band 1 (binary alerts) for display with custom colormap for alerts only
 
-    const tileUrl = `${import.meta.env.VITE_TITILER_URL || 'http://localhost:8081'}/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?bidx=1&assets=data&colormap_name=reds`;
-    
+    // Create tile URL that works for both legacy (1-band) and new (2-band) rasters
+
+    const colormap = getEncodedColormap('AlertPalette');
+
+    const tileUrl = `${import.meta.env.VITE_TITILER_URL || 'http://localhost:8081'}/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?bidx=1&assets=data&colormap=${colormap}`;
+
     const source = new XYZ({
       url: tileUrl,
       attributions: '© Global Forest Watch',
@@ -1957,20 +1961,20 @@ export const useMapStore = defineStore('map', () => {
     // Store collection ID for later use in click queries
     layer.set('collectionId', collectionId);
     layer.set('datasetType', 'alerts');
-    
+
     return layer;
   };
 
   const addGFWAlertsLayer = (collectionId, year, mapId = null) => {
     const layerId = `gfw-alerts-${year}`;
     let targetMap;
-    
+
     if (mapId && maps.value[mapId]) {
       targetMap = maps.value[mapId];
     } else {
       targetMap = map.value;
     }
-    
+
     if (!targetMap) return;
 
     // Avoid adding duplicate layer with same id
@@ -1985,10 +1989,10 @@ export const useMapStore = defineStore('map', () => {
       const newLayer = createGFWAlertsLayer(collectionId, year);
       targetMap.addLayer(newLayer);
       updateLayers();
-      
+
       // Add click-to-query functionality for GFW alerts
       setupGFWClickHandler(targetMap);
-      
+
       $q.notify({
         type: 'positive',
         message: `GFW Deforestation Alerts ${year} layer added successfully`,
@@ -1997,7 +2001,7 @@ export const useMapStore = defineStore('map', () => {
     } catch (error) {
       console.error('Error adding GFW alerts layer:', error);
       $q.notify({
-        type: 'negative', 
+        type: 'negative',
         message: 'Failed to add GFW alerts layer',
         timeout: 3000
       });
@@ -2013,35 +2017,43 @@ export const useMapStore = defineStore('map', () => {
 
     targetMap.gfwClickHandler = async (event) => {
       // Only process clicks when a GFW alerts layer is visible
-      const gfwLayers = targetMap.getLayers().getArray().filter(layer => 
+      const gfwLayers = targetMap.getLayers().getArray().filter(layer =>
         layer.get('datasetType') === 'alerts' && layer.getVisible()
       );
-      
+
       if (gfwLayers.length === 0) return;
 
       const coordinate = event.coordinate;
       const lonLat = toLonLat(coordinate);
-      
+
       // Flag to track if we found any alerts
       let foundAlert = false;
-      
+
       // Query each visible GFW layer
       for (const layer of gfwLayers) {
         const collectionId = layer.get('collectionId');
         if (!collectionId) continue;
 
         try {
-          // Query pixel value from TiTiler - use band 2 for original encoded values
-          const response = await fetch(
+          // Try band 2 first (for new 2-band rasters), fallback to band 1 (for legacy single-band rasters)
+          let response = await fetch(
             `${import.meta.env.VITE_TITILER_URL || 'http://localhost:8081'}/collections/${collectionId}/point/${lonLat[0]},${lonLat[1]}?bidx=2&assets=data&asset_as_band=true`,
             { method: 'GET' }
           );
-          
+
+          // If band 2 doesn't exist, try band 1 (legacy format)
+          if (!response.ok) {
+            response = await fetch(
+              `${import.meta.env.VITE_TITILER_URL || 'http://localhost:8081'}/collections/${collectionId}/point/${lonLat[0]},${lonLat[1]}?bidx=1&assets=data&asset_as_band=true`,
+              { method: 'GET' }
+            );
+          }
+
           if (response.ok) {
             const data = await response.json();
             // TiTiler returns: { values: [[collection_id, [pixel_value], [asset_name]]] }
             const pixelValue = data.values?.[0]?.[1]?.[0];
-            
+
             if (pixelValue && pixelValue > 0) {
               // Display alert information
               showGFWAlertPopup(coordinate, pixelValue, layer.get('title'));
@@ -2053,7 +2065,7 @@ export const useMapStore = defineStore('map', () => {
           console.error('Error querying GFW pixel value:', error);
         }
       }
-      
+
       // If no alerts were found, hide any existing popup
       if (!foundAlert) {
         hideGFWAlertPopup();
@@ -2076,7 +2088,7 @@ export const useMapStore = defineStore('map', () => {
       pixelValue,
       formattedInfo: formatGFWAlert(pixelValue)
     };
-    
+
     // Show the popup - Vue component will handle positioning
     gfwAlertVisible.value = true;
   };
