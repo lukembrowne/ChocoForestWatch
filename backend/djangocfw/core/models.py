@@ -54,31 +54,47 @@ class Project(models.Model):
         if not template:
             raise ValueError("Template project not found")
 
+        return cls.duplicate_project(template, user, f"{template.name}")
+
+    @classmethod
+    def duplicate_project(cls, source_project, new_owner, new_name=None):
+        """Duplicates a project with all related data"""
+        if new_name is None:
+            new_name = f"{source_project.name} (Copy)"
+            
+        # Ensure unique name
+        counter = 1
+        original_name = new_name
+        while cls.objects.filter(name=new_name, owner=new_owner).exists():
+            new_name = f"{original_name} ({counter})"
+            counter += 1
+
         # Create new project
         new_project = cls.objects.create(
-            name=f"{template.name}",
-            description=template.description,
-            aoi=template.aoi,
-            classes=template.classes,
-            owner=user,
-            aoi_area_ha=template.aoi_area_ha
+            name=new_name,
+            description=source_project.description,
+            aoi=source_project.aoi,
+            classes=source_project.classes,
+            owner=new_owner,
+            aoi_area_ha=source_project.aoi_area_ha
         )
 
         # Copy training sets
         training_set_map = {}  # Keep track of old ID to new ID mapping
-        for training_set in template.training_polygon_sets.all():
+        for training_set in source_project.training_polygon_sets.all():
             new_training_set = TrainingPolygonSet.objects.create(
                 project=new_project,
                 name=training_set.name,
                 basemap_date=training_set.basemap_date,
                 polygons=training_set.polygons,
-                feature_count=training_set.feature_count
+                feature_count=training_set.feature_count,
+                excluded=training_set.excluded
             )
             training_set_map[training_set.id] = new_training_set.id
 
         # Copy trained models
         model_map = {}  # Keep track of old ID to new ID mapping
-        for model in template.trained_models.all():
+        for model in source_project.trained_models.all():
             # Update training_set_ids to use new IDs
             new_training_set_ids = [
                 training_set_map[old_id] 
@@ -101,7 +117,7 @@ class Project(models.Model):
             model_map[model.id] = new_model.id
 
         # Copy predictions
-        for prediction in template.predictions.all():
+        for prediction in source_project.predictions.all():
             Prediction.objects.create(
                 project=new_project,
                 model_id=model_map.get(prediction.model_id),  # Use new model ID

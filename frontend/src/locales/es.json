@@ -685,6 +685,12 @@
       "success": "Proyecto eliminado exitosamente",
       "title": "Confirmar Eliminación"
     },
+    "duplicate": {
+      "confirm": "¿Está seguro que desea duplicar el proyecto \"{name}\"?",
+      "failed": "Error al duplicar el proyecto",
+      "success": "Proyecto \"{name}\" duplicado exitosamente",
+      "title": "Confirmar Duplicación"
+    },
     "description": "Descripción",
     "existingProjects": "Proyectos Existentes",
     "failedCreate": "Error al crear el proyecto",
@@ -710,6 +716,7 @@
     "tooltips": {
       "createNewSection": "Comience aquí para crear un nuevo proyecto para monitorear la deforestación en su área de interés",
       "delete": "Eliminar Proyecto",
+      "duplicate": "Duplicar Proyecto",
       "existingSection": "Ver y gestionar sus proyectos creados anteriormente",
       "load": "Cargar Proyecto",
       "rename": "Renombrar Proyecto"

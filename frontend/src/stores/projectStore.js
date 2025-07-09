@@ -138,6 +138,21 @@ export const useProjectStore = defineStore('project', {
       }
     },
 
+    async duplicateProject(projectId) {
+      try {
+        const response = await api.duplicateProject(projectId);
+        const duplicatedProject = response.data;
+        
+        // Add the duplicated project to the projects array
+        this.projects.push(duplicatedProject);
+        
+        return duplicatedProject;
+      } catch (error) {
+        console.error('Error duplicating project:', error);
+        throw error;
+      }
+    },
+
     setCurrentTrainingSet(trainingSet) {
       this.currentTrainingSet = trainingSet;
     },
