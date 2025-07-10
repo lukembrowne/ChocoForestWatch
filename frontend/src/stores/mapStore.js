@@ -1881,67 +1881,39 @@ export const useMapStore = defineStore('map', () => {
 
     // Box draw interaction
     summaryDrawInteraction.value = new Draw({
-      source: summaryAOILayer.value.getSource(),
       type: 'Circle', // special code for box with geometryFunction
       geometryFunction: createBox(),
     });
 
     summaryDrawInteraction.value.on('drawend', async (evt) => {
-      let loadingNotification;
+      console.log('Drawing completed, processing geometry...')
       
       try {
-        const geom3857 = evt.feature.getGeometry();
-        // Convert to GeoJSON WGS84 (EPSG:4326)
-        const geoJSONGeom = new GeoJSON().writeGeometryObject(geom3857, {
-          dataProjection: 'EPSG:4326',
-          featureProjection: 'EPSG:3857',
-        });
-
-        // Send to backend
-        isLoading.value = true;
+        // Ensure the feature is added to the layer
+        const feature = evt.feature
+        console.log('Drew feature:', feature)
         
-        // Show loading notification
-        loadingNotification = $q.notify({
-          type: 'ongoing',
-          message: 'Calculating area statistics...',
-          timeout: 0, // Don't auto-dismiss
-          spinner: true,
-          position: 'bottom'
-        });
+        // Manually add the feature to the layer source to ensure it's available for the callback
+        summaryAOILayer.value.getSource().addFeature(feature)
+        console.log('Feature added to layer source')
         
-        const resp = await api.getAOISummary({ type: 'Feature', geometry: geoJSONGeom }, selectedBenchmark.value);
-        summaryStats.value = resp.data;
-        
-        // Dismiss loading notification and show success
-        loadingNotification();
-        $q.notify({
-          type: 'positive',
-          message: 'Area statistics calculated successfully',
-          timeout: 2000,
-          position: 'bottom'
-        });
-      } catch (err) {
-        console.error('Failed to compute AOI summary:', err);
-        
-        // Dismiss loading notification if it exists
-        if (loadingNotification) {
-          loadingNotification();
+        // Trigger callback to notify AnalysisPanel that AOI drawing is complete
+        if (window.aoiStatsCallback) {
+          console.log('Calling aoiStatsCallback...')
+          await window.aoiStatsCallback();
         }
-        
-        // Show more detailed error message for connectivity issues
-        const errorMessage = err.message?.includes('fetch') || err.message?.includes('Network') 
-          ? 'Unable to connect to database. Please check your connection and try again.'
-          : 'Failed to compute summary statistics. Please try again.';
-          
-        $q.notify({ 
-          type: 'negative', 
-          message: errorMessage,
-          timeout: 5000,
-          position: 'bottom'
-        });
+      } catch (err) {
+        console.error('Failed to notify AOI stats callback:', err);
       } finally {
-        isLoading.value = false;
-        stopSummaryAOIDraw();
+        // Stop the drawing interaction after callback completes
+        // Use setTimeout to ensure this happens after any remaining click events
+        setTimeout(() => {
+          isDrawingSummaryAOI.value = false;
+          if (summaryDrawInteraction.value) {
+            map.value.removeInteraction(summaryDrawInteraction.value);
+            summaryDrawInteraction.value = null;
+          }
+        }, 100);
       }
     });
 
@@ -1960,12 +1932,12 @@ export const useMapStore = defineStore('map', () => {
   const clearSummaryAOI = () => {
     if (!map.value) return;
     stopSummaryAOIDraw();
-    summaryStats.value = null;
     if (summaryAOILayer.value) {
       map.value.removeLayer(summaryAOILayer.value);
       summaryAOILayer.value = null;
     }
   };
+
 
   // Load cached western Ecuador statistics for the selected benchmark
   const loadWesternEcuadorStats = async () => {
@@ -2067,6 +2039,8 @@ export const useMapStore = defineStore('map', () => {
 
   // GFW click-to-query functionality
   const setupGFWClickHandler = (targetMap) => {
+    console.log("Setting up GFW click handler on map:", targetMap.getTarget());
+    return
     // Remove existing GFW click handler if it exists
     if (targetMap.gfwClickHandler) {
       targetMap.un('singleclick', targetMap.gfwClickHandler);
@@ -2279,6 +2253,7 @@ export const useMapStore = defineStore('map', () => {
     clearSummaryAOI,
     loadWesternEcuadorStats,
     summaryStats,
+    summaryAOILayer,
     isDrawingSummaryAOI,
     // Search actions
     searchLocation,
