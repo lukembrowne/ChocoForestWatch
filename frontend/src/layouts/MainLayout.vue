@@ -425,6 +425,9 @@ export default {
 
           // Auto-load CFW Composite 2022 forest cover map
           mapStore.addBenchmarkLayer('northern_choco_test_2025_06_20_2022_merged_composite')
+          
+          // Auto-load GFW 2022 deforestation alerts
+          mapStore.addGFWAlertsLayer('datasets-gfw-integrated-alerts-2022', '2022')
         } catch (err) {
           console.error('Failed to load default project:', err)
           $q.notify({
@@ -1084,6 +1087,36 @@ export default {
   .text-caption {
     color: #475569;
     line-height: 1.5;
+  }
+}
+
+// Scale bar positioning
+:deep(.ol-scale-line) {
+  position: absolute !important;
+  bottom: 10px !important;
+  left: 10px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-radius: 4px !important;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  color: #333 !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  z-index: 1000 !important;
+}
+
+:deep(.ol-scale-line-inner) {
+  color: #333 !important;
+  font-weight: 500 !important;
+  border-color: #333 !important;
+}
+
+// Ensure scale bar is visible on mobile
+@media (max-width: 600px) {
+  :deep(.ol-scale-line) {
+    bottom: 20px !important;
+    left: 20px !important;
+    font-size: 11px !important;
   }
 }
 </style>

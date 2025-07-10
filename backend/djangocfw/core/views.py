@@ -200,6 +200,47 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 excluded=False
             )
 
+    @action(detail=True, methods=['post'])
+    def duplicate(self, request, pk=None):
+        """Duplicate a project with all its related data"""
+        try:
+            source_project = self.get_object()
+            
+            # Check if user has permission to view the source project
+            if not self.request.user.is_authenticated:
+                return Response(
+                    {"error": "Authentication required"},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            
+            # Allow duplication if user owns the project or if it's the public project
+            if (source_project.owner != self.request.user and 
+                source_project.id != DEFAULT_PUBLIC_PROJECT_ID):
+                return Response(
+                    {"error": "Permission denied"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Duplicate the project
+            new_project = Project.duplicate_project(
+                source_project, 
+                self.request.user
+            )
+            
+            # Serialize the new project
+            serializer = self.get_serializer(new_project)
+            
+            logger.info(f"Project {source_project.id} duplicated as {new_project.id} by user {self.request.user.id}")
+            
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            logger.error(f"Error duplicating project: {str(e)}")
+            return Response(
+                {"error": f"Failed to duplicate project: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 class TrainingPolygonSetViewSet(viewsets.ModelViewSet):
     queryset = TrainingPolygonSet.objects.all()
     serializer_class = TrainingPolygonSetSerializer

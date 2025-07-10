@@ -19,6 +19,11 @@
       1: [255, 0, 0],   // Alert – red
       0: [0, 0, 0, 0],   // No alert - transparent
       255: [0, 0, 0], // No data – black
+    },
+    ColorBlindFriendlyAlertPalette: {
+      1: [255, 140, 0],   // Alert – orange (color-blind friendly)
+      0: [0, 0, 0, 0],    // No alert - transparent
+      255: [0, 0, 0],     // No data – black
     }
   };
 

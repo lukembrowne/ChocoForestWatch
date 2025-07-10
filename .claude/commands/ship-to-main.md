@@ -16,7 +16,7 @@ Complete the full git workflow from dev to main branch:
 /project:ship-to-main [commit-message]
 ```
 
-If no commit message provided, will use a default message.
+If no commit message provided, will use a default message. Do not attribute Claude or include a test plan.
 
 ## Workflow Steps
 

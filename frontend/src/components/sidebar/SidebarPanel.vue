@@ -5,7 +5,8 @@
       <AnalysisPanel />
     </div>
 
-     <!-- Search Section -->
+     <!-- Search Section - Commented out for now -->
+     <!--
      <div class="search-section">
       <div 
         class="section-header" 
@@ -72,14 +73,14 @@
             </template>
           </q-select>
           
-          <!-- Search feedback -->
           <div v-if="searchFeedback" class="search-feedback" :class="`feedback-${searchFeedback.color}`">
             <q-icon :name="searchFeedback.icon" size="sm" />
             <span class="feedback-message">{{ searchFeedback.message }}</span>
           </div>
         </div>
-      </q-slide-transition>
-    </div>
+        </q-slide-transition>
+      </div>
+    -->
 
   </div>
 </template>
@@ -94,6 +95,8 @@ import AnalysisPanel from '../analysis/AnalysisPanel.vue'
 const mapStore = useMapStore()
 const { t } = useI18n()
 
+// Search functionality - commented out for now
+/*
 const options = ref([])
 const selectedLabel = ref('')
 
@@ -115,7 +118,10 @@ watch(searchSectionExpanded, (newValue) => {
 const toggleSearchSection = () => {
   searchSectionExpanded.value = !searchSectionExpanded.value
 }
+*/
 
+// Search functions - commented out for now
+/*
 const onFilter = async (val, update, abort) => {
   if (val === '') {
     options.value = []
@@ -176,6 +182,7 @@ const onSelect = (val) => {
     }, 2000)
   }
 }
+*/
 </script>
 
 <style scoped>

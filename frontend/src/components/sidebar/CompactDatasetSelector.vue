@@ -158,9 +158,9 @@ export default {
     const showDialog = ref(false)
     const selectedBenchmark = ref(null)
     
-    // Use benchmarks from mapStore with version information
+    // Use benchmarks from mapStore with version information, excluding GFW alerts
     const benchmarkOptions = computed(() => [
-      ...mapStore.availableDatasets
+      ...mapStore.availableDatasets.filter(dataset => dataset.type !== 'alerts')
     ])
     
     // Create table rows from dataset options, grouping by dataset type

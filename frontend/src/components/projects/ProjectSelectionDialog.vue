@@ -85,6 +85,9 @@
                 <q-btn flat round dense color="secondary" icon="edit" size="sm" @click.stop="openRenameDialog(props.row)">
                   <q-tooltip>{{ t('projects.tooltips.rename') }}</q-tooltip>
                 </q-btn>
+                <q-btn flat round dense color="info" icon="content_copy" size="sm" @click.stop="confirmDuplicate(props.row)">
+                  <q-tooltip>{{ t('projects.tooltips.duplicate') }}</q-tooltip>
+                </q-btn>
                 <q-btn flat round dense color="negative" icon="delete" size="sm" @click.stop="confirmDelete(props.row)">
                   <q-tooltip>{{ t('projects.tooltips.delete') }}</q-tooltip>
                 </q-btn>
@@ -348,6 +351,32 @@ export default {
       })
     }
 
+    const confirmDuplicate = (project) => {
+      $q.dialog({
+        title: t('projects.duplicate.title'),
+        message: t('projects.duplicate.confirm', { name: project.name }),
+        cancel: true,
+        persistent: true
+      }).onOk(async () => {
+        try {
+          const duplicatedProject = await projectStore.duplicateProject(project.id)
+          await fetchProjects()
+          $q.notify({
+            color: 'positive',
+            message: t('projects.duplicate.success', { name: duplicatedProject.name }),
+            icon: 'check'
+          })
+        } catch (error) {
+          console.error('Error duplicating project:', error)
+          $q.notify({
+            color: 'negative',
+            message: t('projects.duplicate.failed'),
+            icon: 'error'
+          })
+        }
+      })
+    }
+
     const onOk = (project) => {
       emit('project-selected', project)
     }
@@ -364,6 +393,7 @@ export default {
       showRenameDialog,
       renameProject,
       confirmDelete,
+      confirmDuplicate,
       openRenameDialog,
       t
     }
@@ -387,8 +417,6 @@ export default {
   box-shadow: none;
   background: white;
 }
-
-
 
 .actions-container {
   gap: 2px;
@@ -431,5 +459,4 @@ export default {
     border-radius: 8px;
   }
 }
-
 </style>

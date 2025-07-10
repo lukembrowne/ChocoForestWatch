@@ -80,6 +80,10 @@ const api = {
         return apiClient.delete(`/projects/${id}/`);
     },
 
+    duplicateProject(id) {
+        return apiClient.post(`/projects/${id}/duplicate/`);
+    },
+
     // Training set endpoints
     getTrainingPolygons(projectId) {
         return apiClient.get('/training-sets/', { params: { project_id: projectId } });
