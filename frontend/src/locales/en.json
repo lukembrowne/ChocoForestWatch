@@ -494,6 +494,25 @@
   },
   "layers": {
     "baseMap": "Base Map",
+    "gfwAlerts": {
+      "title": "Deforestation Alerts",
+      "selectYear": "Select Year",
+      "currentYear": "Current: {year}",
+      "show": "Show alerts",
+      "hide": "Hide alerts",
+      "moreInfo": "More information about deforestation alerts",
+      "infoDialog": {
+        "title": "About Deforestation Alerts",
+        "description": "Global Forest Watch integrated deforestation alerts provide near real-time information about forest loss events.",
+        "dataSource": "Data Source",
+        "sourceDescription": "Alerts are generated from satellite imagery analysis by Global Forest Watch and the World Resources Institute.",
+        "resolution": "Resolution & Coverage",
+        "resolutionDescription": "Alerts are provided at 10-meter resolution with global coverage, updated regularly.",
+        "usage": "How to Use",
+        "usageDescription": "Click on any alert pixel on the map to view detailed information including date and confidence level.",
+        "learnMore": "Learn More"
+      }
+    },
     "basemapDate": {
       "months": {
         "apr": "April",

@@ -494,6 +494,25 @@
   },
   "layers": {
     "baseMap": "Mapa Base",
+    "gfwAlerts": {
+      "title": "Alertas de Deforestación",
+      "selectYear": "Seleccionar Año",
+      "currentYear": "Actual: {year}",
+      "show": "Mostrar alertas",
+      "hide": "Ocultar alertas",
+      "moreInfo": "Más información sobre alertas de deforestación",
+      "infoDialog": {
+        "title": "Acerca de las Alertas de Deforestación",
+        "description": "Las alertas integradas de deforestación de Global Forest Watch proporcionan información casi en tiempo real sobre eventos de pérdida forestal.",
+        "dataSource": "Fuente de Datos",
+        "sourceDescription": "Las alertas son generadas a partir del análisis de imágenes satelitales por Global Forest Watch y el World Resources Institute.",
+        "resolution": "Resolución y Cobertura",
+        "resolutionDescription": "Las alertas se proporcionan con resolución de 10 metros con cobertura global, actualizadas regularmente.",
+        "usage": "Cómo Usar",
+        "usageDescription": "Haz clic en cualquier píxel de alerta en el mapa para ver información detallada incluyendo fecha y nivel de confianza.",
+        "learnMore": "Más Información"
+      }
+    },
     "basemapDate": {
       "months": {
         "apr": "Abril",

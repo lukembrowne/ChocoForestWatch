@@ -318,11 +318,17 @@ const visibleDatasets = computed(() => {
     .filter(layer => layer.visible)
     .map(layer => {
       // Map layer ID to dataset info from availableDatasets
-      const dataset = mapStore.availableDatasets.find(d => 
-        layer.id.includes(d.value) || 
-        layer.id === `benchmark-${d.value}` ||
-        layer.id.startsWith(`gfw-alerts-${d.year}`)
-      )
+      const dataset = mapStore.availableDatasets.find(d => {
+        // Handle GFW alerts layers specifically
+        if (layer.id.startsWith('gfw-alerts-') && d.type === 'alerts') {
+          const layerYear = layer.id.split('-').pop()
+          return d.year === layerYear
+        }
+        
+        // Handle other datasets
+        return layer.id.includes(d.value) || 
+               layer.id === `benchmark-${d.value}`
+      })
       
       return dataset
     })

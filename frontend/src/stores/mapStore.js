@@ -1965,7 +1965,7 @@ export const useMapStore = defineStore('map', () => {
 
     // Create tile URL that works for both legacy (1-band) and new (2-band) rasters
 
-    const colormap = getEncodedColormap('AlertPalette');
+    const colormap = getEncodedColormap('ColorBlindFriendlyAlertPalette');
 
     const tileUrl = `${import.meta.env.VITE_TITILER_URL || 'http://localhost:8081'}/collections/${collectionId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?bidx=1&assets=data&colormap=${colormap}`;
     const source = new XYZ({
@@ -2123,6 +2123,47 @@ export const useMapStore = defineStore('map', () => {
     gfwAlertInfo.value = null;
   };
 
+  // GFW Alerts year switching functionality
+  const currentGFWAlertsYear = ref('2022');
+  
+  const getAvailableGFWAlertYears = () => {
+    return availableDatasets
+      .filter(dataset => dataset.type === 'alerts')
+      .map(dataset => dataset.year)
+      .sort((a, b) => b.localeCompare(a)); // Sort years descending
+  };
+
+  const switchGFWAlertsYear = (newYear, mapId = null) => {
+    const targetMap = mapId === 'training' ? map.value : (mapId ? maps.value[mapId] : map.value);
+    if (!targetMap) return;
+
+    // Remove existing GFW alerts layers
+    const existingGFWLayers = targetMap.getLayers().getArray().filter(layer => 
+      layer.get('datasetType') === 'alerts'
+    );
+    existingGFWLayers.forEach(layer => targetMap.removeLayer(layer));
+
+    // Add new GFW alerts layer for the selected year
+    const collectionId = `datasets-gfw-integrated-alerts-${newYear}`;
+    const newLayer = createGFWAlertsLayer(collectionId, newYear);
+    targetMap.addLayer(newLayer);
+
+    // Update the current year
+    currentGFWAlertsYear.value = newYear;
+    
+    // Update layers list
+    updateLayers();
+
+    // Ensure click handler is set up
+    setupGFWClickHandler(targetMap);
+
+    $q.notify({
+      type: 'positive',
+      message: `Switched to GFW Deforestation Alerts ${newYear}`,
+      timeout: 2000
+    });
+  };
+
   return {
     // State
     aoi,
@@ -2217,6 +2258,10 @@ export const useMapStore = defineStore('map', () => {
     gfwAlertInfo,
     gfwAlertVisible,
     hideGFWAlertPopup,
+    // GFW alerts year switching
+    currentGFWAlertsYear,
+    getAvailableGFWAlertYears,
+    switchGFWAlertsYear,
     // Getters
     getMap,
     maps,

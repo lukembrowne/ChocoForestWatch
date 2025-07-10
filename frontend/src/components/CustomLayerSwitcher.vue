@@ -25,6 +25,57 @@
     <q-slide-transition>
       <div v-show="isExpanded" class="layers-container">
         
+        <!-- GFW Alerts Section -->
+        <div class="gfw-alerts-section">
+          <div class="gfw-alerts-header">
+            <q-icon name="warning" class="alerts-icon" />
+            <span class="alerts-title">{{ t('layers.gfwAlerts.title') }}</span>
+            <q-btn
+              flat
+              round
+              dense
+              icon="info_outline"
+              size="sm"
+              class="info-btn"
+              @click="showGFWInfo = true"
+            >
+              <q-tooltip>{{ t('layers.gfwAlerts.moreInfo') }}</q-tooltip>
+            </q-btn>
+          </div>
+          
+          <div class="gfw-alerts-controls">
+            <div class="year-selector">
+              <q-select
+                v-model="selectedGFWYear"
+                :options="availableGFWYears"
+                outlined
+                dense
+                class="year-select"
+                @update:model-value="onYearChange"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="calendar_today" size="sm" />
+                </template>
+              </q-select>
+            </div>
+            
+            <q-btn
+              flat
+              round
+              dense
+              :icon="gfwAlertsVisible ? 'visibility' : 'visibility_off'"
+              size="sm"
+              class="visibility-btn"
+              @click="toggleGFWAlertsVisibility"
+              :color="gfwAlertsVisible ? 'primary' : 'grey-6'"
+            >
+              <q-tooltip>{{ gfwAlertsVisible ? t('layers.gfwAlerts.hide') : t('layers.gfwAlerts.show') }}</q-tooltip>
+            </q-btn>
+          </div>
+        </div>
+        
+        <q-separator class="section-separator" />
+        
         <div class="layers-list">
           <Sortable :list="mapLayers" item-key="id" @end="onDragEnd" :options="{ handle: '.drag-handle' }">
             <template #item="{ element }">
@@ -100,6 +151,50 @@
       </div>
     </q-slide-transition>
 
+    <!-- GFW Alerts Info Dialog -->
+    <q-dialog v-model="showGFWInfo" class="gfw-info-dialog">
+      <q-card class="gfw-info-card">
+        <q-card-section class="dialog-header">
+          <div class="dialog-title">
+            <q-icon name="warning" class="title-icon" />
+            <span class="title-text">{{ t('layers.gfwAlerts.infoDialog.title') }}</span>
+          </div>
+        </q-card-section>
+        
+        <q-card-section class="dialog-content">
+          <div class="info-content">
+            <p class="description">{{ t('layers.gfwAlerts.infoDialog.description') }}</p>
+            
+            <div class="info-section">
+              <h4>{{ t('layers.gfwAlerts.infoDialog.dataSource') }}</h4>
+              <p>{{ t('layers.gfwAlerts.infoDialog.sourceDescription') }}</p>
+            </div>
+            
+            <div class="info-section">
+              <h4>{{ t('layers.gfwAlerts.infoDialog.resolution') }}</h4>
+              <p>{{ t('layers.gfwAlerts.infoDialog.resolutionDescription') }}</p>
+            </div>
+            
+            <div class="info-section">
+              <h4>{{ t('layers.gfwAlerts.infoDialog.usage') }}</h4>
+              <p>{{ t('layers.gfwAlerts.infoDialog.usageDescription') }}</p>
+            </div>
+          </div>
+        </q-card-section>
+        
+        <q-card-actions class="dialog-actions">
+          <q-btn 
+            flat 
+            :label="t('layers.gfwAlerts.infoDialog.learnMore')" 
+            href="https://www.globalforestwatch.org/help/map/guides/forest-change-analysis/"
+            target="_blank"
+            icon="open_in_new"
+            color="primary"
+          />
+          <q-btn flat :label="t('common.close')" v-close-popup class="close-btn" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
  
   </div>
 </template>
@@ -129,6 +224,14 @@ export default {
     const { t } = useI18n();
     const isExpanded = ref(true);
     const layerOpacityStates = reactive({});
+    
+    // GFW Alerts state
+    const selectedGFWYear = ref(mapStore.currentGFWAlertsYear);
+    const availableGFWYears = computed(() => 
+      mapStore.getAvailableGFWAlertYears().map(year => ({ label: year, value: year }))
+    );
+    const gfwAlertsVisible = ref(true);
+    const showGFWInfo = ref(false);
 
     const mapLayers = computed(() => {
       if (props.mapId === 'training') {
@@ -205,6 +308,28 @@ export default {
       layerOpacityStates[layerId].showOpacity = !layerOpacityStates[layerId].showOpacity;
     };
 
+    // GFW Alerts methods
+    const onYearChange = (newYear) => {
+      // Extract the value if newYear is an object
+      const year = typeof newYear === 'object' ? newYear.value : newYear;
+      mapStore.switchGFWAlertsYear(year, props.mapId);
+    };
+
+    const toggleGFWAlertsVisibility = () => {
+      const targetMap = props.mapId === 'training' ? mapStore.map : mapStore.maps[props.mapId];
+      if (!targetMap) return;
+
+      const gfwLayers = targetMap.getLayers().getArray().filter(layer => 
+        layer.get('datasetType') === 'alerts'
+      );
+      
+      gfwLayers.forEach(layer => {
+        layer.setVisible(!gfwAlertsVisible.value);
+      });
+      
+      gfwAlertsVisible.value = !gfwAlertsVisible.value;
+    };
+
     return {
       mapLayers,
       onDragEnd,
@@ -213,7 +338,14 @@ export default {
       removeLayer,
       toggleOpacityVisibility,
       t,
-      isExpanded
+      isExpanded,
+      // GFW Alerts
+      selectedGFWYear,
+      availableGFWYears,
+      gfwAlertsVisible,
+      showGFWInfo,
+      onYearChange,
+      toggleGFWAlertsVisibility
     };
   }
 };
@@ -507,5 +639,164 @@ export default {
     font-size: 12px;
   }
   
+}
+
+// GFW Alerts Section
+.gfw-alerts-section {
+  padding: 12px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border-bottom: 1px solid rgba(34, 197, 94, 0.2);
+  margin-bottom: 4px;
+  border-radius: 8px 8px 0 0;
+}
+
+.gfw-alerts-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.alerts-icon {
+  font-size: 16px;
+  color: #ef4444;
+}
+
+.alerts-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  flex: 1;
+}
+
+.info-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: #22c55e;
+  }
+  
+  .q-icon {
+    font-size: 14px;
+    color: #64748b;
+  }
+}
+
+.gfw-alerts-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.year-selector {
+  flex: 1;
+}
+
+.visibility-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: #22c55e;
+  }
+  
+  .q-icon {
+    font-size: 16px;
+  }
+}
+
+.section-separator {
+  background: rgba(34, 197, 94, 0.15);
+  margin: 0 8px 8px;
+}
+
+// GFW Info Dialog
+.gfw-info-dialog :deep(.q-dialog__inner) {
+  padding: 16px;
+}
+
+.gfw-info-card {
+  min-width: 500px;
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.dialog-header {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-bottom: 1px solid rgba(34, 197, 94, 0.2);
+  padding: 20px;
+}
+
+.dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.title-icon {
+  font-size: 24px;
+  color: #ef4444;
+}
+
+.title-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.dialog-content {
+  padding: 20px;
+  background: white;
+}
+
+.info-content {
+  .description {
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+  
+  .info-section {
+    margin-bottom: 16px;
+    
+    h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #16a34a;
+      margin: 0 0 8px 0;
+    }
+    
+    p {
+      font-size: 13px;
+      color: #64748b;
+      margin: 0;
+      line-height: 1.5;
+    }
+  }
+}
+
+.dialog-actions {
+  padding: 12px 20px;
+  background: #f9f9f9;
+  border-top: 1px solid #e0e0e0;
+  justify-content: space-between;
+}
+
+.close-btn {
+  color: #666;
+  text-transform: none;
 }
 </style>

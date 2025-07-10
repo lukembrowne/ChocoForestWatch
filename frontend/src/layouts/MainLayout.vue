@@ -425,6 +425,9 @@ export default {
 
           // Auto-load CFW Composite 2022 forest cover map
           mapStore.addBenchmarkLayer('northern_choco_test_2025_06_20_2022_merged_composite')
+          
+          // Auto-load GFW 2022 deforestation alerts
+          mapStore.addGFWAlertsLayer('datasets-gfw-integrated-alerts-2022', '2022')
         } catch (err) {
           console.error('Failed to load default project:', err)
           $q.notify({
