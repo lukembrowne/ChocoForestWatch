@@ -139,7 +139,7 @@
     </div>
 
     <!-- Results Section -->
-    <div v-if="stats || (shouldShowBothStats && (forestCoverStats || alertsStats))" class="results-section-compact">
+    <div v-if="hasResults" class="results-section-compact">
       
       <!-- Area Info Compact -->
       <div class="area-info-compact">
@@ -159,110 +159,55 @@
 
       <!-- Total Area Context -->
       <div class="total-area-context">
-        <template v-if="shouldShowBothStats">
-          <span class="total-area-text">{{ t('analysis.panel.results.totalArea') }}: {{ (alertsStats?.total_analyzed_ha || (alertsStats?.forest_ha + alertsStats?.nonforest_ha) || 0).toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</span>
-        </template>
-        <template v-else-if="stats">
-          <span class="total-area-text">{{ t('analysis.panel.results.totalArea') }}: {{ (stats.total_analyzed_ha || (stats.forest_ha + stats.nonforest_ha)).toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</span>
-        </template>
+        <span class="total-area-text">{{ t('analysis.panel.results.totalArea') }}: {{ analysisResults.totalAreaHa.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</span>
       </div>
 
       <!-- Statistics Grid -->
       <div class="stats-grid-compact">
-        <!-- Show Both Forest Cover and Alerts (when both are visible) -->
-        <template v-if="shouldShowBothStats">
-          <!-- Forest Cover Stats -->
-          <div v-if="forestCoverStats" class="stat-cell forest-cell">
-            <div class="stat-icon-compact">
-              <q-icon name="forest" size="20px" />
-            </div>
-            <div class="stat-content-compact">
-              <div class="stat-value-compact">{{ (forestCoverStats.pct_forest * 100).toFixed(1) }}%</div>
-              <div class="stat-label-compact">{{ t('analysis.panel.results.forestCover') }}</div>
-              <div class="stat-detail-compact">{{ forestCoverStats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
-            </div>
+        <!-- Forest Cover Stats -->
+        <div v-if="analysisResults.forestCover" class="stat-cell forest-cell">
+          <div class="stat-icon-compact">
+            <q-icon name="forest" size="20px" />
           </div>
-
-          <div v-if="forestCoverStats" class="stat-cell nonforest-cell">
-            <div class="stat-icon-compact">
-              <q-icon name="landscape" size="20px" />
-            </div>
-            <div class="stat-content-compact">
-              <div class="stat-value-compact">{{ (100 - forestCoverStats.pct_forest * 100).toFixed(1) }}%</div>
-              <div class="stat-label-compact">{{ t('analysis.panel.results.nonForest') }}</div>
-              <div class="stat-detail-compact">{{ forestCoverStats.nonforest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
-            </div>
+          <div class="stat-content-compact">
+            <div class="stat-value-compact">{{ (analysisResults.forestCover.pct_forest * 100).toFixed(1) }}%</div>
+            <div class="stat-label-compact">{{ t('analysis.panel.results.forestCover') }}</div>
+            <div class="stat-detail-compact">{{ analysisResults.forestCover.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
           </div>
+        </div>
 
-          <!-- Alerts Stats -->
-          <div v-if="alertsStats" class="stat-cell alert-cell">
-            <div class="stat-icon-compact">
-              <q-icon name="warning" size="20px" />
-            </div>
-            <div class="stat-content-compact">
-              <div class="stat-value-compact">{{ ((alertsStats.forest_ha / (alertsStats.total_analyzed_ha || (alertsStats.forest_ha + alertsStats.nonforest_ha))) * 100).toFixed(3) }}%</div>
-              <div class="stat-label-compact">{{ t('analysis.panel.results.deforestationRate') }}</div>
-              <div class="stat-detail-compact">{{ alertsStats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha {{ t('analysis.panel.results.alertsDetected') }}</div>
-            </div>
+        <!-- Non-Forest Stats -->
+        <div v-if="analysisResults.forestCover" class="stat-cell nonforest-cell">
+          <div class="stat-icon-compact">
+            <q-icon name="landscape" size="20px" />
           </div>
-
-          <!-- Empty cell for spacing when only 3 stats -->
-          <div class="stat-cell empty-cell"></div>
-        </template>
-
-        <!-- Show Only Forest Cover Data -->
-        <template v-else-if="!isAlertsData && stats">
-          <div class="stat-cell forest-cell">
-            <div class="stat-icon-compact">
-              <q-icon name="forest" size="20px" />
-            </div>
-            <div class="stat-content-compact">
-              <div class="stat-value-compact">{{ (stats.pct_forest * 100).toFixed(1) }}%</div>
-              <div class="stat-label-compact">{{ t('analysis.panel.results.forestCover') }}</div>
-              <div class="stat-detail-compact">{{ stats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
-            </div>
+          <div class="stat-content-compact">
+            <div class="stat-value-compact">{{ (100 - analysisResults.forestCover.pct_forest * 100).toFixed(1) }}%</div>
+            <div class="stat-label-compact">{{ t('analysis.panel.results.nonForest') }}</div>
+            <div class="stat-detail-compact">{{ analysisResults.forestCover.nonforest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
           </div>
+        </div>
 
-          <div class="stat-cell nonforest-cell">
-            <div class="stat-icon-compact">
-              <q-icon name="landscape" size="20px" />
-            </div>
-            <div class="stat-content-compact">
-              <div class="stat-value-compact">{{ (100 - stats.pct_forest * 100).toFixed(1) }}%</div>
-              <div class="stat-label-compact">{{ t('analysis.panel.results.nonForest') }}</div>
-              <div class="stat-detail-compact">{{ stats.nonforest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
-            </div>
+        <!-- Deforestation Alerts Stats -->
+        <div v-if="analysisResults.deforestationAlerts" class="stat-cell alert-cell">
+          <div class="stat-icon-compact">
+            <q-icon name="warning" size="20px" />
           </div>
-
-          <!-- Empty cells for spacing -->
-          <div class="stat-cell empty-cell"></div>
-          <div class="stat-cell empty-cell"></div>
-        </template>
-
-        <!-- Show Only GFW Alerts Data -->
-        <template v-else-if="stats">
-          <div class="stat-cell alert-cell">
-            <div class="stat-icon-compact">
-              <q-icon name="warning" size="20px" />
-            </div>
-            <div class="stat-content-compact">
-              <div class="stat-value-compact">{{ ((stats.forest_ha / (stats.total_analyzed_ha || (stats.forest_ha + stats.nonforest_ha))) * 100).toFixed(3) }}%</div>
-              <div class="stat-label-compact">{{ t('analysis.panel.results.deforestationRate') }}</div>
-              <div class="stat-detail-compact">{{ stats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha {{ t('analysis.panel.results.alertsDetected') }}</div>
-            </div>
+          <div class="stat-content-compact">
+            <div class="stat-value-compact">{{ ((analysisResults.deforestationAlerts.forest_ha / analysisResults.totalAreaHa) * 100).toFixed(3) }}%</div>
+            <div class="stat-label-compact">{{ t('analysis.panel.results.deforestationRate') }}</div>
+            <div class="stat-detail-compact">{{ analysisResults.deforestationAlerts.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha {{ t('analysis.panel.results.alertsDetected') }}</div>
           </div>
+        </div>
 
-          <!-- Empty cells for spacing -->
-          <div class="stat-cell empty-cell"></div>
-          <div class="stat-cell empty-cell"></div>
-          <div class="stat-cell empty-cell"></div>
-        </template>
+        <!-- Empty cell for spacing when only 3 stats -->
+        <div class="stat-cell empty-cell"></div>
       </div>
 
       <!-- Missing Data Info (only for forest cover data) -->
-      <div v-if="stats && stats.pct_missing > 0 && !isAlertsData" class="missing-data-compact">
+      <div v-if="analysisResults.forestCover && analysisResults.forestCover.pct_missing > 0" class="missing-data-compact">
         <q-icon name="info_outline" size="xs" class="missing-icon" />
-        <span class="missing-text">{{ (stats.pct_missing * 100).toFixed(1) }}% {{ t('analysis.panel.results.noData').toLowerCase() }}</span>
+        <span class="missing-text">{{ (analysisResults.forestCover.pct_missing * 100).toFixed(1) }}% {{ t('analysis.panel.results.noData').toLowerCase() }}</span>
       </div>
     </div>
   </div>
@@ -288,12 +233,18 @@ const $q = useQuasar()
 
 // State
 const selectedMethod = ref('regional')
-const stats = computed(() => mapStore.summaryStats)
-const forestCoverStats = ref(null)
-const alertsStats = ref(null)
 const isLoading = computed(() => mapStore.isLoading)
 const isDrawing = computed(() => mapStore.isDrawingSummaryAOI)
 const isMapLoading = computed(() => mapStore.isLoading)
+
+// Unified analysis results structure
+const analysisResults = ref({
+  forestCover: null,
+  deforestationAlerts: null,
+  totalAreaHa: 0,
+  areaName: '',
+  isRegional: false
+})
 
 // Get the current benchmark from store
 const benchmark = computed(() => mapStore.selectedBenchmark)
@@ -307,13 +258,12 @@ const isCalculatingStats = ref(false)
 const uploadedGeometry = ref(null)
 
 // Computed properties
-const isRegionalStats = computed(() => stats.value?.area_name === 'Western Ecuador')
-const isAlertsData = computed(() => {
-  return benchmark.value?.includes('gfw-integrated-alerts') || 
-         stats.value?.data_type === 'deforestation_alerts'
-})
+const isRegionalStats = computed(() => analysisResults.value.isRegional)
+const hasResults = computed(() => 
+  analysisResults.value.forestCover || analysisResults.value.deforestationAlerts
+)
 
-// Get visible layers and detect dataset types
+// Get visible datasets for statistics calculation
 const visibleDatasets = computed(() => {
   const visible = mapStore.layers
     .filter(layer => layer.visible)
@@ -349,11 +299,6 @@ const visibleDatasetsByType = computed(() => {
   return byType
 })
 
-const shouldShowBothStats = computed(() => {
-  return visibleDatasetsByType.value.forestCover.length > 0 && 
-         visibleDatasetsByType.value.alerts.length > 0
-})
-
 // Methods
 const getAreaIcon = () => {
   if (isRegionalStats.value) return 'public'
@@ -363,172 +308,220 @@ const getAreaIcon = () => {
 
 const getAreaDisplayName = () => {
   if (isRegionalStats.value) return t('analysis.panel.results.allWesternEcuador')
-  if (stats.value?.area_name) return stats.value.area_name
+  if (analysisResults.value.areaName) return analysisResults.value.areaName
   return t('analysis.panel.results.customArea')
 }
 
-// Auto-refresh stats when benchmark changes (dataset selection handled by CompactDatasetSelector)
-watch(benchmark, async (newBenchmark, oldBenchmark) => {
-  if (newBenchmark && newBenchmark !== oldBenchmark) {
-    // Automatically load western Ecuador stats for the new benchmark
-    if (!mapStore.summaryAOILayer && selectedMethod.value === 'regional') {
-      if (shouldShowBothStats.value) {
-        await loadBothDatasetStats()
-      } else {
-        await mapStore.loadWesternEcuadorStats()
-      }
-    }
-    
-    // Auto-refresh stats if user has drawn a rectangle
-    if (stats.value && mapStore.summaryAOILayer) {
-      await mapStore.startSummaryAOIDraw()
-    }
-  }
-})
-
-// Watch for new AOI stats and fetch additional dataset stats if needed
-watch(() => mapStore.summaryStats, async (newStats) => {
-  if (newStats && shouldShowBothStats.value && mapStore.summaryAOILayer) {
-    await loadBothDatasetStatsForAOI()
-  }
-})
-
-// Watch for changes in layer visibility to auto-load both stats when both dataset types become visible
-watch(shouldShowBothStats, async (newValue, oldValue) => {
-  if (newValue && !oldValue) {
-    // Both dataset types just became visible, load stats for both
-    if (!mapStore.summaryAOILayer && selectedMethod.value === 'regional') {
-      // Load regional stats for both
-      await loadBothDatasetStats()
-    } else if (mapStore.summaryAOILayer) {
-      // Load AOI stats for both  
-      await loadBothDatasetStatsForAOI()
-    }
-  }
-})
-
-async function loadBothDatasetStatsForAOI() {
+// Unified function to calculate area statistics for both forest cover and deforestation alerts
+async function calculateAreaStatistics(geometry = null, areaName = null, isRegional = false) {
+  console.log(`calculateAreaStatistics called:`, { geometry: !!geometry, areaName, isRegional })
+  
+  // Show loading notification
+  const loadingNotification = $q.notify({
+    type: 'ongoing',
+    message: 'Calculating area statistics...',
+    timeout: 0, // Don't auto-dismiss
+    spinner: true,
+    position: 'bottom'
+  });
+  
   try {
     mapStore.isLoading = true
-    
-    // Get the current AOI geometry from the layer
-    const aoiLayer = mapStore.summaryAOILayer
-    if (!aoiLayer) return
-    
-    const features = aoiLayer.getSource().getFeatures()
-    if (features.length === 0) return
-    
-    const geometry = features[0].getGeometry()
-    const geoJSONGeom = new GeoJSON().writeGeometryObject(geometry, {
-      dataProjection: 'EPSG:4326',
-      featureProjection: 'EPSG:3857',
-    })
-    
-    const geoJSONFeature = { type: 'Feature', geometry: geoJSONGeom }
     
     // Get datasets
     const forestDataset = visibleDatasetsByType.value.forestCover[0]
     const alertsDataset = visibleDatasetsByType.value.alerts[0]
     
-    // Load both statistics in parallel
+    console.log('Available datasets:', { 
+      forestDataset: forestDataset?.value, 
+      alertsDataset: alertsDataset?.value 
+    })
+    
+    // Build promises for both dataset types
     const promises = []
     
     if (forestDataset) {
-      promises.push(
-        api.getAOISummary(geoJSONFeature, forestDataset.value)
-          .then(response => { forestCoverStats.value = response.data })
-      )
+      console.log(`Adding forest dataset promise (${isRegional ? 'regional' : 'AOI'})`)
+      const promise = isRegional 
+        ? api.getWesternEcuadorStats(forestDataset.value)
+        : api.getAOISummary(geometry, forestDataset.value)
+      promises.push(promise.then(response => ({ type: 'forestCover', data: response.data })))
+    } else {
+      console.log('No forest dataset available')
     }
     
     if (alertsDataset) {
-      promises.push(
-        api.getAOISummary(geoJSONFeature, alertsDataset.value)
-          .then(response => { alertsStats.value = response.data })
-      )
+      console.log(`Adding alerts dataset promise (${isRegional ? 'regional' : 'AOI'})`)
+      const promise = isRegional 
+        ? api.getWesternEcuadorStats(alertsDataset.value)
+        : api.getAOISummary(geometry, alertsDataset.value)
+      promises.push(promise.then(response => ({ type: 'alerts', data: response.data })))
+    } else {
+      console.log('No alerts dataset available')
     }
     
-    await Promise.all(promises)
+    console.log(`Executing ${promises.length} API calls in parallel`)
+    
+    // Execute all promises in parallel
+    const results = await Promise.all(promises)
+    
+    console.log('API results:', results)
+    
+    // Process results and update unified structure
+    const forestResult = results.find(r => r.type === 'forestCover')
+    const alertsResult = results.find(r => r.type === 'alerts')
+    
+    const newResults = {
+      forestCover: forestResult ? forestResult.data : null,
+      deforestationAlerts: alertsResult ? alertsResult.data : null,
+      totalAreaHa: forestResult ? (forestResult.data.total_analyzed_ha || (forestResult.data.forest_ha + forestResult.data.nonforest_ha)) : 0,
+      areaName: areaName || (isRegional ? 'Western Ecuador' : 'Custom Area'),
+      isRegional: isRegional
+    }
+    
+    console.log('Setting analysisResults to:', newResults)
+    analysisResults.value = newResults
+    
+    // Dismiss loading notification and show success
+    loadingNotification();
+    $q.notify({
+      type: 'positive',
+      message: 'Area statistics calculated successfully',
+      timeout: 2000,
+      position: 'bottom'
+    });
     
   } catch (error) {
-    console.error('Failed to load both dataset stats for AOI:', error)
+    console.error('Failed to calculate area statistics:', error)
+    
+    // Dismiss loading notification
+    loadingNotification();
+    
+    // Show more detailed error message for connectivity issues
+    const errorMessage = error.message?.includes('fetch') || error.message?.includes('Network') 
+      ? 'Unable to connect to database. Please check your connection and try again.'
+      : 'Failed to calculate area statistics. Please try again.';
+      
     $q.notify({
       type: 'negative',
-      message: 'Failed to calculate statistics for all datasets.',
-      timeout: 4000
+      message: errorMessage,
+      timeout: 5000,
+      position: 'bottom'
     })
   } finally {
     mapStore.isLoading = false
   }
 }
+
+// Auto-refresh stats when benchmark changes
+watch(benchmark, async (newBenchmark, oldBenchmark) => {
+  if (newBenchmark && newBenchmark !== oldBenchmark) {
+    console.log('Benchmark changed from', oldBenchmark, 'to', newBenchmark)
+    
+    // Automatically load western Ecuador stats for the new benchmark
+    if (!mapStore.summaryAOILayer && selectedMethod.value === 'regional') {
+      console.log('Auto-loading regional stats due to benchmark change')
+      await calculateAreaStatistics(null, 'Western Ecuador', true)
+    }
+    
+    // Auto-refresh stats if user has drawn a rectangle
+    if (mapStore.summaryAOILayer) {
+      console.log('Refreshing AOI stats for new benchmark')
+      await refreshAOIStats()
+    }
+  }
+})
+
+
+// Function to refresh AOI stats for current geometry
+async function refreshAOIStats() {
+  console.log('refreshAOIStats called')
+  console.log('mapStore.summaryAOILayer:', mapStore.summaryAOILayer)
+  
+  if (!mapStore.summaryAOILayer) {
+    console.log('No summaryAOILayer found')
+    return
+  }
+  
+  const features = mapStore.summaryAOILayer.getSource().getFeatures()
+  console.log('Found features:', features.length)
+  
+  if (features.length === 0) {
+    console.log('No features in summaryAOILayer')
+    return
+  }
+  
+  const geometry = features[0].getGeometry()
+  console.log('Geometry:', geometry)
+  
+  const geoJSONGeom = new GeoJSON().writeGeometryObject(geometry, {
+    dataProjection: 'EPSG:4326',
+    featureProjection: 'EPSG:3857',
+  })
+  
+  console.log('Converted to GeoJSON:', geoJSONGeom)
+  
+  const geoJSONFeature = { type: 'Feature', geometry: geoJSONGeom }
+  
+  console.log('Calling calculateAreaStatistics with:', geoJSONFeature)
+  await calculateAreaStatistics(geoJSONFeature, 'Custom Area', false)
+}
+
+// Watch for changes in layer visibility to auto-refresh stats
+watch(visibleDatasetsByType, async (newValue, oldValue) => {
+  console.log('visibleDatasetsByType changed:', { newValue, oldValue })
+  
+  // Auto-load regional stats when datasets first become available
+  if (!hasResults.value && !mapStore.summaryAOILayer && benchmark.value && 
+      (newValue.forestCover.length > 0 || newValue.alerts.length > 0) &&
+      (oldValue.forestCover.length === 0 && oldValue.alerts.length === 0)) {
+    console.log('✓ Datasets became available - auto-loading regional statistics')
+    await calculateAreaStatistics(null, 'Western Ecuador', true)
+    return
+  }
+  
+  // Only refresh if we have existing results and the visible datasets changed
+  if (hasResults.value && JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
+    console.log('Refreshing existing results due to dataset visibility change')
+    if (!mapStore.summaryAOILayer && selectedMethod.value === 'regional') {
+      await calculateAreaStatistics(null, 'Western Ecuador', true)
+    } else if (mapStore.summaryAOILayer) {
+      await refreshAOIStats()
+    }
+  }
+}, { deep: true })
 
 // Regional analysis methods
 async function loadRegionalStats() {
-  if (shouldShowBothStats.value) {
-    await loadBothDatasetStats()
-  } else {
-    await mapStore.loadWesternEcuadorStats()
-  }
+  console.log('loadRegionalStats button clicked')
+  await calculateAreaStatistics(null, 'Western Ecuador', true)
   selectedMethod.value = 'regional'
-}
-
-async function loadBothDatasetStats() {
-  try {
-    mapStore.isLoading = true
-    
-    // Get the first visible forest cover dataset
-    const forestDataset = visibleDatasetsByType.value.forestCover[0]
-    // Get the first visible alerts dataset  
-    const alertsDataset = visibleDatasetsByType.value.alerts[0]
-    
-    // Load both statistics in parallel
-    const promises = []
-    
-    if (forestDataset) {
-      promises.push(
-        api.getWesternEcuadorStats(forestDataset.value)
-          .then(response => { forestCoverStats.value = response.data })
-      )
-    }
-    
-    if (alertsDataset) {
-      promises.push(
-        api.getWesternEcuadorStats(alertsDataset.value)
-          .then(response => { alertsStats.value = response.data })
-      )
-    }
-    
-    await Promise.all(promises)
-    
-  } catch (error) {
-    console.error('Failed to load both dataset stats:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to load regional statistics.',
-      timeout: 4000
-    })
-  } finally {
-    mapStore.isLoading = false
-  }
 }
 
 // Drawing methods
 function startDraw() {
+  console.log("Starting AOI drawing")
   mapStore.startSummaryAOIDraw()
   selectedMethod.value = 'draw'
 }
 
 function cancelDrawing() {
+  console.log("Canceling AOI drawing")
   mapStore.clearSummaryAOI()
-  loadRegionalStats()
+ // loadRegionalStats()
 }
 
 function clearAndReset() {
   mapStore.clearSummaryAOI()
   clearUploadedFile()
-  forestCoverStats.value = null
-  alertsStats.value = null
+  analysisResults.value = {
+    forestCover: null,
+    deforestationAlerts: null,
+    totalAreaHa: 0,
+    areaName: '',
+    isRegional: false
+  }
   selectedMethod.value = 'regional'
-  loadRegionalStats()
 }
 
 // File upload methods
@@ -753,17 +746,7 @@ const clearUploadedFile = () => {
 const calculateForestStats = async () => {
   if (!uploadedGeometry.value) return
   
-  isCalculatingStats.value = true
-  
-  // Show loading notification
-  const loadingNotification = $q.notify({
-    type: 'ongoing',
-    message: t('analysis.panel.upload.calculatingStats'),
-    timeout: 0, // Don't auto-dismiss
-    spinner: true,
-    position: 'bottom'
-  });
-  
+
   try {
     // Convert FeatureCollection to a single Feature for the API
     let geometryToSend = uploadedGeometry.value
@@ -787,40 +770,11 @@ const calculateForestStats = async () => {
       throw new Error('Invalid geometry format')
     }
     
-    if (shouldShowBothStats.value) {
-      // Calculate stats for both dataset types
-      await calculateBothDatasetStatsForGeometry(geometryToSend)
-    } else {
-      // Use the same API endpoint as the drawing tool for single dataset
-      const response = await api.getAOISummary(
-        geometryToSend, 
-        mapStore.selectedBenchmark
-      )
-      
-      // Add the file name to the response for display
-      const statsWithName = {
-        ...response.data,
-        area_name: uploadedFile.value.name
-      }
-      
-      // Update the summary stats in the mapStore so results show
-      mapStore.summaryStats = statsWithName
-    }
-    
-    // Dismiss loading notification and show success
-    loadingNotification();
-    $q.notify({
-      type: 'positive',
-      message: t('analysis.panel.upload.statsCalculated'),
-      timeout: 3000,
-      position: 'bottom'
-    })
+    // Use the unified calculation function
+    await calculateAreaStatistics(geometryToSend, uploadedFile.value.name, false)
     
   } catch (error) {
     console.error('Error calculating forest stats:', error)
-    
-    // Dismiss loading notification
-    loadingNotification();
     
     // Show more detailed error message for connectivity issues
     const errorMessage = error.message?.includes('fetch') || error.message?.includes('Network') 
@@ -838,49 +792,30 @@ const calculateForestStats = async () => {
   }
 }
 
-async function calculateBothDatasetStatsForGeometry(geometryToSend) {
-  // Get datasets
-  const forestDataset = visibleDatasetsByType.value.forestCover[0]
-  const alertsDataset = visibleDatasetsByType.value.alerts[0]
-  
-  // Load both statistics in parallel
-  const promises = []
-  
-  if (forestDataset) {
-    promises.push(
-      api.getAOISummary(geometryToSend, forestDataset.value)
-        .then(response => { 
-          forestCoverStats.value = {
-            ...response.data,
-            area_name: uploadedFile.value.name
-          }
-        })
-    )
-  }
-  
-  if (alertsDataset) {
-    promises.push(
-      api.getAOISummary(geometryToSend, alertsDataset.value)
-        .then(response => { 
-          alertsStats.value = {
-            ...response.data,
-            area_name: uploadedFile.value.name
-          }
-        })
-    )
-  }
-  
-  await Promise.all(promises)
+// Set up callback for when AOI stats are calculated
+window.aoiStatsCallback = async () => {
+  await refreshAOIStats()
 }
 
-// Automatically load western Ecuador stats when component mounts
+// Automatically load western Ecuador stats when component mounts (if datasets are already available)
 onMounted(async () => {
-  // Only load if no custom area has been drawn and we have a selected benchmark
-  if (!mapStore.summaryAOILayer && !stats.value && benchmark.value) {
-    if (shouldShowBothStats.value) {
-      await loadBothDatasetStats()
-    } else {
-      await mapStore.loadWesternEcuadorStats()
+  console.log('AnalysisPanel onMounted - checking conditions for auto-load')
+  console.log('- mapStore.summaryAOILayer:', mapStore.summaryAOILayer)
+  console.log('- benchmark.value:', benchmark.value)
+  console.log('- hasResults.value:', hasResults.value)
+  console.log('- visibleDatasetsByType.value:', JSON.stringify(visibleDatasetsByType.value))
+  
+  // Only load if no custom area has been drawn, we have a selected benchmark, and datasets are available
+  if (!mapStore.summaryAOILayer && benchmark.value && 
+      (visibleDatasetsByType.value.forestCover.length > 0 || visibleDatasetsByType.value.alerts.length > 0)) {
+    console.log('✓ Conditions met - auto-loading regional statistics on mount')
+    await calculateAreaStatistics(null, 'Western Ecuador', true)
+  } else {
+    console.log('✗ Conditions not met for auto-loading on mount (will retry when datasets load)')
+    if (mapStore.summaryAOILayer) console.log('  - Reason: Custom AOI layer exists')
+    if (!benchmark.value) console.log('  - Reason: No benchmark selected')
+    if (visibleDatasetsByType.value.forestCover.length === 0 && visibleDatasetsByType.value.alerts.length === 0) {
+      console.log('  - Reason: No datasets available yet (watcher will handle when they load)')
     }
   }
 })

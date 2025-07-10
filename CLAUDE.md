@@ -27,13 +27,6 @@ docker compose -f docker-compose.prod.yml up --build  # Production build
 - **Database access**: Use `docker compose exec db psql [options]` for database operations
 - **ML Pipeline**: Use `docker compose exec backend python manage.py shell` or access notebooks through mounted volumes
 
-### Testing New Features
-When testing new features or changes:
-1. Use `docker compose up --build` to rebuild and start services
-2. Access services through their exposed ports (typically localhost:9000 for frontend)
-3. Execute commands within containers, not on the host system
-4. Example: Instead of `npm run dev`, the frontend service runs Quasar dev server automatically within the container
-
 ### Common Docker Commands
 ```bash
 docker compose exec frontend sh          # Access frontend container shell
@@ -50,7 +43,7 @@ docker compose exec backend python manage.py precalculate_western_ecuador_stats 
 
 ## Development Memories
 - No need to test functionality using `docker compose up --build` because it uses too many tokens with the logging
-- NEVER add "Generated with Claude Code" or "Co-Authored-By: Claude" attribution in commit messages or PR descriptions
+- Do not give Claude attribution in git commit messages or PR descriptions
 
 ## Versioning and Changelog Guidelines
 
@@ -124,34 +117,6 @@ docker compose exec backend python manage.py precalculate_western_ecuador_stats 
 - `ml_pipeline/src/ml_pipeline/`: Core ML pipeline modules
 - `ml_pipeline/notebooks/`: Jupyter notebooks for ML workflows
 
-### Data Management
-- Training polygons stored in Django models with PostGIS geometry
-- NICFI imagery managed through STAC collections
-- Predictions output as Cloud Optimized GeoTIFFs (COGs)
-- Benchmark datasets for model evaluation
-
-### Development Workflow
-- Main development branch: `dev`
-- Production branch: `main`
-- Feature branches: `issue-123/feature-description`
-- Deployment triggered on push to `main`
-
-## Key ML Pipeline Workflows
-
-### Training Process
-1. Create project and draw training polygons using web interface
-2. Use stratified random sampling across Planet quads (~50 features per class per month)
-3. Run `run_train_predict_pipeline.py` to train separate models for each month
-4. Models saved as pickle files, predictions uploaded as COGs to cloud storage
-
-### Benchmark Testing
-- Compare model predictions against established forest cover datasets
-- Run `test_benchmarks*.py` to evaluate accuracy metrics
-- Results stored in benchmark_results/ directories
-
-### Composite Generation
-- Create annual forest/non-forest composites from monthly predictions
-- Use `create_composite*.py` scripts for temporal aggregation
 
 ## Environment Configuration
 
@@ -173,17 +138,15 @@ docker compose exec backend python manage.py precalculate_western_ecuador_stats 
 - Quasar Framework (Vue 3 based)
 - OpenLayers for interactive mapping
 - Pinia for state management
-- Chart.js for data visualization
 - Vue I18n for internationalization (English/Spanish)
 
 ### Backend Technologies  
 - Django REST Framework
 - PostGIS for geospatial operations
-- Celery for background tasks (configured but not actively used)
 - STAC (SpatioTemporal Asset Catalog) standards
 
 ### ML Technologies
-- scikit-learn for model training (Random Forest primary algorithm)
+- scikit-learn for model training (XGboost primary algorithm)
 - XGBoost for additional model options
 - Rasterio for geospatial raster processing
 - GDAL for coordinate transformations and projections
