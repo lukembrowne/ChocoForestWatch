@@ -208,7 +208,7 @@
         </template>
 
         <!-- Show Only Forest Cover Data -->
-        <template v-else-if="!isAlertsData">
+        <template v-else-if="!isAlertsData && stats">
           <div class="stat-card forest-card">
             <div class="stat-icon">
               <q-icon name="forest" size="24px" />
@@ -233,7 +233,7 @@
         </template>
 
         <!-- Show Only GFW Alerts Data -->
-        <template v-else>
+        <template v-else-if="stats">
           <div class="stat-card alert-card">
             <div class="stat-icon">
               <q-icon name="warning" size="24px" />
@@ -259,7 +259,7 @@
       </div>
 
       <!-- Missing Data Info (only for forest cover data) -->
-      <div v-if="stats.pct_missing > 0 && !isAlertsData" class="missing-data-compact">
+      <div v-if="stats && stats.pct_missing > 0 && !isAlertsData" class="missing-data-compact">
         <q-icon name="info_outline" size="xs" class="missing-icon" />
         <span class="missing-text">{{ (stats.pct_missing * 100).toFixed(1) }}% {{ t('analysis.panel.results.noData').toLowerCase() }}</span>
       </div>
@@ -754,6 +754,15 @@ const calculateForestStats = async () => {
   
   isCalculatingStats.value = true
   
+  // Show loading notification
+  const loadingNotification = $q.notify({
+    type: 'ongoing',
+    message: t('analysis.panel.upload.calculatingStats') || 'Calculating statistics for uploaded area...',
+    timeout: 0, // Don't auto-dismiss
+    spinner: true,
+    position: 'bottom'
+  });
+  
   try {
     // Convert FeatureCollection to a single Feature for the API
     let geometryToSend = uploadedGeometry.value
@@ -797,18 +806,31 @@ const calculateForestStats = async () => {
       mapStore.summaryStats = statsWithName
     }
     
+    // Dismiss loading notification and show success
+    loadingNotification();
     $q.notify({
       type: 'positive',
       message: t('analysis.panel.upload.statsCalculated'),
-      timeout: 3000
+      timeout: 3000,
+      position: 'bottom'
     })
     
   } catch (error) {
     console.error('Error calculating forest stats:', error)
+    
+    // Dismiss loading notification
+    loadingNotification();
+    
+    // Show more detailed error message for connectivity issues
+    const errorMessage = error.message?.includes('fetch') || error.message?.includes('Network') 
+      ? 'Unable to connect to database. Please check your connection and try again.'
+      : error.message || t('analysis.panel.upload.statsError');
+      
     $q.notify({
       type: 'negative',
-      message: error.message || t('analysis.panel.upload.statsError'),
-      timeout: 4000
+      message: errorMessage,
+      timeout: 5000,
+      position: 'bottom'
     })
   } finally {
     isCalculatingStats.value = false

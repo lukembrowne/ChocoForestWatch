@@ -966,6 +966,7 @@
       "area": "Área Total",
       "calculateStats": "Calcular Estadísticas Forestales",
       "calculating": "Calculando...",
+      "calculatingStats": "Calculando estadísticas para el área cargada...",
       "statsCalculated": "Estadísticas forestales calculadas exitosamente",
       "statsError": "Error al calcular estadísticas forestales",
       "multipleFeatures": "Se detectaron múltiples características. Calculando estadísticas solo para la primera característica.",

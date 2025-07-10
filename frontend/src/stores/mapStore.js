@@ -1888,6 +1888,8 @@ export const useMapStore = defineStore('map', () => {
     });
 
     summaryDrawInteraction.value.on('drawend', async (evt) => {
+      let loadingNotification;
+      
       try {
         const geom3857 = evt.feature.getGeometry();
         // Convert to GeoJSON WGS84 (EPSG:4326)
@@ -1898,11 +1900,46 @@ export const useMapStore = defineStore('map', () => {
 
         // Send to backend
         isLoading.value = true;
+        
+        // Show loading notification
+        loadingNotification = $q.notify({
+          type: 'ongoing',
+          message: 'Calculating area statistics...',
+          timeout: 0, // Don't auto-dismiss
+          spinner: true,
+          position: 'bottom'
+        });
+        
         const resp = await api.getAOISummary({ type: 'Feature', geometry: geoJSONGeom }, selectedBenchmark.value);
         summaryStats.value = resp.data;
+        
+        // Dismiss loading notification and show success
+        loadingNotification();
+        $q.notify({
+          type: 'positive',
+          message: 'Area statistics calculated successfully',
+          timeout: 2000,
+          position: 'bottom'
+        });
       } catch (err) {
         console.error('Failed to compute AOI summary:', err);
-        $q.notify({ type: 'negative', message: 'Failed to compute summary statistics.' });
+        
+        // Dismiss loading notification if it exists
+        if (loadingNotification) {
+          loadingNotification();
+        }
+        
+        // Show more detailed error message for connectivity issues
+        const errorMessage = err.message?.includes('fetch') || err.message?.includes('Network') 
+          ? 'Unable to connect to database. Please check your connection and try again.'
+          : 'Failed to compute summary statistics. Please try again.';
+          
+        $q.notify({ 
+          type: 'negative', 
+          message: errorMessage,
+          timeout: 5000,
+          position: 'bottom'
+        });
       } finally {
         isLoading.value = false;
         stopSummaryAOIDraw();
@@ -2018,11 +2055,7 @@ export const useMapStore = defineStore('map', () => {
       // Add click-to-query functionality for GFW alerts
       setupGFWClickHandler(targetMap);
 
-      $q.notify({
-        type: 'positive',
-        message: `GFW Deforestation Alerts ${year} layer added successfully`,
-        timeout: 2000
-      });
+      // Notification removed to reduce noise
     } catch (error) {
       console.error('Error adding GFW alerts layer:', error);
       $q.notify({
@@ -2041,6 +2074,9 @@ export const useMapStore = defineStore('map', () => {
     }
 
     targetMap.gfwClickHandler = async (event) => {
+      // Don't process clicks when drawing is active
+      if (isDrawingSummaryAOI.value) return;
+      
       // Only process clicks when a GFW alerts layer is visible
       const gfwLayers = targetMap.getLayers().getArray().filter(layer =>
         layer.get('datasetType') === 'alerts' && layer.getVisible()

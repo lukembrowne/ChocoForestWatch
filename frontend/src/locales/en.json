@@ -966,6 +966,7 @@
       "area": "Total Area",
       "calculateStats": "Calculate Forest Statistics",
       "calculating": "Calculating...",
+      "calculatingStats": "Calculating statistics for uploaded area...",
       "statsCalculated": "Forest statistics calculated successfully",
       "statsError": "Error calculating forest statistics",
       "multipleFeatures": "Multiple features detected. Calculating statistics for the first feature only.",
