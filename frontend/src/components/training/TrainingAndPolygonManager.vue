@@ -6,6 +6,11 @@
 
             <q-separator class="q-my-md" />
 
+            <!-- Dataset Selector -->
+            <compact-dataset-selector />
+
+            <q-separator class="q-my-md" />
+
             <q-card class="polygon-list-card">
 
 
@@ -98,10 +103,12 @@ import { getArea } from 'ol/sphere'
 import { GeoJSON } from 'ol/format'
 import { useQuasar } from 'quasar'
 import DrawingControlsCard from './DrawingControlsCard.vue'
+import CompactDatasetSelector from 'src/components/sidebar/CompactDatasetSelector.vue'
 import ModelTrainingDialog from 'components/models/ModelTrainingDialog.vue'
 import ModelEvaluationDialog from 'components/models/ModelEvaluationDialog.vue'
 import TrainingWelcomeModal from 'components/welcome/TrainingWelcomeModal.vue'
-import api from 'src/services/api';
+import api from 'src/services/api'
+import authService from 'src/services/auth'
 
 
 
@@ -109,6 +116,7 @@ export default {
     name: 'TrainingAndPolygonManager',
     components: {
         DrawingControlsCard,
+        CompactDatasetSelector,
         TrainingWelcomeModal
     },
     setup() {
@@ -130,6 +138,13 @@ export default {
             console.log("Showing single map")
             mapStore.initMap('map')
             mapStore.showSingleMap('map')
+            
+            // Load Planet basemap imagery by default for admin users only
+            const isAdmin = authService.getCurrentUser()?.user?.is_superuser === true;
+            if (isAdmin) {
+                mapStore.addPlanetImageryLayer()
+            }
+            
             loadPredictionsFromDatabase().then(() => {
                 checkPredictionForDate(selectedBasemapDate.value);
             })
