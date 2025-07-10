@@ -1176,7 +1176,6 @@ export const useMapStore = defineStore('map', () => {
     await updateBasemap(date, 'planet');
     const isAdmin = authService.getCurrentUser()?.user?.is_superuser === true;
     if (isAdmin) {
-      await updateBasemap(date, 'predictions');
       await loadTrainingPolygonsForDate(date);
     }
   };

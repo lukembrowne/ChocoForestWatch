@@ -840,7 +840,7 @@ def get_random_points_within_collection(request, collection_id):
         bbox = "-80.325,-0.175,-78.2523342311799439,1.4466469335460774"
         
         # Get all COG URLs first
-        cog_urls = list(extractor.get_all_cog_urls(collection_id, bbox=bbox))
+        cog_urls = list(extractor.get_all_cog_urls(collection_id))
         num_quads = len(cog_urls)
 
         print(f"Found {len(cog_urls)} COGs in the bounding box")
