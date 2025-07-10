@@ -186,7 +186,7 @@
           <q-btn 
             flat 
             :label="t('layers.gfwAlerts.infoDialog.learnMore')" 
-            href="https://www.globalforestwatch.org/help/map/guides/forest-change-analysis/"
+            href="https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
             target="_blank"
             icon="open_in_new"
             color="primary"
