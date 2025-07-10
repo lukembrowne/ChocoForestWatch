@@ -422,11 +422,9 @@ export default {
         try {
           // Load default project automatically
           await projectStore.loadDefaultProject()
-
-          // Auto-load CFW Composite 2022 forest cover map
+        // Auto-load CFW Composite 2022 forest cover map
           mapStore.addBenchmarkLayer('northern_choco_test_2025_06_20_2022_merged_composite')
-          
-          // Auto-load GFW 2022 deforestation alerts
+                    // Auto-load GFW 2022 deforestation alerts
           mapStore.addGFWAlertsLayer('datasets-gfw-integrated-alerts-2022', '2022')
         } catch (err) {
           console.error('Failed to load default project:', err)
@@ -482,9 +480,6 @@ export default {
         // Clear AOI
         showAOICard.value = false
         showProjectSelection.value = false
-
-        // Set default basemap after loading a project
-        mapStore.updateBasemap('2022-01', 'predictions')
 
         // Load training polygons for the current date
         mapStore.loadTrainingPolygonsForDate('2022-01')

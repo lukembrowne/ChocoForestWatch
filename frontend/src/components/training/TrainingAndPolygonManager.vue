@@ -6,8 +6,6 @@
 
             <q-separator class="q-my-md" />
 
-            <!-- Dataset Selector -->
-            <compact-dataset-selector />
 
             <q-separator class="q-my-md" />
 
@@ -34,31 +32,23 @@
                                         {{ summary.count }} {{ summary.count === 1 ? t('training.summary.features') :
                                             t('training.summary.features_plural') }}
                                     </q-item-label>
-                                    <q-linear-progress
-                                        :value="Math.min(summary.count / 50, 1)"
-                                        :color="summary.count >= 50 ? 'positive' : 'warning'"
-                                        size="xs"
-                                        class="progress-bar"
-                                    />
+                                    <q-linear-progress :value="Math.min(summary.count / 50, 1)"
+                                        :color="summary.count >= 50 ? 'positive' : 'warning'" size="xs"
+                                        class="progress-bar" />
                                 </div>
                                 <div class="progress-row">
                                     <q-item-label caption>
                                         {{ summary.area.toFixed(2) }} {{ t('training.summary.hectares') }}
                                     </q-item-label>
-                                    <q-linear-progress
-                                        :value="Math.min(summary.area / 50, 1)"
-                                        :color="summary.area >= 50 ? 'positive' : 'warning'"
-                                        size="xs"
-                                        class="progress-bar"
-                                    />
+                                    <q-linear-progress :value="Math.min(summary.area / 50, 1)"
+                                        :color="summary.area >= 50 ? 'positive' : 'warning'" size="xs"
+                                        class="progress-bar" />
                                 </div>
                             </div>
                         </q-item-section>
                         <q-item-section side>
-                            <q-chip 
-                                :color="summary.area >= 50 && summary.count >= 50 ? 'positive' : 'warning'" 
-                                text-color="white"
-                            >
+                            <q-chip :color="summary.area >= 50 && summary.count >= 50 ? 'positive' : 'warning'"
+                                text-color="white">
                                 {{ summary.area.toFixed(2) }} {{ t('training.summary.hectares') }}
                             </q-chip>
                         </q-item-section>
@@ -66,6 +56,10 @@
                 </div>
 
                 <q-separator class="q-my-md" />
+
+                <!-- Dataset Selector -->
+                <compact-dataset-selector />
+
 
                 <q-card-section class="section-header">
                     <div class="row items-center">
@@ -138,13 +132,13 @@ export default {
             console.log("Showing single map")
             mapStore.initMap('map')
             mapStore.showSingleMap('map')
-            
+
             // Load Planet basemap imagery by default for admin users only
             const isAdmin = authService.getCurrentUser()?.user?.is_superuser === true;
             if (isAdmin) {
                 mapStore.addPlanetImageryLayer()
             }
-            
+
             loadPredictionsFromDatabase().then(() => {
                 checkPredictionForDate(selectedBasemapDate.value);
             })

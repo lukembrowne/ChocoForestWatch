@@ -660,7 +660,7 @@ export const useMapStore = defineStore('map', () => {
 
     // Return a new TileLayer for basemap
 
-    const title = type === 'planet' ? `Planet Basemap ${date}` : `CFW Tree Cover 2022`;
+    const title = type === 'planet' ? `Planet Basemap ${date}` : `Predictions ${date}`;
     const id = type === 'planet' ? `planet-basemap` : `predictions`;
     const zIndex = type === 'planet' ? 1 : 2;
     const opacity = type === 'planet' ? 1 : 0.7;

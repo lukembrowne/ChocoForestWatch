@@ -41,6 +41,7 @@ from django.core.cache import cache
 logger = logging.getLogger(__name__)
 
 _global_boundary_polygon = None  # cache for boundary geometry
+_global_boundary_polygon_wgs84 = None  # cache for boundary geometry in WGS84
 
 DEFAULT_PUBLIC_PROJECT_ID = int(os.getenv("DEFAULT_PUBLIC_PROJECT_ID"))
 
@@ -99,6 +100,36 @@ def _load_boundary_polygon():
         _global_boundary_polygon = None
 
     return _global_boundary_polygon
+
+def _load_boundary_polygon_wgs84():
+    """Load and cache the project boundary as a shapely geometry in WGS84 projection."""
+    global _global_boundary_polygon_wgs84
+    if _global_boundary_polygon_wgs84 is not None:
+        return _global_boundary_polygon_wgs84
+    
+    # Path to the GeoJSON that defines the project boundary. Allow override via env var.
+    boundary_path = os.environ.get("BOUNDARY_GEOJSON_PATH")
+    try:
+        if boundary_path.startswith("http://") or boundary_path.startswith("https://"):
+            resp = requests.get(boundary_path, timeout=30)
+            resp.raise_for_status()
+            geojson = resp.json()
+        else:
+            with open(boundary_path, "r", encoding="utf-8") as f:
+                geojson = json.load(f)
+        
+        # Load geometries in WGS84 (no transformation needed)
+        geoms = []
+        for feat in geojson.get("features", []):
+            geom = shape(feat["geometry"])
+            geoms.append(geom)
+            
+        _global_boundary_polygon_wgs84 = unary_union(geoms)
+        logger.info(f"Loaded boundary polygon in WGS84 from {boundary_path}")
+    except Exception as exc:
+        logger.error(f"Failed to load boundary polygon in WGS84: {exc}")
+        _global_boundary_polygon_wgs84 = None
+    return _global_boundary_polygon_wgs84
 
 @api_view(['GET'])
 def health_check(request):
@@ -822,10 +853,8 @@ def get_random_points_within_collection(request, collection_id):
         - points: List of points with quad_id, cog_url, x, y coordinates
         - metadata: Information about the points generated
     """
-    
-    titiler_url = os.environ.get("TITILER_URL", "http://tiler-uvicorn:8083")
-    
-    # Get count parameter from query params, default to 10
+
+    # Get count parameter from query params, default to 2
     count = int(request.query_params.get('count', 2))
     
     try:
@@ -833,43 +862,34 @@ def get_random_points_within_collection(request, collection_id):
         extractor = TitilerExtractor(
             collection=collection_id,
             band_indexes=[1, 2, 3, 4],
-            db_host="local"
+            db_host="remote"
         )
 
-        # Limit to northern Choco for now
-        bbox = "-80.325,-0.175,-78.2523342311799439,1.4466469335460774"
+        # Load boundary geometry in WGS84 for spatial filtering
+        boundary_polygon_wgs84 = _load_boundary_polygon_wgs84()
+        if not boundary_polygon_wgs84:
+            logger.warning("Could not load boundary polygon, using all COGs in collection")
+            cog_urls = list(extractor.get_all_cog_urls(collection_id))
+        else:
+            # Get only COG URLs that intersect with western Ecuador boundary
+            cog_urls = list(extractor.get_cog_urls(boundary_polygon_wgs84, collection_id))
         
-        # Get all COG URLs first
-        cog_urls = list(extractor.get_all_cog_urls(collection_id))
         num_quads = len(cog_urls)
-
-        print(f"Found {len(cog_urls)} COGs in the bounding box")
+        print(f"Found {len(cog_urls)} COGs intersecting with western Ecuador boundary")
         
         # Generate all points for each quad in a single pass
         all_points = []
 
-        # Load boundary geometry once
-        boundary_polygon = _load_boundary_polygon()
-
         for cog_url in cog_urls:
-            # Oversample points, then keep those inside boundary
+            # Generate random points for this COG (already spatially filtered)
             raw_points = extractor.random_points_in_quad(
                 cog_url,
                 count,
                 rng=random.Random(42),
             )
 
-            if boundary_polygon:
-                filtered_points = [p for p in raw_points if boundary_polygon.contains(p["point"])]
-            else:
-                # Fallback to all raw points if boundary failed to load
-                filtered_points = raw_points
-
-            # Limit to requested count per quad
-            selected_points = filtered_points[:count]
-
             # Convert Point objects to serializable format
-            for pt in selected_points:
+            for pt in raw_points:
                 all_points.append(
                     {
                         "quad_id": pt["quad_id"],
