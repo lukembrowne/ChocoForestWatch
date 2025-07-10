@@ -30,112 +30,113 @@
     },
     "title": "About Choco Forest Watch",
     "version": {
-      "title": "Version Information",
+      "environment": "Environment",
       "number": "Version",
-      "environment": "Environment"
+      "title": "Version Information"
     }
   },
   "alerts": {
     "gfw": {
-      "title": "Deforestation Alert",
-      "description": "Global Forest Watch integrated deforestation alerts",
       "clickToQuery": "Click on the map to view alert details",
-      "noAlertsFound": "No deforestation alerts found at this location",
-      "date": "Alert Date",
       "confidence": "Confidence",
       "confidenceLevels": {
+        "high": "High",
         "low": "Low",
         "medium": "Medium",
-        "high": "High",
         "veryHigh": "Very High"
       },
-      "loadPlanetImagery": "Load Planet Imagery"
+      "date": "Alert Date",
+      "description": "Global Forest Watch integrated deforestation alerts",
+      "loadPlanetImagery": "Load Planet Imagery",
+      "noAlertsFound": "No deforestation alerts found at this location",
+      "title": "Deforestation Alert"
     }
   },
   "analysis": {
-    "runAnalysis": "Run Analysis",
-    "selectArea": "Select Area",
-    "title": "Analysis",
     "panel": {
-      "chooseMap": "Choose Forest Cover Map",
-      "chooseDataset": "Choose Dataset",
       "changeDataset": "Change Dataset",
+      "chooseDataset": "Choose Dataset",
+      "chooseMap": "Choose Forest Cover Map",
+      "chooseMapTooltip": "Select which forest cover dataset to use for analysis. The selected map will automatically appear on the main map.",
       "clickToChange": "Click to change",
       "currentDataset": "Current",
-      "chooseMapTooltip": "Select which forest cover dataset to use for analysis. The selected map will automatically appear on the main map.",
-      "selectMapPlaceholder": "Select forest cover map",
-      "selectMapFirst": "Please select a forest cover map first",
-      "table": {
-        "dataset": "Dataset",
-        "year": "Year",
-        "years": "Years",
-        "resolution": "Resolution",
-        "status": "Status",
-        "actions": "Add",
-        "learnMore": "Learn More"
-      },
       "defineArea": "Define Analysis Area",
       "defineAreaTooltip": "Choose how you want to define the area for forest cover analysis. You can use regional boundaries, draw your own area, or upload a custom boundary file.",
+      "draw": {
+        "cancel": "Cancel Drawing",
+        "description": "Draw a custom boundary on the map to analyze forest cover for a specific area of interest.",
+        "start": "Start Drawing",
+        "title": "Draw Custom Area"
+      },
       "methods": {
-        "regional": "Regional",
         "draw": "Draw",
+        "regional": "Regional",
         "upload": "Upload"
       },
       "regional": {
-        "title": "All of Western Ecuador",
+        "calculate": "Calculate Regional Statistics",
         "description": "Analyze forest cover for the entire Western Ecuador region using pre-calculated statistics.",
-        "calculate": "Calculate Regional Statistics"
-      },
-      "draw": {
-        "title": "Draw Custom Area",
-        "description": "Draw a custom boundary on the map to analyze forest cover for a specific area of interest.",
-        "start": "Start Drawing",
-        "cancel": "Cancel Drawing"
-      },
-      "upload": {
-        "title": "Upload Boundary File",
-        "description": "Upload a GeoJSON file or zipped Shapefile to analyze forest cover for custom boundaries.",
-        "dragDrop": "Drag & drop your file here",
-        "clickToSelect": "or click to select file",
-        "supportedFormats": "Supports: GeoJSON, Shapefile (ZIP)",
-        "reading": "Reading file...",
-        "processing": "Processing geometry...",
-        "complete": "Upload complete!",
-        "error": "Failed to upload file",
-        "unsupportedFormat": "Unsupported file format. Please use GeoJSON or zipped Shapefile.",
-        "invalidGeoJSON": "Invalid GeoJSON format",
-        "invalidShapefile": "Invalid or corrupted Shapefile",
-        "readError": "Error reading file",
-        "noFeatures": "No features found in file",
-        "noValidFeatures": "No valid geometric features found",
-        "success": "Successfully uploaded {count} feature(s)",
-        "features": "Features",
-        "area": "Total Area",
-        "calculateStats": "Calculate Forest Statistics",
-        "multipleFeatures": "Multiple features detected. Using the first feature for analysis.",
-        "statsCalculated": "Forest statistics calculated successfully",
-        "statsError": "Error calculating forest statistics"
+        "title": "All of Western Ecuador"
       },
       "results": {
-        "title": "Analysis Results",
+        "alertsDetected": "alerts detected",
         "allWesternEcuador": "All of Western Ecuador",
-        "customArea": "Custom Area",
-        "regional": "Regional",
         "analyzeNew": "Analyze New Area",
-        "showRegional": "Show Regional Stats",
-        "forestCover": "Forest Cover",
-        "nonForest": "Non-Forest",
-        "noData": "No Data",
+        "completeCoverage": "Complete data coverage",
+        "customArea": "Custom Area",
         "deforestationAlerts": "Deforestation Alerts",
         "deforestationRate": "Deforestation Rate",
-        "alertsDetected": "alerts detected",
-        "totalAnalyzed": "Total Analyzed",
-        "totalArea": "Total Area",
+        "forestCover": "Forest Cover",
         "hectares": "hectares",
         "missingPixels": "Some areas have missing data",
-        "completeCoverage": "Complete data coverage"
+        "noData": "No Data",
+        "nonForest": "Non-Forest",
+        "regional": "Regional",
+        "showRegional": "Show Regional Stats",
+        "title": "Analysis Results",
+        "totalAnalyzed": "Total Analyzed",
+        "totalArea": "Total Area"
+      },
+      "selectMapFirst": "Please select a forest cover map first",
+      "selectMapPlaceholder": "Select forest cover map",
+      "table": {
+        "actions": "Add",
+        "dataset": "Dataset",
+        "learnMore": "Learn More",
+        "resolution": "Resolution",
+        "status": "Status",
+        "year": "Year",
+        "years": "Years"
+      },
+      "upload": {
+        "area": "Total Area",
+        "calculateStats": "Calculate Forest Statistics",
+        "calculatingStats": "Calculating statistics for uploaded area...",
+        "clickToSelect": "or click to select file",
+        "complete": "Upload complete!",
+        "description": "Upload a GeoJSON file or zipped Shapefile to analyze forest cover for custom boundaries.",
+        "dragDrop": "Drag & drop your file here",
+        "error": "Failed to upload file",
+        "features": "Features",
+        "invalidGeoJSON": "Invalid GeoJSON format",
+        "invalidShapefile": "Invalid or corrupted Shapefile",
+        "multipleFeatures": "Multiple features detected. Using the first feature for analysis.",
+        "noFeatures": "No features found in file",
+        "noValidFeatures": "No valid geometric features found",
+        "processing": "Processing geometry...",
+        "readError": "Error reading file",
+        "reading": "Reading file...",
+        "statsCalculated": "Forest statistics calculated successfully",
+        "statsError": "Error calculating forest statistics",
+        "success": "Successfully uploaded {count} feature(s)",
+        "supportedFormats": "Supports: GeoJSON, Shapefile (ZIP)",
+        "title": "Upload Boundary File",
+        "unsupportedFormat": "Unsupported file format. Please use GeoJSON or zipped Shapefile."
       }
     },
+    "runAnalysis": "Run Analysis",
+    "selectArea": "Select Area",
+    "title": "Analysis",
     "unified": {
       "deforestation": {
         "existing": {
@@ -297,14 +298,6 @@
     }
   },
   "auth": {
-    "modal": {
-      "title": "Login to Your Account",
-      "close": "Close",
-      "tabs": {
-        "login": "Login",
-        "register": "Register"
-      }
-    },
     "login": {
       "alreadyHaveAccount": "Already have an account?",
       "createAccount": "Create Account",
@@ -352,6 +345,14 @@
       "title": "Choco Forest Watch",
       "username": "Username",
       "usernameRequired": "Username is required"
+    },
+    "modal": {
+      "close": "Close",
+      "tabs": {
+        "login": "Login",
+        "register": "Register"
+      },
+      "title": "Login to Your Account"
     },
     "register": {
       "createButton": "Create Account",
@@ -494,25 +495,6 @@
   },
   "layers": {
     "baseMap": "Base Map",
-    "gfwAlerts": {
-      "title": "Deforestation Alerts",
-      "selectYear": "Select Year",
-      "currentYear": "Current: {year}",
-      "show": "Show alerts",
-      "hide": "Hide alerts",
-      "moreInfo": "More information about deforestation alerts",
-      "infoDialog": {
-        "title": "About Deforestation Alerts",
-        "description": "Global Forest Watch integrated deforestation alerts provide near real-time information about forest loss events.",
-        "dataSource": "Data Source",
-        "sourceDescription": "Alerts are generated from satellite imagery analysis by Global Forest Watch and the World Resources Institute.",
-        "resolution": "Resolution & Coverage",
-        "resolutionDescription": "Alerts are provided at 10-meter resolution with global coverage, updated regularly.",
-        "usage": "How to Use",
-        "usageDescription": "Click on any alert pixel on the map to view detailed information including date and confidence level.",
-        "learnMore": "Learn More"
-      }
-    },
     "basemapDate": {
       "months": {
         "apr": "April",
@@ -545,16 +527,49 @@
       "title": "Imagery date",
       "tooltip": "Select satellite imagery date. Green underlined dates have training data. Use left/right arrow keys to quickly navigate between dates."
     },
+    "gfwAlerts": {
+      "currentYear": "Current: {year}",
+      "hide": "Hide alerts",
+      "infoDialog": {
+        "dataSource": "Data Source",
+        "description": "Global Forest Watch integrated deforestation alerts provide near real-time information about forest loss events.",
+        "learnMore": "Learn More",
+        "resolution": "Resolution & Coverage",
+        "resolutionDescription": "Alerts are provided at 10-meter resolution with global coverage, updated regularly.",
+        "sourceDescription": "Alerts are generated from satellite imagery analysis by Global Forest Watch and the World Resources Institute.",
+        "title": "About Deforestation Alerts",
+        "usage": "How to Use",
+        "usageDescription": "Click on any alert pixel on the map to view detailed information including date and confidence level."
+      },
+      "moreInfo": "More information about deforestation alerts",
+      "selectYear": "Select Year",
+      "show": "Show alerts",
+      "title": "Deforestation Alerts"
+    },
     "satellite": "Satellite",
     "switcher": {
-      "layersCount": "layers",
       "benchmarks": {
         "add": "Add",
         "datasets": {
+          "alerts": {
+            "description": "Integrated deforestation alerts from Global Forest Watch including GLAD, RADD, and other systems providing near real-time forest disturbance detection.",
+            "title": "GFW Deforestation Alerts",
+            "url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
+          },
+          "cfw-composite": {
+            "description": "ChocoForestWatch's machine learning-generated forest cover map for 2022, specifically trained for the Northern Chocó region of Ecuador using NICFI satellite imagery.",
+            "title": "CFW Composite 2022",
+            "url": "https://github.com/lukembrowne/chocoforestwatch"
+          },
           "esa": {
             "description": "Global 10 m land-cover map (11 classes) generated from Sentinel-1 & -2 imagery by the ESA WorldCover consortium.",
             "title": "ESA WorldCover 2020 (10 m Global)",
             "url": "https://esa-worldcover.org/en"
+          },
+          "gfw-alerts": {
+            "description": "Integrated deforestation alerts from Global Forest Watch including GLAD, RADD, and other systems providing near real-time forest disturbance detection.",
+            "title": "GFW Integrated Deforestation Alerts",
+            "url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
           },
           "hansen": {
             "description": "30 m annual forest extent, loss & gain derived from Landsat by the Univ. of Maryland GLAD lab (Hansen et al.). Latest year: 2022.",
@@ -576,36 +591,22 @@
             "title": "ALOS PALSAR-2 Forest / Non-Forest Map 2020",
             "url": "https://developers.google.com/earth-engine/datasets/catalog/JAXA_ALOS_PALSAR_YEARLY_FNF4"
           },
-          "wri": {
-            "description": "High-resolution (10 m) probability-based tree-cover map for the tropics developed by WRI Land & Carbon Lab and partners.",
-            "title": "WRI Tropical Tree Cover 2020 (10 m)",
-            "url": "https://data.globalforestwatch.org/datasets/gfw::tropical-tree-cover/about"
-          },
-          "cfw-composite": {
-            "description": "ChocoForestWatch's machine learning-generated forest cover map for 2022, specifically trained for the Northern Chocó region of Ecuador using NICFI satellite imagery.",
-            "title": "CFW Composite 2022",
-            "url": "https://github.com/lukembrowne/chocoforestwatch"
-          },
-          "gfw-alerts": {
-            "description": "Integrated deforestation alerts from Global Forest Watch including GLAD, RADD, and other systems providing near real-time forest disturbance detection.",
-            "title": "GFW Integrated Deforestation Alerts",
-            "url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
-          },
-          "alerts": {
-            "description": "Integrated deforestation alerts from Global Forest Watch including GLAD, RADD, and other systems providing near real-time forest disturbance detection.",
-            "title": "GFW Deforestation Alerts",
-            "url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
-          },
           "planet-nicfi": {
             "description": "Monthly high-resolution (4.7m) satellite imagery from Planet Labs available through Norway's International Climate & Forests Initiative.",
             "title": "Planet NICFI Basemap",
             "url": "https://www.planet.com/nicfi/"
+          },
+          "wri": {
+            "description": "High-resolution (10 m) probability-based tree-cover map for the tropics developed by WRI Land & Carbon Lab and partners.",
+            "title": "WRI Tropical Tree Cover 2020 (10 m)",
+            "url": "https://data.globalforestwatch.org/datasets/gfw::tropical-tree-cover/about"
           }
         },
         "description": "Add datasets to compare and analyze different data sources",
-        "title": "Add Dataset",
-        "featured": "Featured"
+        "featured": "Featured",
+        "title": "Add Dataset"
       },
+      "layersCount": "layers",
       "opacity": "Opacity",
       "title": "Map Layers",
       "tooltips": {
@@ -619,9 +620,9 @@
     "terrain": "Terrain"
   },
   "legend": {
-    "title": "Legend",
     "forest": "Forest",
-    "nonForest": "Non-Forest"
+    "nonForest": "Non-Forest",
+    "title": "Legend"
   },
   "navigation": {
     "admin": {
@@ -704,13 +705,13 @@
       "success": "Project deleted successfully",
       "title": "Confirm Delete"
     },
+    "description": "Description",
     "duplicate": {
       "confirm": "Are you sure you want to duplicate the project \"{name}\"?",
       "failed": "Failed to duplicate project",
       "success": "Project \"{name}\" duplicated successfully",
       "title": "Confirm Duplicate"
     },
-    "description": "Description",
     "existingProjects": "Existing Projects",
     "failedCreate": "Failed to create project",
     "minClasses": "At least 2 classes are required",
@@ -741,6 +742,73 @@
       "rename": "Rename Project"
     },
     "uniqueClasses": "Class names must be unique"
+  },
+  "sidebar": {
+    "collapse": "Collapse section",
+    "expand": "Expand section",
+    "landCover": {
+      "analysisResults": "Analysis Results",
+      "analyzeNewArea": "Analyze New Area",
+      "cancelDrawing": "Cancel Drawing",
+      "changeMap": "Change Map",
+      "chooseMap": "Choose Forest Cover Map",
+      "chooseMapTooltip": "Select which forest cover dataset to use for analysis. The selected map will automatically appear on the main map.",
+      "clickThenDraw": "Click below then draw a rectangle on the map",
+      "completeCoverage": "Complete coverage",
+      "customArea": "Custom Area",
+      "drawArea": "Draw Analysis Area",
+      "drawAreaTooltip": "Draw a rectangle on the map to calculate forest cover statistics for that specific area.",
+      "forestCover": "Forest Cover",
+      "loadingMap": "Loading map...",
+      "mapLoaded": "Map loaded on main view",
+      "missingPixels": "Missing pixels",
+      "noData": "No Data",
+      "nonForest": "Non-Forest",
+      "readyToAnalyze": "Ready to analyze",
+      "regional": "Regional",
+      "selectMapFirst": "Please select a forest cover map first",
+      "selectMapPlaceholder": "Select forest cover map",
+      "showRegionalStats": "Show Regional Stats",
+      "startDrawing": "Start Drawing"
+    },
+    "search": {
+      "error": "Search error occurred",
+      "foundResults": "Found {count} location(s)",
+      "minChars": "Enter at least 3 characters to search",
+      "navigatedTo": "Navigated to {location}",
+      "noResults": "No locations found",
+      "noResultsFor": "No results found for '{query}'",
+      "placeholder": "Search for any location...",
+      "title": "Location Search",
+      "tryDifferent": "Try a different search term"
+    },
+    "upload": {
+      "area": "Total Area",
+      "calculateStats": "Calculate Forest Statistics",
+      "calculating": "Calculating...",
+      "calculatingStats": "Calculating forest statistics...",
+      "clickToSelect": "or click to select file",
+      "complete": "Upload complete!",
+      "dragDrop": "Drag & drop your file here",
+      "error": "Failed to upload file",
+      "features": "Features",
+      "fileCleared": "Uploaded file cleared",
+      "invalidGeoJSON": "Invalid GeoJSON format",
+      "invalidShapefile": "Invalid or corrupted Shapefile",
+      "multipleFeatures": "Multiple features detected. Calculating statistics for the first feature only.",
+      "noFeatures": "No features found in file",
+      "noValidFeatures": "No valid geometric features found",
+      "processing": "Processing geometry...",
+      "readError": "Error reading file",
+      "reading": "Reading file...",
+      "statsCalculated": "Forest statistics calculated successfully",
+      "statsError": "Error calculating forest statistics",
+      "success": "Successfully uploaded {count} feature(s)",
+      "supportedFormats": "Supports: GeoJSON, Shapefile (ZIP)",
+      "title": "Upload Boundaries",
+      "tooltip": "Upload a GeoJSON file or zipped Shapefile to analyze forest cover for custom boundaries. The system will calculate statistics for all features in the file.",
+      "unsupportedFormat": "Unsupported file format. Please use GeoJSON or zipped Shapefile."
+    }
   },
   "training": {
     "evaluation": {
@@ -906,73 +974,6 @@
       "summarySection": "View statistics about your training data. Aim for 30-50 examples of each land cover class for each date."
     }
   },
-  "sidebar": {
-    "expand": "Expand section",
-    "collapse": "Collapse section",
-    "search": {
-      "title": "Location Search",
-      "placeholder": "Search for any location...",
-      "noResults": "No locations found",
-      "tryDifferent": "Try a different search term",
-      "minChars": "Enter at least 3 characters to search",
-      "noResultsFor": "No results found for '{query}'",
-      "foundResults": "Found {count} location(s)",
-      "error": "Search error occurred",
-      "navigatedTo": "Navigated to {location}"
-    },
-    "landCover": {
-      "chooseMap": "Choose Forest Cover Map",
-      "chooseMapTooltip": "Select which forest cover dataset to use for analysis. The selected map will automatically appear on the main map.",
-      "selectMapPlaceholder": "Select forest cover map",
-      "mapLoaded": "Map loaded on main view",
-      "loadingMap": "Loading map...",
-      "drawArea": "Draw Analysis Area",
-      "drawAreaTooltip": "Draw a rectangle on the map to calculate forest cover statistics for that specific area.",
-      "readyToAnalyze": "Ready to analyze",
-      "clickThenDraw": "Click below then draw a rectangle on the map",
-      "startDrawing": "Start Drawing",
-      "selectMapFirst": "Please select a forest cover map first",
-      "analysisResults": "Analysis Results",
-      "analyzeNewArea": "Analyze New Area",
-      "changeMap": "Change Map",
-      "forestCover": "Forest Cover",
-      "nonForest": "Non-Forest",
-      "noData": "No Data",
-      "missingPixels": "Missing pixels",
-      "completeCoverage": "Complete coverage",
-      "customArea": "Custom Area",
-      "regional": "Regional",
-      "cancelDrawing": "Cancel Drawing",
-      "showRegionalStats": "Show Regional Stats"
-    },
-    "upload": {
-      "title": "Upload Boundaries",
-      "tooltip": "Upload a GeoJSON file or zipped Shapefile to analyze forest cover for custom boundaries. The system will calculate statistics for all features in the file.",
-      "dragDrop": "Drag & drop your file here",
-      "clickToSelect": "or click to select file",
-      "supportedFormats": "Supports: GeoJSON, Shapefile (ZIP)",
-      "reading": "Reading file...",
-      "processing": "Processing geometry...",
-      "complete": "Upload complete!",
-      "error": "Failed to upload file",
-      "unsupportedFormat": "Unsupported file format. Please use GeoJSON or zipped Shapefile.",
-      "invalidGeoJSON": "Invalid GeoJSON format",
-      "invalidShapefile": "Invalid or corrupted Shapefile",
-      "readError": "Error reading file",
-      "noFeatures": "No features found in file",
-      "noValidFeatures": "No valid geometric features found",
-      "success": "Successfully uploaded {count} feature(s)",
-      "features": "Features",
-      "area": "Total Area",
-      "calculateStats": "Calculate Forest Statistics",
-      "calculating": "Calculating...",
-      "calculatingStats": "Calculating statistics for uploaded area...",
-      "statsCalculated": "Forest statistics calculated successfully",
-      "statsError": "Error calculating forest statistics",
-      "multipleFeatures": "Multiple features detected. Calculating statistics for the first feature only.",
-      "fileCleared": "Uploaded file cleared"
-    }
-  },
   "welcome": {
     "analysis": {
       "chooseDates": {
@@ -996,21 +997,21 @@
     },
     "dontShowAgain": "Don't show this again",
     "modal": {
-      "title": "Welcome to Choco Forest Watch",
-      "welcomeTitle": "Welcome to Choco Forest Watch",
       "description": "Monitor forest cover and deforestation in the Chocó Bioregion of Ecuador.",
-      "featuresTitle": "Key Features:",
-      "features": {
-        "imagery": "High-resolution forest imagery",
-        "analysis": "Detailed forest cover analysis",
-        "openSource": "Free and open source"
-      },
       "descriptions": {
-        "imagery": "Access high-resolution satellite imagery and forest cover datasets for western Ecuador, powered by NICFI Planet data",
         "analysis": "Draw custom areas on the map to generate comprehensive forest cover statistics",
+        "imagery": "Access high-resolution satellite imagery and forest cover datasets for western Ecuador, powered by NICFI Planet data",
         "openSource": "Completely free platform with open-source code, developed for conservation research and community use"
       },
-      "getStarted": "Get Started"
+      "features": {
+        "analysis": "Detailed forest cover analysis",
+        "imagery": "High-resolution forest imagery",
+        "openSource": "Free and open source"
+      },
+      "featuresTitle": "Key Features:",
+      "getStarted": "Get Started",
+      "title": "Welcome to Choco Forest Watch",
+      "welcomeTitle": "Welcome to Choco Forest Watch"
     },
     "projects": {
       "analysis": {

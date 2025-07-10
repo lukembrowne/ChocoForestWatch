@@ -17,25 +17,41 @@
         <span class="section-title-compact">{{ t('analysis.panel.defineArea') }}</span>
       </div>
 
-      <!-- Area Method Tabs -->
-      <q-tabs
-        v-model="selectedMethod"
-        class="method-tabs-compact"
-        indicator-color="primary"
-        active-color="primary"
-        align="justify"
-        dense
-        no-caps
-      >
-        <q-tab name="regional" :label="t('analysis.panel.methods.regional')" />
-        <q-tab name="draw" :label="t('analysis.panel.methods.draw')" />
-        <q-tab name="upload" :label="t('analysis.panel.methods.upload')" />
-      </q-tabs>
+      <!-- Area Method Buttons -->
+      <div class="method-buttons-row">
+        <q-btn
+          :class="{ 'method-btn-active': selectedMethod === 'regional' }"
+          class="method-btn"
+          @click="selectedMethod = 'regional'"
+          :label="t('analysis.panel.methods.regional')"
+          size="sm"
+          no-caps
+          flat
+        />
+        <q-btn
+          :class="{ 'method-btn-active': selectedMethod === 'draw' }"
+          class="method-btn"
+          @click="selectedMethod = 'draw'"
+          :label="t('analysis.panel.methods.draw')"
+          size="sm"
+          no-caps
+          flat
+        />
+        <q-btn
+          :class="{ 'method-btn-active': selectedMethod === 'upload' }"
+          class="method-btn"
+          @click="selectedMethod = 'upload'"
+          :label="t('analysis.panel.methods.upload')"
+          size="sm"
+          no-caps
+          flat
+        />
+      </div>
 
       <!-- Area Method Content -->
-      <q-tab-panels v-model="selectedMethod" animated class="method-panels-compact">
+      <div class="method-content-compact">
         <!-- Regional Analysis -->
-        <q-tab-panel name="regional" class="method-panel-compact">
+        <div v-if="selectedMethod === 'regional'" class="method-panel-compact">
           <q-btn 
             color="primary" 
             :label="t('analysis.panel.regional.calculate')"
@@ -47,10 +63,10 @@
           >
             <q-tooltip v-if="!benchmark">{{ t('analysis.panel.selectMapFirst') }}</q-tooltip>
           </q-btn>
-        </q-tab-panel>
+        </div>
 
         <!-- Draw Area -->
-        <q-tab-panel name="draw" class="method-panel-compact">
+        <div v-if="selectedMethod === 'draw'" class="method-panel-compact">
           <q-btn 
             v-if="!isDrawing"
             color="primary" 
@@ -72,10 +88,10 @@
             outline
             size="sm"
           />
-        </q-tab-panel>
+        </div>
 
         <!-- Upload Area -->
-        <q-tab-panel name="upload" class="method-panel-compact">
+        <div v-if="selectedMethod === 'upload'" class="method-panel-compact">
           <div class="upload-area-compact" 
                :class="{ 'drag-over': isDragOver }" 
                @dragover.prevent="onDragOver" 
@@ -118,27 +134,12 @@
               size="sm"
             />
           </div>
-        </q-tab-panel>
-      </q-tab-panels>
+        </div>
+      </div>
     </div>
 
     <!-- Results Section -->
     <div v-if="stats || (shouldShowBothStats && (forestCoverStats || alertsStats))" class="results-section-compact">
-      <div class="results-header-compact">
-        <span class="results-title-compact">{{ t('analysis.panel.results.title') }}</span>
-        <q-btn 
-          flat
-          round
-          dense
-          size="xs"
-          icon="refresh" 
-          color="primary" 
-          @click="clearAndReset"
-          class="refresh-btn"
-        >
-          <q-tooltip>{{ t('analysis.panel.results.analyzeNew') }}</q-tooltip>
-        </q-btn>
-      </div>
       
       <!-- Area Info Compact -->
       <div class="area-info-compact">
@@ -156,105 +157,105 @@
         </q-chip>
       </div>
 
+      <!-- Total Area Context -->
+      <div class="total-area-context">
+        <template v-if="shouldShowBothStats">
+          <span class="total-area-text">{{ t('analysis.panel.results.totalArea') }}: {{ (alertsStats?.total_analyzed_ha || (alertsStats?.forest_ha + alertsStats?.nonforest_ha) || 0).toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</span>
+        </template>
+        <template v-else-if="stats">
+          <span class="total-area-text">{{ t('analysis.panel.results.totalArea') }}: {{ (stats.total_analyzed_ha || (stats.forest_ha + stats.nonforest_ha)).toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</span>
+        </template>
+      </div>
+
       <!-- Statistics Grid -->
-      <div class="stats-grid">
+      <div class="stats-grid-compact">
         <!-- Show Both Forest Cover and Alerts (when both are visible) -->
         <template v-if="shouldShowBothStats">
-          <!-- Forest Cover Cards -->
-          <div v-if="forestCoverStats" class="stat-card forest-card">
-            <div class="stat-icon">
-              <q-icon name="forest" size="24px" />
+          <!-- Forest Cover Stats -->
+          <div v-if="forestCoverStats" class="stat-cell forest-cell">
+            <div class="stat-icon-compact">
+              <q-icon name="forest" size="20px" />
             </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ (forestCoverStats.pct_forest * 100).toFixed(1) }}%</div>
-              <div class="stat-label">{{ t('analysis.panel.results.forestCover') }}</div>
-              <div class="stat-detail">{{ forestCoverStats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
-            </div>
-          </div>
-
-          <div v-if="forestCoverStats" class="stat-card nonforest-card">
-            <div class="stat-icon">
-              <q-icon name="landscape" size="24px" />
-            </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ (100 - forestCoverStats.pct_forest * 100).toFixed(1) }}%</div>
-              <div class="stat-label">{{ t('analysis.panel.results.nonForest') }}</div>
-              <div class="stat-detail">{{ forestCoverStats.nonforest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
+            <div class="stat-content-compact">
+              <div class="stat-value-compact">{{ (forestCoverStats.pct_forest * 100).toFixed(1) }}%</div>
+              <div class="stat-label-compact">{{ t('analysis.panel.results.forestCover') }}</div>
+              <div class="stat-detail-compact">{{ forestCoverStats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
             </div>
           </div>
 
-          <!-- Alerts Cards -->
-          <div v-if="alertsStats" class="stat-card alert-card">
-            <div class="stat-icon">
-              <q-icon name="warning" size="24px" />
+          <div v-if="forestCoverStats" class="stat-cell nonforest-cell">
+            <div class="stat-icon-compact">
+              <q-icon name="landscape" size="20px" />
             </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ ((alertsStats.forest_ha / (alertsStats.total_analyzed_ha || (alertsStats.forest_ha + alertsStats.nonforest_ha))) * 100).toFixed(3) }}%</div>
-              <div class="stat-label">{{ t('analysis.panel.results.deforestationRate') }}</div>
-              <div class="stat-detail">{{ alertsStats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha {{ t('analysis.panel.results.alertsDetected') }}</div>
+            <div class="stat-content-compact">
+              <div class="stat-value-compact">{{ (100 - forestCoverStats.pct_forest * 100).toFixed(1) }}%</div>
+              <div class="stat-label-compact">{{ t('analysis.panel.results.nonForest') }}</div>
+              <div class="stat-detail-compact">{{ forestCoverStats.nonforest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
             </div>
           </div>
 
-          <div v-if="alertsStats" class="stat-card total-area-card">
-            <div class="stat-icon">
-              <q-icon name="crop_free" size="24px" />
+          <!-- Alerts Stats -->
+          <div v-if="alertsStats" class="stat-cell alert-cell">
+            <div class="stat-icon-compact">
+              <q-icon name="warning" size="20px" />
             </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ (alertsStats.total_analyzed_ha || (alertsStats.forest_ha + alertsStats.nonforest_ha)).toLocaleString(undefined, { maximumFractionDigits: 1 }) }}</div>
-              <div class="stat-label">{{ t('analysis.panel.results.totalArea') }}</div>
-              <div class="stat-detail">{{ t('analysis.panel.results.hectares') }}</div>
+            <div class="stat-content-compact">
+              <div class="stat-value-compact">{{ ((alertsStats.forest_ha / (alertsStats.total_analyzed_ha || (alertsStats.forest_ha + alertsStats.nonforest_ha))) * 100).toFixed(3) }}%</div>
+              <div class="stat-label-compact">{{ t('analysis.panel.results.deforestationRate') }}</div>
+              <div class="stat-detail-compact">{{ alertsStats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha {{ t('analysis.panel.results.alertsDetected') }}</div>
             </div>
           </div>
+
+          <!-- Empty cell for spacing when only 3 stats -->
+          <div class="stat-cell empty-cell"></div>
         </template>
 
         <!-- Show Only Forest Cover Data -->
         <template v-else-if="!isAlertsData && stats">
-          <div class="stat-card forest-card">
-            <div class="stat-icon">
-              <q-icon name="forest" size="24px" />
+          <div class="stat-cell forest-cell">
+            <div class="stat-icon-compact">
+              <q-icon name="forest" size="20px" />
             </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ (stats.pct_forest * 100).toFixed(1) }}%</div>
-              <div class="stat-label">{{ t('analysis.panel.results.forestCover') }}</div>
-              <div class="stat-detail">{{ stats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
+            <div class="stat-content-compact">
+              <div class="stat-value-compact">{{ (stats.pct_forest * 100).toFixed(1) }}%</div>
+              <div class="stat-label-compact">{{ t('analysis.panel.results.forestCover') }}</div>
+              <div class="stat-detail-compact">{{ stats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
             </div>
           </div>
 
-          <div class="stat-card nonforest-card">
-            <div class="stat-icon">
-              <q-icon name="landscape" size="24px" />
+          <div class="stat-cell nonforest-cell">
+            <div class="stat-icon-compact">
+              <q-icon name="landscape" size="20px" />
             </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ (100 - stats.pct_forest * 100).toFixed(1) }}%</div>
-              <div class="stat-label">{{ t('analysis.panel.results.nonForest') }}</div>
-              <div class="stat-detail">{{ stats.nonforest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
+            <div class="stat-content-compact">
+              <div class="stat-value-compact">{{ (100 - stats.pct_forest * 100).toFixed(1) }}%</div>
+              <div class="stat-label-compact">{{ t('analysis.panel.results.nonForest') }}</div>
+              <div class="stat-detail-compact">{{ stats.nonforest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha</div>
             </div>
           </div>
+
+          <!-- Empty cells for spacing -->
+          <div class="stat-cell empty-cell"></div>
+          <div class="stat-cell empty-cell"></div>
         </template>
 
         <!-- Show Only GFW Alerts Data -->
         <template v-else-if="stats">
-          <div class="stat-card alert-card">
-            <div class="stat-icon">
-              <q-icon name="warning" size="24px" />
+          <div class="stat-cell alert-cell">
+            <div class="stat-icon-compact">
+              <q-icon name="warning" size="20px" />
             </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ ((stats.forest_ha / (stats.total_analyzed_ha || (stats.forest_ha + stats.nonforest_ha))) * 100).toFixed(3) }}%</div>
-              <div class="stat-label">{{ t('analysis.panel.results.deforestationRate') }}</div>
-              <div class="stat-detail">{{ stats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha {{ t('analysis.panel.results.alertsDetected') }}</div>
+            <div class="stat-content-compact">
+              <div class="stat-value-compact">{{ ((stats.forest_ha / (stats.total_analyzed_ha || (stats.forest_ha + stats.nonforest_ha))) * 100).toFixed(3) }}%</div>
+              <div class="stat-label-compact">{{ t('analysis.panel.results.deforestationRate') }}</div>
+              <div class="stat-detail-compact">{{ stats.forest_ha.toLocaleString(undefined, { maximumFractionDigits: 1 }) }} ha {{ t('analysis.panel.results.alertsDetected') }}</div>
             </div>
           </div>
 
-          <div class="stat-card total-area-card">
-            <div class="stat-icon">
-              <q-icon name="crop_free" size="24px" />
-            </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ (stats.total_analyzed_ha || (stats.forest_ha + stats.nonforest_ha)).toLocaleString(undefined, { maximumFractionDigits: 1 }) }}</div>
-              <div class="stat-label">{{ t('analysis.panel.results.totalArea') }}</div>
-              <div class="stat-detail">{{ t('analysis.panel.results.hectares') }}</div>
-            </div>
-          </div>
+          <!-- Empty cells for spacing -->
+          <div class="stat-cell empty-cell"></div>
+          <div class="stat-cell empty-cell"></div>
+          <div class="stat-cell empty-cell"></div>
         </template>
       </div>
 
@@ -708,11 +709,11 @@ const displayUploadedFeatures = (features) => {
   // Create style for uploaded features
   const style = new Style({
     fill: new Fill({
-      color: 'rgba(33, 150, 243, 0.2)'
+      color: 'rgba(33, 150, 243, 0.0)'  // Transparent fill
     }),
     stroke: new Stroke({
       color: '#2196F3',
-      width: 3
+      width: 2
     })
   })
   
@@ -757,7 +758,7 @@ const calculateForestStats = async () => {
   // Show loading notification
   const loadingNotification = $q.notify({
     type: 'ongoing',
-    message: t('analysis.panel.upload.calculatingStats') || 'Calculating statistics for uploaded area...',
+    message: t('analysis.panel.upload.calculatingStats'),
     timeout: 0, // Don't auto-dismiss
     spinner: true,
     position: 'bottom'
@@ -920,26 +921,35 @@ onMounted(async () => {
   margin-bottom: 8px;
 }
 
-.method-tabs-compact {
+.method-buttons-row {
+  display: flex;
+  gap: 4px;
+  margin: 8px 12px;
   background: #f8f9fa;
-  margin: 0 12px;
-  border-radius: 6px 6px 0 0;
-  min-height: 32px;
+  border-radius: 6px;
+  padding: 4px;
 }
 
-.method-tabs-compact :deep(.q-tab) {
-  font-size: 13px;
+.method-btn {
+  flex: 1;
+  font-size: 12px;
   font-weight: 500;
-  min-height: 36px;
-  padding: 6px 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
 
-.method-panels-compact {
+.method-btn-active {
+  background: white !important;
+  color: #2e7d32 !important;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.method-content-compact {
   background: white;
   margin: 0 12px;
-  border-radius: 0 0 6px 6px;
+  border-radius: 6px;
   border: 1px solid #e0e0e0;
-  border-top: none;
 }
 
 .method-panel-compact {
@@ -1044,26 +1054,6 @@ onMounted(async () => {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.results-header-compact {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.results-title-compact {
-  font-size: 14px;
-  font-weight: 600;
-  color: #2e7d32;
-}
-
-.refresh-btn {
-  opacity: 0.7;
-}
-
-.refresh-btn:hover {
-  opacity: 1;
-}
 
 .area-info-compact {
   display: flex;
@@ -1097,108 +1087,112 @@ onMounted(async () => {
   margin-left: auto;
 }
 
-.stats-grid {
-  display: flex;
-  flex-direction: column;
+.total-area-context {
+  text-align: center;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: rgba(117, 117, 117, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(117, 117, 117, 0.2);
+}
+
+.total-area-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: #424242;
+}
+
+.stats-grid-compact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-bottom: 12px;
 }
 
-.stat-card {
-  flex: 1;
-  padding: 16px 12px;
-  border-radius: 8px;
+.stat-cell {
+  padding: 12px 8px;
+  border-radius: 6px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 70px;
 }
 
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.stat-cell:hover:not(.empty-cell) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.forest-card {
+.empty-cell {
+  background: transparent;
+  border: none;
+  min-height: 0;
+}
+
+.forest-cell {
   background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
   border: 1px solid #c8e6c9;
 }
 
-.nonforest-card {
+.nonforest-cell {
   background: linear-gradient(135deg, #fff3e0 0%, #fce4ec 100%);
   border: 1px solid #ffccbc;
 }
 
-.alert-card {
+.alert-cell {
   background: linear-gradient(135deg, #ffebee 0%, #fce4ec 100%);
   border: 1px solid #f8bbd9;
 }
 
-.analyzed-card {
-  background: linear-gradient(135deg, #e3f2fd 0%, #f1f8ff 100%);
-  border: 1px solid #bbdefb;
-}
-
-.total-area-card {
-  background: linear-gradient(135deg, #f3e5f5 0%, #fce4ec 100%);
-  border: 1px solid #d1c4e9;
-}
-
-.stat-icon {
+.stat-icon-compact {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.7);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.8);
 }
 
-.forest-card .stat-icon {
+.forest-cell .stat-icon-compact {
   color: #2e7d32;
 }
 
-.nonforest-card .stat-icon {
+.nonforest-cell .stat-icon-compact {
   color: #f57c00;
 }
 
-.alert-card .stat-icon {
+.alert-cell .stat-icon-compact {
   color: #d32f2f;
 }
 
-.analyzed-card .stat-icon {
-  color: #1976d2;
-}
-
-.total-area-card .stat-icon {
-  color: #7b1fa2;
-}
-
-.stat-content {
+.stat-content-compact {
   flex: 1;
   text-align: left;
 }
 
-.stat-value {
-  font-size: 18px;
+.stat-value-compact {
+  font-size: 16px;
   font-weight: 700;
   color: #212121;
   line-height: 1.2;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
-.stat-label {
-  font-size: 13px;
+.stat-label-compact {
+  font-size: 11px;
   font-weight: 600;
   color: #424242;
   margin-bottom: 2px;
 }
 
-.stat-detail {
-  font-size: 11px;
+.stat-detail-compact {
+  font-size: 10px;
   color: #757575;
   font-weight: 500;
+  line-height: 1.2;
 }
 
 .missing-data-compact {
@@ -1223,7 +1217,7 @@ onMounted(async () => {
 
 /* Responsive adjustments */
 @media (max-width: 600px) {
-  .benchmark-select, .method-panels-compact {
+  .benchmark-select, .method-content-compact, .method-buttons-row {
     margin: 0 8px;
   }
   
@@ -1232,20 +1226,35 @@ onMounted(async () => {
     padding: 6px;
   }
   
-  .stat-value {
-    font-size: 16px;
+  .stats-grid-compact {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
   
-  .stat-label {
-    font-size: 12px;
+  .stat-cell {
+    padding: 10px 6px;
+    min-height: 60px;
   }
   
-  .stat-detail {
+  .stat-value-compact {
+    font-size: 14px;
+  }
+  
+  .stat-label-compact {
     font-size: 10px;
   }
   
-  .stat-card {
-    padding: 12px 8px;
+  .stat-detail-compact {
+    font-size: 9px;
+  }
+  
+  .stat-icon-compact {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .total-area-text {
+    font-size: 11px;
   }
 }
 </style>
