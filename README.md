@@ -361,7 +361,7 @@ The `ml_pipeline/notebooks/process_forest_cover_rasters.py` script re-processes 
 cd ml_pipeline/notebooks
 
 # Process all datasets with boundary masking
-poetry run python process_forest_cover_rasters.py --boundary-geojson boundaries/Ecuador-DEM-900m-contour.geojson
+poetry run python process_forest_cover_rasters.py --boundary-geojson shapefiles/Ecuador-DEM-900m-contour.geojson
 
 # Process a specific dataset
 poetry run python process_forest_cover_rasters.py --dataset hansen-tree-cover-2022

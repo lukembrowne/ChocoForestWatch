@@ -50,10 +50,16 @@ if __name__ == "__main__":
 
     # year = "2022"
     # month = "01"
-    # run_id = "northern_choco_test_2025_06_16"
+    # run_id = "test"
     # rm = RunManager(run_id)
     # run_dir = rm.run_path
-    # project_id = 6
+    # project_id = 7
+    # db_host = "remote"  # Change to "remote" for production database
+    # # Set up database connection based on configuration
+    # logger.info(f"🗄️  Connecting to {db_host} database...")
+    # engine = get_db_connection(host=db_host)
+    # logger.info(f"✅ Database connection established")
+
 
 
     #%% 

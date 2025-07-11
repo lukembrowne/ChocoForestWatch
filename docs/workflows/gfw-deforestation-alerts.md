@@ -145,7 +145,7 @@ GFW_API_KEY=your_api_key_here
 YEARS = [2022, 2023, 2024]
 
 # Ecuador boundary file
-BOUNDARY_PATH = "ml_pipeline/notebooks/boundaries/Ecuador-DEM-900m-contour.geojson"
+BOUNDARY_PATH = "ml_pipeline/notebooks/shapefiles/Ecuador-DEM-900m-contour.geojson"
 
 # Output directory
 OUTPUT_DIR = "gfw_alerts_output"

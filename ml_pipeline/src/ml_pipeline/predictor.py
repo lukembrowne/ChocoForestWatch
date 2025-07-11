@@ -101,7 +101,7 @@ class ModelPredictor:
         
         try:
             # Read from path
-            boundary_path = "/Users/luke/apps/ChocoForestWatch/ml_pipeline/notebooks/boundaries/Ecuador-DEM-900m-contour.geojson"
+            boundary_path = "/Users/luke/apps/ChocoForestWatch/ml_pipeline/notebooks/shapefiles/Ecuador-DEM-900m-contour.geojson"
             print(f"⚠️ Using boundary path: {boundary_path}")
 
             if not os.path.exists(boundary_path):

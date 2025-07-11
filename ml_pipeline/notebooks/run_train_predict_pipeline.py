@@ -27,7 +27,7 @@ Usage:
     python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --db-host local
     
     # Full pipeline with remote database
-    python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --db-host remote
+    python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2022 --project_id 7 --run_id "experiment_name" --db-host remote
     
     # Skip specific steps
     python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --skip-composites --skip-benchmarks --skip-cfw-processing

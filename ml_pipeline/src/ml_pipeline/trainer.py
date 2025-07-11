@@ -54,9 +54,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # 
-comet_ml.login(api_key=os.getenv("COMETML_API"),
-               project_name="choco-forest-watch",
-               workspace="lukembrowne")
+# comet_ml.login(api_key=os.getenv("COMETML_API"),
+#                project_name="choco-forest-watch",
+#                workspace="lukembrowne")
 
 
 # ---------------------------------------------------------------------------
@@ -239,9 +239,9 @@ class ModelTrainer:
     def _fit_model(self, X, y, feature_ids, dates, model_params):
         cfg = self.cfg
 
-        # Get the current experiment
-        experiment = comet_ml.Experiment    (project_name="choco-forest-watch",
-                                         workspace="lukembrowne")
+        # # Get the current experiment
+        # experiment = comet_ml.Experiment    (project_name="choco-forest-watch",
+        #                                  workspace="lukembrowne")
 
          # ---- encode class labels -----------------------------------------
         desired = cfg.class_order
@@ -362,7 +362,7 @@ class ModelTrainer:
 
 
         # Log Pandas Profile Train
-        experiment.log_dataframe_profile(X_tr, "pandas_profiling_train", minimal=True, log_raw_dataframe=False)
+        # experiment.log_dataframe_profile(X_tr, "pandas_profiling_train", minimal=True, log_raw_dataframe=False)
 
 
         # ---- models for CV and final fit ----------------------------
@@ -428,37 +428,37 @@ class ModelTrainer:
         # Save model to comet
        # experiment.log_model('model_final', 'models/model_final.pkl')
 
-        #feature importance plot
-        booster = model_final.get_booster()
-        importances = booster.get_score(importance_type='weight')
-        print(importances)
-        for key in importances:
-            experiment.log_other(key, importances[key])
+        # #feature importance plot
+        # booster = model_final.get_booster()
+        # importances = booster.get_score(importance_type='weight')
+        # print(importances)
+        # for key in importances:
+        #     experiment.log_other(key, importances[key])
             
-        experiment.log_asset_data(importances)
+        # experiment.log_asset_data(importances)
 
-        # Create figure and save to BytesIO buffer
-        ax = xgb.plot_importance(booster)
-        buf = io.BytesIO()
-        ax.figure.savefig(buf, format='png')
-        buf.seek(0)
-        experiment.log_image(buf, name='feature_importance')
+        # # Create figure and save to BytesIO buffer
+        # ax = xgb.plot_importance(booster)
+        # buf = io.BytesIO()
+        # ax.figure.savefig(buf, format='png')
+        # buf.seek(0)
+        # experiment.log_image(buf, name='feature_importance')
 
-        # Log the confusion matrix
-        experiment.log_confusion_matrix(y_te, y_pred, labels=present)
+        # # Log the confusion matrix
+        # experiment.log_confusion_matrix(y_te, y_pred, labels=present)
 
-        # Log scalar metrics
-        experiment.log_metric("accuracy", metrics["accuracy"])
-        experiment.log_metric("cv_accuracy_mean", sum(metrics["cv_accuracy"]) / len(metrics["cv_accuracy"]))
+        # # Log scalar metrics
+        # experiment.log_metric("accuracy", metrics["accuracy"])
+        # experiment.log_metric("cv_accuracy_mean", sum(metrics["cv_accuracy"]) / len(metrics["cv_accuracy"]))
 
-        # Log class-wise precision, recall, f1 with per-class index
-        for i, class_name in enumerate(metrics["classes_present"]):
-            experiment.log_metric(f"precision_{class_name}", metrics["precision"][i])
-            experiment.log_metric(f"recall_{class_name}", metrics["recall"][i])
-            experiment.log_metric(f"f1_{class_name}", metrics["f1"][i])
+        # # Log class-wise precision, recall, f1 with per-class index
+        # for i, class_name in enumerate(metrics["classes_present"]):
+        #     experiment.log_metric(f"precision_{class_name}", metrics["precision"][i])
+        #     experiment.log_metric(f"recall_{class_name}", metrics["recall"][i])
+        #     experiment.log_metric(f"f1_{class_name}", metrics["f1"][i])
 
-        # Log unique dates
-        experiment.log_metric("dates", list(set(dates)))
+        # # Log unique dates
+        # experiment.log_metric("dates", list(set(dates)))
 
         #### Log SHAP values
 
@@ -485,7 +485,7 @@ class ModelTrainer:
 
 
         # End experiment
-        experiment.end()
+        # experiment.end()
 
 
         # ---- stash encoders & mappings -----------------------------
