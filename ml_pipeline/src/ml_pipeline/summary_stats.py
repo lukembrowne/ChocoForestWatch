@@ -51,7 +51,7 @@ class AOISummaryStats:
             boundary_path = os.environ.get("BOUNDARY_GEOJSON_PATH")
             if not boundary_path:
                 # Fallback to default path in the project
-                boundary_path = "/Users/luke/apps/ChocoForestWatch/ml_pipeline/notebooks/boundaries/Ecuador-DEM-900m-contour.geojson"
+                boundary_path = "/Users/luke/apps/ChocoForestWatch/ml_pipeline/notebooks/shapefiles/Ecuador-DEM-900m-contour.geojson"
                 print(f"⚠️ Using default boundary path: {boundary_path}")
             else:
                 print(f"📂 Loading boundary from: {boundary_path}")

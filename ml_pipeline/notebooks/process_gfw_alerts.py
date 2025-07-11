@@ -116,7 +116,7 @@ class GFWAlertsProcessor:
         
         # Ecuador boundary path - prioritize local file over environment variable
         # to avoid Docker DNS issues when running outside containers
-        local_boundary_path = Path(__file__).parent / "boundaries" / "Ecuador-DEM-900m-contour.geojson"
+        local_boundary_path = Path(__file__).parent / "shapefiles" / "Ecuador-DEM-900m-contour.geojson"
         
         if local_boundary_path.exists():
             self.ecuador_boundary_path = str(local_boundary_path)

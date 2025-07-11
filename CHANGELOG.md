@@ -5,16 +5,18 @@ All notable changes to ChocoForestWatch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1] - 2025_07_11
+
+### Changed 
+ - Expanding training polygon set to across western Ecuador
+
+
+## [0.1.0] - 2025-06-01
 
 ### Added
 - Version tracking system for datasets and models
 - Changelog maintenance for better release management
 - Multi-year GFW Integrated Deforestation Alerts with raster-based click-to-query functionality
-
-## [0.1.0] - 2025-06-01
-
-### Added
 - Enhanced prediction pipeline with standalone processing and database integration
 - Umami analytics integration with Docker setup and dashboard access
 - CompositeGenerator support for local composite file merging and conditional S3 uploads
