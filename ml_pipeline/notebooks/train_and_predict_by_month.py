@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     # year = "2022"
     # month = "01"
-    # run_id = "test"
+    # run_id = "test_2025_07_11"
     # rm = RunManager(run_id)
     # run_dir = rm.run_path
     # project_id = 7
@@ -121,8 +121,42 @@ if __name__ == "__main__":
     model_path, metrics = trainer.fit_prepared_data(npz, 
                                                     model_name=f"nicfi-{year}-{month}")  
 
-    logger.info(f"✅ Model training completed. Accuracy: {metrics.get('accuracy', 'N/A')}")
-    logger.info(f"📊 Model metrics: {metrics}")
+    #%% 
+    # Print model metrics
+    accuracy = metrics.get('accuracy', 'N/A')
+    logger.info(f"✅ Model training completed. Overall Accuracy: {accuracy:.4f}" if isinstance(accuracy, float) else f"✅ Model training completed. Accuracy: {accuracy}")
+
+    # Format and display key metrics in a structured way
+    if metrics:
+        logger.info("📊 Model Performance Summary:")
+        logger.info("-" * 50)
+        
+        # Overall accuracy
+        if 'accuracy' in metrics:
+            logger.info(f"   Overall Accuracy: {metrics['accuracy']:.4f}")
+        
+        # Cross-validation accuracy (if available)
+        if 'cv_accuracy' in metrics:
+            cv_scores = metrics['cv_accuracy']
+            cv_mean = sum(cv_scores) / len(cv_scores)
+            cv_std = (sum((x - cv_mean) ** 2 for x in cv_scores) / len(cv_scores)) ** 0.5
+            logger.info(f"   CV Accuracy: {cv_mean:.4f} ± {cv_std:.4f}")
+        
+        # Class-wise metrics
+        if all(key in metrics for key in ['precision', 'recall', 'f1', 'classes_present']):
+            logger.info("\n   📈 Class-wise Performance:")
+            classes = metrics['classes_present']
+            precision = metrics['precision']
+            recall = metrics['recall']
+            f1 = metrics['f1']
+            
+            for i, class_name in enumerate(classes):
+                if i < len(precision) and i < len(recall) and i < len(f1):
+                    logger.info(f"      {class_name:<12}: P={precision[i]:.3f}, R={recall[i]:.3f}, F1={f1[i]:.3f}")
+        
+        logger.info("-" * 50)
+    else:
+        logger.info("📊 No detailed metrics available")
 
     # Save metrics to run_dir
     # with open(run_dir / "metrics.json", "w") as f:
@@ -145,12 +179,13 @@ if __name__ == "__main__":
     # --- Generate Predictions ---
     logger.info(f"🌍 Generating predictions across entire NICFI collection for {year}-{month}...")
 
-    # Predict across entire collection
+    # Predict across entire collection - parallel processing for each COG
     predictor.predict_collection(
         basemap_date=f"{year}-{month}",
         collection=f"nicfi-{year}-{month}",
         pred_dir=run_dir / f"prediction_cogs/{year}/{month}",
-        save_local=True
+        save_local=True,
+        filter_western_ecuador=True # Only process Western Ecuador
     )
     logger.info("✅ Predictions generated and saved")
 
@@ -160,7 +195,7 @@ if __name__ == "__main__":
 
     # --- Add Predictions to STAC Database ---
     # Use same database configuration as training data
-    use_remote_stac = (db_host == "remote")
+    use_remote_stac = (db_host == "remote") # Will be true if db_host is "remote"
     logger.info(f"📚 Adding predictions to {'remote' if use_remote_stac else 'local'} STAC database...")
 
     builder = STACManager(STACManagerConfig(use_remote_db=use_remote_stac))

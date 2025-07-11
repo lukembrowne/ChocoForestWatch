@@ -23,21 +23,18 @@ which handles:
 - Saving results and uploading to cloud storage
 
 Usage:
-    # Full pipeline with local database
-    python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --db-host local
-    
-    # Full pipeline with remote database
-    python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2022 --project_id 7 --run_id "experiment_name" --db-host remote
-    
-    # Skip specific steps
-    python run_train_predict_pipeline.py --start_month 1 --end_month 12 --year 2023 --project_id 6 --run_id "experiment_name" --skip-composites --skip-benchmarks --skip-cfw-processing
-    
-    # Run only dataset evaluation (requires existing STAC collections)
-    python run_train_predict_pipeline.py --benchmarks-only --year 2023 --project_id 6 --run_id "experiment_name"
+
+# Full pipeline: train models, generate composites, run benchmarks
+poetry run python run_train_predict_pipeline.py \
+  --start_month 1 --end_month 12 \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "test_2025_07_11" \
+  --db-host "remote"
 
 Database Configuration:
-- Use --db-host local for development with local database
-- Use --db-host remote for production with remote database
+- Use --db-host "local" for development with local database
+- Use --db-host "remote" for production with remote database
 - COG spatial filtering is now done directly via database queries (no SSH tunnel needed)
 
 The results are organized as:

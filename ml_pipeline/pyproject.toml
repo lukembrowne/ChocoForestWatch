@@ -1,6 +1,6 @@
 [project]
 name = "ml-pipeline"
-version = "0.1.0"
+version = "0.1.1"
 description = "ML pipeline for ChocoForestWatch"
 authors = [
     {name = "Luke Browne",email = "lukembrowne@gmail.com"}
@@ -61,7 +61,7 @@ test = [
 
 [tool.poetry]
 name = "ml-pipeline"
-version = "0.1.0"
+version = "0.1.1"
 description = "ML pipeline for ChocoForestWatch"
 authors = ["Luke Browne <lukembrowne@gmail.com>"]
 packages = [

@@ -256,9 +256,9 @@ cd ml_pipeline/notebooks
 poetry run python run_train_predict_pipeline.py \
   --start_month 1 --end_month 12 \
   --year 2022 \
-  --project_id 6 \
-  --run_id "test_2025_07_01" \
-  --db-host remote
+  --project_id 7 \
+  --run_id "test_2025_07_11" \
+  --db-host "remote"
 ```
 
 This will:
@@ -278,7 +278,8 @@ poetry run python run_train_predict_pipeline.py \
   --year 2022 \
   --project_id 6 \
   --run_id "northern_choco_2022" \
-  --skip-composites
+  --skip-composites \
+  --db-host "remote"
 
 # Skip benchmarking (faster execution)
 poetry run python run_train_predict_pipeline.py \
@@ -286,7 +287,8 @@ poetry run python run_train_predict_pipeline.py \
   --year 2022 \
   --project_id 6 \
   --run_id "northern_choco_2022" \
-  --skip-benchmarks
+  --skip-benchmarks \
+  --db-host "remote"
 
 # Run only benchmarks (requires existing STAC collections)
 poetry run python run_train_predict_pipeline.py \

@@ -1,6 +1,6 @@
 # Format: (major, minor, patch, release_stage)
 # Release stages: 'alpha', 'beta', 'rc', 'final'
-VERSION = (0, 1, 0, 'final')
+VERSION = (0, 1, 1, 'final')
 
 def get_version():
     version = '%s.%s.%s' % (VERSION[0], VERSION[1], VERSION[2])
