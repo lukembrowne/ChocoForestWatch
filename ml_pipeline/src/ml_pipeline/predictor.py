@@ -31,6 +31,7 @@ import shutil
 
 from ml_pipeline.s3_utils import upload_file
 from ml_pipeline.version import get_version_metadata
+from ml_pipeline.feature_engineering import FeatureManager
 
 from multiprocessing import Pool
 from functools import partial
@@ -89,6 +90,13 @@ class ModelPredictor:
             bundle = pickle.load(f)
         self.model = bundle["model"]
         self.meta = bundle["meta"]
+        
+        # Load feature manager if available
+        self.feature_manager = bundle.get("feature_manager")
+        if self.feature_manager is not None:
+            print(f"Loaded feature manager with {len(self.feature_manager.feature_extractors)} extractors")
+        else:
+            print("No feature manager found - using raw bands only")
 
     # ------------------------------------------------------------------
     #  Public API
@@ -101,7 +109,7 @@ class ModelPredictor:
         
         try:
             # Read from path
-            boundary_path = "/Users/luke/apps/ChocoForestWatch/ml_pipeline/notebooks/shapefiles/Ecuador-DEM-900m-contour.geojson"
+            boundary_path = "./shapefiles/Ecuador-DEM-900m-contour.geojson"
             print(f"⚠️ Using boundary path: {boundary_path}")
 
             if not os.path.exists(boundary_path):
@@ -312,12 +320,16 @@ class ModelPredictor:
                         h, w = img.shape[1], img.shape[2]
                         X = img.reshape(4, -1).T  # -> (n,4)
 
-                        X_full = X
+                        # Apply feature engineering if configured
+                        if self.feature_manager is not None:
+                            X_full = self.feature_manager.extract_all_features(X)
+                        else:
+                            X_full = X
 
-                        # mask nodata
+                        # mask nodata (check base bands only)
                         valid_mask = ~np.any(
                             X[:, :4] == src.nodata, axis=1
-                        )  # ignore temporal cols
+                        )  # check base bands for nodata
                         preds = np.full(X.shape[0], self.cfg.nodata, dtype=self.cfg.dtype)
                         if valid_mask.any():
                             try:

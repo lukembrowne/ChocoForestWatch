@@ -11,10 +11,18 @@ import shutil
 import logging
 
 class CompositeGenerator:
-    def __init__(self, run_id: str, year: str, root: str = "runs"):
+    def __init__(self, run_id: str, year: str, root: str = None):
         self.run_id = run_id
         self.year = year
-        self.root = Path(root)
+        
+        if root is None:
+            # Use the same logic as RunManager for consistent paths
+            # Go up from src/ml_pipeline to ml_pipeline root
+            ml_pipeline_root = Path(__file__).parent.parent.parent
+            self.root = ml_pipeline_root / "runs"
+        else:
+            self.root = Path(root)
+            
         self.run_path = self.root / run_id
         self.temp_dir = None
         self.local_composite_files = []  # Track local composite files for merging
@@ -26,25 +34,55 @@ class CompositeGenerator:
         
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Clean up temporary directory when exiting context."""
-        # Clean up any remaining local composite files
-        self.cleanup_local_files()
+        # Only clean up local composite files if they're in temp directory
+        # Don't clean up files that have been moved to persistent location
+        temp_files_to_clean = [f for f in self.local_composite_files if str(f).startswith(str(self.temp_dir)) if self.temp_dir]
+        for temp_file in temp_files_to_clean:
+            if Path(temp_file).exists():
+                Path(temp_file).unlink()
+        
         if self.temp_dir:
             shutil.rmtree(self.temp_dir)
         
-    def generate_composite(self, quad_name: str, min_pixels: int = 10, skip_s3_upload: bool = False):
+    def generate_composite(self, quad_name: str, min_pixels: int = 10, skip_s3_upload: bool = False, use_local_files: bool = False):
         """Generate annual composite for a given quad."""
         if not self.temp_dir:
             raise RuntimeError("CompositeGenerator must be used as a context manager")
             
         # List monthly COGs
         months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-        cogs = [
-            f"s3://choco-forest-watch/predictions/{self.run_id}/{self.year}/{m:02d}/{quad_name}_{self.year}_{m:02d}.tiff"
-            for m in months
-        ]
+        
+        if use_local_files:
+            # Discover which months actually have prediction files for this quad
+            pred_base_dir = self.run_path / "prediction_cogs" / self.year
+            available_months = []
+            
+            for month_dir in sorted(pred_base_dir.glob("*")):
+                if month_dir.is_dir():
+                    # Check if this quad has a file in this month
+                    quad_file = month_dir / f"{quad_name}_{self.year}_{month_dir.name}.tiff"
+                    if quad_file.exists():
+                        available_months.append(int(month_dir.name))
+            
+            if not available_months:
+                raise FileNotFoundError(f"No prediction files found for quad {quad_name} in {pred_base_dir.absolute()}")
+            
+            print(f"Found prediction files for quad {quad_name} in months: {available_months}")
+            
+            # Use absolute paths for only available months
+            cogs = [
+                str(self.run_path.absolute() / f"prediction_cogs/{self.year}/{m:02d}/{quad_name}_{self.year}_{m:02d}.tiff")
+                for m in available_months
+            ]
+        else:
+            # Use S3 paths
+            cogs = [
+                f"s3://choco-forest-watch/predictions/{self.run_id}/{self.year}/{m:02d}/{quad_name}_{self.year}_{m:02d}.tiff"
+                for m in months
+            ]
 
         print("Retrieving monthly COGs...")
-        print("Retrieved COGs: ", cogs)
+        print(f"Retrieved {len(cogs)} COGs: {cogs}")
 
         # Open and stack monthly data
         print("Stacking monthly data...")
@@ -63,10 +101,21 @@ class CompositeGenerator:
         
         try:
             if skip_s3_upload:
-                # Keep local file for later merging
+                # Keep local file for later merging - move to persistent composites directory
                 print("Skipping S3 upload, keeping file for local merging...")
-                self.local_composite_files.append(cover_path)
-                return str(cover_path)  # Return path for tracking
+                
+                # Create composites directory in run path
+                composites_dir = self.run_path / "composites"
+                composites_dir.mkdir(exist_ok=True)
+                
+                # Move file from temp to persistent location
+                persistent_path = composites_dir / cover_path.name
+                import shutil
+                shutil.move(str(cover_path), str(persistent_path))
+                
+                self.local_composite_files.append(persistent_path)
+                print(f"Moved composite to persistent location: {persistent_path}")
+                return str(persistent_path)  # Return path for tracking
             else:
                 # Upload to S3
                 print("Uploading to S3...")
@@ -74,11 +123,15 @@ class CompositeGenerator:
                 print("Uploaded to S3.")
 
         except Exception as e:
-            # Clean up on error, even if skip_s3_upload is True
+            # Clean up on error
             if cover_path.exists():
                 cover_path.unlink()
-            if skip_s3_upload and cover_path in self.local_composite_files:
-                self.local_composite_files.remove(cover_path)
+            if skip_s3_upload and len(self.local_composite_files) > 0:
+                # Clean up the last added file if it exists
+                last_file = self.local_composite_files[-1]
+                if Path(last_file).exists():
+                    Path(last_file).unlink()
+                self.local_composite_files.pop()
             raise
         finally:
             # Clean up temp files only if not keeping for local merge
@@ -200,24 +253,25 @@ class CompositeGenerator:
         logger.info(f"🔄 Starting merge of composite COGs for {self.run_id}-{self.year}")
         
         if use_local_files:
-            # Use locally stored composite files
-            if not self.local_composite_files:
-                logger.warning("⚠️  No local composite files available for merging")
+            # Discover local composite files from the composites directory
+            composites_dir = self.run_path / "composites"
+            if not composites_dir.exists():
+                logger.warning(f"⚠️  Composites directory not found: {composites_dir}")
                 return None
                 
-            # Filter out files that no longer exist
-            existing_files = [f for f in self.local_composite_files if Path(f).exists()]
-            if not existing_files:
-                logger.warning("⚠️  No existing local composite files found")
+            # Find all composite files in the directory
+            composite_files = list(composites_dir.glob("*_forest_cover.tif"))
+            if not composite_files:
+                logger.warning(f"⚠️  No composite files found in: {composites_dir}")
                 return None
                 
-            logger.info(f"📊 Found {len(existing_files)} local composite files to merge")
+            logger.info(f"📊 Found {len(composite_files)} local composite files to merge")
             
-            if len(existing_files) <= 1:
+            if len(composite_files) <= 1:
                 logger.info("ℹ️  Only one or no local files found, skipping merge")
                 return None
                 
-            local_cog_paths = [str(f) for f in existing_files]
+            local_cog_paths = [str(f) for f in composite_files]
             logger.info(f"✅ Using {len(local_cog_paths)} local COG files")
         else:
             # Original S3-based workflow
@@ -248,7 +302,15 @@ class CompositeGenerator:
             logger.info(f"✅ Downloaded {len(local_cog_paths)} COG files")
         
         # Create merged COG using GDAL
-        merged_path = Path(self.temp_dir) / f"{self.run_id}_{self.year}_merged_composite.tif"
+        if use_local_files:
+            # Save merged file to persistent composites directory
+            composites_dir = self.run_path / "composites"
+            composites_dir.mkdir(exist_ok=True)
+            merged_path = composites_dir / f"{self.run_id}_{self.year}_merged_composite.tif"
+        else:
+            # Use temp directory for S3 workflow
+            merged_path = Path(self.temp_dir) / f"{self.run_id}_{self.year}_merged_composite.tif"
+            
         logger.info(f"🔗 Merging COGs into: {merged_path.name}")
         
         # Use GDAL BuildVRT and Translate for efficient merging
@@ -302,15 +364,20 @@ class CompositeGenerator:
             
             gdal.Translate(str(merged_path), str(intermediate_path), options=cog_options)
             
-            logger.info(f"✅ Successfully merged {len(cog_files)} COGs into single file")
+            logger.info(f"✅ Successfully merged {len(local_cog_paths)} COGs into single file")
             
-            # Upload merged COG to S3
-            merged_s3_key = f"datasets/cfw-{self.run_id}/{self.year}/{self.run_id}_{self.year}_merged_composite.tif"
-            logger.info(f"⬆️  Uploading merged COG to S3: {merged_s3_key}")
-            upload_file(merged_path, merged_s3_key)
-            
-            logger.info("🎉 Merge and upload completed successfully")
-            return merged_s3_key
+            if use_local_files:
+                # For local workflow, return the local path
+                logger.info(f"🎉 Merge completed successfully, saved to: {merged_path}")
+                return str(merged_path)
+            else:
+                # Upload merged COG to S3
+                merged_s3_key = f"datasets/cfw-{self.run_id}/{self.year}/{self.run_id}_{self.year}_merged_composite.tif"
+                logger.info(f"⬆️  Uploading merged COG to S3: {merged_s3_key}")
+                upload_file(merged_path, merged_s3_key)
+                
+                logger.info("🎉 Merge and upload completed successfully")
+                return merged_s3_key
             
         except Exception as e:
             logger.error(f"❌ Error during COG merge: {str(e)}")
@@ -328,11 +395,14 @@ class CompositeGenerator:
                     if Path(local_path).exists():
                         Path(local_path).unlink()
             
-            if merged_path.exists():
+            # Only clean up merged file if using S3 workflow (temp file)
+            # For local workflow, keep the merged file in persistent location
+            if not use_local_files and merged_path.exists():
                 merged_path.unlink()
                 
-            # Clean up local composite files after successful merge
-            if use_local_files:
+            # Keep local composite files for subsequent pipeline steps
+            # Don't clean up local files in local-only workflows
+            if not use_local_files:  # Only clean up if using S3 workflow
                 self.cleanup_local_files()
         
     def _create_stac_collection(self, use_remote_db: bool, use_merged_cog: bool = False):

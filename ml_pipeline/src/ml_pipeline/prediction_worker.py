@@ -27,10 +27,11 @@ def predict_single_cog_standalone(cog_url, model_path, basemap_date, pred_dir, s
     cfg = PredictorConfig(**cfg_dict)
     
     try:
-        # Load model
+        # Load model and feature manager
         with open(model_path, "rb") as f:
             bundle = pickle.load(f)
         model = bundle["model"]
+        feature_manager = bundle.get("feature_manager")  # Load feature manager if available
         
         with rasterio.open(cog_url) as src:
             profile = src.profile.copy()
@@ -60,7 +61,11 @@ def predict_single_cog_standalone(cog_url, model_path, basemap_date, pred_dir, s
                     h, w = img.shape[1], img.shape[2]
                     X = img.reshape(4, -1).T  # -> (n,4)
 
-                    X_full = X
+                    # Apply feature engineering if configured
+                    if feature_manager is not None:
+                        X_full = feature_manager.extract_all_features(X)
+                    else:
+                        X_full = X
 
                     # mask nodata
                     valid_mask = ~np.any(

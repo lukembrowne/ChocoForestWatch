@@ -26,7 +26,33 @@ Usage:
 
 # Full pipeline: train models, generate composites, run benchmarks
 poetry run python run_train_predict_pipeline.py \
+  --step all \
   --start_month 1 --end_month 12 \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "test_2025_07_11" \
+  --db-host "remote"
+
+# Run only training step
+poetry run python run_train_predict_pipeline.py \
+  --step training \
+  --start_month 1 --end_month 12 \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "test_2025_07_11" \
+  --db-host "remote"
+
+# Run only composites step
+poetry run python run_train_predict_pipeline.py \
+  --step composites \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "test_2025_07_11" \
+  --db-host "remote"
+
+# Run only benchmarks step
+poetry run python run_train_predict_pipeline.py \
+  --step benchmarks \
   --year 2022 \
   --project_id 7 \
   --run_id "test_2025_07_11" \
@@ -69,30 +95,35 @@ logger = logging.getLogger(__name__)
 def parse_arguments():
     """Parse command line arguments for the pipeline."""
     parser = argparse.ArgumentParser(description="Run training and prediction pipeline for multiple months")
-    parser.add_argument("--start_month", type=int, required=True, help="Starting month (1-12)")
-    parser.add_argument("--end_month", type=int, required=True, help="Ending month (1-12)")
+    
+    # Core arguments
     parser.add_argument("--year", type=str, required=True, help="Year for the pipeline")
     parser.add_argument("--project_id", type=int, required=True, help="Project ID for training polygons")
     parser.add_argument("--run_id", type=str, required=True, help="Unique identifier for this pipeline run")
     parser.add_argument("--db-host", type=str, choices=["local", "remote"], default="local", 
                        help="Database host configuration: 'local' for localhost, 'remote' for production database")
-    parser.add_argument("--skip-composites", action="store_true", 
-                       help="Skip composite generation after monthly processing")
-    parser.add_argument("--skip-benchmarks", action="store_true", 
-                       help="Skip dataset evaluation after composite generation")
-    parser.add_argument("--skip-training", action="store_true", 
-                       help="Skip training and prediction, go directly to composites/benchmarks")
-    parser.add_argument("--benchmarks-only", action="store_true", 
-                       help="Skip training, prediction, and composites - only run dataset evaluation")
-    parser.add_argument("--skip-cfw-processing", action="store_true", 
-                       help="Skip ChocoForestWatch dataset processing after composite generation")
+    
+    # Training arguments (only required for training step)
+    parser.add_argument("--start_month", type=int, help="Starting month (1-12) - required for training")
+    parser.add_argument("--end_month", type=int, help="Ending month (1-12) - required for training")
+    
+    # Step selection - choose which steps to run
+    parser.add_argument("--step", type=str, choices=["training", "composites", "cfw-processing", "benchmarks", "all"], 
+                       default="all", help="Which step to run (default: all)")
+    
+    # Feature engineering options
+    parser.add_argument("--features", type=str, nargs="*", choices=["ndvi", "ndwi"], 
+                       default=[], help="Feature extractors to use (e.g., --features ndvi ndwi)")
     
     return parser.parse_args()
 
 def validate_arguments(args):
     """Validate command line arguments."""
-    # Validate month range (only if training is not skipped)
-    if not args.skip_training and not args.benchmarks_only:
+    # Validate month range (only if training step is selected)
+    if args.step in ["training", "all"]:
+        if args.start_month is None or args.end_month is None:
+            logger.error("❌ --start_month and --end_month are required for training step")
+            sys.exit(1)
         if args.start_month < 1 or args.start_month > 12:
             logger.error("❌ start_month must be between 1 and 12")
             sys.exit(1)
@@ -102,17 +133,14 @@ def validate_arguments(args):
         if args.start_month > args.end_month:
             logger.error("❌ start_month must be <= end_month")
             sys.exit(1)
-    
-    # Validate skip option combinations
-    if args.benchmarks_only and (args.skip_composites or args.skip_training):
-        logger.error("❌ --benchmarks-only cannot be combined with other skip options")
-        sys.exit(1)
 
-def process_quad(quad_name: str, run_id: str, year: str):
-    """Process a single quad for composite generation."""
+def process_quad_with_local(quad_name: str, run_id: str, year: str):
+    """Process a single quad for composite generation using local files only."""
     try:
         with CompositeGenerator(run_id=run_id, year=year) as composite_gen:
-            composite_gen.generate_composite(quad_name=quad_name, skip_s3_upload=True )
+            # Generate composite locally only - no S3 upload
+            local_path = composite_gen.generate_composite(quad_name=quad_name, skip_s3_upload=True, use_local_files=True)
+            
         return True
     except Exception as e:
         logger.error(f"Error processing quad {quad_name}: {str(e)}")
@@ -130,21 +158,30 @@ def generate_composites(run_id: str, year: str, db_host: str = "local"):
     logger.info("\n🧩 Generating annual composites...")
     
     try:
-        # Get list of quads from S3 based on first successful month
-        s3_files = list_files(prefix=f"predictions/{run_id}/{year}/01")
+        # Look for local prediction files
+        ml_pipeline_dir = Path(__file__).parent.parent  # Go up from notebooks to ml_pipeline
+        local_pred_dir = ml_pipeline_dir / "runs" / run_id / "prediction_cogs" / year / "01"
         
-        if not s3_files:
-            logger.warning("⚠️  No S3 files found for composite generation. Skipping...")
-            return
+        logger.info(f"📁 Looking for local prediction files in: {local_pred_dir}")
         
-        # Extract unique quad names
-        quads = list(set(extract_quad_name(f) for f in s3_files))
-        logger.info(f"📍 Found {len(quads)} unique quads for composite generation")
+        if not local_pred_dir.exists():
+            raise FileNotFoundError(f"Local prediction directory not found: {local_pred_dir}")
+        
+        local_files = list(local_pred_dir.glob("*.tif*"))
+        
+        if not local_files:
+            raise FileNotFoundError(f"No prediction files found in: {local_pred_dir}")
+        
+        logger.info(f"📍 Found {len(local_files)} local prediction files")
+        
+        # Extract quad names from local filenames
+        quads = list(set(f.name.split('_')[0] for f in local_files))
+        logger.info(f"📍 Extracted {len(quads)} unique quads from local files")
         logger.info(f"🔍 Example quads: {quads[:4] if len(quads) >= 4 else quads}")
         
-        # Generate composites in parallel (limited to avoid overwhelming S3)
+        # Generate composites in parallel (limited to avoid overwhelming storage)  
         results = Parallel(n_jobs=2, prefer="processes")(
-            delayed(process_quad)(quad_name=quad, run_id=run_id, year=year)
+            delayed(process_quad_with_local)(quad_name=quad, run_id=run_id, year=year)
             for quad in tqdm(quads, desc="Generating composites")
         )
         
@@ -303,10 +340,13 @@ def main():
     year = args.year
     project_id = args.project_id
     db_host = getattr(args, 'db_host', 'local')
+    step = args.step
     
     # Log pipeline configuration
-    logger.info("🚀 Starting ML Pipeline")
-    logger.info(f"📅 Year: {year}, Months: {args.start_month}-{args.end_month}")
+    logger.info(f"🚀 Starting ML Pipeline - Step: {step}")
+    logger.info(f"📅 Year: {year}")
+    if step in ["training", "all"]:
+        logger.info(f"📅 Months: {args.start_month}-{args.end_month}")
     logger.info(f"📋 Project ID: {project_id}")
     logger.info(f"🏃 Run ID: {run_id}")
     logger.info(f"🗄️  Database: {db_host}")
@@ -316,116 +356,111 @@ def main():
     rm = RunManager(run_id=run_id)  # Uses ml_pipeline/runs/ automatically
     logger.info(f"📁 Run directory: {rm.run_path}")
 
-    # Skip training if requested
-    if args.skip_training or args.benchmarks_only:
-        logger.info("⏭️ Skipping training and prediction as requested")
-        successful_months = [f"{m:02d}" for m in range(args.start_month, args.end_month + 1)]
-    else:
-        # Process each month sequentially
-        failed_months = []
-        successful_months = []
-        total_months = args.end_month - args.start_month + 1
-        
-        logger.info(f"📊 Processing {total_months} months from {args.start_month:02d} to {args.end_month:02d}")
-        
-        # Get path to the monthly processing script
-        script_path = Path(__file__).parent / "train_and_predict_by_month.py"
-        if not script_path.exists():
-            logger.error(f"❌ Could not find script at {script_path}")
-            sys.exit(1)
-        
-        for m in tqdm(range(args.start_month, args.end_month + 1), desc=f"Processing months for {year}"):
-            month = f"{m:02d}"  # Zero-pad month for consistency
-            current_month = f"{year}-{month}"
-            
-            logger.info(f"\n🗓️  Processing month {m}/{args.end_month}: {current_month}")
-            logger.info("-" * 50)
-            
-            # Build command with database configuration
-            cmd = [
-                "python",
-                str(script_path),
-                "--year", year,
-                "--month", month,
-                "--run_dir", str(rm.run_path),
-                "--project_id", str(project_id),
-                "--db-host", db_host
-            ]
-            
-            try:
-                # Execute monthly pipeline subprocess with live output
-                logger.info(f"▶️  Running: {' '.join(cmd)}")
-                logger.info("📺 Subprocess output:")
-                logger.info("-" * 40)
-                start_time = datetime.now()
-                
-                # Run subprocess without capturing output so it streams to terminal
-                subprocess.run(cmd, check=True)
-                
-                elapsed_time = datetime.now() - start_time
-                logger.info("-" * 40)
-                logger.info(f"✅ Successfully processed {current_month} in {elapsed_time}")
-                
-                successful_months.append(month)
-                
-            except subprocess.CalledProcessError as e:
-                elapsed_time = datetime.now() - start_time
-                logger.error("-" * 40)
-                logger.error(f"❌ Failed to process {current_month} after {elapsed_time}")
-                logger.error(f"Return code: {e.returncode}")
-                
-                failed_months.append(month)
-
-        # Print monthly processing summary
-        logger.info("\n" + "=" * 60)
-        logger.info("📊 MONTHLY PROCESSING SUMMARY")
-        logger.info("=" * 60)
-        
-        total_processed = len(successful_months) + len(failed_months)
-        success_rate = len(successful_months) / total_processed * 100 if total_processed > 0 else 0
-        
-        logger.info(f"📈 Processed: {total_processed}/{total_months} months ({success_rate:.1f}% success rate)")
-        
-        if successful_months:
-            logger.info(f"✅ Successful months: {', '.join(successful_months)}")
-        
-        if failed_months:
-            logger.warning(f"❌ Failed months: {', '.join(failed_months)}")
-            logger.info(f"\n🔄 To retry failed months, run:")
-            for month in failed_months:
-                retry_cmd = f"python {script_path} --year {year} --month {month} --run_dir {rm.run_path} --project_id {project_id} --db-host {db_host}"
-                logger.info(f"   {retry_cmd}")
-        
-        # Only proceed if we have some successful months
-        if not successful_months:
-            logger.error("❌ No months processed successfully. Exiting.")
-            sys.exit(1)
-    
-    # Skip composite generation if requested or if benchmarks-only
-    if args.skip_composites or args.benchmarks_only:
-        logger.info("⏭️ Skipping composite generation as requested")
-    else:
-        # Generate annual composites
+    # Execute based on selected step
+    if step == "training":
+        run_training_step(args, rm)
+    elif step == "composites":
         generate_composites(run_id, year, db_host)
+    elif step == "cfw-processing":
+        process_cfw_dataset_for_pipeline(run_id, year, db_host)
+    elif step == "benchmarks":
+        run_dataset_evaluation(run_id, year, project_id, db_host)
+    elif step == "all":
+        # Run all steps in sequence
+        run_training_step(args, rm)
+        generate_composites(run_id, year, db_host)
+        process_cfw_dataset_for_pipeline(run_id, year, db_host)
+        run_dataset_evaluation(run_id, year, project_id, db_host)
     
-    # Process ChocoForestWatch dataset for unified structure (unless skipped or benchmarks-only)
-    if not args.skip_cfw_processing and not args.benchmarks_only:
-        if args.skip_composites:
-            logger.info("⏭️ Skipping ChocoForestWatch dataset processing (composites were skipped)")
-        else:
-            process_cfw_dataset_for_pipeline(run_id, year, db_host)
-    else:
-        logger.info("⏭️ Skipping ChocoForestWatch dataset processing as requested")
+    logger.info(f"\n🎉 Pipeline step '{step}' completed successfully at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+def run_training_step(args, rm):
+    """Run the training and prediction step."""
+    logger.info("🏋️ Starting Training & Prediction Step")
     
-    # Skip dataset evaluation if requested
-    if args.skip_benchmarks:
-        logger.info("⏭️ Skipping dataset evaluation as requested")
-        return
+    # Process each month sequentially
+    failed_months = []
+    successful_months = []
+    total_months = args.end_month - args.start_month + 1
     
-    # Run dataset evaluation
-    run_dataset_evaluation(run_id, year, project_id, db_host)
+    logger.info(f"📊 Processing {total_months} months from {args.start_month:02d} to {args.end_month:02d}")
     
-    logger.info(f"\n🎉 Pipeline completed successfully at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    # Get path to the monthly processing script
+    script_path = Path(__file__).parent / "train_and_predict_by_month.py"
+    if not script_path.exists():
+        logger.error(f"❌ Could not find script at {script_path}")
+        sys.exit(1)
+    
+    for m in tqdm(range(args.start_month, args.end_month + 1), desc=f"Processing months for {args.year}"):
+        month = f"{m:02d}"  # Zero-pad month for consistency
+        current_month = f"{args.year}-{month}"
+        
+        logger.info(f"\n🗓️  Processing month {m}/{args.end_month}: {current_month}")
+        logger.info("-" * 50)
+        
+        # Build command with database configuration
+        cmd = [
+            "python",
+            str(script_path),
+            "--year", args.year,
+            "--month", month,
+            "--run_dir", str(rm.run_path),
+            "--project_id", str(args.project_id),
+            "--db-host", args.db_host
+        ]
+        
+        # Add feature engineering options if specified
+        if hasattr(args, 'features') and args.features:
+            cmd.extend(["--features"] + args.features)
+        
+        try:
+            # Execute monthly pipeline subprocess with live output
+            logger.info(f"▶️  Running: {' '.join(cmd)}")
+            logger.info("📺 Subprocess output:")
+            logger.info("-" * 40)
+            start_time = datetime.now()
+            
+            # Run subprocess without capturing output so it streams to terminal
+            subprocess.run(cmd, check=True)
+            
+            elapsed_time = datetime.now() - start_time
+            logger.info("-" * 40)
+            logger.info(f"✅ Successfully processed {current_month} in {elapsed_time}")
+            
+            successful_months.append(month)
+            
+        except subprocess.CalledProcessError as e:
+            elapsed_time = datetime.now() - start_time
+            logger.error("-" * 40)
+            logger.error(f"❌ Failed to process {current_month} after {elapsed_time}")
+            logger.error(f"Return code: {e.returncode}")
+            
+            failed_months.append(month)
+
+    # Print monthly processing summary
+    logger.info("\n" + "=" * 60)
+    logger.info("📊 TRAINING & PREDICTION SUMMARY")
+    logger.info("=" * 60)
+    
+    total_processed = len(successful_months) + len(failed_months)
+    success_rate = len(successful_months) / total_processed * 100 if total_processed > 0 else 0
+    
+    logger.info(f"📈 Processed: {total_processed}/{total_months} months ({success_rate:.1f}% success rate)")
+    
+    if successful_months:
+        logger.info(f"✅ Successful months: {', '.join(successful_months)}")
+    
+    if failed_months:
+        logger.warning(f"❌ Failed months: {', '.join(failed_months)}")
+        logger.info(f"\n🔄 To retry failed months, run:")
+        for month in failed_months:
+            retry_cmd = f"python {script_path} --year {args.year} --month {month} --run_dir {rm.run_path} --project_id {args.project_id} --db-host {args.db_host}"
+            logger.info(f"   {retry_cmd}")
+    
+    # Only proceed if we have some successful months
+    if not successful_months:
+        logger.error("❌ No months processed successfully. Exiting.")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

@@ -242,7 +242,15 @@ The system includes automated workflows for processing NICFI (Norway's Internati
 
 ## ML Pipeline Workflows
 
-The ML pipeline supports flexible execution with multiple entry points depending on your needs.
+The ML pipeline supports flexible execution with multiple entry points depending on your needs. The system now includes **advanced feature engineering capabilities** for enhanced model performance.
+
+### Feature Engineering
+
+The pipeline supports derived spectral features alongside the base NICFI bands (Blue, Green, Red, NIR):
+
+- **NDVI (Normalized Difference Vegetation Index)**: `(NIR - Red) / (NIR + Red)` - Measures vegetation health and density
+- **NDWI (Normalized Difference Water Index)**: `(Green - NIR) / (Green + NIR)` - Detects water bodies and moisture content
+- **Base Bands Only**: Use raw Blue, Green, Red, NIR bands without derived features
 
 ### Complete Training and Prediction Pipeline
 
@@ -252,53 +260,149 @@ For a full end-to-end model training and evaluation workflow:
 # Navigate to ML pipeline directory
 cd ml_pipeline/notebooks
 
-# Full pipeline: train models, generate composites, run benchmarks
+# Full pipeline with NDVI features: train models, generate composites, run benchmarks
 poetry run python run_train_predict_pipeline.py \
+  --step all \
   --start_month 1 --end_month 12 \
   --year 2022 \
   --project_id 7 \
-  --run_id "test_2025_07_11" \
+  --run_id "test_ndvi_2025_07_12" \
+  --db-host "remote" \
+  --features ndvi
+
+# Full pipeline with multiple features
+poetry run python run_train_predict_pipeline.py \
+  --step all \
+  --start_month 1 --end_month 12 \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "test_multi_features_2025_07_12" \
+  --db-host "remote" \
+  --features ndvi ndwi
+
+# Full pipeline without features (base bands only - legacy behavior)
+poetry run python run_train_predict_pipeline.py \
+  --step all \
+  --start_month 1 --end_month 12 \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "test_base_bands_2025_07_12" \
   --db-host "remote"
 ```
 
 This will:
-1. Train separate Random Forest models for each month using training polygons
-2. Generate predictions as Cloud Optimized GeoTIFFs (COGs)
+1. Train separate XGBoost models for each month using training polygons and specified features
+2. Generate predictions as Cloud Optimized GeoTIFFs (COGs) using the same features
 3. Create annual forest/non-forest composites
 4. Evaluate accuracy against benchmark datasets
 
-### Flexible Pipeline Execution
+### Individual Pipeline Steps
 
-Skip specific steps based on your needs:
+Run specific pipeline steps independently based on your needs:
 
+#### Training & Prediction Only
 ```bash
-# Skip composite generation (useful for monthly-only analysis)
+# Train models with NDVI and generate monthly predictions
 poetry run python run_train_predict_pipeline.py \
-  --start_month 1 --end_month 12 \
+  --step training \
+  --start_month 1 --end_month 1 \
   --year 2022 \
-  --project_id 6 \
-  --run_id "northern_choco_2022" \
-  --skip-composites \
-  --db-host "remote"
+  --project_id 7 \
+  --run_id "test_ndvi_2025_07_12" \
+  --db-host "remote" \
+  --features ndvi
 
-# Skip benchmarking (faster execution)
+# Train models with base bands only (no features)
 poetry run python run_train_predict_pipeline.py \
-  --start_month 1 --end_month 12 \
+  --step training \
+  --start_month 1 --end_month 1 \
   --year 2022 \
-  --project_id 6 \
-  --run_id "northern_choco_2022" \
-  --skip-benchmarks \
-  --db-host "remote"
-
-# Run only benchmarks (requires existing STAC collections)
-poetry run python run_train_predict_pipeline.py \
-  --benchmarks-only \
-  --start_month 1 --end_month 12 \
-  --year 2022 \
-  --project_id 6 \
-  --run_id "northern_choco_test_2025_06_20" \
+  --project_id 7 \
+  --run_id "test_base_2025_07_12" \
   --db-host "remote"
 ```
+
+#### Composites Only
+```bash
+# Generate annual composites from existing monthly predictions
+poetry run python run_train_predict_pipeline.py \
+  --step composites \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "test_ndvi_2025_07_12" \
+  --db-host "remote"
+```
+
+#### CFW Dataset Processing Only
+```bash
+# Process ChocoForestWatch dataset for unified structure
+poetry run python run_train_predict_pipeline.py \
+  --step cfw-processing \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "test_ndvi_2025_07_12" \
+  --db-host "remote"
+```
+
+#### Benchmarks Only
+```bash
+# Run evaluation against all benchmark datasets
+poetry run python run_train_predict_pipeline.py \
+  --step benchmarks \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "test_ndvi_2025_07_12" \
+  --db-host "remote"
+```
+
+### Single Month Training with Features
+
+For testing or single month runs:
+
+```bash
+# Single month with NDVI features
+python train_and_predict_by_month.py \
+  --year 2022 \
+  --month 06 \
+  --run_dir runs/test_ndvi_june \
+  --project_id 7 \
+  --db-host remote \
+  --features ndvi
+
+# Single month with multiple features
+python train_and_predict_by_month.py \
+  --year 2022 \
+  --month 06 \
+  --run_dir runs/test_features_june \
+  --project_id 7 \
+  --db-host remote \
+  --features ndvi ndwi
+
+# Single month with base bands only
+python train_and_predict_by_month.py \
+  --year 2022 \
+  --month 06 \
+  --run_dir runs/test_base_june \
+  --project_id 7 \
+  --db-host remote
+```
+
+### Pipeline Step Dependencies
+
+- **training**: Requires `--start_month` and `--end_month` parameters; optional `--features` for spectral indices
+- **composites**: Requires existing monthly predictions from training step
+- **cfw-processing**: Requires existing composites from composites step
+- **benchmarks**: Can run independently with any existing STAC collections
+- **all**: Runs all steps in sequence (training → composites → cfw-processing → benchmarks)
+
+### Feature Engineering Options
+
+| Option | Description | Use Case |
+|--------|-------------|----------|
+| `--features ndvi` | Adds NDVI to base bands (5 total features) | Enhanced vegetation detection |
+| `--features ndwi` | Adds NDWI to base bands (5 total features) | Improved water body detection |
+| `--features ndvi ndwi` | Adds both indices (6 total features) | Maximum feature richness |
+| No `--features` | Base bands only (4 features) | Baseline performance, legacy compatibility |
 
 ### Available Forest Cover Datasets
 
@@ -314,7 +418,10 @@ The pipeline includes several reference forest cover datasets for comparison, al
 
 #### ChocoForestWatch Datasets
 - **`datasets-cfw-{run_id}-{year}`** - ChocoForestWatch model predictions (automatically created for each pipeline run)
-- Example: `datasets-cfw-northern_choco_test-2022`
+- Examples: 
+  - `datasets-cfw-test_ndvi_2025_07_12-2022` (NDVI-enhanced model)
+  - `datasets-cfw-test_base_2025_07_12-2022` (base bands only)
+  - `datasets-cfw-test_multi_features_2025_07_12-2022` (NDVI + NDWI)
 
 ### Training Data Preparation
 
@@ -348,11 +455,18 @@ runs/
 ```
 
 **Key Output Files:**
-- **Models**: Monthly Random Forest models saved as pickle files
+- **Models**: Monthly XGBoost models saved as pickle files with embedded feature engineering pipelines
 - **Predictions**: Cloud Optimized GeoTIFFs uploaded to DigitalOcean Spaces
 - **Composites**: Annual forest/non-forest maps merged from monthly predictions
 - **Benchmarks**: CSV files with accuracy metrics (accuracy, F1, precision, recall)
 - **STAC Collections**: Metadata entries for integration with TiTiler tile server
+- **Feature Metadata**: Model files include feature engineering configuration for consistent prediction
+
+**Feature Engineering Benefits:**
+- **Consistent Features**: Training and prediction use identical feature engineering pipelines
+- **Model Portability**: Feature engineering is saved with models for reproducible predictions
+- **Performance Gains**: NDVI and NDWI can improve forest/non-forest classification accuracy
+- **Cache Separation**: Models with different features use separate cache files to prevent conflicts
 
 ### Process Forest Cover Rasters
 
@@ -449,7 +563,7 @@ The new simplified calculation method provides:
 - `datasets-jrc-forestcover-2020` - JRC Forest Cover
 - `datasets-palsar-2020` - ALOS PALSAR Forest Map
 - `datasets-wri-treecover-2020` - WRI Tropical Tree Cover
-- `datasets-cfw-{run_id}-{year}` - ChocoForestWatch datasets (e.g., `datasets-cfw-northern_choco_test-2022`)
+- `datasets-cfw-{run_id}-{year}` - ChocoForestWatch datasets (e.g., `datasets-cfw-test_ndvi_2025_07_12-2022` for NDVI-enhanced models)
 
 ### Caching Details
 

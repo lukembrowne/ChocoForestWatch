@@ -45,6 +45,7 @@ from sklearn.utils.class_weight import compute_sample_weight
 import rasterio
 from rasterio.mask import mask
 import pandas as pd
+from .feature_engineering import FeatureManager, FeatureExtractor
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -94,6 +95,21 @@ class TrainerConfig:
 
     # Data cache directory (optional)
     cache_dir: Path | str | None = "data_cache"  # where *.npz arrays live
+    
+    # Feature engineering configuration
+    feature_extractors: list[FeatureExtractor] | None = None  # List of feature extractors to use
+    
+    def create_feature_manager(self) -> FeatureManager | None:
+        """Create a FeatureManager from the configured extractors.
+        
+        Returns
+        -------
+        FeatureManager | None
+            FeatureManager instance if extractors are configured, None otherwise.
+        """
+        if self.feature_extractors:
+            return FeatureManager(self.feature_extractors)
+        return None
 
 # ---------------------------------------------------------------------------
 #  Model training class
@@ -129,10 +145,13 @@ class ModelTrainer:
         extractor,
         run_dir: str | Path = "models",
         cfg: TrainerConfig = TrainerConfig(),
+        feature_manager: FeatureManager | None = None,
     ):
         self.extractor = extractor
         self.cfg = cfg
         self.run_dir = Path(run_dir)
+        # Use provided feature manager or create from config
+        self.feature_manager = feature_manager or cfg.create_feature_manager()
         self.last_saved_model_path: Path | None = None
 
         # ensure cache dir exists
@@ -217,6 +236,12 @@ class ModelTrainer:
 
             # Extract pixels
             X, y, fid = self.extractor.extract_pixels(gdf)
+            
+            # Apply feature engineering if configured
+            if self.feature_manager is not None:
+                print(f"Applying feature engineering: {X.shape[1]} base bands -> ", end="")
+                X = self.feature_manager.extract_all_features(X)
+                print(f"{X.shape[1]} total features")
             
             xs.append(X)
             ys.append(y)
@@ -504,9 +529,15 @@ class ModelTrainer:
     def _save_model(self, name, desc, model):
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         path = self.run_dir / "saved_models" / f"{name}.pkl"
+        
+        # Include feature engineering metadata
         meta = {"name": name, "description": desc, "saved_utc": ts}
+        if self.feature_manager is not None:
+            meta["feature_config"] = self.feature_manager.get_config()
+            meta["feature_names"] = self.feature_manager.get_all_feature_names()
+        
         with open(path, "wb") as f:
-            pickle.dump({"meta": meta, "model": model}, f)
+            pickle.dump({"meta": meta, "model": model, "feature_manager": self.feature_manager}, f)
         self.last_saved_model_path = path
         return path
 
