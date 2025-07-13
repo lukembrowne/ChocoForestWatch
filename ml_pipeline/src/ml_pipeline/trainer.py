@@ -45,6 +45,15 @@ from sklearn.utils.class_weight import compute_sample_weight
 import rasterio
 from rasterio.mask import mask
 import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
+import seaborn as sns
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import roc_curve, auc, precision_recall_curve
+from sklearn.preprocessing import label_binarize
+from itertools import cycle
+from shapely.geometry import mapping
 from .feature_engineering import FeatureManager, FeatureExtractor
 
 logger = logging.getLogger(__name__)
@@ -212,12 +221,18 @@ class ModelTrainer:
         X, y, fids, dates = data["X"], data["y"], data["fids"], data["dates"]
 
         print("Fitting XGBoost model...")
+        
+        # Create diagnostics path
+        diagnostics_path = self.run_dir / "model_diagnostics" / model_name
+        diagnostics_path.mkdir(parents=True, exist_ok=True)
+        
         model, metrics = self._fit_model(
             X,
             y,
             fids,
             dates,
             model_params or {},
+            diagnostics_path,
         )
 
         print("Saving model...")
@@ -261,7 +276,7 @@ class ModelTrainer:
     #  INTERNAL helpers – core training routine (unchanged logic)
     # ------------------------------------------------------------------
 
-    def _fit_model(self, X, y, feature_ids, dates, model_params):
+    def _fit_model(self, X, y, feature_ids, dates, model_params, diagnostics_path: Path = None):
         cfg = self.cfg
 
         # # Get the current experiment
@@ -435,6 +450,7 @@ class ModelTrainer:
 
         # ---- unseen TEST metrics -----------------------------------
         y_pred = model_final.predict(X_te)
+        y_pred_proba = model_final.predict_proba(X_te) if hasattr(model_final, 'predict_proba') else None
         acc = accuracy_score(y_te, y_pred)
         pr, rc, f1, _ = precision_recall_fscore_support(
             y_te, y_pred, average=None, zero_division=0
@@ -512,6 +528,15 @@ class ModelTrainer:
         # End experiment
         # experiment.end()
 
+        # ---- generate model diagnostics (if path provided) ----------
+        if diagnostics_path is not None:
+            try:
+                self._generate_all_diagnostics(
+                    model_final, X_te, y_te, y_pred, y_pred_proba, 
+                    present_classes, diagnostics_path
+                )
+            except Exception as e:
+                logger.warning(f"Failed to generate diagnostics: {e}")
 
         # ---- stash encoders & mappings -----------------------------
         model_final.train_map = train_map
@@ -521,6 +546,352 @@ class ModelTrainer:
         model_final.consecutive_to_global = consecutive_to_global
 
         return model_final, metrics
+
+    # ------------------------------------------------------------------
+    #  model diagnostics helpers
+    # ------------------------------------------------------------------
+
+    def _plot_feature_importance(self, model, diagnostics_path: Path, feature_names=None):
+        """Generate feature importance plots for XGBoost model."""
+        try:
+            booster = model.get_booster()
+            importance_types = ['weight', 'gain', 'cover']
+            
+            # Get feature names - either from parameter or from feature manager
+            if feature_names is None and self.feature_manager is not None:
+                feature_names = self.feature_manager.get_all_feature_names()
+            
+            fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+            fig.suptitle('XGBoost Feature Importance', fontsize=16)
+            
+            for i, imp_type in enumerate(importance_types):
+                ax = axes[i]
+                
+                if feature_names is not None:
+                    # Get importance scores and map to feature names
+                    scores = booster.get_score(importance_type=imp_type)
+                    
+                    # Create mapping from XGBoost feature names (f0, f1, etc.) to descriptive names
+                    feature_mapping = {}
+                    for xgb_name, score in scores.items():
+                        # Extract feature index from XGBoost name (e.g., "f0" -> 0)
+                        if xgb_name.startswith('f') and xgb_name[1:].isdigit():
+                            idx = int(xgb_name[1:])
+                            if idx < len(feature_names):
+                                feature_mapping[feature_names[idx]] = score
+                    
+                    # Sort by importance and get top 20
+                    sorted_features = sorted(feature_mapping.items(), key=lambda x: x[1], reverse=True)[:20]
+                    
+                    if sorted_features:
+                        names, values = zip(*sorted_features)
+                        y_pos = np.arange(len(names))
+                        
+                        ax.barh(y_pos, values)
+                        ax.set_yticks(y_pos)
+                        ax.set_yticklabels(names, fontsize=8)
+                        ax.set_xlabel(f'{imp_type.title()} Importance')
+                        ax.set_title(f'Feature Importance ({imp_type})')
+                        ax.invert_yaxis()  # Show highest importance at top
+                    else:
+                        # Fallback to default XGBoost plot
+                        xgb.plot_importance(booster, importance_type=imp_type, max_num_features=20, 
+                                          ax=ax, title=f'Feature Importance ({imp_type})')
+                else:
+                    # Use default XGBoost plotting if no feature names available
+                    xgb.plot_importance(booster, importance_type=imp_type, max_num_features=20, 
+                                      ax=ax, title=f'Feature Importance ({imp_type})')
+                
+                ax.tick_params(axis='y', labelsize=8)
+            
+            plt.tight_layout()
+            plt.savefig(diagnostics_path / 'feature_importance.png', dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            # Save feature importance scores as CSV with meaningful names
+            importance_df = pd.DataFrame()
+            for imp_type in importance_types:
+                scores = booster.get_score(importance_type=imp_type)
+                
+                # Create DataFrame with meaningful feature names
+                if feature_names is not None:
+                    data = []
+                    for xgb_name, score in scores.items():
+                        if xgb_name.startswith('f') and xgb_name[1:].isdigit():
+                            idx = int(xgb_name[1:])
+                            if idx < len(feature_names):
+                                data.append({
+                                    'feature_name': feature_names[idx],
+                                    'xgb_feature': xgb_name,
+                                    f'{imp_type}_importance': score
+                                })
+                    df = pd.DataFrame(data)
+                else:
+                    df = pd.DataFrame(list(scores.items()), columns=['xgb_feature', f'{imp_type}_importance'])
+                    df['feature_name'] = df['xgb_feature']  # Fallback to XGBoost names
+                
+                if importance_df.empty:
+                    importance_df = df
+                else:
+                    merge_cols = ['feature_name', 'xgb_feature'] if 'xgb_feature' in df.columns else ['feature_name']
+                    importance_df = importance_df.merge(df, on=merge_cols, how='outer')
+            
+            importance_df = importance_df.fillna(0).sort_values('gain_importance', ascending=False)
+            importance_df.to_csv(diagnostics_path / 'feature_importance_scores.csv', index=False)
+            
+        except Exception as e:
+            logger.warning(f"Failed to generate feature importance plots: {e}")
+
+    def _plot_learning_curves(self, model, diagnostics_path: Path):
+        """Generate learning curves from XGBoost training history."""
+        try:
+            results = model.evals_result()
+            if not results:
+                logger.warning("No evaluation results found for learning curves")
+                return
+                
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            # Plot training and validation curves
+            for eval_set, metrics in results.items():
+                for metric_name, values in metrics.items():
+                    epochs = range(len(values))
+                    label = f"{eval_set}_{metric_name}"
+                    ax.plot(epochs, values, label=label, marker='o', markersize=2)
+            
+            ax.set_xlabel('Boosting Rounds')
+            ax.set_ylabel('Metric Value')
+            ax.set_title('XGBoost Learning Curves')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            plt.savefig(diagnostics_path / 'learning_curves.png', dpi=300, bbox_inches='tight')
+            plt.close()
+            
+        except Exception as e:
+            logger.warning(f"Failed to generate learning curves: {e}")
+
+    def _plot_confusion_matrix(self, y_true, y_pred, class_names, diagnostics_path: Path):
+        """Generate confusion matrix heatmap."""
+        try:
+            cm = confusion_matrix(y_true, y_pred)
+            
+            plt.figure(figsize=(10, 8))
+            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+                       xticklabels=class_names, yticklabels=class_names)
+            plt.title('Confusion Matrix')
+            plt.xlabel('Predicted Label')
+            plt.ylabel('True Label')
+            plt.tight_layout()
+            plt.savefig(diagnostics_path / 'confusion_matrix.png', dpi=300, bbox_inches='tight')
+            plt.close()
+            
+        except Exception as e:
+            logger.warning(f"Failed to generate confusion matrix: {e}")
+
+    def _plot_roc_curves(self, y_true, y_pred_proba, class_names, diagnostics_path: Path):
+        """Generate ROC curves for multiclass classification."""
+        try:
+            n_classes = len(class_names)
+            
+            if n_classes == 2:
+                # Binary classification
+                fpr, tpr, _ = roc_curve(y_true, y_pred_proba[:, 1])
+                roc_auc = auc(fpr, tpr)
+                
+                plt.figure(figsize=(8, 6))
+                plt.plot(fpr, tpr, color='darkorange', lw=2, 
+                        label=f'ROC curve (AUC = {roc_auc:.2f})')
+                plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+                plt.xlim([0.0, 1.0])
+                plt.ylim([0.0, 1.05])
+                plt.xlabel('False Positive Rate')
+                plt.ylabel('True Positive Rate')
+                plt.title('Receiver Operating Characteristic')
+                plt.legend(loc="lower right")
+            else:
+                # Multiclass classification
+                y_true_bin = label_binarize(y_true, classes=range(n_classes))
+                
+                fpr = dict()
+                tpr = dict()
+                roc_auc = dict()
+                
+                plt.figure(figsize=(10, 8))
+                colors = cycle(['aqua', 'darkorange', 'cornflowerblue', 'red', 'green', 'purple', 'brown'])
+                
+                for i, color in zip(range(n_classes), colors):
+                    fpr[i], tpr[i], _ = roc_curve(y_true_bin[:, i], y_pred_proba[:, i])
+                    roc_auc[i] = auc(fpr[i], tpr[i])
+                    plt.plot(fpr[i], tpr[i], color=color, lw=2,
+                            label=f'{class_names[i]} (AUC = {roc_auc[i]:.2f})')
+                
+                plt.plot([0, 1], [0, 1], 'k--', lw=2)
+                plt.xlim([0.0, 1.0])
+                plt.ylim([0.0, 1.05])
+                plt.xlabel('False Positive Rate')
+                plt.ylabel('True Positive Rate')
+                plt.title('ROC Curves - Multiclass')
+                plt.legend(loc="lower right")
+            
+            plt.tight_layout()
+            plt.savefig(diagnostics_path / 'roc_curves.png', dpi=300, bbox_inches='tight')
+            plt.close()
+            
+        except Exception as e:
+            logger.warning(f"Failed to generate ROC curves: {e}")
+
+    def _plot_precision_recall_curves(self, y_true, y_pred_proba, class_names, diagnostics_path: Path):
+        """Generate precision-recall curves."""
+        try:
+            n_classes = len(class_names)
+            
+            if n_classes == 2:
+                # Binary classification
+                precision, recall, _ = precision_recall_curve(y_true, y_pred_proba[:, 1])
+                
+                plt.figure(figsize=(8, 6))
+                plt.plot(recall, precision, color='darkorange', lw=2)
+                plt.xlabel('Recall')
+                plt.ylabel('Precision')
+                plt.title('Precision-Recall Curve')
+                plt.grid(True, alpha=0.3)
+            else:
+                # Multiclass classification
+                y_true_bin = label_binarize(y_true, classes=range(n_classes))
+                
+                plt.figure(figsize=(10, 8))
+                colors = cycle(['aqua', 'darkorange', 'cornflowerblue', 'red', 'green', 'purple', 'brown'])
+                
+                for i, color in zip(range(n_classes), colors):
+                    precision, recall, _ = precision_recall_curve(y_true_bin[:, i], y_pred_proba[:, i])
+                    plt.plot(recall, precision, color=color, lw=2, label=f'{class_names[i]}')
+                
+                plt.xlabel('Recall')
+                plt.ylabel('Precision')
+                plt.title('Precision-Recall Curves - Multiclass')
+                plt.legend(loc="lower left")
+                plt.grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            plt.savefig(diagnostics_path / 'precision_recall_curves.png', dpi=300, bbox_inches='tight')
+            plt.close()
+            
+        except Exception as e:
+            logger.warning(f"Failed to generate precision-recall curves: {e}")
+
+    def _plot_calibration(self, y_true, y_pred_proba, class_names, diagnostics_path: Path):
+        """Generate calibration plots for probability calibration."""
+        try:
+            n_classes = len(class_names)
+            
+            if n_classes == 2:
+                # Binary classification
+                fraction_pos, mean_pred = calibration_curve(y_true, y_pred_proba[:, 1], n_bins=10)
+                
+                plt.figure(figsize=(8, 6))
+                plt.plot(mean_pred, fraction_pos, "s-", label="Model")
+                plt.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
+                plt.xlabel('Mean Predicted Probability')
+                plt.ylabel('Fraction of Positives')
+                plt.title('Calibration Plot')
+                plt.legend()
+                plt.grid(True, alpha=0.3)
+            else:
+                # Multiclass - plot for each class vs rest
+                fig, axes = plt.subplots(2, (n_classes + 1) // 2, figsize=(15, 10))
+                axes = axes.flatten() if n_classes > 2 else [axes]
+                
+                for i in range(n_classes):
+                    y_binary = (y_true == i).astype(int)
+                    fraction_pos, mean_pred = calibration_curve(y_binary, y_pred_proba[:, i], n_bins=10)
+                    
+                    ax = axes[i] if i < len(axes) else plt.gca()
+                    ax.plot(mean_pred, fraction_pos, "s-", label=f"{class_names[i]}")
+                    ax.plot([0, 1], [0, 1], "k:", label="Perfect")
+                    ax.set_xlabel('Mean Predicted Probability')
+                    ax.set_ylabel('Fraction of Positives')
+                    ax.set_title(f'Calibration - {class_names[i]}')
+                    ax.legend()
+                    ax.grid(True, alpha=0.3)
+                
+                # Hide unused subplots
+                for i in range(n_classes, len(axes)):
+                    axes[i].set_visible(False)
+            
+            plt.tight_layout()
+            plt.savefig(diagnostics_path / 'calibration_plot.png', dpi=300, bbox_inches='tight')
+            plt.close()
+            
+        except Exception as e:
+            logger.warning(f"Failed to generate calibration plots: {e}")
+
+    def _generate_shap_plots(self, model, X_sample, diagnostics_path: Path, max_samples=1000):
+        """Generate SHAP analysis plots."""
+        try:
+            # Limit sample size for SHAP analysis
+            if len(X_sample) > max_samples:
+                sample_idx = np.random.choice(len(X_sample), max_samples, replace=False)
+                X_shap = X_sample[sample_idx]
+            else:
+                X_shap = X_sample
+            
+            # Create SHAP explainer
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_shap)
+            
+            # Summary plot
+            plt.figure(figsize=(10, 8))
+            if isinstance(shap_values, list):  # Multiclass
+                shap.summary_plot(shap_values[1], X_shap, show=False)  # Use class 1 for binary, or first class
+            else:
+                shap.summary_plot(shap_values, X_shap, show=False)
+            plt.tight_layout()
+            plt.savefig(diagnostics_path / 'shap_summary.png', dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            # Feature importance plot
+            plt.figure(figsize=(10, 6))
+            if isinstance(shap_values, list):
+                shap.summary_plot(shap_values[1], X_shap, plot_type="bar", show=False)
+            else:
+                shap.summary_plot(shap_values, X_shap, plot_type="bar", show=False)
+            plt.tight_layout()
+            plt.savefig(diagnostics_path / 'shap_importance.png', dpi=300, bbox_inches='tight')
+            plt.close()
+            
+        except Exception as e:
+            logger.warning(f"Failed to generate SHAP plots: {e}")
+
+    def _generate_all_diagnostics(self, model, X_test, y_test, y_pred, y_pred_proba, 
+                                 class_names, diagnostics_path: Path):
+        """Generate all diagnostic plots and save them."""
+        print("Generating model diagnostics...")
+        
+        # Feature importance plots
+        self._plot_feature_importance(model, diagnostics_path)
+        
+        # Learning curves
+        self._plot_learning_curves(model, diagnostics_path)
+        
+        # Confusion matrix
+        self._plot_confusion_matrix(y_test, y_pred, class_names, diagnostics_path)
+        
+        # ROC curves
+        if y_pred_proba is not None:
+            self._plot_roc_curves(y_test, y_pred_proba, class_names, diagnostics_path)
+            self._plot_precision_recall_curves(y_test, y_pred_proba, class_names, diagnostics_path)
+            self._plot_calibration(y_test, y_pred_proba, class_names, diagnostics_path)
+        
+        # SHAP analysis (use a sample of training data)
+        try:
+            # Use the test set for SHAP analysis
+            self._generate_shap_plots(model, X_test, diagnostics_path)
+        except Exception as e:
+            logger.warning(f"SHAP analysis failed: {e}")
+        
+        print(f"Diagnostics saved to: {diagnostics_path}")
 
     # ------------------------------------------------------------------
     #  persistence helpers
@@ -538,8 +909,91 @@ class ModelTrainer:
         
         with open(path, "wb") as f:
             pickle.dump({"meta": meta, "model": model, "feature_manager": self.feature_manager}, f)
+        
+        # Save hyperparameters and configuration to diagnostics folder
+        self._save_model_metadata(name, model, meta)
+        
         self.last_saved_model_path = path
         return path
+
+    def _save_model_metadata(self, model_name: str, model, meta: dict):
+        """Save hyperparameters and configuration files."""
+        try:
+            diagnostics_path = self.run_dir / "model_diagnostics" / model_name
+            diagnostics_path.mkdir(parents=True, exist_ok=True)
+            
+            # Get model hyperparameters
+            hyperparameters = model.get_params()
+            
+            # Training configuration
+            training_config = {
+                "split_method": self.cfg.split_method,
+                "test_fraction": self.cfg.test_fraction,
+                "val_fraction": self.cfg.val_fraction,
+                "random_state": self.cfg.random_state,
+                "early_stopping_rounds": self.cfg.early_stopping_rounds,
+                "class_weighting": self.cfg.class_weighting,
+                "cv_folds": self.cfg.cv_folds,
+                "class_order": list(self.cfg.class_order),
+                "cache_dir": str(self.cfg.cache_dir) if self.cfg.cache_dir else None,
+            }
+            
+            # Add feature engineering config if available
+            if self.feature_manager is not None:
+                training_config["feature_engineering"] = self.feature_manager.get_config()
+            
+            # Save hyperparameters as JSON
+            with open(diagnostics_path / "hyperparameters.json", "w") as f:
+                json.dump(hyperparameters, f, indent=2, default=str)
+            
+            # Save training configuration as JSON
+            with open(diagnostics_path / "training_config.json", "w") as f:
+                json.dump(training_config, f, indent=2, default=str)
+            
+            # Save human-readable summary
+            summary_lines = [
+                f"Model: {model_name}",
+                f"Description: {meta.get('description', 'N/A')}",
+                f"Saved: {meta['saved_utc']}",
+                "",
+                "=== XGBoost Hyperparameters ===",
+            ]
+            
+            # Add key hyperparameters
+            key_params = ['n_estimators', 'max_depth', 'learning_rate', 'subsample', 
+                         'colsample_bytree', 'random_state', 'objective']
+            for param in key_params:
+                if param in hyperparameters:
+                    summary_lines.append(f"{param}: {hyperparameters[param]}")
+            
+            summary_lines.extend([
+                "",
+                "=== Training Configuration ===",
+                f"Split method: {training_config['split_method']}",
+                f"Test fraction: {training_config['test_fraction']}",
+                f"Validation fraction: {training_config['val_fraction']}",
+                f"CV folds: {training_config['cv_folds']}",
+                f"Class weighting: {training_config['class_weighting']}",
+                f"Early stopping rounds: {training_config['early_stopping_rounds']}",
+                "",
+                "=== Feature Engineering ===",
+            ])
+            
+            if self.feature_manager is not None:
+                summary_lines.append(f"Feature extractors: {len(self.feature_manager.extractors)}")
+                for extractor in self.feature_manager.extractors:
+                    summary_lines.append(f"  - {extractor.__class__.__name__}")
+                summary_lines.append(f"Total features: {len(meta.get('feature_names', []))}")
+            else:
+                summary_lines.append("No feature engineering applied")
+            
+            with open(diagnostics_path / "model_summary.txt", "w") as f:
+                f.write("\n".join(summary_lines))
+            
+            print(f"Model metadata saved to: {diagnostics_path}")
+            
+        except Exception as e:
+            logger.warning(f"Failed to save model metadata: {e}")
 
     @property
     def saved_model_path(self) -> Path | None:
