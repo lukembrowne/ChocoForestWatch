@@ -205,14 +205,9 @@ def generate_composites(run_id: str, year: str, db_host: str = "local"):
             logger.info("ℹ️  Only one composite generated, skipping merge")
             use_merged = False
         
-        # Create STAC collection for composites
-        logger.info("📚 Creating STAC collection for composites...")
-        use_remote_db = (db_host == "remote")
-        CompositeGenerator(run_id=run_id, year=year)._create_stac_collection(
-            use_remote_db=use_remote_db, 
-            use_merged_cog=use_merged
-        )
-        logger.info("✅ STAC collection created")
+        # Note: STAC collection creation is handled by the cfw-processing step
+        # to avoid redundant collection creation and S3 dependency issues
+        logger.info("📚 Skipping STAC creation - will be handled by cfw-processing step")
         
     except Exception as e:
         logger.error(f"❌ Error during composite generation: {str(e)}")

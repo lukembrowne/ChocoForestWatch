@@ -366,16 +366,18 @@ class CompositeGenerator:
             
             logger.info(f"✅ Successfully merged {len(local_cog_paths)} COGs into single file")
             
+            # Always upload merged COG to S3 for STAC collection creation
+            merged_s3_key = f"datasets/cfw-{self.run_id}/{self.year}/{self.run_id}_{self.year}_merged_composite.tif"
+            logger.info(f"⬆️  Uploading merged COG to S3: {merged_s3_key}")
+            upload_file(merged_path, merged_s3_key)
+            
             if use_local_files:
-                # For local workflow, return the local path
-                logger.info(f"🎉 Merge completed successfully, saved to: {merged_path}")
+                # For local workflow, keep local file and return local path
+                logger.info(f"🎉 Merge completed successfully, saved locally to: {merged_path}")
+                logger.info(f"🎉 Also uploaded to S3 for STAC collection: {merged_s3_key}")
                 return str(merged_path)
             else:
-                # Upload merged COG to S3
-                merged_s3_key = f"datasets/cfw-{self.run_id}/{self.year}/{self.run_id}_{self.year}_merged_composite.tif"
-                logger.info(f"⬆️  Uploading merged COG to S3: {merged_s3_key}")
-                upload_file(merged_path, merged_s3_key)
-                
+                # For S3 workflow, return S3 key  
                 logger.info("🎉 Merge and upload completed successfully")
                 return merged_s3_key
             
