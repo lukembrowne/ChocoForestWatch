@@ -47,7 +47,7 @@ python scripts/precalculate_stats.py --help
 The following benchmark collections are supported:
 
 - `datasets-hansen-tree-cover-2022` - Hansen Global Forest Change
-- `datasets-mapbiomes-2022` - MapBiomas Ecuador
+- `datasets-mapbiomas-2022` - MapBiomas Ecuador
 - `datasets-esa-landcover-2020` - ESA WorldCover
 - `datasets-jrc-forestcover-2020` - JRC Forest Cover
 - `datasets-palsar-2020` - ALOS PALSAR Forest Map

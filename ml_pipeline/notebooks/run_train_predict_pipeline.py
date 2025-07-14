@@ -58,6 +58,27 @@ poetry run python run_train_predict_pipeline.py \
   --run_id "test_2025_07_11" \
   --db-host "remote"
 
+# Run hyperparameter tuning (fast preset, 10 trials)
+poetry run python run_train_predict_pipeline.py \
+  --step tuning \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "tune_test_2025_07_13" \
+  --db-host "remote" \
+  --tune-preset fast \
+  --tune-trials 10 \
+  --tune-month 1
+
+# Run thorough hyperparameter tuning (50 trials)
+poetry run python run_train_predict_pipeline.py \
+  --step tuning \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "tune_thorough_2025_07_13" \
+  --db-host "remote" \
+  --tune-preset thorough \
+  --features ndvi ndwi
+
 Database Configuration:
 - Use --db-host "local" for development with local database
 - Use --db-host "remote" for production with remote database
@@ -78,8 +99,10 @@ import subprocess
 import argparse
 import logging
 import sys
+import json
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 from ml_pipeline.run_manager import RunManager     
 from ml_pipeline.composite_generator import CompositeGenerator
 from tqdm import tqdm
@@ -87,6 +110,10 @@ from joblib import Parallel, delayed
 from ml_pipeline.s3_utils import list_files
 from ml_pipeline.benchmark_tester import BenchmarkTester
 from ml_pipeline.benchmark_metrics_io import create_benchmark_summary_charts
+# from ml_pipeline.dataset_registration import register_cfw_dataset  # Disabled: datasets now managed via JSON config
+from ml_pipeline.hyperparameter_tuner import HyperparameterTuner, run_hyperparameter_tuning
+from ml_pipeline.tuning_reporter import generate_tuning_report
+from ml_pipeline.tuning_configs import TuningConfig
 
 # Configure logging for better pipeline visibility
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -108,12 +135,24 @@ def parse_arguments():
     parser.add_argument("--end_month", type=int, help="Ending month (1-12) - required for training")
     
     # Step selection - choose which steps to run
-    parser.add_argument("--step", type=str, choices=["training", "composites", "cfw-processing", "benchmarks", "all"], 
+    parser.add_argument("--step", type=str, choices=["training", "tuning", "composites", "cfw-processing", "benchmarks", "all"], 
                        default="all", help="Which step to run (default: all)")
     
     # Feature engineering options
-    parser.add_argument("--features", type=str, nargs="*", choices=["ndvi", "ndwi"], 
-                       default=[], help="Feature extractors to use (e.g., --features ndvi ndwi)")
+    parser.add_argument("--features", type=str, nargs="*", 
+                       choices=["ndvi", "ndwi", "evi", "savi", "brightness", "water_detection", "shadow"], 
+                       default=[], help="Feature extractors to use (e.g., --features ndvi ndwi evi)")
+    
+    # Hyperparameter tuning options
+    parser.add_argument("--tune-preset", type=str, choices=["fast", "balanced", "thorough", "regularization_focus", "depth_learning_focus"], 
+                       default="balanced", help="Tuning preset configuration")
+    parser.add_argument("--tune-trials", type=int, help="Number of tuning trials (overrides preset default)")
+    parser.add_argument("--tune-month", type=int, help="Specific month for tuning (1-12, defaults to first month)")
+    parser.add_argument("--tune-random-state", type=int, default=42, help="Random state for tuning reproducibility")
+    
+    # Boundary configuration
+    parser.add_argument("--boundary-geojson", type=str, 
+                       help="Path to GeoJSON file for boundary masking (optional, used for CFW dataset processing)")
     
     return parser.parse_args()
 
@@ -132,6 +171,16 @@ def validate_arguments(args):
             sys.exit(1)
         if args.start_month > args.end_month:
             logger.error("❌ start_month must be <= end_month")
+            sys.exit(1)
+    
+    # Validate tuning arguments
+    if args.step == "tuning":
+        if args.tune_month is not None:
+            if args.tune_month < 1 or args.tune_month > 12:
+                logger.error("❌ --tune-month must be between 1 and 12")
+                sys.exit(1)
+        if args.tune_trials is not None and args.tune_trials < 1:
+            logger.error("❌ --tune-trials must be positive")
             sys.exit(1)
 
 def process_quad_with_local(quad_name: str, run_id: str, year: str):
@@ -212,7 +261,7 @@ def generate_composites(run_id: str, year: str, db_host: str = "local"):
     except Exception as e:
         logger.error(f"❌ Error during composite generation: {str(e)}")
 
-def process_cfw_dataset_for_pipeline(run_id: str, year: str, db_host: str = "local"):
+def process_cfw_dataset_for_pipeline(run_id: str, year: str, db_host: str = "local", boundary_geojson_path: Optional[str] = None):
     """Process the ChocoForestWatch dataset created by this pipeline run."""
     logger.info("\n🎨 Processing ChocoForestWatch dataset for unified dataset structure...")
     
@@ -247,7 +296,7 @@ def process_cfw_dataset_for_pipeline(run_id: str, year: str, db_host: str = "loc
             run_id=run_id,
             year=year,
             input_path=input_path,
-            boundary_geojson_path=None,  # Could be made configurable
+            boundary_geojson_path=boundary_geojson_path,
             dry_run=False,
             db_host=db_host,
             asset_title=f"ChocoForestWatch - {run_id.replace('_', ' ').title()} {year}",
@@ -256,6 +305,12 @@ def process_cfw_dataset_for_pipeline(run_id: str, year: str, db_host: str = "loc
         
         if success:
             logger.info(f"✅ Successfully processed ChocoForestWatch dataset: cfw-{run_id}-{year}")
+            
+            # Dataset registration disabled - datasets now managed via JSON config
+            # To add new CFW datasets, manually update backend/djangocfw/core/datasets.json
+            logger.info(f"📋 Dataset generated: datasets-cfw-{run_id}-{year}")
+            logger.info("ℹ️  To make this dataset available in the frontend, manually add it to backend/djangocfw/core/datasets.json")
+                
         else:
             logger.error(f"❌ Failed to process ChocoForestWatch dataset: cfw-{run_id}-{year}")
             
@@ -324,6 +379,131 @@ def run_dataset_evaluation(run_id: str, year: str, project_id: int, db_host: str
     else:
         logger.warning("⚠️ No successful dataset evaluations - skipping summary chart generation")
 
+def run_hyperparameter_tuning_step(args, rm):
+    """Run hyperparameter tuning for optimal model parameters."""
+    logger.info("🔧 Starting Hyperparameter Tuning Step")
+    
+    # Determine which month to use for tuning
+    tune_month = args.tune_month if args.tune_month is not None else 1
+    tune_month_str = f"{tune_month:02d}"
+    
+    logger.info(f"🗓️  Using month {tune_month} for hyperparameter tuning")
+    
+    # Get path to the monthly processing script for data preparation
+    script_path = Path(__file__).parent / "train_and_predict_by_month.py"
+    if not script_path.exists():
+        logger.error(f"❌ Could not find script at {script_path}")
+        sys.exit(1)
+    
+    # First, prepare training data for the tuning month (extract pixels only)
+    logger.info("📊 Preparing training data for tuning...")
+    
+    # Import here to avoid issues with sys path
+    sys.path.append(str(Path(__file__).parent))
+    
+    try:
+        from train_and_predict_by_month import setup_trainer_and_extractor
+        
+        # Setup trainer and extractor using the same logic as monthly training
+        trainer, extractor = setup_trainer_and_extractor(
+            year=args.year,
+            month=tune_month_str,
+            run_dir=rm.run_path,
+            project_id=args.project_id,
+            db_host=args.db_host,
+            features=getattr(args, 'features', [])
+        )
+        
+        # Prepare training data (extract and cache pixels)
+        npz_cache_name = f"tune_data_{args.year}_{tune_month_str}.npz"
+        
+        logger.info("🎯 Extracting training polygons and pixel data...")
+        # This will extract pixels from the database for the specified month
+        # We need to call the data preparation directly since we have the trainer
+        
+        # Get training sets from the database (similar to train_and_predict_by_month.py)
+        from ml_pipeline.extractor import PolygonExtractor
+        
+        polygon_extractor = PolygonExtractor(
+            year=args.year,
+            month=tune_month,
+            project_id=args.project_id,
+            db_host=args.db_host
+        )
+        
+        training_sets = polygon_extractor.get_training_polygons()
+        logger.info(f"📍 Found {len(training_sets)} training sets for {args.year}-{tune_month_str}")
+        
+        if not training_sets:
+            logger.error(f"❌ No training data found for {args.year}-{tune_month_str}")
+            sys.exit(1)
+        
+        # Prepare training data cache
+        npz_path = trainer.prepare_training_data(
+            training_sets=training_sets,
+            cache_name=npz_cache_name,
+            overwrite=False  # Use cache if available
+        )
+        
+        logger.info(f"✅ Training data prepared: {npz_path}")
+        
+    except ImportError as e:
+        logger.error(f"❌ Failed to import required modules: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"❌ Failed to prepare training data: {e}")
+        sys.exit(1)
+    
+    # Run hyperparameter tuning
+    logger.info(f"🎯 Starting hyperparameter tuning with preset: {args.tune_preset}")
+    
+    try:
+        # Setup tuning configuration
+        tuning_config = TuningConfig.get_preset(args.tune_preset)
+        if args.tune_trials is not None:
+            tuning_config['n_trials'] = args.tune_trials
+        
+        logger.info(f"🔬 Will run {tuning_config['n_trials']} experiments")
+        logger.info(f"📋 Tuning parameters: {list(tuning_config['parameters'].keys())}")
+        
+        # Run tuning
+        best_result = run_hyperparameter_tuning(
+            trainer=trainer,
+            run_manager=rm,
+            npz_path=npz_path,
+            preset=args.tune_preset,
+            n_trials=args.tune_trials,
+            random_state=args.tune_random_state
+        )
+        
+        logger.info(f"🏆 Tuning completed! Best CV accuracy: {best_result.cv_accuracy_mean:.4f}")
+        logger.info(f"📊 Best test accuracy: {best_result.test_accuracy:.4f}")
+        
+        # Generate tuning report
+        logger.info("📝 Generating tuning analysis report...")
+        tuning_dir = rm.run_path / "hyperparameter_tuning"
+        report_path = generate_tuning_report(tuning_dir)
+        logger.info(f"📄 Tuning report generated: {report_path}")
+        
+        # Print best parameters for easy copying
+        logger.info("\n" + "="*60)
+        logger.info("🎯 BEST HYPERPARAMETERS FOUND")
+        logger.info("="*60)
+        for param, value in best_result.parameters.items():
+            if param != 'random_state':
+                logger.info(f"  {param}: {value}")
+        logger.info("="*60)
+        
+        # Save best parameters to easy-to-use file
+        best_params_file = rm.run_path / "best_hyperparameters.json"
+        with open(best_params_file, 'w') as f:
+            json.dump(best_result.parameters, f, indent=2)
+        logger.info(f"💾 Best parameters saved to: {best_params_file}")
+        
+    except Exception as e:
+        logger.error(f"❌ Hyperparameter tuning failed: {e}")
+        sys.exit(1)
+
 def main():
     """Main pipeline execution function."""
     # Parse and validate arguments
@@ -336,15 +516,26 @@ def main():
     project_id = args.project_id
     db_host = getattr(args, 'db_host', 'local')
     step = args.step
+    boundary_geojson_path = getattr(args, 'boundary_geojson', None)
     
     # Log pipeline configuration
     logger.info(f"🚀 Starting ML Pipeline - Step: {step}")
     logger.info(f"📅 Year: {year}")
     if step in ["training", "all"]:
         logger.info(f"📅 Months: {args.start_month}-{args.end_month}")
+    elif step == "tuning":
+        tune_month = args.tune_month if args.tune_month is not None else 1
+        logger.info(f"🔧 Tuning month: {tune_month}")
+        logger.info(f"⚙️  Tuning preset: {args.tune_preset}")
+        if args.tune_trials:
+            logger.info(f"🎯 Tuning trials: {args.tune_trials}")
     logger.info(f"📋 Project ID: {project_id}")
     logger.info(f"🏃 Run ID: {run_id}")
     logger.info(f"🗄️  Database: {db_host}")
+    if getattr(args, 'features', []):
+        logger.info(f"🔬 Features: {', '.join(args.features)}")
+    if boundary_geojson_path:
+        logger.info(f"🗺️  Boundary file: {boundary_geojson_path}")
     logger.info("=" * 60)
     
     # Create run manager for organizing results
@@ -354,17 +545,19 @@ def main():
     # Execute based on selected step
     if step == "training":
         run_training_step(args, rm)
+    elif step == "tuning":
+        run_hyperparameter_tuning_step(args, rm)
     elif step == "composites":
         generate_composites(run_id, year, db_host)
     elif step == "cfw-processing":
-        process_cfw_dataset_for_pipeline(run_id, year, db_host)
+        process_cfw_dataset_for_pipeline(run_id, year, db_host, boundary_geojson_path)
     elif step == "benchmarks":
         run_dataset_evaluation(run_id, year, project_id, db_host)
     elif step == "all":
         # Run all steps in sequence
         run_training_step(args, rm)
         generate_composites(run_id, year, db_host)
-        process_cfw_dataset_for_pipeline(run_id, year, db_host)
+        process_cfw_dataset_for_pipeline(run_id, year, db_host, boundary_geojson_path)
         run_dataset_evaluation(run_id, year, project_id, db_host)
     
     logger.info(f"\n🎉 Pipeline step '{step}' completed successfully at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")

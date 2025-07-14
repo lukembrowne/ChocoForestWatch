@@ -420,11 +420,22 @@ export default {
         showProjectSelection.value = true
       } else {
         try {
+          // Load datasets first to get available options
+          await mapStore.loadDatasets()
+          
           // Load default project automatically
           await projectStore.loadDefaultProject()
-        // Auto-load CFW Composite 2022 forest cover map
-          mapStore.addBenchmarkLayer('northern_choco_test_2025_06_20_2022_merged_composite')
-                    // Auto-load GFW 2022 deforestation alerts
+          
+          // Auto-load the first available CFW prediction dataset
+          const cfwDataset = mapStore.availableDatasets.find(dataset => 
+            dataset.type === 'prediction' && dataset.value.includes('cfw')
+          )
+          
+          if (cfwDataset) {
+            mapStore.addBenchmarkLayer(cfwDataset.value)
+          }
+          
+          // Auto-load GFW 2022 deforestation alerts
           mapStore.addGFWAlertsLayer('datasets-gfw-integrated-alerts-2022', '2022')
         } catch (err) {
           console.error('Failed to load default project:', err)

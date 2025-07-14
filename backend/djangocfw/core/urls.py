@@ -25,4 +25,6 @@ urlpatterns = [
     path('user/settings/', views.user_settings, name='user_settings'),
     path('api/statistics/system/', views.get_system_statistics, name='system-statistics'),
     path('western_ecuador_stats/', views.get_western_ecuador_stats, name='western-ecuador-stats'),
+    path('datasets/', views.get_datasets, name='datasets'),
+    path('datasets/collections/', views.get_dataset_collections, name='dataset-collections'),
 ]

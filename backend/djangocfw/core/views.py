@@ -46,22 +46,14 @@ _global_boundary_polygon_wgs84 = None  # cache for boundary geometry in WGS84
 DEFAULT_PUBLIC_PROJECT_ID = int(os.getenv("DEFAULT_PUBLIC_PROJECT_ID"))
 
 # ---------------------------------------------------------------------------
-# Allowed benchmark / land-cover collections that users can choose from
-# Update this list as new datasets become available.
+# Dynamic dataset validation - collections are now managed through JSON config
+# Use dataset_service.get_enabled_collection_ids() instead of hardcoded lists
 # ---------------------------------------------------------------------------
 
-ALLOWED_BENCHMARK_COLLECTIONS = [
-    "datasets-hansen-tree-cover-2022",
-    "datasets-mapbiomes-2022",
-    "datasets-esa-landcover-2020",
-    "datasets-jrc-forestcover-2020",
-    "datasets-palsar-2020",
-    "datasets-wri-treecover-2020",
-    "northern_choco_test_2025_06_20_2022_merged_composite",  # CFW composite
-    "datasets-gfw-integrated-alerts-2022",  # GFW deforestation alerts
-    "datasets-gfw-integrated-alerts-2023",
-    "datasets-gfw-integrated-alerts-2024",
-]
+def get_allowed_datasets():
+    """Get enabled dataset collections from JSON configuration"""
+    from .dataset_service import get_enabled_collection_ids
+    return get_enabled_collection_ids()
 
 def _load_boundary_polygon():
     """Load and cache the project boundary as a shapely geometry in Web Mercator projection."""
@@ -595,6 +587,26 @@ class DeforestationHotspotViewSet(viewsets.ModelViewSet):
         return Response({"message": "Hotspot verification updated"})
 
 @api_view(['GET'])
+def get_datasets(request):
+    """Get datasets from JSON configuration"""
+    from .dataset_service import get_enabled_datasets
+    
+    dataset_type = request.GET.get('type', None)
+    datasets = get_enabled_datasets(dataset_type)
+    
+    return Response({'datasets': datasets})
+
+@api_view(['GET'])
+def get_dataset_collections(request):
+    """Get dataset collection IDs from JSON configuration"""
+    from .dataset_service import get_enabled_collection_ids
+    
+    dataset_type = request.GET.get('type', None)
+    collections = get_enabled_collection_ids(dataset_type)
+    
+    return Response({'collections': collections})
+
+@api_view(['GET'])
 def get_model_metrics(request, project_id):
     """
     Retrieve metrics for the most recent trained model of a project
@@ -948,9 +960,10 @@ def aoi_summary(request):
             raise ValueError("TITILER_URL environment variable is not set")
 
         # Collection ID comes from client, fallback to first allowed entry
-        collection_id = request.data.get("collection_id") or ALLOWED_BENCHMARK_COLLECTIONS[0]
+        allowed_collections = get_allowed_datasets()
+        collection_id = request.data.get("collection_id") or allowed_collections[0]
 
-        if collection_id not in ALLOWED_BENCHMARK_COLLECTIONS:
+        if collection_id not in allowed_collections:
             logger.warning(f"Invalid collection_id received: {collection_id}")
             return Response({"error": "Invalid collection_id"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -977,14 +990,15 @@ def aoi_summary(request):
 @permission_classes([AllowAny])
 def get_western_ecuador_stats(request):
     """Get cached summary statistics for western Ecuador boundary polygon by collection."""
-    from .services.western_ecuador_stats import get_western_ecuador_stats as get_stats, ALLOWED_BENCHMARK_COLLECTIONS
+    from .services.western_ecuador_stats import get_western_ecuador_stats as get_stats
     
     try:
         collection_id = request.query_params.get('collection_id')
         if not collection_id:
             return Response({"error": "collection_id parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
         
-        if collection_id not in ALLOWED_BENCHMARK_COLLECTIONS:
+        allowed_collections = get_allowed_datasets()
+        if collection_id not in allowed_collections:
             return Response({"error": "Invalid collection_id"}, status=status.HTTP_400_BAD_REQUEST)
         
         # Get stats using the service

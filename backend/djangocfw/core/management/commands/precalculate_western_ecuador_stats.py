@@ -4,7 +4,7 @@ import logging
 from core.services.western_ecuador_stats import (
     precalculate_all_stats, 
     clear_all_cached_stats,
-    ALLOWED_BENCHMARK_COLLECTIONS
+    get_allowed_datasets
 )
 
 logger = logging.getLogger(__name__)
@@ -42,17 +42,20 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        # Get current allowed collections
+        allowed_collections = get_allowed_datasets()
+        
         # Validate collection option
-        if options['collection'] and options['collection'] not in ALLOWED_BENCHMARK_COLLECTIONS:
+        if options['collection'] and options['collection'] not in allowed_collections:
             raise CommandError(f"Invalid collection: {options['collection']}")
 
         if options['test_first']:
-            collections_to_process = [ALLOWED_BENCHMARK_COLLECTIONS[0]]  # First collection only
+            collections_to_process = [allowed_collections[0]]  # First collection only
             self.stdout.write(self.style.WARNING("🧪 Test mode: Processing first collection only"))
         elif options['collection']:
             collections_to_process = [options['collection']]
         else:
-            collections_to_process = ALLOWED_BENCHMARK_COLLECTIONS
+            collections_to_process = allowed_collections
 
         self.stdout.write(f"Starting pre-calculation for {len(collections_to_process)} collections...")
 

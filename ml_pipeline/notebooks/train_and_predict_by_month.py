@@ -15,7 +15,10 @@ import argparse
 import logging
 from ml_pipeline.run_manager import RunManager    
 # Import feature engineering components
-from ml_pipeline.feature_engineering import NDVIExtractor, NDWIExtractor, FeatureManager
+from ml_pipeline.feature_engineering import (
+    NDVIExtractor, NDWIExtractor, FeatureManager, EviExtractor, SaviExtractor,
+    BrightnessTempExtractor, WaterDetectionExtractor, ShadowIndexExtractor
+)
 
 # Configure logging for better pipeline visibility
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -39,8 +42,9 @@ if __name__ == "__main__":
     parser.add_argument("--db-host", type=str, choices=["local", "remote"], default="local", 
                        help="Database host configuration: 'local' for localhost, 'remote' for production database")
     # Feature engineering options
-    parser.add_argument("--features", type=str, nargs="*", choices=["ndvi", "ndwi"], 
-                       default=[], help="Feature extractors to use (e.g., --features ndvi ndwi)")
+    parser.add_argument("--features", type=str, nargs="*", 
+                       choices=["ndvi", "ndwi", "evi", "savi", "brightness", "water_detection", "shadow"], 
+                       default=[], help="Feature extractors to use (e.g., --features ndvi ndwi evi)")
     args = parser.parse_args()
 
     year = args.year
@@ -115,6 +119,21 @@ if __name__ == "__main__":
     if "ndwi" in features:
         feature_extractors.append(NDWIExtractor())
         logger.info("   ✓ NDWI extractor added")
+    if "evi" in features:
+        feature_extractors.append(EviExtractor())
+        logger.info("   ✓ EVI extractor added")
+    if "savi" in features:
+        feature_extractors.append(SaviExtractor())
+        logger.info("   ✓ SAVI extractor added")
+    if "brightness" in features:
+        feature_extractors.append(BrightnessTempExtractor())
+        logger.info("   ✓ Brightness/texture extractor added")
+    if "water_detection" in features:
+        feature_extractors.append(WaterDetectionExtractor())
+        logger.info("   ✓ Water detection extractor added")
+    if "shadow" in features:
+        feature_extractors.append(ShadowIndexExtractor())
+        logger.info("   ✓ Shadow index extractor added")
     
     if feature_extractors:
         logger.info(f"🧪 Feature engineering enabled with {len(feature_extractors)} extractors: {[e.name for e in feature_extractors]}")

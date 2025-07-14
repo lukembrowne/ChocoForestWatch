@@ -20,7 +20,7 @@
         <q-btn 
           flat 
           size="sm" 
-          :href="t(`layers.switcher.benchmarks.datasets.${getDatasetKey(currentBenchmark)}.url`)" 
+          :href="getDatasetUrl(currentBenchmark)" 
           target="_blank" 
           class="current-dataset-learn-more"
           @click.stop
@@ -146,7 +146,7 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
 import { useI18n } from 'vue-i18n'
 
@@ -174,10 +174,10 @@ export default {
           groupedDatasets[key] = {
             key,
             datasets: [],
-            name: t(`layers.switcher.benchmarks.datasets.${key}.title`),
-            description: t(`layers.switcher.benchmarks.datasets.${key}.description`),
+            name: t(`datasets.${key}.name`),
+            description: t(`datasets.${key}.description`),
             resolution: dataset.resolution,
-            learnMoreUrl: t(`layers.switcher.benchmarks.datasets.${key}.url`),
+            learnMoreUrl: getDatasetUrl(dataset.value),
             isFeatured: dataset.value.includes('nicfi-pred'),
             icon: getDatasetIcon(dataset.value)
           }
@@ -228,7 +228,7 @@ export default {
       if (!currentBenchmark.value) return null
       const dataset = benchmarkOptions.value.find(option => option.value === currentBenchmark.value)
       if (!dataset) return null
-      return t(`layers.switcher.benchmarks.datasets.${getDatasetKey(currentBenchmark.value)}.title`)
+      return t(`datasets.${getDatasetKey(currentBenchmark.value)}.name`)
     })
 
     const addBenchmark = (val) => {
@@ -255,24 +255,24 @@ export default {
       selectedBenchmark.value = rowValue
     }
 
-    const getDatasetKey = (value) => {
-      if (value.startsWith('datasets-gfw-integrated-alerts-')) {
-        return 'alerts'
+      const getDatasetKey = (value) => {
+        if (value.startsWith('datasets-gfw-integrated-alerts-')) {
+          return 'alerts'
+        }
+        if (value.includes('cfw')) {
+          return 'cfw-composite-2022'
+        }
+        if (value === 'planet-nicfi-basemap') {
+          return 'planet-nicfi-basemap'
+        }
+        return value.split('-')[1]
       }
-      if (value === 'northern_choco_test_2025_06_20_2022_merged_composite') {
-        return 'cfw-composite'
-      }
-      if (value === 'planet-nicfi-basemap') {
-        return 'planet-nicfi'
-      }
-      return value.split('-')[1]
-    }
 
     const getDatasetIcon = (value) => {
       if (value.includes('nicfi-pred')) return 'forest'
       if (value === 'planet-nicfi-basemap') return 'satellite'
       if (value.includes('hansen')) return 'satellite_alt'
-      if (value.includes('mapbiomes')) return 'terrain'
+      if (value.includes('mapbiomas')) return 'terrain'
       if (value.includes('esa')) return 'public'
       if (value.includes('jrc')) return 'park'
       if (value.includes('palsar')) return 'radar'
@@ -301,6 +301,19 @@ export default {
       return dataset ? dataset.type : 'dataset'
     }
 
+    const getDatasetUrl = (value) => {
+      const dataset = benchmarkOptions.value.find(b => b.value === value)
+      return dataset ? dataset.source_url : '#'
+    }
+
+
+    // Load datasets when component mounts
+    onMounted(async () => {
+      if (!mapStore.datasetsLoaded) {
+        await mapStore.loadDatasets()
+      }
+    })
+
     return {
       showDialog,
       benchmarkOptions,
@@ -314,6 +327,7 @@ export default {
       getDatasetResolution,
       getDatasetVersion,
       getDatasetType,
+      getDatasetUrl,
       tableRows,
       columns,
       selectRow,

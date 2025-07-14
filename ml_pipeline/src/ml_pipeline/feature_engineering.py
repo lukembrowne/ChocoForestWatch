@@ -418,3 +418,280 @@ class TemporalExtractor(FeatureExtractor):
     def get_feature_names(self) -> List[str]:
         """Return feature names."""
         return ["month_sin", "month_cos", "year_norm", "day_sin"]
+
+
+class EviExtractor(FeatureExtractor):
+    """Extract Enhanced Vegetation Index (EVI) from blue, red, and NIR bands.
+    
+    EVI = 2.5 * (NIR - Red) / (NIR + 6*Red - 7.5*Blue + 1)
+    
+    EVI is superior to NDVI for:
+    - Reducing atmospheric effects through the blue band correction
+    - Better performance in dense vegetation areas where NDVI saturates
+    - More sensitive to canopy structural variations
+    - Improved accuracy in tropical forest monitoring
+    """
+    
+    def __init__(self):
+        super().__init__("EVI")
+    
+    def extract_features(self, X: np.ndarray) -> np.ndarray:
+        """Extract EVI from blue, red, and NIR bands.
+        
+        Parameters
+        ----------
+        X : np.ndarray
+            Input array of shape (n_pixels, n_bands) where bands are [B, G, R, NIR].
+        
+        Returns
+        -------
+        np.ndarray
+            EVI values of shape (n_pixels, 1).
+        """
+        # Extract bands (NICFI order: B, G, R, NIR)
+        blue = X[:, 0].astype(np.float64)   # Blue is index 0
+        red = X[:, 2].astype(np.float64)    # Red is index 2
+        nir = X[:, 3].astype(np.float64)    # NIR is index 3
+        
+        # Calculate EVI with atmospheric correction
+        epsilon = 1e-8
+        numerator = 2.5 * (nir - red)
+        denominator = nir + 6*red - 7.5*blue + 1 + epsilon
+        evi = numerator / denominator
+        
+        # Clip to reasonable range (EVI typically ranges from -1 to 1)
+        evi = np.clip(evi, -1.0, 1.0)
+        
+        return evi.reshape(-1, 1)
+    
+    def get_feature_names(self) -> List[str]:
+        """Return feature names."""
+        return ["evi"]
+
+
+class SaviExtractor(FeatureExtractor):
+    """Extract Soil-Adjusted Vegetation Index (SAVI) from red and NIR bands.
+    
+    SAVI = (NIR - Red) / (NIR + Red + L) * (1 + L)
+    
+    SAVI is valuable for:
+    - Reducing soil background effects in sparse vegetation
+    - Better performance in arid and semi-arid regions
+    - Distinguishing between bare soil and low vegetation cover
+    - Improved accuracy in early growth stage vegetation detection
+    """
+    
+    def __init__(self, L: float = 0.5):
+        """Initialize SAVI extractor.
+        
+        Parameters
+        ----------
+        L : float, default=0.5
+            Soil brightness correction factor:
+            - L=0 for dense vegetation (equivalent to NDVI)
+            - L=0.5 for intermediate vegetation density
+            - L=1 for sparse vegetation
+        """
+        super().__init__("SAVI")
+        self.L = L
+    
+    def extract_features(self, X: np.ndarray) -> np.ndarray:
+        """Extract SAVI from red and NIR bands.
+        
+        Parameters
+        ----------
+        X : np.ndarray
+            Input array of shape (n_pixels, n_bands) where bands are [B, G, R, NIR].
+        
+        Returns
+        -------
+        np.ndarray
+            SAVI values of shape (n_pixels, 1).
+        """
+        # Extract red and NIR bands (NICFI order: B, G, R, NIR)
+        red = X[:, 2].astype(np.float64)    # Red is index 2
+        nir = X[:, 3].astype(np.float64)    # NIR is index 3
+        
+        # Calculate SAVI with soil adjustment
+        epsilon = 1e-8
+        numerator = (nir - red) * (1 + self.L)
+        denominator = nir + red + self.L + epsilon
+        savi = numerator / denominator
+        
+        # Clip to valid range
+        savi = np.clip(savi, -1.0, 1.0)
+        
+        return savi.reshape(-1, 1)
+    
+    def get_feature_names(self) -> List[str]:
+        """Return feature names."""
+        return ["savi"]
+
+
+class BrightnessTempExtractor(FeatureExtractor):
+    """Extract brightness temperature and textural features from NIR band.
+    
+    Computes:
+    - Brightness: Overall reflectance intensity
+    - Texture proxies: Local standard deviation to capture surface roughness
+    
+    These features help distinguish:
+    - Urban areas (high brightness, high texture)
+    - Water bodies (low brightness, low texture)
+    - Forest canopy (moderate brightness, high texture from shadows)
+    - Agricultural fields (variable brightness, low-moderate texture)
+    """
+    
+    def __init__(self, texture_window: int = 3):
+        """Initialize brightness and texture extractor.
+        
+        Parameters
+        ----------
+        texture_window : int, default=3
+            Window size for texture calculation (not implemented for pixel-level data).
+        """
+        super().__init__("BrightnessTexture")
+        self.texture_window = texture_window
+    
+    def extract_features(self, X: np.ndarray) -> np.ndarray:
+        """Extract brightness and texture features.
+        
+        Parameters
+        ----------
+        X : np.ndarray
+            Input array of shape (n_pixels, n_bands) where bands are [B, G, R, NIR].
+        
+        Returns
+        -------
+        np.ndarray
+            Brightness and texture features of shape (n_pixels, 3).
+        """
+        # Extract all bands for brightness calculation
+        blue = X[:, 0].astype(np.float64)
+        green = X[:, 1].astype(np.float64)
+        red = X[:, 2].astype(np.float64)
+        nir = X[:, 3].astype(np.float64)
+        
+        # Overall brightness (mean of all bands)
+        brightness = (blue + green + red + nir) / 4.0
+        
+        # NIR brightness (important for vegetation analysis)
+        nir_brightness = nir
+        
+        # Spectral variability as texture proxy
+        # Calculate standard deviation across bands for each pixel
+        band_stack = np.column_stack([blue, green, red, nir])
+        spectral_variance = np.std(band_stack, axis=1)
+        
+        features = np.column_stack([brightness, nir_brightness, spectral_variance])
+        
+        return features
+    
+    def get_feature_names(self) -> List[str]:
+        """Return feature names."""
+        return ["brightness", "nir_brightness", "spectral_variance"]
+
+class WaterDetectionExtractor(FeatureExtractor):
+    """Extract water detection indices for comprehensive water body identification.
+    
+    Computes:
+    - Blue-NIR ratio: Simple but effective water detector
+    
+    These indices excel at:
+    - Distinguishing water from shadows and dark surfaces
+    - Detecting water under various atmospheric conditions
+    - Separating permanent water from seasonal flooding
+    - Identifying small water bodies and streams
+    """
+    
+    def __init__(self):
+        super().__init__("WaterDetection")
+    
+    def extract_features(self, X: np.ndarray) -> np.ndarray:
+        """Extract water detection indices.
+        
+        Parameters
+        ----------
+        X : np.ndarray
+            Input array of shape (n_pixels, n_bands) where bands are [B, G, R, NIR].
+        
+        Returns
+        -------
+        np.ndarray
+            Water detection indices of shape (n_pixels, 3).
+        """
+        # Extract bands (NICFI order: B, G, R, NIR)
+        blue = X[:, 0].astype(np.float64)
+        green = X[:, 1].astype(np.float64)
+        red = X[:, 2].astype(np.float64)
+        nir = X[:, 3].astype(np.float64)
+        
+        epsilon = 1e-8
+        
+        # Blue-NIR ratio: Simple but effective water detector
+        blue_nir_ratio = blue / (nir + epsilon)
+        # Normalize using log transform to handle wide range
+        blue_nir_log = np.log1p(blue_nir_ratio)  # log(1 + x) for numerical stability
+        blue_nir_norm = np.tanh(blue_nir_log)  # Normalize to [-1, 1]
+        
+        features = np.column_stack([blue_nir_norm])
+        
+        return features
+    
+    def get_feature_names(self) -> List[str]:
+        """Return feature names."""
+        return ["blue_nir_water"]
+
+
+class ShadowIndexExtractor(FeatureExtractor):
+    """Extract shadow detection indices for improved classification accuracy.
+    
+    Computes shadow indices that help distinguish:
+    - Topographic shadows in mountainous areas
+    - Cloud shadows that can mask actual land cover
+    - Building shadows in urban areas
+    
+    Proper shadow detection improves classification by:
+    - Reducing misclassification of shadows as water
+    - Enabling shadow-corrected vegetation analysis
+    - Improving urban area delineation
+    """
+    
+    def __init__(self):
+        super().__init__("ShadowIndex")
+    
+    def extract_features(self, X: np.ndarray) -> np.ndarray:
+        """Extract shadow detection indices.
+        
+        Parameters
+        ----------
+        X : np.ndarray
+            Input array of shape (n_pixels, n_bands) where bands are [B, G, R, NIR].
+        
+        Returns
+        -------
+        np.ndarray
+            Shadow indices of shape (n_pixels, 2).
+        """
+        # Extract bands (NICFI order: B, G, R, NIR)
+        blue = X[:, 0].astype(np.float64)
+        green = X[:, 1].astype(np.float64)
+        red = X[:, 2].astype(np.float64)
+        nir = X[:, 3].astype(np.float64)
+        
+        # Shadow index 1: Low overall brightness with consistent low values across bands
+        total_brightness = blue + green + red + nir
+        shadow_index1 = 1.0 / (total_brightness + 1e-8)  # Inverse brightness
+        shadow_index1 = np.tanh(shadow_index1)  # Normalize
+        
+        # Shadow index 2: Blue-dominated spectral signature (shadows often appear bluish)
+        blue_dominance = blue / (red + nir + 1e-8)
+        shadow_index2 = np.tanh(blue_dominance / 2.0)  # Normalize
+        
+        features = np.column_stack([shadow_index1, shadow_index2])
+        
+        return features
+    
+    def get_feature_names(self) -> List[str]:
+        """Return feature names."""
+        return ["shadow_brightness", "shadow_blue_dom"]

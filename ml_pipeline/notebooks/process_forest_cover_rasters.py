@@ -61,13 +61,13 @@ DATASET_CONFIGS = {
         "year": 2022,
         "description": "Hansen Global Forest Change Tree Cover 2022 for Western Ecuador"
     },
-    "mapbiomes-2022": {
+    "mapbiomas-2022": {
         "input_path": "./dataset_rasters/ecuador_coverage_2022_wec.tif",
-        "s3_prefix": "datasets/mapbiomes",
-        "collection_id": "datasets-mapbiomes-2022",
-        "asset_title": "MapBiomes 2022",
+        "s3_prefix": "datasets/mapbiomas",
+        "collection_id": "datasets-mapbiomas-2022",
+        "asset_title": "Mapbiomas 2022",
         "year": 2022,
-        "description": "MapBiomes Ecuador Land Cover 2022 for Western Ecuador"
+        "description": "Mapbiomas Ecuador Land Cover 2022 for Western Ecuador"
     },
     "esa-landcover-2020": {
         "input_path": "./dataset_rasters/LandCover2020-ESA_wec_merged.tif",

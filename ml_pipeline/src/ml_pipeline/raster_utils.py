@@ -33,7 +33,7 @@ def pixels_to_labels(collection: str, pixels: np.ndarray) -> np.ndarray:
     elif collection == "datasets-hansen-tree-cover-2022":
         out = np.where(pixels >= 90, "Forest", "Non-Forest")
 
-    elif collection == "datasets-mapbiomes-2022":
+    elif collection == "datasets-mapbiomas-2022":
         out = np.where(
                 np.logical_or.reduce([
                     pixels == 3,

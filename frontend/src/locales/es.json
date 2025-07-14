@@ -550,58 +550,6 @@
     "switcher": {
       "benchmarks": {
         "add": "Agregar",
-        "datasets": {
-          "alerts": {
-            "description": "Alertas integradas de deforestación de Global Forest Watch incluyendo GLAD, RADD y otros sistemas que proporcionan detección de perturbaciones forestales en tiempo casi real.",
-            "title": "Alertas de Deforestación GFW",
-            "url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
-          },
-          "cfw-composite": {
-            "description": "Mapa de cobertura forestal generado por aprendizaje automático de ChocoForestWatch para 2022, específicamente entrenado para la región del Chocó Norte de Ecuador usando imágenes satelitales NICFI.",
-            "title": "CFW Compuesto 2022",
-            "url": "https://github.com/lukembrowne/chocoforestwatch"
-          },
-          "esa": {
-            "description": "Mapa global de cobertura terrestre de 10 m (11 clases) generado a partir de imágenes Sentinel-1 y -2 por el consorcio ESA WorldCover.",
-            "title": "ESA WorldCover 2020 (10 m Global)",
-            "url": "https://esa-worldcover.org/en"
-          },
-          "gfw-alerts": {
-            "description": "Alertas integradas de deforestación de Global Forest Watch incluyendo GLAD, RADD y otros sistemas que proporcionan detección de perturbaciones forestales en tiempo casi real.",
-            "title": "Alertas Integradas de Deforestación GFW",
-            "url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
-          },
-          "hansen": {
-            "description": "Extensión forestal anual de 30 m, pérdida y ganancia derivadas de Landsat por el laboratorio GLAD de la Universidad de Maryland (Hansen et al.). Último año: 2022.",
-            "title": "Cambio Forestal Global v1.10 (2000 – 2022)",
-            "url": "https://data.globalforestwatch.org/documents/941f17325a494ed78c4817f9bb20f33a"
-          },
-          "jrc": {
-            "description": "Mapa de 10 m de cobertura arbórea en pie para 2020 compilado a partir de Sentinel-2 por el Observatorio Forestal JRC de la Comisión Europea.",
-            "title": "Cobertura Forestal Global JRC 2020 (v2, 10 m)",
-            "url": "https://data.europa.eu/89h/e554d6fb-6340-45d5-9309-332337e5bc26"
-          },
-          "mapbiomes": {
-            "description": "Clasificaciones anuales de cobertura terrestre de 30 m para todos los biomas ecuatorianos producidas por la red MapBiomas.",
-            "title": "MapBiomas Ecuador 2022",
-            "url": "https://ecuador.mapbiomas.org/en/home-english/"
-          },
-          "palsar": {
-            "description": "Clasificación global de 25 m de forestal/no forestal a partir de mosaicos de retrodispersión SAR (PALSAR-2) de JAXA.",
-            "title": "Mapa Forestal/No Forestal ALOS PALSAR-2 2020",
-            "url": "https://developers.google.com/earth-engine/datasets/catalog/JAXA_ALOS_PALSAR_YEARLY_FNF4"
-          },
-          "planet-nicfi": {
-            "description": "Imágenes satelitales mensuales de alta resolución (4.7m) de Planet Labs disponibles a través de la Iniciativa de Clima y Bosques Internacional de Noruega.",
-            "title": "Mapa Base Planet NICFI",
-            "url": "https://www.planet.com/nicfi/"
-          },
-          "wri": {
-            "description": "Mapa de cobertura arbórea basado en probabilidades de alta resolución (10 m) para los trópicos desarrollado por WRI Land & Carbon Lab y sus socios.",
-            "title": "Cobertura Arbórea Tropical WRI 2020 (10 m)",
-            "url": "https://data.globalforestwatch.org/datasets/gfw::tropical-tree-cover/about"
-          }
-        },
         "description": "Agregue conjuntos de datos para comparar y analizar diferentes fuentes de datos",
         "featured": "Destacado",
         "title": "Agregar Conjunto de Datos"
@@ -1086,5 +1034,51 @@
         "title": ""
       }
     }
+  },
+  "datasets": {
+    "hansen": {
+      "name": "Cambio Forestal Global 2022",
+      "description": "Extensión, pérdida y ganancia forestal anual de 30 m derivada de Landsat por el laboratorio GLAD de la Universidad de Maryland (Hansen et al.). Último año: 2022."
+    },
+    "mapbiomas": {
+      "name": "MapBiomas Ecuador 2022",
+      "description": "Clasificaciones anuales de cobertura terrestre de 30 m para todos los biomas ecuatorianos producidas por la red MapBiomas."
+    },
+    "esa": {
+      "name": "ESA WorldCover 2020",
+      "description": "Mapa global de cobertura terrestre de 10 m (11 clases) generado a partir de imágenes Sentinel-1 y -2 por el consorcio ESA WorldCover."
+    },
+    "jrc": {
+      "name": "JRC Cobertura Forestal Global 2020",
+      "description": "Mapa de 10 m de cobertura arbórea en pie para 2020 compilado a partir de Sentinel-2 por el Observatorio Forestal JRC de la Comisión Europea."
+    },
+    "palsar": {
+      "name": "ALOS PALSAR-2 2020",
+      "description": "Clasificación global de bosque/no bosque de 25 m de mosaicos de retrodispersión SAR de JAXA (PALSAR-2)."
+    },
+    "wri": {
+      "name": "WRI Cobertura Arbórea Tropical 2020",
+      "description": "Mapa de cobertura arbórea de alta resolución (10 m) basado en probabilidades para los trópicos desarrollado por WRI Land & Carbon Lab y socios."
+    },
+    "gfw_alerts_2022": {
+      "name": "Alertas Integradas de Deforestación GFW 2022",
+      "description": "Alertas integradas de deforestación de Global Forest Watch incluyendo GLAD, RADD y otros sistemas que proporcionan detección de perturbaciones forestales en tiempo casi real."
+    },
+    "gfw_alerts_2023": {
+      "name": "Alertas Integradas de Deforestación GFW 2023",
+      "description": "Alertas integradas de deforestación de Global Forest Watch incluyendo GLAD, RADD y otros sistemas que proporcionan detección de perturbaciones forestales en tiempo casi real."
+    },
+    "gfw_alerts_2024": {
+      "name": "Alertas Integradas de Deforestación GFW 2024",
+      "description": "Alertas integradas de deforestación de Global Forest Watch incluyendo GLAD, RADD y otros sistemas que proporcionan detección de perturbaciones forestales en tiempo casi real."
+    },
+    "cfw-composite-2022": {
+      "name": "CFW Compuesto 2022",
+      "description": "Mapa de cobertura forestal generado por aprendizaje automático de ChocoForestWatch para 2022, específicamente entrenado para la región del Chocó Norte de Ecuador usando imágenes satelitales NICFI."
+    },
+    "planet-nicfi-basemap": {
+      "name": "Mapa base NICFI de Planet",
+      "description": "Imágenes satelitales mensuales de alta resolución de Planet Labs a través de la Iniciativa Internacional de Clima y Bosques de Noruega."
+  }
   }
 }
