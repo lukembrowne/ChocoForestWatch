@@ -20,7 +20,7 @@
         <q-btn 
           flat 
           size="sm" 
-          :href="t(`layers.switcher.benchmarks.datasets.${getDatasetKey(currentBenchmark)}.url`)" 
+          :href="getDatasetUrl(currentBenchmark)" 
           target="_blank" 
           class="current-dataset-learn-more"
           @click.stop
@@ -119,7 +119,7 @@
                           'year-chip-current': yearData.isCurrent 
                         }"
                         @click.stop="addBenchmark(yearData.value)"
-                        :title="`Click to add ${props.row.name} ${yearData.year}`"
+                        :title="yearData.isCurrent ? `${props.row.name} ${yearData.year} (Current)` : `Click to add ${props.row.name} ${yearData.year}`"
                       >
                         {{ yearData.year }}
                         <q-icon 
@@ -129,6 +129,22 @@
                           class="current-year-icon" 
                         />
                       </div>
+                    </div>
+                  </div>
+                  <div v-else-if="col.name === 'add'" class="table-add-container">
+                    <q-btn
+                      v-if="!props.row.years.some(y => y.isCurrent)"
+                      size="sm"
+                      icon="add"
+                      :label="t('analysis.panel.addDataset')"
+                      @click.stop="addBenchmark(props.row.years[0].value)"
+                      class="add-dataset-btn-table"
+                      no-caps
+                      flat
+                    />
+                    <div v-else class="current-dataset-indicator">
+                      <q-icon name="check_circle" color="green" size="sm" />
+                      <span class="current-text">{{ t('analysis.panel.currentDataset') }}</span>
                     </div>
                   </div>
                 </q-td>
@@ -146,7 +162,7 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
 import { useI18n } from 'vue-i18n'
 
@@ -174,10 +190,10 @@ export default {
           groupedDatasets[key] = {
             key,
             datasets: [],
-            name: t(`layers.switcher.benchmarks.datasets.${key}.title`),
-            description: t(`layers.switcher.benchmarks.datasets.${key}.description`),
+            name: t(`datasets.${key}.name`),
+            description: t(`datasets.${key}.description`),
             resolution: dataset.resolution,
-            learnMoreUrl: t(`layers.switcher.benchmarks.datasets.${key}.url`),
+            learnMoreUrl: getDatasetUrl(dataset.value),
             isFeatured: dataset.value.includes('nicfi-pred'),
             icon: getDatasetIcon(dataset.value)
           }
@@ -209,14 +225,21 @@ export default {
         label: t('analysis.panel.table.dataset'),
         field: 'name',
         align: 'left',
-        style: 'min-width: 400px;'
+        style: 'min-width: 350px;'
       },
       {
         name: 'years',
         label: t('analysis.panel.table.years'),
         field: 'years',
         align: 'center',
-        style: 'width: 200px'
+        style: 'width: 180px'
+      },
+      {
+        name: 'add',
+        label: t('analysis.panel.table.action'),
+        field: 'add',
+        align: 'center',
+        style: 'width: 120px'
       }
     ]
     
@@ -228,7 +251,7 @@ export default {
       if (!currentBenchmark.value) return null
       const dataset = benchmarkOptions.value.find(option => option.value === currentBenchmark.value)
       if (!dataset) return null
-      return t(`layers.switcher.benchmarks.datasets.${getDatasetKey(currentBenchmark.value)}.title`)
+      return t(`datasets.${getDatasetKey(currentBenchmark.value)}.name`)
     })
 
     const addBenchmark = (val) => {
@@ -255,24 +278,24 @@ export default {
       selectedBenchmark.value = rowValue
     }
 
-    const getDatasetKey = (value) => {
-      if (value.startsWith('datasets-gfw-integrated-alerts-')) {
-        return 'alerts'
+      const getDatasetKey = (value) => {
+        if (value.startsWith('datasets-gfw-integrated-alerts-')) {
+          return 'alerts'
+        }
+        if (value.includes('cfw')) {
+          return 'cfw-composite-2022'
+        }
+        if (value === 'planet-nicfi-basemap') {
+          return 'planet-nicfi-basemap'
+        }
+        return value.split('-')[1]
       }
-      if (value === 'northern_choco_test_2025_06_20_2022_merged_composite') {
-        return 'cfw-composite'
-      }
-      if (value === 'planet-nicfi-basemap') {
-        return 'planet-nicfi'
-      }
-      return value.split('-')[1]
-    }
 
     const getDatasetIcon = (value) => {
       if (value.includes('nicfi-pred')) return 'forest'
       if (value === 'planet-nicfi-basemap') return 'satellite'
       if (value.includes('hansen')) return 'satellite_alt'
-      if (value.includes('mapbiomes')) return 'terrain'
+      if (value.includes('mapbiomas')) return 'terrain'
       if (value.includes('esa')) return 'public'
       if (value.includes('jrc')) return 'park'
       if (value.includes('palsar')) return 'radar'
@@ -301,6 +324,19 @@ export default {
       return dataset ? dataset.type : 'dataset'
     }
 
+    const getDatasetUrl = (value) => {
+      const dataset = benchmarkOptions.value.find(b => b.value === value)
+      return dataset ? dataset.source_url : '#'
+    }
+
+
+    // Load datasets when component mounts
+    onMounted(async () => {
+      if (!mapStore.datasetsLoaded) {
+        await mapStore.loadDatasets()
+      }
+    })
+
     return {
       showDialog,
       benchmarkOptions,
@@ -314,6 +350,7 @@ export default {
       getDatasetResolution,
       getDatasetVersion,
       getDatasetType,
+      getDatasetUrl,
       tableRows,
       columns,
       selectRow,
@@ -410,7 +447,7 @@ export default {
 
 .current-dataset-learn-more {
   color: #16a34a;
-  font-size: 11px;
+  font-size: 12px !important;
   text-transform: none;
   font-weight: 500;
   flex-shrink: 0;
@@ -422,7 +459,7 @@ export default {
 }
 
 .change-dataset-explicit-btn {
-  font-size: 12px;
+  font-size: 12px !important;
   font-weight: 500;
   text-transform: none;
   border-radius: 6px;
@@ -706,6 +743,10 @@ export default {
   overflow: hidden;
 }
 
+.year-chip {
+  box-shadow: 0 2px 4px rgba(21, 101, 192, 0.15);
+}
+
 .year-chip::before {
   content: '';
   position: absolute;
@@ -752,6 +793,62 @@ export default {
 
 
 
+
+.add-year-icon {
+  color: rgba(21, 101, 192, 0.8);
+  transition: all 0.3s ease;
+}
+
+.year-chip:hover .add-year-icon {
+  color: rgba(255, 255, 255, 0.9);
+  transform: scale(1.1);
+}
+
+/* Add Column Styles */
+.table-add-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+}
+
+.add-dataset-btn-table {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  border-radius: 8px !important;
+  min-height: 32px !important;
+  padding: 6px 12px !important;
+  background: linear-gradient(135deg, #4caf50 0%, #388e3c 50%, #2e7d32 100%) !important;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3) !important;
+  transition: all 0.3s ease !important;
+  border: none !important;
+  color: white !important;
+}
+
+.add-dataset-btn-table:hover {
+  transform: translateY(-1px) !important;
+  background: linear-gradient(135deg, #66bb6a 0%, #4caf50 50%, #388e3c 100%) !important;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4) !important;
+}
+
+.add-dataset-btn-table:active {
+  transform: translateY(0px) !important;
+  box-shadow: 0 2px 6px rgba(76, 175, 80, 0.4) !important;
+}
+
+.current-dataset-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.current-text {
+  color: #16a34a;
+}
 
 /* Dialog Actions */
 .dialog-actions {

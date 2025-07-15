@@ -115,24 +115,3 @@ def get_version_metadata(dataset_version=None):
         "software": f"ChocoForestWatch ML Pipeline v{get_pipeline_version()}"
     }
 ```
-
-#### 2. Update Frontend Dataset Metadata
-
-**File**: `frontend/src/stores/mapStore.js`
-
-Update the `availableBenchmarks` array:
-```javascript
-const availableBenchmarks = [
-  { 
-    value: 'northern_choco_2024_01_merged_composite', 
-    label: 'Choco Forest Watch 2024',
-    version: '2024.01.0',  // ← Update this
-    year: '2024',
-    resolution: '4.7m',
-    description: 'High-resolution forest cover predictions for Choco region',
-    created: '2024-03-15',  // ← Update creation date
-    type: 'prediction'
-  },
-  // ... other datasets
-];
-```

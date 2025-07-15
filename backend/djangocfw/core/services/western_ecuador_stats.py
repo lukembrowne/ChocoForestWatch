@@ -20,19 +20,10 @@ logger = logging.getLogger(__name__)
 # Global cache for boundary polygon
 _global_boundary_polygon = None
 
-# Allowed benchmark collections
-ALLOWED_BENCHMARK_COLLECTIONS = [
-    "datasets-hansen-tree-cover-2022",
-    "datasets-mapbiomes-2022", 
-    "datasets-esa-landcover-2020",
-    "datasets-jrc-forestcover-2020",
-    "datasets-palsar-2020",
-    "datasets-wri-treecover-2020",
-    "northern_choco_test_2025_06_20_2022_merged_composite",  # CFW composite
-    "datasets-gfw-integrated-alerts-2022",  # GFW deforestation alerts
-    "datasets-gfw-integrated-alerts-2023",
-    "datasets-gfw-integrated-alerts-2024",
-]
+def get_allowed_datasets():
+    """Get enabled dataset collections from JSON configuration"""
+    from ..dataset_service import get_enabled_collection_ids
+    return get_enabled_collection_ids()
 
 
 def get_cache_key(collection_id):
@@ -210,7 +201,8 @@ def get_western_ecuador_stats(collection_id, force_recalculate=False, db_host=No
         ValueError: If collection_id is invalid
         Exception: If calculation fails
     """
-    if collection_id not in ALLOWED_BENCHMARK_COLLECTIONS:
+    allowed_collections = get_allowed_datasets()
+    if collection_id not in allowed_collections:
         raise ValueError(f"Invalid collection_id: {collection_id}")
     
     cache_key = get_cache_key(collection_id)
@@ -284,9 +276,10 @@ def precalculate_all_stats(force_recalculate=False, collection_filter=None, db_h
     Returns:
         dict: Summary of results with 'successful', 'failed', and 'skipped' counts
     """
-    collections_to_process = ALLOWED_BENCHMARK_COLLECTIONS
+    allowed_collections = get_allowed_datasets()
+    collections_to_process = allowed_collections
     if collection_filter:
-        if collection_filter not in ALLOWED_BENCHMARK_COLLECTIONS:
+        if collection_filter not in allowed_collections:
             raise ValueError(f"Invalid collection: {collection_filter}")
         collections_to_process = [collection_filter]
 
@@ -343,7 +336,8 @@ def precalculate_all_stats(force_recalculate=False, collection_filter=None, db_h
 def clear_all_cached_stats():
     """Clear all cached western Ecuador statistics."""
     cleared_count = 0
-    for collection_id in ALLOWED_BENCHMARK_COLLECTIONS:
+    allowed_collections = get_allowed_datasets()
+    for collection_id in allowed_collections:
         cache_key = get_cache_key(collection_id)
         if cache.delete(cache_key):
             cleared_count += 1

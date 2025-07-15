@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import api from 'src/services/api';
 import authService from 'src/services/auth';
+import { useI18n } from 'vue-i18n';
 import TileLayer from 'ol/layer/Tile'
 import OSM from 'ol/source/OSM'
 import { Map, View } from 'ol'
@@ -30,6 +31,8 @@ import { getEncodedColormap } from 'src/utils/colormap';
 import { createBox } from 'ol/interaction/Draw';
 
 export const useMapStore = defineStore('map', () => {
+  // i18n for translations
+  const { t } = useI18n();
 
   // State
   const aoi = ref(null);
@@ -91,100 +94,10 @@ export const useMapStore = defineStore('map', () => {
   const isDrawingSummaryAOI = ref(false);
   const summaryStats = ref(null);
 
-  // Forest Cover Maps selection
-  const availableDatasets = [
-    {
-      value: 'northern_choco_test_2025_06_20_2022_merged_composite',
-      label: 'Choco Forest Watch 2022',
-      version: '2022.01.0',
-      year: '2022',
-      resolution: '4.7m',
-      description: 'High-resolution forest cover predictions for Choco region',
-      created: '2025-06-20',
-      type: 'prediction'
-    },
-    {
-      value: 'planet-nicfi-basemap',
-      label: 'Planet NICFI Basemap',
-      year: '2022-2024',
-      resolution: '4.7m',
-      description: 'Monthly high-resolution satellite imagery from Planet Labs via Norway\'s International Climate & Forests Initiative',
-      type: 'basemap-imagery'
-    },
-    {
-      value: 'datasets-hansen-tree-cover-2022',
-      label: 'Hansen Global Forest Change',
-      year: '2022',
-      resolution: '30m',
-      description: 'Global forest change dataset from University of Maryland',
-      type: 'benchmark'
-    },
-    {
-      value: 'datasets-mapbiomes-2022',
-      label: 'MapBiomas Ecuador',
-      year: '2022',
-      resolution: '30m',
-      description: 'Annual land cover and land use mapping for Ecuador',
-      type: 'benchmark'
-    },
-    {
-      value: 'datasets-esa-landcover-2020',
-      label: 'ESA WorldCover',
-      year: '2020',
-      resolution: '10m',
-      description: 'Global land cover map from European Space Agency',
-      type: 'benchmark'
-    },
-    {
-      value: 'datasets-jrc-forestcover-2020',
-      label: 'JRC Forest Cover',
-      year: '2020',
-      resolution: '10m',
-      description: 'Forest cover map from Joint Research Centre',
-      type: 'benchmark'
-    },
-    {
-      value: 'datasets-palsar-2020',
-      label: 'ALOS PALSAR Forest Map',
-      year: '2020',
-      resolution: '25m',
-      description: 'Forest/non-forest map from ALOS PALSAR data',
-      type: 'benchmark'
-    },
-    {
-      value: 'datasets-wri-treecover-2020',
-      label: 'WRI Tropical Tree Cover',
-      year: '2020',
-      resolution: '30m',
-      description: 'Tropical tree cover from World Resources Institute',
-      type: 'benchmark'
-    },
-    {
-      value: 'datasets-gfw-integrated-alerts-2022',
-      label: 'GFW Deforestation Alerts 2022',
-      year: '2022',
-      resolution: '10m',
-      description: 'Global Forest Watch integrated deforestation alerts',
-      type: 'alerts'
-    },
-    {
-      value: 'datasets-gfw-integrated-alerts-2023',
-      label: 'GFW Deforestation Alerts 2023',
-      year: '2023',
-      resolution: '10m',
-      description: 'Global Forest Watch integrated deforestation alerts',
-      type: 'alerts'
-    },
-    {
-      value: 'datasets-gfw-integrated-alerts-2024',
-      label: 'GFW Deforestation Alerts 2024',
-      year: '2024',
-      resolution: '10m',
-      description: 'Global Forest Watch integrated deforestation alerts',
-      type: 'alerts'
-    },
-  ];
-  const selectedBenchmark = ref(availableDatasets[0].value);
+  // Dynamic dataset management
+  const availableDatasets = ref([]);
+  const datasetsLoaded = ref(false);
+  const selectedBenchmark = ref(null);
 
   // New computed property for visual indicator
   const modeIndicator = computed(() => {
@@ -203,19 +116,8 @@ export const useMapStore = defineStore('map', () => {
   });
 
   // Add benchmark expression mapping constant
-  const benchmarkExpressionMapping = {
-    'northern_choco_test_2025_06_20_2022_merged_composite': 'where((data==1),1,0)',
-    'datasets-hansen-tree-cover-2022': 'where(data>=90,1,0)',
-    'datasets-mapbiomes-2022': 'where((data==3)|(data==4)|(data==5)|(data==6),1,0)',
-    'datasets-esa-landcover-2020': 'where(data==10,1,0)',
-    'datasets-jrc-forestcover-2020': 'where(data==1,1,0)',
-    'datasets-palsar-2020': 'where((data==1)|(data==2),1,0)',
-    'datasets-wri-treecover-2020': 'where(data>=90,1,0)',
-    // GFW alerts - use band 1 (binary alerts: 0=no alert, 1=alert, 255=missing)
-    'datasets-gfw-integrated-alerts-2022': 'where(data==1,1,0)',
-    'datasets-gfw-integrated-alerts-2023': 'where(data==1,1,0)',
-    'datasets-gfw-integrated-alerts-2024': 'where(data==1,1,0)',
-  };
+  // Dynamic expression mapping - built from dataset data
+  const benchmarkExpressionMapping = ref({});
 
   // GFW date/confidence decoder functions
   const decodeGFWDate = (value) => {
@@ -1690,11 +1592,11 @@ export const useMapStore = defineStore('map', () => {
 
   const createBenchmarkLayer = (collectionId) => {
     const titilerURL = import.meta.env.VITE_TITILER_URL;
-    const expression = benchmarkExpressionMapping[collectionId];
-    if (!expression) {
-      throw new Error(`No expression mapping found for collection ${collectionId}`);
-    }
-    const encodedExpression = encodeURIComponent(expression);
+    // const expression = benchmarkExpressionMapping.value[collectionId];
+    // if (!expression) {
+    //   throw new Error(`No expression mapping found for collection ${collectionId}`);
+    // }
+    // const encodedExpression = encodeURIComponent(expression);
     const colormap = getEncodedColormap('CFWForestCoverPalette');
 
     const source = new XYZ({
@@ -1703,7 +1605,7 @@ export const useMapStore = defineStore('map', () => {
     });
 
     // Get readable title from availableDatasets array
-    const benchmarkInfo = availableDatasets.find(b => b.value === collectionId);
+    const benchmarkInfo = availableDatasets.value.find(b => b.value === collectionId);
     const title = benchmarkInfo ? benchmarkInfo.label : collectionId.replace('datasets-', '').replace(/-/g, ' ');
 
     return new TileLayer({
@@ -1712,7 +1614,7 @@ export const useMapStore = defineStore('map', () => {
       id: `benchmark-${collectionId}`,
       visible: true,
       zIndex: 3,
-      opacity: 0.7,
+      opacity: 1.0,
     });
   };
 
@@ -2136,7 +2038,7 @@ export const useMapStore = defineStore('map', () => {
   const currentGFWAlertsYear = ref('2022');
   
   const getAvailableGFWAlertYears = () => {
-    return availableDatasets
+    return availableDatasets.value
       .filter(dataset => dataset.type === 'alerts')
       .map(dataset => dataset.year)
       .sort((a, b) => b.localeCompare(a)); // Sort years descending
@@ -2171,6 +2073,53 @@ export const useMapStore = defineStore('map', () => {
       message: `Switched to GFW Deforestation Alerts ${newYear}`,
       timeout: 2000
     });
+  };
+
+  // Dynamic dataset management functions
+  const loadDatasets = async () => {
+    try {
+      const response = await api.datasets.getEnabled();
+      const datasets = response.data.datasets;
+      
+      // Transform API response to match frontend format
+      availableDatasets.value = datasets.map(dataset => ({
+        value: dataset.collection_id,
+        label: t(dataset.name_key),
+        version: dataset.version,
+        year: dataset.year,
+        resolution: dataset.resolution,
+        description: t(dataset.description_key),
+        type: dataset.type,
+        source_url: dataset.source_url,
+        metadata: dataset.metadata || {}
+      }));
+      
+      // Build expression mapping from dataset data
+      const expressionMap = {};
+      datasets.forEach(dataset => {
+        if (dataset.expression) {
+          expressionMap[dataset.collection_id] = dataset.expression;
+        }
+      });
+      benchmarkExpressionMapping.value = expressionMap;
+
+      // Set default selected dataset if none selected
+      if (!selectedBenchmark.value && availableDatasets.value.length > 0) {
+        selectedBenchmark.value = availableDatasets.value[0].value;
+      }
+
+      datasetsLoaded.value = true;
+      console.log('Datasets loaded:', availableDatasets.value.length);
+      
+    } catch (error) {
+      console.error('Failed to load datasets:', error);
+      throw new Error(`Failed to load datasets: ${error.message}`);
+    }
+  };
+
+  const refreshDatasets = async () => {
+    datasetsLoaded.value = false;
+    await loadDatasets();
   };
 
   return {
@@ -2281,5 +2230,9 @@ export const useMapStore = defineStore('map', () => {
     // Benchmark selection
     availableDatasets,
     selectedBenchmark,
+    datasetsLoaded,
+    // Dataset management
+    loadDatasets,
+    refreshDatasets,
   };
 });

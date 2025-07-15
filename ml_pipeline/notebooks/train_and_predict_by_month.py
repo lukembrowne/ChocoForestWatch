@@ -14,10 +14,104 @@ from ml_pipeline.db_utils import get_db_connection
 import argparse
 import logging
 from ml_pipeline.run_manager import RunManager    
+# Import feature engineering components
+from ml_pipeline.feature_engineering import (
+    NDVIExtractor, NDWIExtractor, FeatureManager, EviExtractor, SaviExtractor,
+    BrightnessTempExtractor, WaterDetectionExtractor, ShadowIndexExtractor
+)
 
 # Configure logging for better pipeline visibility
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Suppress AWS credential logging noise
+logging.getLogger('boto3').setLevel(logging.WARNING)
+logging.getLogger('botocore').setLevel(logging.WARNING)
+logging.getLogger('s3transfer').setLevel(logging.WARNING)
+
+def setup_trainer_and_extractor(year, month, run_dir, project_id, db_host, features=None):
+    """
+    Setup trainer and extractor for use by hyperparameter tuning.
+    
+    This function replicates the setup logic from the main script so that
+    hyperparameter tuning can use the same configuration.
+    
+    Parameters
+    ----------
+    year : str
+        Year for the pipeline
+    month : str  
+        Month for the pipeline (zero-padded)
+    run_dir : Path
+        Run directory path
+    project_id : int
+        Project ID for training polygons
+    db_host : str
+        Database host configuration ('local' or 'remote')
+    features : list, optional
+        List of feature extractors to use
+        
+    Returns
+    -------
+    tuple
+        (trainer, extractor) - Configured trainer and extractor instances
+    """
+    if features is None:
+        features = []
+    
+    # Initialize extractor
+    logger.info(f"🛰️  Initializing extractor for NICFI collection {year}-{month}...")
+    extractor = TitilerExtractor(
+        collection=f"nicfi-{year}-{month}",
+        band_indexes=[1, 2, 3, 4],  # RGB + Near-Infrared bands
+        db_host=db_host
+    )
+    logger.info("✅ Extractor initialized")
+    
+    # Configure feature engineering
+    feature_extractors = []
+    if "ndvi" in features:
+        feature_extractors.append(NDVIExtractor())
+        logger.info("   ✓ NDVI extractor added")
+    if "ndwi" in features:
+        feature_extractors.append(NDWIExtractor())
+        logger.info("   ✓ NDWI extractor added")
+    if "evi" in features:
+        feature_extractors.append(EviExtractor())
+        logger.info("   ✓ EVI extractor added")
+    if "savi" in features:
+        feature_extractors.append(SaviExtractor())
+        logger.info("   ✓ SAVI extractor added")
+    if "brightness" in features:
+        feature_extractors.append(BrightnessTempExtractor())
+        logger.info("   ✓ Brightness/texture extractor added")
+    if "water_detection" in features:
+        feature_extractors.append(WaterDetectionExtractor())
+        logger.info("   ✓ Water detection extractor added")
+    if "shadow" in features:
+        feature_extractors.append(ShadowIndexExtractor())
+        logger.info("   ✓ Shadow index extractor added")
+    
+    if feature_extractors:
+        logger.info(f"🧪 Feature engineering enabled with {len(feature_extractors)} extractors: {[e.name for e in feature_extractors]}")
+    else:
+        logger.info("📊 Using base bands only (no feature engineering)")
+    
+    # Initialize trainer
+    logger.info(f"🤖 Setting up model trainer with cache directory: {run_dir / 'data_cache'}...")
+    config = TrainerConfig(
+        cache_dir=run_dir / "data_cache",
+        feature_extractors=feature_extractors
+    )
+    
+    trainer = ModelTrainer(
+        extractor=extractor,
+        run_dir=run_dir,
+        cfg=config
+    )
+    logger.info("✅ Trainer initialized")
+    
+    return trainer, extractor
 
 
 #%% 
@@ -31,6 +125,10 @@ if __name__ == "__main__":
     parser.add_argument("--project_id", type=str, required=True, help="Project ID for the training polygons")
     parser.add_argument("--db-host", type=str, choices=["local", "remote"], default="local", 
                        help="Database host configuration: 'local' for localhost, 'remote' for production database")
+    # Feature engineering options
+    parser.add_argument("--features", type=str, nargs="*", 
+                       choices=["ndvi", "ndwi", "evi", "savi", "brightness", "water_detection", "shadow"], 
+                       default=[], help="Feature extractors to use (e.g., --features ndvi ndwi evi)")
     args = parser.parse_args()
 
     year = args.year
@@ -39,6 +137,7 @@ if __name__ == "__main__":
     run_id = run_dir.parts[1]
     project_id = args.project_id
     db_host = getattr(args, 'db_host', 'local')  # Handle hyphenated argument
+    features = args.features
     
     # Set up database connection based on configuration
     logger.info(f"🗄️  Connecting to {db_host} database...")
@@ -96,9 +195,41 @@ if __name__ == "__main__":
 
 
     #%% 
+    # --- Configure Feature Engineering ---
+    feature_extractors = []
+    if "ndvi" in features:
+        feature_extractors.append(NDVIExtractor())
+        logger.info("   ✓ NDVI extractor added")
+    if "ndwi" in features:
+        feature_extractors.append(NDWIExtractor())
+        logger.info("   ✓ NDWI extractor added")
+    if "evi" in features:
+        feature_extractors.append(EviExtractor())
+        logger.info("   ✓ EVI extractor added")
+    if "savi" in features:
+        feature_extractors.append(SaviExtractor())
+        logger.info("   ✓ SAVI extractor added")
+    if "brightness" in features:
+        feature_extractors.append(BrightnessTempExtractor())
+        logger.info("   ✓ Brightness/texture extractor added")
+    if "water_detection" in features:
+        feature_extractors.append(WaterDetectionExtractor())
+        logger.info("   ✓ Water detection extractor added")
+    if "shadow" in features:
+        feature_extractors.append(ShadowIndexExtractor())
+        logger.info("   ✓ Shadow index extractor added")
+    
+    if feature_extractors:
+        logger.info(f"🧪 Feature engineering enabled with {len(feature_extractors)} extractors: {[e.name for e in feature_extractors]}")
+    else:
+        logger.info("📊 Using base bands only (no feature engineering)")
+
     # --- Initialize Model Trainer ---
     logger.info(f"🤖 Setting up model trainer with cache directory: {run_dir / 'data_cache'}...")
-    config = TrainerConfig(cache_dir=run_dir / "data_cache") 
+    config = TrainerConfig(
+        cache_dir=run_dir / "data_cache",
+        feature_extractors=feature_extractors  # Add feature extractors to config
+    ) 
 
     trainer = ModelTrainer(
         extractor=extractor,
@@ -110,16 +241,46 @@ if __name__ == "__main__":
     # %% 
     # --- Prepare Training Data ---
     logger.info(f"🔄 Preparing training data from {len(gdf)} polygons...")
+    # Add feature suffix to cache name for differentiation
+    feature_suffix = "_".join(features) if features else "base"
+    cache_name = f"pixels_{year}_{month}_{feature_suffix}.npz"
+    
     npz = trainer.prepare_training_data(training_sets = [{"gdf": gdf, "basemap_date": f"{year}-{month}"}], 
-                                        cache_name = f"pixels_{year}_{month}.npz",)
+                                        cache_name = cache_name)
     logger.info("✅ Training data prepared")
 
 
     #%% 
+    # --- Load Hyperparameters ---
+    # Check for tuned hyperparameters from pipeline run
+    hyperparameters_file = run_dir / "training_hyperparameters.json"
+    model_params = None
+    
+    if hyperparameters_file.exists():
+        try:
+            import json
+            with open(hyperparameters_file, 'r') as f:
+                model_params = json.load(f)
+            logger.info(f"🎯 Loaded tuned hyperparameters from: {hyperparameters_file}")
+            # Log key parameters for visibility
+            key_params = ['n_estimators', 'max_depth', 'learning_rate']
+            for param in key_params:
+                if param in model_params:
+                    logger.info(f"   {param}: {model_params[param]}")
+        except Exception as e:
+            logger.warning(f"⚠️  Failed to load hyperparameters: {e}, using defaults")
+            model_params = None
+    else:
+        logger.info("ℹ️  No tuned hyperparameters found, using XGBoost defaults")
+
+    #%% 
     # --- Train Model ---
     logger.info("🎯 Training model on prepared data...")
-    model_path, metrics = trainer.fit_prepared_data(npz, 
-                                                    model_name=f"nicfi-{year}-{month}")  
+    # Add feature suffix to model name for differentiation
+    feature_suffix = "_".join(features) if features else "base"
+    model_name = f"nicfi-{year}-{month}-{feature_suffix}"
+    
+    model_path, metrics = trainer.fit_prepared_data(npz, model_name=model_name, model_params=model_params)  
 
     #%% 
     # Print model metrics
@@ -193,33 +354,37 @@ if __name__ == "__main__":
 
     # %%
 
-    # --- Add Predictions to STAC Database ---
-    # Use same database configuration as training data
-    use_remote_stac = (db_host == "remote") # Will be true if db_host is "remote"
-    logger.info(f"📚 Adding predictions to {'remote' if use_remote_stac else 'local'} STAC database...")
+    # --- Add Predictions to STAC Database (only if uploaded to S3) ---
+    if predictor.upload_to_s3:
+        # Use same database configuration as training data
+        use_remote_stac = (db_host == "remote") # Will be true if db_host is "remote"
+        logger.info(f"📚 Adding predictions to {'remote' if use_remote_stac else 'local'} STAC database...")
 
-    builder = STACManager(STACManagerConfig(use_remote_db=use_remote_stac))
+        builder = STACManager(STACManagerConfig(use_remote_db=use_remote_stac))
 
-    builder.process_month(
-        year=year,
-        month=month,
-        prefix_on_s3=f"predictions/{run_id}", # S3 prefix for predictions
-        collection_id=f"{run_id}-pred-{year}-{month}",
-        asset_key="data",
-        asset_roles=["classification"],
-        asset_title=f"Land‑cover classes - {run_id}",
-        extra_asset_fields={
-            "raster:bands": [{"nodata": 255, "data_type": "uint8"}],
-            "classification:classes": [
-                {"value": 0, "name": "Forest"},
-                {"value": 1, "name": "Non‑Forest"},
-                {"value": 2, "name": "Cloud"},
-                {"value": 3, "name": "Shadow"},
-                {"value": 4, "name": "Water"},
-                {"value": 5, "name": "Haze"},
-                {"value": 6, "name": "Sensor Error"},
-            ],
-        }
-    )
+        builder.process_month(
+            year=year,
+            month=month,
+            prefix_on_s3=f"predictions/{run_id}", # S3 prefix for predictions
+            collection_id=f"{run_id}-pred-{year}-{month}",
+            asset_key="data",
+            asset_roles=["classification"],
+            asset_title=f"Land‑cover classes - {run_id}",
+            extra_asset_fields={
+                "raster:bands": [{"nodata": 255, "data_type": "uint8"}],
+                "classification:classes": [
+                    {"value": 0, "name": "Forest"},
+                    {"value": 1, "name": "Non‑Forest"},
+                    {"value": 2, "name": "Cloud"},
+                    {"value": 3, "name": "Shadow"},
+                    {"value": 4, "name": "Water"},
+                    {"value": 5, "name": "Haze"},
+                    {"value": 6, "name": "Sensor Error"},
+                ],
+            }
+        )
+        logger.info("✅ STAC collection created for S3 predictions")
+    else:
+        logger.info("⏭️ Skipping STAC collection creation (predictions saved locally only)")
     logger.info(f"✅ Pipeline completed successfully for {year}-{month}")
     # %%

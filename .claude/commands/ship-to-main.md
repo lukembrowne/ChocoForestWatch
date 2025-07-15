@@ -16,11 +16,12 @@ Complete the full git workflow from dev to main branch:
 /project:ship-to-main [commit-message]
 ```
 
-If no commit message provided, will use a default message. Do not attribute Claude or include a test plan.
+If no commit message provided, will use a default message. Do not attribute Claude in the commit messages or include a test plan.
 
 ## Workflow Steps
 
 ### 1. Commit and Push Current Changes
+Do not attribute Claude in the commit messages.
 ```bash
 # Add all changed files
 git add .

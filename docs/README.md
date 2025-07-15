@@ -67,6 +67,3 @@ When adding new documentation:
 - **Screenshots** where helpful (store in `docs/images/`)
 - **Version information** when relevant
 
----
-
-*This documentation structure follows industry best practices for technical documentation organization and is designed to scale with the project.*

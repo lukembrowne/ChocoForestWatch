@@ -141,7 +141,10 @@ class TitilerExtractor:
                 })
                 
                 urls = df['href'].tolist()
-                print(f"Retrieved {len(urls)} COGs intersecting polygon from database")
+                if len(urls) == 0:
+                    print(f"⚠️  Warning: Retrieved {len(urls)} COGs intersecting polygon from database")
+                # Only print success message for debugging if needed
+                # print(f"Retrieved {len(urls)} COGs intersecting polygon from database")
             
             return urls
             
@@ -226,14 +229,24 @@ class TitilerExtractor:
         gdf_3857 = gdf.to_crs("EPSG:3857")
 
         pixels, labels, fids = [], [], []
+        total_polygons = len(gdf_wgs84)
+        
+        print(f"🔍 Extracting pixels from {total_polygons} training polygons...")
 
-        for wgs84_geom, webm_geom, fid, label in zip(
+        for i, (wgs84_geom, webm_geom, fid, label) in enumerate(zip(
             gdf_wgs84.geometry,
             gdf_3857.geometry,
             gdf["id"],
             gdf["classLabel"],
-        ):
-            for cog in self.get_cog_urls(wgs84_geom):
+        ), 1):
+            print(f"   Processing polygon {i}/{total_polygons} (ID: {fid}, Class: {label})")
+            
+            cog_urls = self.get_cog_urls(wgs84_geom)
+            if len(cog_urls) == 0:
+                print(f"      ⚠️  No COGs found for polygon {fid}")
+                continue
+                
+            for cog in cog_urls:
                # print("Extracting pixels from COG:", cog, "for polygon:", fid)
                 try:
                     with rasterio.open(cog) as src:

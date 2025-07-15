@@ -26,11 +26,16 @@ def predict_single_cog_standalone(cog_url, model_path, basemap_date, pred_dir, s
     # Recreate config object from dict
     cfg = PredictorConfig(**cfg_dict)
     
+    # Log start of processing
+    print(f"🔄 Processing COG: {Path(cog_url).name}")
+    
     try:
-        # Load model
+        # Load model and feature manager
         with open(model_path, "rb") as f:
             bundle = pickle.load(f)
         model = bundle["model"]
+        feature_manager = bundle.get("feature_manager")  # Load feature manager if available
+        print(f"📊 Model loaded successfully")
         
         with rasterio.open(cog_url) as src:
             profile = src.profile.copy()
@@ -41,6 +46,8 @@ def predict_single_cog_standalone(cog_url, model_path, basemap_date, pred_dir, s
                 predictor=cfg.predictor,
                 nodata=cfg.nodata,
             )
+            
+            print(f"📊 Processing {src.height}x{src.width} image with {src.count} bands")
 
             # build output filename
             tile_id = Path(cog_url).stem
@@ -54,13 +61,17 @@ def predict_single_cog_standalone(cog_url, model_path, basemap_date, pred_dir, s
                             np.float32
                         )  # (4, h, w)
                     except Exception as e:
-                        print(f"Error reading window {window} from {cog_url}: {e}")
+                        print(f"❌ Error reading window {window} from {Path(cog_url).name}: {e}")
                         continue
 
                     h, w = img.shape[1], img.shape[2]
                     X = img.reshape(4, -1).T  # -> (n,4)
 
-                    X_full = X
+                    # Apply feature engineering if configured
+                    if feature_manager is not None:
+                        X_full = feature_manager.extract_all_features(X)
+                    else:
+                        X_full = X
 
                     # mask nodata
                     valid_mask = ~np.any(
@@ -76,7 +87,7 @@ def predict_single_cog_standalone(cog_url, model_path, basemap_date, pred_dir, s
                             )(y_pred)
                             preds[valid_mask] = y_global.astype(cfg.dtype)
                         except Exception as e:
-                            print(f"Error predicting window {window} from {cog_url}: {e}")
+                            print(f"❌ Error predicting window {window} from {Path(cog_url).name}: {e}")
                             continue
 
                     dst.write(preds.reshape(1, h, w), window=window)
@@ -85,7 +96,7 @@ def predict_single_cog_standalone(cog_url, model_path, basemap_date, pred_dir, s
             try:
                 _sieve_inplace(out_path, min_pixels=10)
             except Exception as e:
-                print(f"Error applying sieve filter to {out_path}: {e}")
+                print(f"❌ Error applying sieve filter to {out_path.name}: {e}")
 
             # Upload to S3 if configured
             try:
@@ -94,17 +105,18 @@ def predict_single_cog_standalone(cog_url, model_path, basemap_date, pred_dir, s
                     remote_key = f"{s3_path}/{yyyy}/{mm}/{out_path.name}"
                     upload_file(out_path, remote_key)
             except Exception as e:
-                print(f"Error uploading {out_path} to S3: {e}")
+                print(f"❌ Error uploading {out_path.name} to S3: {e}")
 
             # Delete local file if not saving locally
             if not save_local:
                 out_path.unlink()
                 return None
 
+        print(f"✅ Completed: {out_path.name}")
         return out_path
 
     except Exception as e:
-        print(f"⚠️ Skipping Predicting this COG due to error: {cog_url} — {e}")
+        print(f"❌ Failed to process COG {Path(cog_url).name}: {e}")
         return None
 
 

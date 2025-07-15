@@ -228,6 +228,21 @@ const api = {
     getVersion() {
         return apiClient.get('/version/');
     },
+
+    // Datasets endpoints
+    datasets: {
+        // Get enabled datasets from JSON configuration
+        getEnabled(datasetType = null) {
+            const params = datasetType ? { type: datasetType } : {};
+            return apiClient.get('/datasets/', { params });
+        },
+        
+        // Get collection IDs for validation
+        getCollections(datasetType = null) {
+            const params = datasetType ? { type: datasetType } : {};
+            return apiClient.get('/datasets/collections/', { params });
+        }
+    },
 };
 
 // Initialize function for boot

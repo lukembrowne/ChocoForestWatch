@@ -1,0 +1,136 @@
+{
+  "datasets": [
+     {
+      "collection_id": "datasets-cfw-test_ndvi_2025_07_12-2022",
+      "name_key": "datasets.cfw-composite-2022.name",
+      "description_key": "datasets.cfw-composite-2022.description",
+      "type": "prediction",
+      "year": "2022",
+      "version": "2022.01.0",
+      "resolution": "4.7m",
+      "expression": "where((data==1),1,0)",
+      "enabled": true,
+      "source_url": "https://github.com/lukembrowne/chocoforestwatch"
+    },
+        {
+      "collection_id": "planet-nicfi-basemap",
+      "name_key": "datasets.planet-nicfi-basemap.name",
+      "description_key": "datasets.planet-nicfi-basemap.description",
+      "type": "basemap-imagery",
+      "year": "2022-2024",
+      "version": "1.0",
+      "resolution": "4.7m",
+      "expression": "",
+      "enabled": true,
+      "source_url": "https://github.com/lukembrowne/chocoforestwatch"
+    },
+    {
+      "collection_id": "datasets-hansen-tree-cover-2022",
+      "name_key": "datasets.hansen.name",
+      "description_key": "datasets.hansen.description",
+      "type": "benchmark",
+      "year": "2022",
+      "version": "",
+      "resolution": "30m",
+      "expression": "where(data>=90,1,0)",
+      "enabled": true,
+      "source_url": "https://data.globalforestwatch.org/documents/941f17325a494ed78c4817f9bb20f33a"
+    },
+    {
+      "collection_id": "datasets-mapbiomas-2022",
+      "name_key": "datasets.mapbiomas.name",
+      "description_key": "datasets.mapbiomas.description",
+      "type": "benchmark",
+      "year": "2022",
+      "version": "",
+      "resolution": "30m",
+      "expression": "where((data==3)|(data==4)|(data==5)|(data==6),1,0)",
+      "enabled": true,
+      "source_url": "https://ecuador.mapbiomas.org/en/home-english/"
+    },
+    {
+      "collection_id": "datasets-esa-landcover-2020",
+      "name_key": "datasets.esa.name",
+      "description_key": "datasets.esa.description",
+      "type": "benchmark",
+      "year": "2020",
+      "version": "",
+      "resolution": "10m",
+      "expression": "where(data==10,1,0)",
+      "enabled": true,
+      "source_url": "https://esa-worldcover.org/"
+    },
+    {
+      "collection_id": "datasets-jrc-forestcover-2020",
+      "name_key": "datasets.jrc.name",
+      "description_key": "datasets.jrc.description",
+      "type": "benchmark",
+      "year": "2020",
+      "version": "",
+      "resolution": "10m",
+      "expression": "where(data>=75,1,0)",
+      "enabled": true,
+      "source_url": "https://forest.jrc.ec.europa.eu/"
+    },
+    {
+      "collection_id": "datasets-palsar-2020",
+      "name_key": "datasets.palsar.name",
+      "description_key": "datasets.palsar.description",
+      "type": "benchmark",
+      "year": "2020",
+      "version": "",
+      "resolution": "25m",
+      "expression": "where(data==1,1,0)",
+      "enabled": true,
+      "source_url": "https://developers.google.com/earth-engine/datasets/catalog/JAXA_ALOS_PALSAR_YEARLY_FNF4"
+    },
+    {
+      "collection_id": "datasets-wri-treecover-2020",
+      "name_key": "datasets.wri.name",
+      "description_key": "datasets.wri.description",
+      "type": "benchmark",
+      "year": "2020",
+      "version": "",
+      "resolution": "30m",
+      "expression": "where(data>=50,1,0)",
+      "enabled": true,
+      "source_url": "https://www.wri.org/"
+    },
+    {
+      "collection_id": "datasets-gfw-integrated-alerts-2022",
+      "name_key": "datasets.gfw_alerts_2022.name",
+      "description_key": "datasets.gfw_alerts_2022.description",
+      "type": "alerts",
+      "year": "2022",
+      "version": "",
+      "resolution": "10m",
+      "expression": "where(data==1,1,0)",
+      "enabled": true,
+      "source_url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
+    },
+    {
+      "collection_id": "datasets-gfw-integrated-alerts-2023",
+      "name_key": "datasets.gfw_alerts_2023.name",
+      "description_key": "datasets.gfw_alerts_2023.description",
+      "type": "alerts",
+      "year": "2023",
+      "version": "",
+      "resolution": "10m",
+      "expression": "where(data==1,1,0)",
+      "enabled": true,
+      "source_url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
+    },
+    {
+      "collection_id": "datasets-gfw-integrated-alerts-2024",
+      "name_key": "datasets.gfw_alerts_2024.name",
+      "description_key": "datasets.gfw_alerts_2024.description",
+      "type": "alerts",
+      "year": "2024",
+      "version": "",
+      "resolution": "10m",
+      "expression": "where(data==1,1,0)",
+      "enabled": true,
+      "source_url": "https://data.globalforestwatch.org/datasets/gfw::integrated-deforestation-alerts/about"
+    }
+  ]
+}

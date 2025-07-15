@@ -31,8 +31,10 @@ import shutil
 
 from ml_pipeline.s3_utils import upload_file
 from ml_pipeline.version import get_version_metadata
+from ml_pipeline.feature_engineering import FeatureManager
 
-from multiprocessing import Pool
+import multiprocessing as mp
+from multiprocessing import Pool, get_context
 from functools import partial
 from ml_pipeline.prediction_worker import predict_single_cog_standalone
 
@@ -89,6 +91,13 @@ class ModelPredictor:
             bundle = pickle.load(f)
         self.model = bundle["model"]
         self.meta = bundle["meta"]
+        
+        # Load feature manager if available
+        self.feature_manager = bundle.get("feature_manager")
+        if self.feature_manager is not None:
+            print(f"Loaded feature manager with {len(self.feature_manager.feature_extractors)} extractors")
+        else:
+            print("No feature manager found - using raw bands only")
 
     # ------------------------------------------------------------------
     #  Public API
@@ -101,7 +110,7 @@ class ModelPredictor:
         
         try:
             # Read from path
-            boundary_path = "/Users/luke/apps/ChocoForestWatch/ml_pipeline/notebooks/shapefiles/Ecuador-DEM-900m-contour.geojson"
+            boundary_path = "./shapefiles/Ecuador-DEM-900m-contour.geojson"
             print(f"⚠️ Using boundary path: {boundary_path}")
 
             if not os.path.exists(boundary_path):
@@ -258,12 +267,20 @@ class ModelPredictor:
             upload_to_s3=self.upload_to_s3
         )
         
-        with Pool(8) as pool:
-            saved = list(tqdm(
-                pool.imap(predict_func, cog_urls), 
-                total=len(cog_urls),
-                desc=f"Predicting {collection}"
-            ))
+        # ------------------------------------------------------------------
+        #  Multiprocessing pool (spawn) with 8 real workers
+        # ------------------------------------------------------------------
+        print("🔧 Initializing multiprocessing pool with 8 workers...")
+        
+        ctx = get_context("spawn")  # fork-safe start method
+        with ctx.Pool(processes=8) as pool:
+            saved = list(
+                tqdm(
+                    pool.imap_unordered(predict_func, cog_urls, chunksize=1),
+                    total=len(cog_urls),
+                    desc=f"Predicting {collection}",
+                )
+            )
 
         # Remove prediction directory if not saving locally
         if not save_local:
@@ -312,12 +329,16 @@ class ModelPredictor:
                         h, w = img.shape[1], img.shape[2]
                         X = img.reshape(4, -1).T  # -> (n,4)
 
-                        X_full = X
+                        # Apply feature engineering if configured
+                        if self.feature_manager is not None:
+                            X_full = self.feature_manager.extract_all_features(X)
+                        else:
+                            X_full = X
 
-                        # mask nodata
+                        # mask nodata (check base bands only)
                         valid_mask = ~np.any(
                             X[:, :4] == src.nodata, axis=1
-                        )  # ignore temporal cols
+                        )  # check base bands for nodata
                         preds = np.full(X.shape[0], self.cfg.nodata, dtype=self.cfg.dtype)
                         if valid_mask.any():
                             try:

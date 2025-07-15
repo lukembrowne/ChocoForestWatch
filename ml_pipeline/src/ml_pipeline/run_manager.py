@@ -40,6 +40,7 @@ class RunManager:
         (self.run_path / "feature_ids_testing").mkdir(exist_ok=True)
         (self.run_path / "saved_models").mkdir(exist_ok=True)
         (self.run_path / "data_cache").mkdir(exist_ok=True)
+        (self.run_path / "model_diagnostics").mkdir(exist_ok=True)
         
         
 
@@ -79,3 +80,11 @@ class RunManager:
             writer = csv.DictWriter(f, hdr)
             if write_header: writer.writeheader()
             writer.writerow(row)
+
+    def get_diagnostics_path(self, model_name: str) -> Path:
+        """Get the diagnostics directory path for a specific model."""
+        if not self.run_path:
+            raise ValueError("No active run. Call new_run() or load_run() first.")
+        diagnostics_path = self.run_path / "model_diagnostics" / model_name
+        diagnostics_path.mkdir(parents=True, exist_ok=True)
+        return diagnostics_path
