@@ -245,6 +245,8 @@ class ModelPredictor:
         pred_dir.mkdir(parents=True, exist_ok=True)
 
         saved: list[Path] = []
+
+        # If running sequentially, process each COG one by one
         # for url in tqdm(cog_urls, desc=f"Predicting {collection}"):
         #     saved.append(
         #         self._predict_single_cog(

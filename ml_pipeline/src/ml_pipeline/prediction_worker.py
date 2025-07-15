@@ -35,7 +35,6 @@ def predict_single_cog_standalone(cog_url, model_path, basemap_date, pred_dir, s
             bundle = pickle.load(f)
         model = bundle["model"]
         feature_manager = bundle.get("feature_manager")  # Load feature manager if available
-        print(f"📊 Model loaded successfully")
         
         with rasterio.open(cog_url) as src:
             profile = src.profile.copy()
