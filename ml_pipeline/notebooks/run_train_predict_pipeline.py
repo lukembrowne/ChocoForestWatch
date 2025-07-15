@@ -24,65 +24,24 @@ which handles:
 
 Usage:
 
-# Full pipeline: train models, generate composites, run benchmarks
+# Complete pipeline with automatic tuning + training (RECOMMENDED)
 poetry run python run_train_predict_pipeline.py \
   --step all \
   --start_month 1 --end_month 12 \
   --year 2022 \
   --project_id 7 \
-  --run_id "test_2025_07_11" \
-  --db-host "remote"
-
-# Run only training step
-poetry run python run_train_predict_pipeline.py \
-  --step training \
-  --start_month 1 --end_month 12 \
-  --year 2022 \
-  --project_id 7 \
-  --run_id "test_2025_07_11" \
-  --db-host "remote"
-
-# Run only composites step
-poetry run python run_train_predict_pipeline.py \
-  --step composites \
-  --year 2022 \
-  --project_id 7 \
-  --run_id "test_2025_07_11" \
-  --db-host "remote"
-
-# Run only benchmarks step
-poetry run python run_train_predict_pipeline.py \
-  --step benchmarks \
-  --year 2022 \
-  --project_id 7 \
-  --run_id "test_2025_07_11" \
-  --db-host "remote"
-
-# Run hyperparameter tuning (fast preset, 10 trials)
-poetry run python run_train_predict_pipeline.py \
-  --step tuning \
-  --year 2022 \
-  --project_id 7 \
-  --run_id "tune_test_2025_07_13" \
+  --run_id "tuning_test_2025_07_14" \
   --db-host "remote" \
-  --tune-preset fast \
-  --tune-trials 10 \
-  --tune-month 1
+  --features ndvi ndwi evi savi brightness water_detection shadow \
+  --boundary-geojson shapefiles/Ecuador-DEM-900m-contour.geojson \
+  --tune-trials 15
 
-# Run thorough hyperparameter tuning (50 trials)
-poetry run python run_train_predict_pipeline.py \
-  --step tuning \
-  --year 2022 \
-  --project_id 7 \
-  --run_id "tune_thorough_2025_07_13" \
-  --db-host "remote" \
-  --tune-preset thorough \
-  --features ndvi ndwi
+# This automatically: 1) runs hyperparameter tuning, 2) trains all monthly models 
+# with optimized parameters, 3) generates composites, 4) processes datasets, 5) runs benchmarks
 
 Database Configuration:
 - Use --db-host "local" for development with local database
 - Use --db-host "remote" for production with remote database
-- COG spatial filtering is now done directly via database queries (no SSH tunnel needed)
 
 The results are organized as:
     runs/
@@ -144,11 +103,14 @@ def parse_arguments():
                        default=[], help="Feature extractors to use (e.g., --features ndvi ndwi evi)")
     
     # Hyperparameter tuning options
-    parser.add_argument("--tune-preset", type=str, choices=["fast", "balanced", "thorough", "regularization_focus", "depth_learning_focus"], 
-                       default="balanced", help="Tuning preset configuration")
-    parser.add_argument("--tune-trials", type=int, help="Number of tuning trials (overrides preset default)")
+    parser.add_argument("--tune-trials", type=int, default=25, help="Number of tuning trials (default: 25)")
     parser.add_argument("--tune-month", type=int, help="Specific month for tuning (1-12, defaults to first month)")
     parser.add_argument("--tune-random-state", type=int, default=42, help="Random state for tuning reproducibility")
+    
+    # Hyperparameter loading options
+    parser.add_argument("--tune-run-id", type=str, help="Load hyperparameters from specific tuning run ID")
+    parser.add_argument("--skip-tuning", action="store_true", help="Skip hyperparameter tuning in 'all' step")
+    parser.add_argument("--use-default-params", action="store_true", help="Use default XGBoost parameters instead of tuned ones")
     
     # Boundary configuration
     parser.add_argument("--boundary-geojson", type=str, 
@@ -173,15 +135,20 @@ def validate_arguments(args):
             logger.error("❌ start_month must be <= end_month")
             sys.exit(1)
     
-    # Validate tuning arguments
-    if args.step == "tuning":
+    # Validate tuning arguments (for both tuning step and all step)
+    if args.step in ["tuning", "all"]:
         if args.tune_month is not None:
             if args.tune_month < 1 or args.tune_month > 12:
                 logger.error("❌ --tune-month must be between 1 and 12")
                 sys.exit(1)
-        if args.tune_trials is not None and args.tune_trials < 1:
+        if args.tune_trials < 1:
             logger.error("❌ --tune-trials must be positive")
             sys.exit(1)
+    
+    # Validate parameter loading options
+    if args.tune_run_id and args.use_default_params:
+        logger.error("❌ Cannot use both --tune-run-id and --use-default-params")
+        sys.exit(1)
 
 def process_quad_with_local(quad_name: str, run_id: str, year: str):
     """Process a single quad for composite generation using local files only."""
@@ -201,6 +168,83 @@ def extract_quad_name(s3_file: dict) -> str:
     filename = s3_file['key'].split('/')[-1]
     # Split on underscore and take first part
     return filename.split('_')[0]
+
+def load_best_hyperparameters(run_manager: RunManager, tuning_run_id: str = None) -> Optional[dict]:
+    """
+    Load best hyperparameters from tuning results.
+    
+    Parameters
+    ----------
+    run_manager : RunManager
+        Current run manager instance.
+    tuning_run_id : str, optional
+        Specific tuning run ID to load parameters from. If None, uses current run.
+        
+    Returns
+    -------
+    Optional[dict]
+        Best hyperparameters dictionary, or None if not found.
+    """
+    # Determine which run to check for parameters
+    if tuning_run_id is not None:
+        # Load from specified tuning run
+        tuning_run_path = run_manager.run_path.parent / tuning_run_id
+        source_desc = f"tuning run '{tuning_run_id}'"
+    else:
+        # Load from current run
+        tuning_run_path = run_manager.run_path
+        source_desc = "current run"
+    
+    # Check for best parameters file
+    best_params_file = tuning_run_path / "best_hyperparameters.json"
+    
+    if not best_params_file.exists():
+        logger.debug(f"No hyperparameters found in {source_desc} at: {best_params_file}")
+        return None
+    
+    try:
+        with open(best_params_file, 'r') as f:
+            params = json.load(f)
+        
+        logger.info(f"✅ Loaded hyperparameters from {source_desc}")
+        logger.info(f"📋 Parameters: {len(params)} total")
+        
+        # Log key parameters for visibility
+        key_params = ['n_estimators', 'max_depth', 'learning_rate']
+        for param in key_params:
+            if param in params:
+                logger.info(f"   {param}: {params[param]}")
+        
+        return params
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to load hyperparameters from {source_desc}: {e}")
+        return None
+
+def save_parameters_for_monthly_training(run_manager: RunManager, parameters: dict) -> Path:
+    """
+    Save hyperparameters in a standard location for monthly training scripts to auto-load.
+    
+    Parameters
+    ----------
+    run_manager : RunManager
+        Current run manager instance.
+    parameters : dict
+        Hyperparameters to save.
+        
+    Returns
+    -------
+    Path
+        Path to the saved parameters file.
+    """
+    # Save to standard location that monthly scripts can find
+    params_file = run_manager.run_path / "training_hyperparameters.json"
+    
+    with open(params_file, 'w') as f:
+        json.dump(parameters, f, indent=2)
+    
+    logger.info(f"💾 Saved training parameters to: {params_file}")
+    return params_file
 
 def generate_composites(run_id: str, year: str, db_host: str = "local"):
     """Generate annual composites from monthly predictions."""
@@ -422,21 +466,30 @@ def run_hyperparameter_tuning_step(args, rm):
         # We need to call the data preparation directly since we have the trainer
         
         # Get training sets from the database (similar to train_and_predict_by_month.py)
-        from ml_pipeline.extractor import PolygonExtractor
+        from ml_pipeline.polygon_loader import load_training_polygons
+        from ml_pipeline.db_utils import get_db_connection
         
-        polygon_extractor = PolygonExtractor(
-            year=args.year,
-            month=tune_month,
+        # Set up database connection
+        logger.info(f"🗄️  Connecting to {args.db_host} database...")
+        engine = get_db_connection(host=args.db_host)
+        logger.info(f"✅ Database connection established")
+        
+        # Load training polygons
+        logger.info(f"📊 Loading training polygons for project {args.project_id}, date {args.year}-{tune_month_str}...")
+        gdf = load_training_polygons(
+            engine,
             project_id=args.project_id,
-            db_host=args.db_host
+            basemap_date=f"{args.year}-{tune_month_str}",
         )
         
-        training_sets = polygon_extractor.get_training_polygons()
-        logger.info(f"📍 Found {len(training_sets)} training sets for {args.year}-{tune_month_str}")
+        logger.info(f"📍 Found {len(gdf)} training polygons for {args.year}-{tune_month_str}")
         
-        if not training_sets:
+        if len(gdf) == 0:
             logger.error(f"❌ No training data found for {args.year}-{tune_month_str}")
             sys.exit(1)
+        
+        # Format training sets for trainer
+        training_sets = [{"gdf": gdf, "basemap_date": f"{args.year}-{tune_month_str}"}]
         
         # Prepare training data cache
         npz_path = trainer.prepare_training_data(
@@ -455,13 +508,11 @@ def run_hyperparameter_tuning_step(args, rm):
         sys.exit(1)
     
     # Run hyperparameter tuning
-    logger.info(f"🎯 Starting hyperparameter tuning with preset: {args.tune_preset}")
+    logger.info(f"🎯 Starting hyperparameter tuning with {args.tune_trials} trials")
     
     try:
         # Setup tuning configuration
-        tuning_config = TuningConfig.get_preset(args.tune_preset)
-        if args.tune_trials is not None:
-            tuning_config['n_trials'] = args.tune_trials
+        tuning_config = TuningConfig.create_config(args.tune_trials)
         
         logger.info(f"🔬 Will run {tuning_config['n_trials']} experiments")
         logger.info(f"📋 Tuning parameters: {list(tuning_config['parameters'].keys())}")
@@ -471,12 +522,12 @@ def run_hyperparameter_tuning_step(args, rm):
             trainer=trainer,
             run_manager=rm,
             npz_path=npz_path,
-            preset=args.tune_preset,
             n_trials=args.tune_trials,
             random_state=args.tune_random_state
         )
         
-        logger.info(f"🏆 Tuning completed! Best CV accuracy: {best_result.cv_accuracy_mean:.4f}")
+        logger.info(f"🏆 Tuning completed! Best CV F1-macro: {best_result.cv_f1_macro_mean:.4f}")
+        logger.info(f"📊 Best test F1-macro: {best_result.test_f1_macro:.4f}")
         logger.info(f"📊 Best test accuracy: {best_result.test_accuracy:.4f}")
         
         # Generate tuning report
@@ -526,9 +577,7 @@ def main():
     elif step == "tuning":
         tune_month = args.tune_month if args.tune_month is not None else 1
         logger.info(f"🔧 Tuning month: {tune_month}")
-        logger.info(f"⚙️  Tuning preset: {args.tune_preset}")
-        if args.tune_trials:
-            logger.info(f"🎯 Tuning trials: {args.tune_trials}")
+        logger.info(f"🎯 Tuning trials: {args.tune_trials}")
     logger.info(f"📋 Project ID: {project_id}")
     logger.info(f"🏃 Run ID: {run_id}")
     logger.info(f"🗄️  Database: {db_host}")
@@ -555,6 +604,14 @@ def main():
         run_dataset_evaluation(run_id, year, project_id, db_host)
     elif step == "all":
         # Run all steps in sequence
+        if not args.skip_tuning:
+            # Run hyperparameter tuning first (unless explicitly skipped)
+            logger.info("🔧 Running hyperparameter tuning as part of complete pipeline...")
+            run_hyperparameter_tuning_step(args, rm)
+        else:
+            logger.info("⏭️  Skipping hyperparameter tuning (--skip-tuning specified)")
+        
+        # Run training with tuned parameters
         run_training_step(args, rm)
         generate_composites(run_id, year, db_host)
         process_cfw_dataset_for_pipeline(run_id, year, db_host, boundary_geojson_path)
@@ -565,6 +622,24 @@ def main():
 def run_training_step(args, rm):
     """Run the training and prediction step."""
     logger.info("🏋️ Starting Training & Prediction Step")
+    
+    # Load hyperparameters if available and not using default parameters
+    hyperparameters = None
+    if not args.use_default_params:
+        # Try to load from specified tuning run or current run
+        hyperparameters = load_best_hyperparameters(rm, args.tune_run_id)
+        
+        if hyperparameters is not None:
+            # Save parameters for monthly training scripts to auto-load
+            save_parameters_for_monthly_training(rm, hyperparameters)
+            logger.info("🎯 Will use tuned hyperparameters for all monthly training")
+        else:
+            if args.tune_run_id:
+                logger.warning(f"⚠️  Could not load parameters from tuning run '{args.tune_run_id}', using defaults")
+            else:
+                logger.info("ℹ️  No tuned parameters found, using XGBoost defaults")
+    else:
+        logger.info("🔧 Using default XGBoost parameters (--use-default-params specified)")
     
     # Process each month sequentially
     failed_months = []

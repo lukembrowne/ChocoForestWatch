@@ -249,89 +249,191 @@ The system automatically generates extensive diagnostics:
 
 ## Hyperparameter Tuning
 
-The hyperparameter tuning system uses random search to optimize XGBoost parameters for forest classification accuracy.
+The hyperparameter tuning system uses random search to optimize XGBoost parameters for forest classification accuracy. **Best Practice**: Run tuning once using representative data, then apply optimized parameters to all monthly models.
 
-### HyperparameterTuner Architecture
+### When to Use Hyperparameter Tuning
 
-**Key Features**:
-- Random search over parameter spaces
-- Integration with ModelTrainer and diagnostics
-- Experiment tracking and comparison
-- Automatic best model selection
-- Comprehensive result analysis
+**Run hyperparameter tuning when:**
+- Starting a new modeling project or dataset
+- Changing feature engineering significantly (adding/removing extractors)
+- Model performance is unsatisfactory
+- Exploring different parameter spaces for research
+- Beginning a new prediction year with different data characteristics
 
-### Tuning Configuration
+**DO NOT tune separately for each month** - this is computationally wasteful and can lead to overfitting to temporal patterns rather than optimizing the underlying model structure.
 
-**Preset Configurations** (`tuning_configs.py`):
-- `fast`: Quick tuning with 10-20 trials
-- `balanced`: Balanced parameter ranges for general use (default)
-- `thorough`: Extensive search with 50+ trials
-- `regularization_focus`: Emphasizes regularization parameters
-- `depth_learning_focus`: Focuses on tree structure parameters
+**Recommended Workflow:**
+1. **Tune once** using one representative month (typically month 1)
+2. **Apply parameters** to all monthly training runs
+3. **Re-tune only** when making significant changes to features or data
 
-### Parameter Spaces
+### Practical Workflow Guide
 
-Common XGBoost parameters optimized:
-- `n_estimators`: Number of boosting rounds (50-1000)
-- `max_depth`: Maximum tree depth (3-15)
-- `learning_rate`: Step size shrinkage (0.01-0.3)
-- `subsample`: Fraction of samples per tree (0.6-1.0)
-- `colsample_bytree`: Fraction of features per tree (0.6-1.0)
-- `reg_alpha`: L1 regularization (0-10)
-- `reg_lambda`: L2 regularization (0-10)
-- `gamma`: Minimum loss reduction for splits (0-5)
+#### Step 1: Run Hyperparameter Tuning
 
-### Experiment Management
+Choose the appropriate number of trials based on your time budget and performance requirements:
 
-**ExperimentResult** tracks:
-- Unique experiment ID
-- Parameter configuration  
-- Cross-validation accuracy (mean ± std)
-- Test set metrics (accuracy, F1, precision, recall)
-- Training time
-- Model and diagnostics paths
-- Timestamp
+```bash
+# Quick tuning (15 trials, ~30 minutes) - for development/testing
+python run_train_predict_pipeline.py \
+  --step tuning \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "tune_quick_2025_01" \
+  --db-host remote \
+  --tune-trials 15 \
+  --tune-month 1 \
+  --features ndvi ndwi
 
-### Tuning Process
+# Standard tuning (25 trials, ~1 hour) - RECOMMENDED for production  
+python run_train_predict_pipeline.py \
+  --step tuning \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "tune_standard_2025_01" \
+  --db-host remote \
+  --tune-trials 25 \
+  --tune-month 1 \
+  --features ndvi ndwi evi
 
-1. **Initialization**: Load configuration and validate parameters
-2. **Random Sampling**: Generate parameter sets using random state
-3. **Model Training**: Train XGBoost with sampled parameters
-4. **Evaluation**: Cross-validation and test set evaluation
-5. **Result Tracking**: Save experiment results and update best model
-6. **Final Analysis**: Generate summary and recommendations
-
-### Usage Example
-
-```python
-from ml_pipeline.hyperparameter_tuner import HyperparameterTuner
-
-# Initialize tuner
-tuner = HyperparameterTuner(
-    trainer=model_trainer,
-    run_manager=run_manager,
-    config_name='balanced',
-    random_state=42
-)
-
-# Run tuning
-best_result = tuner.run_tuning(
-    npz_path=prepared_data_path,
-    n_trials=50
-)
-
-# Access best parameters
-best_params = best_result.parameters
-best_score = best_result.cv_accuracy_mean
+# Thorough tuning (50+ trials, ~2-3 hours) - for maximum performance
+python run_train_predict_pipeline.py \
+  --step tuning \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "tune_thorough_2025_01" \
+  --db-host remote \
+  --tune-trials 50 \
+  --tune-month 1 \
+  --features ndvi ndwi evi savi
 ```
 
-### Output Files
+#### Step 2: Extract Best Parameters
 
-The tuning process generates:
-- `experiment_*.json`: Individual experiment results
-- `results_summary.csv`: Ranked summary of all experiments
-- `best_model_recommendation.json`: Top 5 results with best parameters
-- `tuning_config.json`: Configuration used for reproducibility
+After tuning completes, find the optimized parameters in:
+
+```bash
+# Primary location (easy to use)
+ml_pipeline/runs/{run_id}/best_hyperparameters.json
+
+# Detailed results with top 5 experiments
+ml_pipeline/runs/{run_id}/hyperparameter_tuning/best_model_recommendation.json
+
+# Full analysis report
+ml_pipeline/runs/{run_id}/hyperparameter_tuning/tuning_analysis_report.html
+```
+
+Example best parameters output:
+```json
+{
+  "n_estimators": 342,
+  "max_depth": 7,
+  "learning_rate": 0.0876,
+  "subsample": 0.85,
+  "colsample_bytree": 0.91,
+  "reg_alpha": 0.234,
+  "reg_lambda": 1.45,
+  "random_state": 42
+}
+```
+
+**Core Structure Parameters:**
+- `n_estimators` (100-1000): Number of boosting rounds
+  - *Higher*: Better fit, slower training, risk of overfitting
+  - *Lower*: Faster training, risk of underfitting
+  - *Sweet spot*: Usually 200-500 for forest classification
+
+- `max_depth` (3-10): Maximum tree depth
+  - *Higher*: More complex patterns, risk of overfitting
+  - *Lower*: Simpler patterns, more generalization
+  - *Sweet spot*: Usually 6-8 for satellite imagery
+
+- `learning_rate` (0.01-0.3): Step size shrinkage
+  - *Higher*: Faster learning, risk of overshooting
+  - *Lower*: More conservative, often better performance
+  - *Sweet spot*: Usually 0.05-0.15
+
+**Sampling Parameters:**
+- `subsample` (0.6-1.0): Fraction of samples per tree
+  - *Purpose*: Prevents overfitting, adds randomness
+  - *Recommendation*: 0.8-0.9 for most cases
+
+- `colsample_bytree` (0.6-1.0): Fraction of features per tree
+  - *Purpose*: Feature regularization, speed improvement
+  - *Recommendation*: 0.8-1.0 for satellite data (limited features)
+
+**Regularization Parameters:**
+- `reg_alpha` (0-10): L1 regularization (feature selection)
+- `reg_lambda` (0-10): L2 regularization (weight smoothing)
+- `gamma` (0-10): Minimum loss reduction for splits
+  - *Higher values*: More conservative splitting, less overfitting
+
+**Tree Shape Parameters:**
+- `min_child_weight` (1-10): Minimum sum of instance weight in child
+  - *Higher values*: More conservative, prevents overfitting
+  - *Lower values*: More aggressive splitting, may overfit
+  - *Sweet spot*: Usually 1-5 for forest classification
+
+- `max_delta_step` (0-10): Maximum delta step for weight estimation
+  - *Higher values*: More conservative updates, helps with imbalanced classes
+  - *0*: No constraint (default)
+  - *Recommendation*: Try 1-3 for imbalanced datasets
+
+**Class Imbalance Handling:**
+- `class_weight` (None/'balanced'): Whether to use balanced class weighting
+  - *None*: No weighting (default)
+  - *'balanced'*: Automatically weight inversely proportional to class frequencies
+  - *Benefits*: Improves performance on minority classes
+
+### Advanced Usage and Troubleshooting
+
+**Parameter Ranges Used:**
+The system uses these optimized ranges for all tuning:
+- `n_estimators`: 100-2000 (integer)
+- `max_depth`: 2-12 (integer)  
+- `learning_rate`: 0.02-0.25 (log-uniform)
+- `subsample`: 0.4-1.0 (uniform)
+- `colsample_bytree`: 0.4-1.0 (uniform)
+- `reg_alpha`: 0.001-10.0 (log-uniform)
+- `reg_lambda`: 0.1-50.0 (log-uniform)
+
+**Tree Shape Parameters:**
+- `min_child_weight`: 1-10 (integer) - Minimum sum of instance weight in child
+- `gamma`: 0.001-10.0 (log-uniform) - Minimum loss reduction for splits
+- `max_delta_step`: 0-10 (integer) - Maximum delta step for weight estimation
+
+**Class Imbalance Handling:**
+- `class_weight`: None or 'balanced' (choice) - Whether to use balanced class weighting
+
+**Loading Previous Results:**
+```python
+from ml_pipeline.hyperparameter_tuner import get_best_parameters_from_run
+
+# Get best parameters from previous tuning run
+best_params = get_best_parameters_from_run(
+    run_path=Path("ml_pipeline/runs/tune_thorough_2025_01")
+)
+```
+
+**Performance Monitoring:**
+- **Cross-validation F1-macro**: Primary metric for parameter selection (handles class imbalance better than accuracy)
+- **Test F1-macro**: Validate generalization performance on all classes
+- **Test accuracy**: Overall classification performance
+- **CV-Test gap**: Large gaps indicate overfitting
+- **Training time**: Consider operational constraints
+
+**Common Issues and Solutions:**
+
+| Issue | Symptoms | Solution |
+|-------|----------|----------|
+| Overfitting | CV >> Test F1-macro | Increase regularization (`reg_alpha`, `reg_lambda`, `gamma`) |
+| Underfitting | Low CV and Test F1-macro | Increase complexity (`max_depth`, `n_estimators`) |
+| Class imbalance | Low F1-macro despite high accuracy | Use `class_weight: 'balanced'` |
+| Slow training | Long experiment times | Reduce `n_estimators`, increase `learning_rate` |
+| Parameter boundaries | Best params at edges | Expand parameter ranges |
+| Inconsistent results | High variance in CV | Increase regularization, reduce `learning_rate` |
+| Poor minority class performance | Low per-class F1 scores | Enable balanced class weighting, tune `min_child_weight` |
+
 
 ## Monthly Training Workflow
 

@@ -696,7 +696,16 @@ export default {
 .year-selector {
   flex: 1;
 }
+.year-select {
+  width: 100%;
+  max-width: 120px;
+  font-size: 12px !important;
+  font-weight: 500;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.8);
 
+}
+  
 .visibility-btn {
   width: 32px;
   height: 32px;

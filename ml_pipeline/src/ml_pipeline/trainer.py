@@ -40,6 +40,7 @@ from sklearn.metrics import (
     accuracy_score,
     precision_recall_fscore_support,
     confusion_matrix,
+    f1_score,
 )
 from sklearn.utils.class_weight import compute_sample_weight
 import rasterio
@@ -384,12 +385,20 @@ class ModelTrainer:
 
         # ---- class imbalance ----------------------------------------
         sample_weight_tr = sample_weight_val = None
-        if cfg.class_weighting == "balanced":
+        
+        # Check for class_weight parameter from hyperparameter tuning
+        class_weight_setting = model_params.get('class_weight', cfg.class_weighting)
+        
+        if class_weight_setting == "balanced":
             sample_weight_tr = compute_sample_weight("balanced", y_tr)
             sample_weight_val = compute_sample_weight("balanced", y_val)
 
         # ---- choose objective ---------------------------------------
         params = dict(model_params)
+        
+        # Remove class_weight parameter as it's handled through sample weights
+        params.pop('class_weight', None)
+        
         if len(present) > 2:
             params["num_class"] = len(present)
             params["objective"] = "multi:softmax"
@@ -412,58 +421,79 @@ class ModelTrainer:
             print(f"Cross-validating model with {cfg.cv_folds} folds")
             params_cv = dict(params)
             params_cv.pop("early_stopping_rounds", None)  # disable ES inside CV
-            model_cv = XGBClassifier(**params_cv)
+            
+            # Manual cross-validation to properly handle sample weights
+            cv_f1_scores = []
+            
             if cfg.split_method == "feature":
                 gkf = GroupKFold(n_splits=cfg.cv_folds)
-                cv_scores = cross_val_score(
-                    model_cv,
-                    X_tr,
-                    y_tr,
-                    groups=fid_trval[tr_mask],
-                    cv=gkf,
-                    scoring="accuracy",
-                    n_jobs=-1,
-                )
+                cv_splits = gkf.split(X_tr, y_tr, groups=fid_trval[tr_mask])
             else:
-                cv_scores = cross_val_score(
-                    model_cv,
-                    X_tr,
-                    y_tr,
-                    cv=cfg.cv_folds,
-                    scoring="accuracy",
-                    n_jobs=-1,
-                )
+                from sklearn.model_selection import StratifiedKFold
+                skf = StratifiedKFold(n_splits=cfg.cv_folds, shuffle=True, random_state=cfg.random_state)
+                cv_splits = skf.split(X_tr, y_tr)
+            
+            for fold_idx, (train_idx, val_idx) in enumerate(cv_splits):
+                # Split data for this fold
+                X_fold_train, X_fold_val = X_tr[train_idx], X_tr[val_idx]
+                y_fold_train, y_fold_val = y_tr[train_idx], y_tr[val_idx]
+                
+                # Compute sample weights for this fold if class weighting is enabled
+                fold_sample_weight = None
+                if class_weight_setting == "balanced":
+                    fold_sample_weight = compute_sample_weight("balanced", y_fold_train)
+                
+                # Train model for this fold
+                model_cv = XGBClassifier(**params_cv)
+                model_cv.fit(X_fold_train, y_fold_train, sample_weight=fold_sample_weight, verbose=False)
+                
+                # Predict and compute F1-macro for this fold
+                y_fold_pred = model_cv.predict(X_fold_val)
+                fold_f1 = f1_score(y_fold_val, y_fold_pred, average='macro', zero_division=0)
+                cv_f1_scores.append(fold_f1)
+                
+                print(f"  Fold {fold_idx + 1}/{cfg.cv_folds}: F1-macro = {fold_f1:.4f}")
+            
+            cv_scores = np.array(cv_f1_scores)
+            print(f"CV F1-macro: {np.mean(cv_scores):.4f} ± {np.std(cv_scores):.4f}")
 
         # ---- final training ----------------------------------------
         print(f"Final training model with {X_tr.shape[0]} training samples and {X_val.shape[0]} validation samples")
 
         print("Label data (first 5 values): ", y_tr[:5])
-        print("Covariate data (first 5 rows):\n", X_tr[:5])
+        # Format covariate data to avoid scientific notation
+        print("Covariate data (first 5 rows):")
+        np.set_printoptions(suppress=True, precision=6, floatmode='fixed')
+        print(X_tr[:5])
+        np.set_printoptions()  # Reset to default
         model_final.fit(
             X_tr,
             y_tr,
             sample_weight=sample_weight_tr,
             eval_set=[(X_val, y_val)],
             sample_weight_eval_set=[sample_weight_val] if sample_weight_val is not None else None,
-            verbose=True,
+            verbose=False,
         )
 
         # ---- unseen TEST metrics -----------------------------------
         y_pred = model_final.predict(X_te)
         y_pred_proba = model_final.predict_proba(X_te) if hasattr(model_final, 'predict_proba') else None
         acc = accuracy_score(y_te, y_pred)
+        f1_macro = f1_score(y_te, y_pred, average='macro', zero_division=0)
         pr, rc, f1, _ = precision_recall_fscore_support(
             y_te, y_pred, average=None, zero_division=0
         )
 
         metrics = {
             "accuracy": float(acc),
+            "f1_macro": float(f1_macro),
             "precision": [float(v) for v in pr],
             "recall": [float(v) for v in rc],
             "f1": [float(v) for v in f1],
             "confusion_matrix": confusion_matrix(y_te, y_pred).tolist(),
             "classes_present": present,
             "cv_accuracy": cv_scores.tolist() if cv_scores is not None else None,
+            "cv_f1_macro": cv_scores.tolist() if cv_scores is not None else None,
         }
 
         # Save model to comet
@@ -544,6 +574,9 @@ class ModelTrainer:
         model_final.month_encoder = le_month
         model_final.global_class_to_int = global_class_to_int
         model_final.consecutive_to_global = consecutive_to_global
+        
+        # Store class_weight_setting for metadata
+        model_final.class_weight_setting = class_weight_setting
 
         return model_final, metrics
 
@@ -911,12 +944,13 @@ class ModelTrainer:
             pickle.dump({"meta": meta, "model": model, "feature_manager": self.feature_manager}, f)
         
         # Save hyperparameters and configuration to diagnostics folder
-        self._save_model_metadata(name, model, meta)
+        class_weight_setting = getattr(model, 'class_weight_setting', None)
+        self._save_model_metadata(name, model, meta, class_weight_setting)
         
         self.last_saved_model_path = path
         return path
 
-    def _save_model_metadata(self, model_name: str, model, meta: dict):
+    def _save_model_metadata(self, model_name: str, model, meta: dict, class_weight_setting=None):
         """Save hyperparameters and configuration files."""
         try:
             diagnostics_path = self.run_dir / "model_diagnostics" / model_name
@@ -932,7 +966,7 @@ class ModelTrainer:
                 "val_fraction": self.cfg.val_fraction,
                 "random_state": self.cfg.random_state,
                 "early_stopping_rounds": self.cfg.early_stopping_rounds,
-                "class_weighting": self.cfg.class_weighting,
+                "class_weighting": class_weight_setting or self.cfg.class_weighting,
                 "cv_folds": self.cfg.cv_folds,
                 "class_order": list(self.cfg.class_order),
                 "cache_dir": str(self.cfg.cache_dir) if self.cfg.cache_dir else None,
@@ -980,8 +1014,8 @@ class ModelTrainer:
             ])
             
             if self.feature_manager is not None:
-                summary_lines.append(f"Feature extractors: {len(self.feature_manager.extractors)}")
-                for extractor in self.feature_manager.extractors:
+                summary_lines.append(f"Feature extractors: {len(self.feature_manager.feature_extractors)}")
+                for extractor in self.feature_manager.feature_extractors:
                     summary_lines.append(f"  - {extractor.__class__.__name__}")
                 summary_lines.append(f"Total features: {len(meta.get('feature_names', []))}")
             else:

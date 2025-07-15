@@ -23,29 +23,53 @@
           :class="{ 'method-btn-active': selectedMethod === 'regional' }"
           class="method-btn"
           @click="selectedMethod = 'regional'"
-          :label="t('analysis.panel.methods.regional')"
           size="sm"
           no-caps
           flat
-        />
+        >
+          <div class="method-btn-content">
+            <span>{{ t('analysis.panel.methods.regional') }}</span>
+            <q-icon name="info" size="xs" class="method-info-icon">
+              <q-tooltip>
+                {{ t('analysis.panel.methodTooltips.regional') }}
+              </q-tooltip>
+            </q-icon>
+          </div>
+        </q-btn>
         <q-btn
           :class="{ 'method-btn-active': selectedMethod === 'draw' }"
           class="method-btn"
           @click="selectedMethod = 'draw'"
-          :label="t('analysis.panel.methods.draw')"
           size="sm"
           no-caps
           flat
-        />
+        >
+          <div class="method-btn-content">
+            <span>{{ t('analysis.panel.methods.draw') }}</span>
+            <q-icon name="info" size="xs" class="method-info-icon">
+              <q-tooltip>
+                {{ t('analysis.panel.methodTooltips.draw') }}
+              </q-tooltip>
+            </q-icon>
+          </div>
+        </q-btn>
         <q-btn
           :class="{ 'method-btn-active': selectedMethod === 'upload' }"
           class="method-btn"
           @click="selectedMethod = 'upload'"
-          :label="t('analysis.panel.methods.upload')"
           size="sm"
           no-caps
           flat
-        />
+        >
+          <div class="method-btn-content">
+            <span>{{ t('analysis.panel.methods.upload') }}</span>
+            <q-icon name="info" size="xs" class="method-info-icon">
+              <q-tooltip>
+                {{ t('analysis.panel.methodTooltips.upload') }}
+              </q-tooltip>
+            </q-icon>
+          </div>
+        </q-btn>
       </div>
 
       <!-- Area Method Content -->
@@ -140,12 +164,17 @@
 
     <!-- Results Section -->
     <div v-if="hasResults" class="results-section-compact">
+
+      <div class="section-header-compact">
+        <span class="section-title-compact">{{ t('analysis.panel.results.title') }}</span>
+      </div>
       
       <!-- Area Info Compact -->
       <div class="area-info-compact">
         <span class="area-name-compact" :class="{ 'regional-stats': isRegionalStats }">
           {{ getAreaDisplayName() }}
         </span>
+       
         <q-chip 
           v-if="isRegionalStats" 
           size="xs" 
@@ -831,12 +860,12 @@ onMounted(async () => {
 
 /* Compact Section Headers */
 .section-header-compact {
-  padding: 8px 12px 4px;
+  padding: 8px;
   border-bottom: 1px solid #f0f0f0;
 }
 
 .section-title-compact {
-  font-size: 13px;
+  font-size: 14px !important;
   font-weight: 600;
   color: #2e7d32;
 }
@@ -847,7 +876,7 @@ onMounted(async () => {
 }
 
 .benchmark-selector-container {
-  margin: 8px 12px 0;
+  margin: 8px 0;
 }
 
 /* Area Selection Compact */
@@ -859,7 +888,7 @@ onMounted(async () => {
 .method-buttons-row {
   display: flex;
   gap: 4px;
-  margin: 8px 12px;
+  margin: 8px 2px;
   background: #f8f9fa;
   border-radius: 6px;
   padding: 4px;
@@ -867,10 +896,25 @@ onMounted(async () => {
 
 .method-btn {
   flex: 1;
-  font-size: 12px;
+  font-size: 12px !important;
   font-weight: 500;
   border-radius: 4px;
   transition: all 0.2s ease;
+  min-width: 0;
+}
+
+.method-btn-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: px;
+  white-space: nowrap;
+  overflow: hidden;
+  width: 100%;
+}
+
+.method-btn-content span {
+  flex-shrink: 0;
 }
 
 .method-btn-active {
@@ -878,6 +922,18 @@ onMounted(async () => {
   color: #2e7d32 !important;
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.method-info-icon {
+  opacity: 0.6;
+  cursor: help;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+  margin: 0 4px;
+}
+
+.method-info-icon:hover {
+  opacity: 1;
 }
 
 .method-content-compact {
@@ -896,7 +952,7 @@ onMounted(async () => {
   font-weight: 500;
   border-radius: 6px;
   height: 32px;
-  font-size: 13px;
+  font-size: 13px !important;
 }
 
 /* Upload Compact Styles */
@@ -980,8 +1036,6 @@ onMounted(async () => {
   animation: fadeIn 0.3s ease-in;
   background: #f8f9fa;
   border-radius: 8px;
-  margin: 12px;
-  padding: 16px;
 }
 
 @keyframes fadeIn {
@@ -1109,7 +1163,7 @@ onMounted(async () => {
 }
 
 .stat-value-compact {
-  font-size: 16px;
+  font-size: 16px !important;
   font-weight: 700;
   color: #212121;
   line-height: 1.2;
@@ -1117,14 +1171,14 @@ onMounted(async () => {
 }
 
 .stat-label-compact {
-  font-size: 11px;
+  font-size: 12px !important;
   font-weight: 600;
   color: #424242;
   margin-bottom: 2px;
 }
 
 .stat-detail-compact {
-  font-size: 10px;
+  font-size: 12px !important;
   color: #757575;
   font-weight: 500;
   line-height: 1.2;
@@ -1189,7 +1243,7 @@ onMounted(async () => {
   }
   
   .total-area-text {
-    font-size: 11px;
+    font-size: 12px !important;
   }
 }
 </style>

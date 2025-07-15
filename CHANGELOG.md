@@ -5,27 +5,17 @@ All notable changes to ChocoForestWatch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
 
-### Added
-- Boundary clipping support for ChocoForestWatch datasets in ML pipeline
-- Hyperparameter tuning framework with comprehensive optimization presets
-- Dataset service for managing external forest cover datasets
-- Dynamic dataset configuration with JSON-based management
-
-### Changed
-- Updated CFW dataset processing to support boundary masking for consistency with external datasets
-- Enhanced pipeline to accept boundary GeoJSON files for dataset clipping
-- Improved README documentation with boundary clipping examples
-
-### Fixed
-- Resolved CFW dataset processing to ensure consistent clipping with other reference datasets
-
-## [0.1.1] - 2025-07-13
+## [0.1.1] - 2025-07-14
 
 ### Added
 - Advanced feature engineering system with NDVI and NDWI spectral indices support
 - Step-based pipeline execution for modular workflow control (training, composites, cfw-processing, benchmarks)
+- Boundary clipping support for ChocoForestWatch datasets in ML pipeline
+- Hyperparameter tuning framework with comprehensive optimization presets
+- Dataset service for managing external forest cover datasets
+- Dynamic dataset configuration with JSON-based management
+- Hyperparameter tuning for xgboost model
 
 ### Changed
 - Expanded training polygon set to across western Ecuador

@@ -152,17 +152,17 @@ class CompositeGenerator:
         data = stacked.sel(band=1)
         
         # Count clear observations
-        valid = (~data.isin([2, 3, 5, 6, 255])).sum("time")
+        valid = (~data.isin([2, 3, 5, 6, 255])).sum("time") # Don't count cloud, shadow, haze, sensor error, or no data
         
         # Majority vote
-        masked = data.where(~data.isin([2, 3, 5, 6]))
+        masked = data.where(~data.isin([2, 3, 5, 6])) # Don't count cloud, shadow, haze, sensor error, or no data
         class_counts = xr.concat(
             [(masked == v).sum("time").assign_coords(class_val=v)
-             for v in [0, 1, 4]],
+             for v in [0, 1, 4]], # Count forest, non-forest, and water
             dim="class_val"
         )
         
-        majority = class_counts.argmax("class_val").astype(np.uint8)
+        majority = class_counts.argmax("class_val").astype(np.uint8) # Choose majority
         
         # Forest flag
         forest_flag = majority.where(valid >= 2, 255)

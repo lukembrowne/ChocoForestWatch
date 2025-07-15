@@ -33,7 +33,8 @@ from ml_pipeline.s3_utils import upload_file
 from ml_pipeline.version import get_version_metadata
 from ml_pipeline.feature_engineering import FeatureManager
 
-from multiprocessing import Pool
+import multiprocessing as mp
+from multiprocessing import Pool, get_context
 from functools import partial
 from ml_pipeline.prediction_worker import predict_single_cog_standalone
 
@@ -266,12 +267,20 @@ class ModelPredictor:
             upload_to_s3=self.upload_to_s3
         )
         
-        with Pool(8) as pool:
-            saved = list(tqdm(
-                pool.imap(predict_func, cog_urls), 
-                total=len(cog_urls),
-                desc=f"Predicting {collection}"
-            ))
+        # ------------------------------------------------------------------
+        #  Multiprocessing pool (spawn) with 8 real workers
+        # ------------------------------------------------------------------
+        print("🔧 Initializing multiprocessing pool with 8 workers...")
+        
+        ctx = get_context("spawn")  # fork-safe start method
+        with ctx.Pool(processes=8) as pool:
+            saved = list(
+                tqdm(
+                    pool.imap_unordered(predict_func, cog_urls, chunksize=1),
+                    total=len(cog_urls),
+                    desc=f"Predicting {collection}",
+                )
+            )
 
         # Remove prediction directory if not saving locally
         if not save_local:
