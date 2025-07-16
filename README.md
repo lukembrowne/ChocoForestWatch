@@ -277,11 +277,11 @@ poetry run python run_train_predict_pipeline.py \
   --start_month 1 --end_month 12 \
   --year 2022 \
   --project_id 7 \
-  --run_id "tuning_test_2025_07_14" \
+  --run_id "all_features_2025_07_15" \
   --db-host "remote" \
   --features ndvi ndwi evi savi brightness water_detection shadow \
   --boundary-geojson shapefiles/Ecuador-DEM-900m-contour.geojson \
-  --tune-trials 25
+  --tune-trials 100
 
 # Full pipeline without features (base bands only - legacy behavior)
 poetry run python run_train_predict_pipeline.py \
