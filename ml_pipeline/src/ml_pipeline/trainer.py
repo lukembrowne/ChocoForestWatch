@@ -420,7 +420,6 @@ class ModelTrainer:
         if cfg.cv_folds > 1:
             print(f"Cross-validating model with {cfg.cv_folds} folds")
             params_cv = dict(params)
-            params_cv.pop("early_stopping_rounds", None)  # disable ES inside CV
             
             # Manual cross-validation to properly handle sample weights
             cv_f1_scores = []
@@ -438,14 +437,41 @@ class ModelTrainer:
                 X_fold_train, X_fold_val = X_tr[train_idx], X_tr[val_idx]
                 y_fold_train, y_fold_val = y_tr[train_idx], y_tr[val_idx]
                 
+                # Further split fold training data for early stopping validation
+                if len(X_fold_train) > 20:  # Only split if we have enough data
+                    X_fold_train_es, X_fold_val_es, y_fold_train_es, y_fold_val_es = train_test_split(
+                        X_fold_train, y_fold_train, 
+                        test_size=0.2, 
+                        random_state=cfg.random_state + fold_idx,
+                        stratify=y_fold_train
+                    )
+                else:
+                    # If not enough data, use original split without early stopping validation
+                    X_fold_train_es, X_fold_val_es = X_fold_train, None
+                    y_fold_train_es, y_fold_val_es = y_fold_train, None
+                
                 # Compute sample weights for this fold if class weighting is enabled
                 fold_sample_weight = None
+                fold_sample_weight_es = None
                 if class_weight_setting == "balanced":
-                    fold_sample_weight = compute_sample_weight("balanced", y_fold_train)
+                    fold_sample_weight = compute_sample_weight("balanced", y_fold_train_es)
+                    if X_fold_val_es is not None:
+                        fold_sample_weight_es = compute_sample_weight("balanced", y_fold_val_es)
                 
                 # Train model for this fold
                 model_cv = XGBClassifier(**params_cv)
-                model_cv.fit(X_fold_train, y_fold_train, sample_weight=fold_sample_weight, verbose=False)
+                
+                # Set up eval_set for early stopping if validation data is available
+                eval_set = [(X_fold_val_es, y_fold_val_es)] if X_fold_val_es is not None else None
+                sample_weight_eval_set = [fold_sample_weight_es] if fold_sample_weight_es is not None else None
+                
+                model_cv.fit(
+                    X_fold_train_es, y_fold_train_es, 
+                    sample_weight=fold_sample_weight,
+                    eval_set=eval_set,
+                    sample_weight_eval_set=sample_weight_eval_set,
+                    verbose=False
+                )
                 
                 # Predict and compute F1-macro for this fold
                 y_fold_pred = model_cv.predict(X_fold_val)
