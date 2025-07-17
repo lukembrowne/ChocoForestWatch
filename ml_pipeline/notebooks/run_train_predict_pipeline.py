@@ -59,6 +59,7 @@ import argparse
 import logging
 import sys
 import json
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -117,6 +118,47 @@ def parse_arguments():
                        help="Path to GeoJSON file for boundary masking (optional, used for CFW dataset processing)")
     
     return parser.parse_args()
+
+def log_command_to_file(run_manager: RunManager) -> None:
+    """
+    Log the full command used to run this pipeline to a file in the run directory.
+    This helps with reproducibility and tracking of experiments.
+    """
+    # Reconstruct the command from sys.argv
+    command_parts = ["poetry", "run", "python"] + sys.argv
+    
+    # Create multiline command with proper escaping
+    first_part = f"{command_parts[0]} {command_parts[1]} {command_parts[2]}"
+    remaining_parts = command_parts[3:]
+    full_command = first_part + " \\\n  " + " \\\n  ".join(remaining_parts)
+    
+    # Create command log file in run directory
+    log_file = run_manager.run_path / "run_commands.log"
+    
+    # Prepare log entry with timestamp
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    separator = "=" * 80
+    
+    log_entry = f"""
+# Pipeline Run Command Log
+# Generated on: {timestamp}
+# Working directory: {os.getcwd()}
+
+{full_command}
+
+# Alternative single-line format:
+{' '.join(sys.argv)}
+
+{separator}
+"""
+    
+    # Write to log file (append mode to preserve history)
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(log_entry)
+    
+    logger.info(f"📝 Command logged to: {log_file}")
+    logger.info(f"🔄 To reproduce this run, use:")
+    logger.info(f"   {full_command}")
 
 def validate_arguments(args):
     """Validate command line arguments."""
@@ -375,7 +417,7 @@ def run_dataset_evaluation(run_id: str, year: str, project_id: int, db_host: str
         
         # External datasets
         "datasets-hansen-tree-cover-2022",        # Hansen Global Forest Change
-        "datasets-mapbiomes-2022",                # MapBiomas
+        "datasets-mapbiomas-2022",                # MapBiomas
         "datasets-esa-landcover-2020",            # ESA WorldCover
         "datasets-jrc-forestcover-2020",          # JRC Global Forest Cover
         "datasets-palsar-2020",                   # PALSAR Forest/Non-Forest
@@ -590,6 +632,9 @@ def main():
     # Create run manager for organizing results
     rm = RunManager(run_id=run_id)  # Uses ml_pipeline/runs/ automatically
     logger.info(f"📁 Run directory: {rm.run_path}")
+    
+    # Log the command used to run this pipeline
+    log_command_to_file(rm)
 
     # Execute based on selected step
     if step == "training":
