@@ -44,7 +44,7 @@ class CompositeGenerator:
         if self.temp_dir:
             shutil.rmtree(self.temp_dir)
         
-    def generate_composite(self, quad_name: str, min_pixels: int = 10, skip_s3_upload: bool = False, use_local_files: bool = False):
+    def generate_composite(self, quad_name: str, min_pixels: int = 10, skip_s3_upload: bool = False, use_local_files: bool = False, algorithm: str = 'majority_vote'):
         """Generate annual composite for a given quad."""
         if not self.temp_dir:
             raise RuntimeError("CompositeGenerator must be used as a context manager")
@@ -90,8 +90,8 @@ class CompositeGenerator:
         print("Stacked monthly data.")
         
         # Generate forest flag
-        print("Generating forest flag...")
-        forest_flag = self._generate_forest_flag(stacked)
+        print(f"Generating forest flag using {algorithm} algorithm...")
+        forest_flag = self._generate_forest_flag(stacked, algorithm)
         print("Generated forest flag.")
         
         # Create output files in temp directory
@@ -147,13 +147,33 @@ class CompositeGenerator:
             
         return xr.concat([open_month(u) for u in cogs], dim="time").load()
         
-    def _generate_forest_flag(self, stacked):
-        """Generate forest flag from stacked data."""
+    def _generate_forest_flag(self, stacked, algorithm='majority_vote'):
+        """Generate forest flag from stacked data.
+        
+        Args:
+            stacked: xarray dataset with time series data
+            algorithm: Algorithm to use ('majority_vote', 'temporal_trend', 'change_point', 'latest_valid', 'weighted_temporal')
+        """
         data = stacked.sel(band=1)
         
         # Count clear observations
         valid = (~data.isin([2, 3, 5, 6, 255])).sum("time") # Don't count cloud, shadow, haze, sensor error, or no data
         
+        if algorithm == 'majority_vote':
+            return self._majority_vote_algorithm(data, valid)
+        elif algorithm == 'temporal_trend':
+            return self._temporal_trend_algorithm(data, valid)
+        elif algorithm == 'change_point':
+            return self._change_point_algorithm(data, valid)
+        elif algorithm == 'latest_valid':
+            return self._latest_valid_algorithm(data, valid)
+        elif algorithm == 'weighted_temporal':
+            return self._weighted_temporal_algorithm(data, valid)
+        else:
+            raise ValueError(f"Unknown algorithm: {algorithm}. Available: 'majority_vote', 'temporal_trend', 'change_point', 'latest_valid', 'weighted_temporal'")
+    
+    def _majority_vote_algorithm(self, data, valid):
+        """Original majority vote algorithm."""
         # Majority vote
         masked = data.where(~data.isin([2, 3, 5, 6])) # Don't count cloud, shadow, haze, sensor error, or no data
         class_counts = xr.concat(
@@ -167,6 +187,320 @@ class CompositeGenerator:
         # Forest flag
         forest_flag = majority.where(valid >= 2, 255)
         forest_flag = (forest_flag == 0).astype(np.uint8)
+        forest_flag = forest_flag.where(valid >= 2, 255)
+        
+        return forest_flag
+    
+    def _temporal_trend_algorithm(self, data, valid):
+        """Temporal trend algorithm that considers time series patterns for deforestation detection."""
+        # Mask invalid observations
+        masked = data.where(~data.isin([2, 3, 5, 6])) # Don't count cloud, shadow, haze, sensor error, or no data
+        
+        # Apply the temporal trend logic pixel by pixel
+        def analyze_temporal_trend(pixel_series):
+            # Remove NaN values and get valid time series
+            if hasattr(pixel_series, 'dropna'):
+                valid_series = pixel_series.dropna('time')
+                values = valid_series.values
+            else:
+                # Handle numpy array case
+                values = pixel_series[~np.isnan(pixel_series)]
+            
+            if len(values) < 2:
+                return 255  # Not enough data
+            
+            # Helper function to get runs of consecutive values
+            def get_runs(arr):
+                if len(arr) == 0:
+                    return []
+                runs = []
+                current_val = arr[0]
+                current_count = 1
+                
+                for i in range(1, len(arr)):
+                    if arr[i] == current_val:
+                        current_count += 1
+                    else:
+                        runs.append((current_val, current_count))
+                        current_val = arr[i]
+                        current_count = 1
+                runs.append((current_val, current_count))
+                return runs
+            
+            # Get runs of consecutive values
+            runs = get_runs(values)
+            
+            # Recent consensus: if last 2-3 observations are consistent, use that
+            if len(values) >= 2:
+                recent_values = values[-2:]  # Last 2 values
+                if len(recent_values) >= 2 and np.all(recent_values == recent_values[0]):
+                    # Check if it's a valid class (forest=0, non-forest=1, water=4)
+                    if recent_values[0] in [0, 1, 4]:
+                        return 1 if recent_values[0] == 0 else 0  # Convert to forest flag
+                
+                # Check last 3 if available
+                if len(values) >= 3:
+                    recent_values = values[-3:]
+                    if len(recent_values) >= 3 and np.all(recent_values == recent_values[0]):
+                        if recent_values[0] in [0, 1, 4]:
+                            return 1 if recent_values[0] == 0 else 0
+            
+            # Change point detection: look for forest -> non-forest transitions
+            if len(runs) >= 2:
+                # Check if we have a clear transition from forest to non-forest
+                for i in range(len(runs) - 1):
+                    current_class, current_count = runs[i]
+                    next_class, next_count = runs[i + 1]
+                    
+                    # Forest to non-forest transition with sufficient evidence
+                    if (current_class == 0 and next_class == 1 and 
+                        current_count >= 2 and next_count >= 1):
+                        return 0  # Non-forest (deforestation detected)
+                    
+                    # Non-forest to forest transition (reforestation)
+                    if (current_class == 1 and next_class == 0 and 
+                        current_count >= 2 and next_count >= 2):
+                        return 1  # Forest (reforestation detected)
+            
+            # Run length analysis: filter out isolated classifications
+            if len(runs) >= 3:
+                # Look for pattern like [forest, isolated_non_forest, forest]
+                for i in range(1, len(runs) - 1):
+                    prev_class, prev_count = runs[i - 1]
+                    curr_class, curr_count = runs[i]
+                    next_class, next_count = runs[i + 1]
+                    
+                    # Isolated non-forest between forest observations (likely noise)
+                    if (prev_class == 0 and curr_class == 1 and next_class == 0 and
+                        curr_count == 1 and prev_count >= 1 and next_count >= 1):
+                        # Filter out the isolated observation and treat as forest
+                        return 1  # Forest
+                    
+                    # Isolated forest between non-forest observations (likely noise)
+                    if (prev_class == 1 and curr_class == 0 and next_class == 1 and
+                        curr_count == 1 and prev_count >= 1 and next_count >= 1):
+                        # Filter out the isolated observation and treat as non-forest
+                        return 0  # Non-forest
+            
+            # Fallback to majority vote if no clear temporal pattern
+            counts = {0: 0, 1: 0, 4: 0}  # forest, non-forest, water
+            for val in values:
+                if val in counts:
+                    counts[val] += 1
+            
+            # Find majority class
+            max_count = max(counts.values())
+            if max_count == 0:
+                return 255  # No valid data
+            
+            # Get the class with maximum count
+            majority_class = max(counts, key=counts.get)
+            
+            # Convert to forest flag (1=forest, 0=non-forest)
+            return 1 if majority_class == 0 else 0
+        
+        # Apply the analysis to each pixel
+        forest_flag = xr.apply_ufunc(
+            analyze_temporal_trend,
+            masked,
+            input_core_dims=[['time']],
+            output_core_dims=[[]],
+            vectorize=True,
+            dask='parallelized',
+            output_dtypes=[np.uint8]
+        )
+        
+        # Apply minimum valid observations requirement (3 observations needed for pattern recognition)
+        forest_flag = forest_flag.where(valid >= 3, 255)
+        
+        return forest_flag
+    
+    def _change_point_algorithm(self, data, valid):
+        """Change point detection algorithm that identifies significant transitions in time series."""
+        # Mask invalid observations
+        masked = data.where(~data.isin([2, 3, 5, 6])) # Don't count cloud, shadow, haze, sensor error, or no data
+        
+        def detect_change_point(pixel_series):
+            # Remove NaN values and get valid time series
+            if hasattr(pixel_series, 'dropna'):
+                valid_series = pixel_series.dropna('time')
+                values = valid_series.values
+            else:
+                # Handle numpy array case
+                values = pixel_series[~np.isnan(pixel_series)]
+            
+            if len(values) < 3:
+                return 255  # Not enough data for change point detection
+            n = len(values)
+            
+            # Only consider forest (0) and non-forest (1) for change point detection
+            # Convert water (4) to non-forest (1) for simplicity
+            binary_values = np.where(values == 0, 0, 1)
+            
+            # Find the best change point by testing different split positions
+            best_score = -np.inf
+            best_changepoint = None
+            best_post_change_class = None
+            
+            # Test change points from position 1 to n-2 (need at least 1 observation on each side)
+            for cp in range(1, n - 1):
+                pre_segment = binary_values[:cp]
+                post_segment = binary_values[cp:]
+                
+                # Calculate dominant class in each segment
+                pre_forest_count = np.sum(pre_segment == 0)
+                pre_nonforest_count = np.sum(pre_segment == 1)
+                post_forest_count = np.sum(post_segment == 0)
+                post_nonforest_count = np.sum(post_segment == 1)
+                
+                # Determine dominant class in each segment
+                pre_dominant = 0 if pre_forest_count > pre_nonforest_count else 1
+                post_dominant = 0 if post_forest_count > post_nonforest_count else 1
+                
+                # Only consider this a valid change point if the dominant classes differ
+                if pre_dominant != post_dominant:
+                    # Calculate confidence scores based on segment homogeneity
+                    pre_confidence = max(pre_forest_count, pre_nonforest_count) / len(pre_segment)
+                    post_confidence = max(post_forest_count, post_nonforest_count) / len(post_segment)
+                    
+                    # Score is the product of confidences weighted by segment lengths
+                    score = (pre_confidence * len(pre_segment) + post_confidence * len(post_segment)) / n
+                    
+                    # Bonus for deforestation (forest -> non-forest) to prioritize these changes
+                    if pre_dominant == 0 and post_dominant == 1:
+                        score *= 1.2
+                    
+                    if score > best_score:
+                        best_score = score
+                        best_changepoint = cp
+                        best_post_change_class = post_dominant
+            
+            # If we found a significant change point, use post-change classification
+            if best_changepoint is not None and best_score > 0.6:  # Threshold for significance
+                return 1 if best_post_change_class == 0 else 0  # Convert to forest flag
+            
+            # Fallback to majority vote if no significant change point detected
+            forest_count = np.sum(binary_values == 0)
+            nonforest_count = np.sum(binary_values == 1)
+            
+            if forest_count > nonforest_count:
+                return 1  # Forest
+            elif nonforest_count > forest_count:
+                return 0  # Non-forest
+            else:
+                # Tie - use the last observation
+                return 1 if binary_values[-1] == 0 else 0
+        
+        # Apply the change point detection to each pixel
+        forest_flag = xr.apply_ufunc(
+            detect_change_point,
+            masked,
+            input_core_dims=[['time']],
+            output_core_dims=[[]],
+            vectorize=True,
+            dask='parallelized',
+            output_dtypes=[np.uint8]
+        )
+        
+        # Apply minimum valid observations requirement (4 observations needed for statistical significance)
+        forest_flag = forest_flag.where(valid >= 4, 255)
+        
+        return forest_flag
+    
+    def _latest_valid_algorithm(self, data, valid):
+        """Latest valid algorithm that uses the most recent valid observation."""
+        # Mask invalid observations
+        masked = data.where(~data.isin([2, 3, 5, 6])) # Don't count cloud, shadow, haze, sensor error, or no data
+        
+        def get_latest_valid(pixel_series):
+            # Remove NaN values and get valid time series
+            if hasattr(pixel_series, 'dropna'):
+                valid_series = pixel_series.dropna('time')
+                values = valid_series.values
+            else:
+                # Handle numpy array case
+                values = pixel_series[~np.isnan(pixel_series)]
+            
+            if len(values) < 1:
+                return 255  # No valid data
+            
+            # Get the last valid observation
+            latest_value = values[-1]
+            
+            # Convert to forest flag (1=forest, 0=non-forest)
+            if latest_value == 0:  # Forest
+                return 1
+            elif latest_value in [1, 4]:  # Non-forest or water
+                return 0
+            else:
+                return 255  # Invalid value
+        
+        # Apply the latest valid logic to each pixel
+        forest_flag = xr.apply_ufunc(
+            get_latest_valid,
+            masked,
+            input_core_dims=[['time']],
+            output_core_dims=[[]],
+            vectorize=True,
+            dask='parallelized',
+            output_dtypes=[np.uint8]
+        )
+        
+        # Apply minimum valid observations requirement
+        forest_flag = forest_flag.where(valid >= 1, 255)  # Only need 1 valid observation
+        
+        return forest_flag
+    
+    def _weighted_temporal_algorithm(self, data, valid):
+        """Weighted temporal algorithm that weights recent observations higher."""
+        # Mask invalid observations
+        masked = data.where(~data.isin([2, 3, 5, 6])) # Don't count cloud, shadow, haze, sensor error, or no data
+        
+        def weighted_classification(pixel_series):
+            # Remove NaN values and get valid time series
+            if hasattr(pixel_series, 'dropna'):
+                valid_series = pixel_series.dropna('time')
+                values = valid_series.values
+            else:
+                # Handle numpy array case
+                values = pixel_series[~np.isnan(pixel_series)]
+            
+            if len(values) < 1:
+                return 255  # No valid data
+            n = len(values)
+            
+            # Create exponential decay weights (recent observations have higher weights)
+            # Weight = exp(-0.3 * distance_from_end)
+            weights = np.exp(-0.3 * np.arange(n-1, -1, -1))
+            
+            # Calculate weighted counts for each class
+            weighted_counts = {0: 0.0, 1: 0.0, 4: 0.0}  # forest, non-forest, water
+            
+            for i, val in enumerate(values):
+                if val in weighted_counts:
+                    weighted_counts[val] += weights[i]
+            
+            # Find the class with maximum weighted count
+            if sum(weighted_counts.values()) == 0:
+                return 255  # No valid data
+            
+            max_weighted_class = max(weighted_counts, key=weighted_counts.get)
+            
+            # Convert to forest flag (1=forest, 0=non-forest)
+            return 1 if max_weighted_class == 0 else 0
+        
+        # Apply the weighted temporal logic to each pixel
+        forest_flag = xr.apply_ufunc(
+            weighted_classification,
+            masked,
+            input_core_dims=[['time']],
+            output_core_dims=[[]],
+            vectorize=True,
+            dask='parallelized',
+            output_dtypes=[np.uint8]
+        )
+        
+        # Apply minimum valid observations requirement (2 observations adequate for exponential weighting)
         forest_flag = forest_flag.where(valid >= 2, 255)
         
         return forest_flag

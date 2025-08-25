@@ -263,6 +263,43 @@ The pipeline supports comprehensive derived spectral features alongside the base
 #### Base Bands Only
 - Use raw Blue, Green, Red, NIR bands without derived features for baseline performance
 
+### Forest Flag Algorithm Selection
+
+The pipeline supports multiple algorithms for generating forest/non-forest classifications from monthly predictions during composite generation. Each algorithm handles temporal patterns differently:
+
+#### Available Algorithms
+
+| Algorithm | Description | Best For | Data Requirements |
+|-----------|-------------|----------|-------------------|
+| `majority_vote` | Uses most frequent class across all months | Stable areas, baseline performance | 2+ valid months |
+| `temporal_trend` | Analyzes temporal patterns and filters noise | **Deforestation detection** (recommended) | 3+ valid months |
+| `change_point` | Statistical detection of significant transitions | Clear land cover changes | 4+ valid months |
+| `latest_valid` | Uses most recent valid observation | Recent changes, monitoring | 1+ valid month |
+| `weighted_temporal` | Weights recent observations higher | Balanced recent/historical approach | 2+ valid months |
+
+#### Algorithm Performance Characteristics
+
+- **Temporal Trend**: Best for detecting late-season deforestation while filtering noise. Correctly identifies patterns like `[Forest, Forest, Forest, Non-Forest]` → Non-Forest
+- **Change Point**: Good for statistically significant transitions, includes confidence scoring
+- **Majority Vote**: Original algorithm - may miss temporal patterns but provides consistent baseline
+- **Latest Valid**: Very sensitive to recent changes but prone to noise
+- **Weighted Temporal**: Moderate approach balancing recent vs. historical data
+
+#### Usage Examples
+
+```bash
+# Use temporal trend algorithm (recommended for deforestation detection)
+--forest-algorithm temporal_trend
+
+# Use change point detection for statistical transitions
+--forest-algorithm change_point
+
+# Use majority vote (default, backward compatible)
+--forest-algorithm majority_vote
+```
+
+For detailed algorithm descriptions, implementation details, and performance comparisons, see the [Forest Flag Algorithms Documentation](docs/model-training/forest-flag-algorithms.md).
+
 ### Complete Training and Prediction Pipeline
 
 For a full end-to-end model training and evaluation workflow:
@@ -271,7 +308,7 @@ For a full end-to-end model training and evaluation workflow:
 # Navigate to ML pipeline directory
 cd ml_pipeline/notebooks
 
-# Full pipeline with all features and boundary clipping
+# Full pipeline with all features and enhanced deforestation detection
 poetry run python run_train_predict_pipeline.py \
   --step all \
   --start_month 1 --end_month 12 \
@@ -281,7 +318,8 @@ poetry run python run_train_predict_pipeline.py \
   --db-host "remote" \
   --features ndvi ndwi evi savi brightness water_detection shadow \
   --boundary-geojson shapefiles/Ecuador-DEM-900m-contour.geojson \
-  --tune-trials 100
+  --tune-trials 100 \
+  --forest-algorithm temporal_trend
 
 # Full pipeline without features (base bands only - legacy behavior)
 poetry run python run_train_predict_pipeline.py \
@@ -328,7 +366,25 @@ poetry run python run_train_predict_pipeline.py \
 
 #### Composites Only
 ```bash
-# Generate annual composites from existing monthly predictions
+# Generate annual composites with temporal trend algorithm (recommended)
+poetry run python run_train_predict_pipeline.py \
+  --step composites \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "test_ndvi_2025_07_12" \
+  --db-host "remote" \
+  --forest-algorithm temporal_trend
+
+# Generate composites with change point detection
+poetry run python run_train_predict_pipeline.py \
+  --step composites \
+  --year 2022 \
+  --project_id 7 \
+  --run_id "test_ndvi_2025_07_12" \
+  --db-host "remote" \
+  --forest-algorithm change_point
+
+# Generate composites with majority vote (default)
 poetry run python run_train_predict_pipeline.py \
   --step composites \
   --year 2022 \
@@ -515,7 +571,7 @@ Use the best parameters in subsequent training runs by modifying your training s
 
 - **training**: Requires `--start_month` and `--end_month` parameters; optional `--features` for spectral indices
 - **tuning**: Requires `--year` and `--project_id`; optional `--tune-month` (defaults to month 1)
-- **composites**: Requires existing monthly predictions from training step
+- **composites**: Requires existing monthly predictions from training step; optional `--forest-algorithm` for temporal processing
 - **cfw-processing**: Requires existing composites from composites step
 - **benchmarks**: Can run independently with any existing STAC collections
 - **all**: Runs all steps in sequence (training → composites → cfw-processing → benchmarks)

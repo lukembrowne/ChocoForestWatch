@@ -117,6 +117,12 @@ def parse_arguments():
     parser.add_argument("--boundary-geojson", type=str, 
                        help="Path to GeoJSON file for boundary masking (optional, used for CFW dataset processing)")
     
+    # Forest flag algorithm selection
+    parser.add_argument("--forest-algorithm", type=str, 
+                       choices=["majority_vote", "temporal_trend", "change_point", "latest_valid", "weighted_temporal"],
+                       default="majority_vote",
+                       help="Forest flag generation algorithm (default: majority_vote)")
+    
     return parser.parse_args()
 
 def log_command_to_file(run_manager: RunManager) -> None:
@@ -192,12 +198,12 @@ def validate_arguments(args):
         logger.error("❌ Cannot use both --tune-run-id and --use-default-params")
         sys.exit(1)
 
-def process_quad_with_local(quad_name: str, run_id: str, year: str):
+def process_quad_with_local(quad_name: str, run_id: str, year: str, forest_algorithm: str = "majority_vote"):
     """Process a single quad for composite generation using local files only."""
     try:
         with CompositeGenerator(run_id=run_id, year=year) as composite_gen:
             # Generate composite locally only - no S3 upload
-            local_path = composite_gen.generate_composite(quad_name=quad_name, skip_s3_upload=True, use_local_files=True)
+            local_path = composite_gen.generate_composite(quad_name=quad_name, skip_s3_upload=True, use_local_files=True, algorithm=forest_algorithm)
             
         return True
     except Exception as e:
@@ -288,9 +294,10 @@ def save_parameters_for_monthly_training(run_manager: RunManager, parameters: di
     logger.info(f"💾 Saved training parameters to: {params_file}")
     return params_file
 
-def generate_composites(run_id: str, year: str, db_host: str = "local"):
+def generate_composites(run_id: str, year: str, db_host: str = "local", forest_algorithm: str = "majority_vote"):
     """Generate annual composites from monthly predictions."""
     logger.info("\n🧩 Generating annual composites...")
+    logger.info(f"🔬 Using forest flag algorithm: {forest_algorithm}")
     
     try:
         # Look for local prediction files
@@ -316,7 +323,7 @@ def generate_composites(run_id: str, year: str, db_host: str = "local"):
         
         # Generate composites in parallel (limited to avoid overwhelming storage)  
         results = Parallel(n_jobs=2, prefer="processes")(
-            delayed(process_quad_with_local)(quad_name=quad, run_id=run_id, year=year)
+            delayed(process_quad_with_local)(quad_name=quad, run_id=run_id, year=year, forest_algorithm=forest_algorithm)
             for quad in tqdm(quads, desc="Generating composites")
         )
         
@@ -610,6 +617,7 @@ def main():
     db_host = getattr(args, 'db_host', 'local')
     step = args.step
     boundary_geojson_path = getattr(args, 'boundary_geojson', None)
+    forest_algorithm = getattr(args, 'forest_algorithm', 'majority_vote')
     
     # Log pipeline configuration
     logger.info(f"🚀 Starting ML Pipeline - Step: {step}")
@@ -627,6 +635,7 @@ def main():
         logger.info(f"🔬 Features: {', '.join(args.features)}")
     if boundary_geojson_path:
         logger.info(f"🗺️  Boundary file: {boundary_geojson_path}")
+    logger.info(f"🌲 Forest algorithm: {forest_algorithm}")
     logger.info("=" * 60)
     
     # Create run manager for organizing results
@@ -642,7 +651,7 @@ def main():
     elif step == "tuning":
         run_hyperparameter_tuning_step(args, rm)
     elif step == "composites":
-        generate_composites(run_id, year, db_host)
+        generate_composites(run_id, year, db_host, forest_algorithm)
     elif step == "cfw-processing":
         process_cfw_dataset_for_pipeline(run_id, year, db_host, boundary_geojson_path)
     elif step == "benchmarks":
@@ -658,7 +667,7 @@ def main():
         
         # Run training with tuned parameters
         run_training_step(args, rm)
-        generate_composites(run_id, year, db_host)
+        generate_composites(run_id, year, db_host, forest_algorithm)
         process_cfw_dataset_for_pipeline(run_id, year, db_host, boundary_geojson_path)
         run_dataset_evaluation(run_id, year, project_id, db_host)
     
