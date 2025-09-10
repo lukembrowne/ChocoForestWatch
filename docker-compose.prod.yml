@@ -21,6 +21,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    restart: always
     networks:
       - app-network
 
@@ -122,6 +123,7 @@ services:
     volumes:
       - ./benchmark:/tmp/benchmark
       - ./titiler-pgstac/scripts:/app/scripts
+    restart: always
     depends_on:
       - db
     networks:
@@ -136,6 +138,7 @@ services:
     # build:
     #   context: ./titiler-pgstac
     #   dockerfile: Dockerfile
+    restart: always
     ports:
       - "8081:8081"
     command: ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "titiler.pgstac.main:app", "--bind", "0.0.0.0:8081", "--workers", "1"]
@@ -151,6 +154,7 @@ services:
       "--host", "0.0.0.0", "--port", "8083",
       "--log-level", "debug", "--reload"
     ]
+    restart: always
     networks:
           - app-network
 
@@ -158,6 +162,7 @@ services:
     image: nginx
     ports:
       - 8080:80
+    restart: always
    # volumes:
    #   - ./nginx.conf:/etc/nginx/nginx.conf
     depends_on:
@@ -168,6 +173,7 @@ services:
   app-nginx:
     <<: *tiler-base
     container_name: tiler-pgstac-uvicorn-app
+    restart: always
     ports: 
       - "8082:8082"
     command: bash -c "uvicorn titiler.pgstac.main:app --host 0.0.0.0 --port 8082 --proxy-headers --forwarded-allow-ips='*' --root-path=/api/v1/titiler"
