@@ -57,8 +57,17 @@
       "addDataset": "Add",
       "changeDataset": "Change Dataset",
       "chooseDataset": "Choose Dataset",
+      "configureMap": "Configure Map",
+      "forestCoverDataset": "Forest Cover Dataset",
+      "forestCoverDatasetTooltip": "Select which forest cover dataset to use for analysis. These are processed satellite data products that show forest/non-forest classifications specific years.",
+      "satelliteBasemap": "Satellite Basemap", 
+      "satelliteBasemapTooltip": "Add high-resolution Planet NICFI satellite imagery as a visual basemap. This provides monthly satellite imagery from 2022 for detailed visual context and temporal analysis using the date slider.",
       "chooseMap": "Choose Forest Cover Map",
       "chooseMapTooltip": "Select which forest cover dataset to use for analysis. The selected map will automatically appear on the main map.",
+      "planetImagery": {
+        "add": "Add Planet Imagery",
+        "remove": "Remove Planet Imagery"
+      },
       "clickToChange": "Click to change",
       "currentDataset": "Current",
       "defineArea": "Define Analysis Area",
@@ -577,8 +586,8 @@
           "sep": "Sep"
         }
       },
-      "title": "Imagery date",
-      "tooltip": "Select satellite imagery date. Green underlined dates have training data. Use left/right arrow keys to quickly navigate between dates."
+      "title": "Satellite Imagery Date",
+      "tooltip": "Select the date for Planet NICFI satellite imagery. Use left/right arrow keys to quickly navigate between months."
     },
     "gfwAlerts": {
       "currentYear": "Current: {year}",

@@ -57,8 +57,17 @@
       "addDataset": "Agregar",
       "changeDataset": "Cambiar Datos",
       "chooseDataset": "Elegir Conjunto de Datos",
+      "configureMap": "Configurar Mapa",
+      "forestCoverDataset": "Conjunto de Datos de Cobertura Forestal",
+      "forestCoverDatasetTooltip": "Seleccione qué conjunto de datos de cobertura forestal usar para el análisis. Estos son productos de datos satelitales procesados que muestran clasificaciones de bosque/no-bosque.",
+      "satelliteBasemap": "Mapa Base Satelital", 
+      "satelliteBasemapTooltip": "Agregue imágenes satelitales de alta resolución Planet NICFI como mapa base visual. Esto proporciona imágenes satelitales mensuales desde 2022 hasta el presente para contexto visual detallado y análisis temporal usando el deslizador de fechas.",
       "chooseMap": "Elegir Mapa de Cobertura Forestal",
       "chooseMapTooltip": "Seleccione qué conjunto de datos de cobertura forestal usar para el análisis. El mapa seleccionado aparecerá automáticamente en el mapa principal.",
+      "planetImagery": {
+        "add": "Agregar Imágenes de Planet",
+        "remove": "Remover Imágenes de Planet"
+      },
       "clickToChange": "Haga clic para cambiar",
       "currentDataset": "Actual",
       "defineArea": "Definir Área de Análisis",
@@ -577,8 +586,8 @@
           "sep": "Sep"
         }
       },
-      "title": "Fecha de las imágenes",
-      "tooltip": "Seleccione la fecha de las imágenes satelitales. Las fechas subrayadas en verde tienen datos de entrenamiento. Use las teclas de flecha izquierda/derecha para navegar rápidamente entre fechas."
+      "title": "Fecha de Imágenes Satelitales",
+      "tooltip": "Seleccione la fecha para las imágenes satelitales Planet NICFI. Use las teclas de flecha izquierda/derecha para navegar rápidamente entre meses."
     },
     "gfwAlerts": {
       "currentYear": "Actual: {year}",

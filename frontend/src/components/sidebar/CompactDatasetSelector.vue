@@ -174,9 +174,13 @@ export default {
     const showDialog = ref(false)
     const selectedBenchmark = ref(null)
     
-    // Use benchmarks from mapStore with version information, excluding GFW alerts
+    // Use benchmarks from mapStore with version information, excluding GFW alerts and basemap imagery
     const benchmarkOptions = computed(() => [
-      ...mapStore.availableDatasets.filter(dataset => dataset.type !== 'alerts')
+      ...mapStore.availableDatasets.filter(dataset => 
+        dataset.type !== 'alerts' && 
+        dataset.type !== 'basemap-imagery' &&
+        dataset.value !== 'planet-nicfi-basemap'
+      )
     ])
     
     // Create table rows from dataset options, grouping by dataset type
@@ -260,9 +264,6 @@ export default {
         if (val.startsWith('datasets-gfw-integrated-alerts-')) {
           const year = val.split('-').pop(); // Extract year from collection ID
           mapStore.addGFWAlertsLayer(val, year, 'primary')
-        } else if (val === 'planet-nicfi-basemap') {
-          // Handle Planet NICFI basemap imagery
-          mapStore.addPlanetImageryLayer()
         } else {
           mapStore.addBenchmarkLayer(val, 'primary')
         }
@@ -285,15 +286,11 @@ export default {
         if (value.includes('cfw')) {
           return 'cfw-composite-2022'
         }
-        if (value === 'planet-nicfi-basemap') {
-          return 'planet-nicfi-basemap'
-        }
         return value.split('-')[1]
       }
 
     const getDatasetIcon = (value) => {
       if (value.includes('nicfi-pred')) return 'forest'
-      if (value === 'planet-nicfi-basemap') return 'satellite'
       if (value.includes('hansen')) return 'satellite_alt'
       if (value.includes('mapbiomas')) return 'terrain'
       if (value.includes('esa')) return 'public'

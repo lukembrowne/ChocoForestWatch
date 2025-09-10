@@ -1,6 +1,11 @@
 <template>
     <div v-if="showSlider" class="basemap-date-slider">
-        <!-- <p class="text-subtitle1" style="margin: 0; padding: 0;">{{ t('layers.basemapDate.title') }}</p> -->
+        <div class="slider-header">
+            <div class="header-content">
+                <q-icon name="satellite" size="sm" class="header-icon" />
+                <span class="header-title">{{ t('layers.basemapDate.title') }}</span>
+            </div>
+        </div>
         <div class="slider-container">
             <!-- Add help icon with tooltip -->
             <div class="help-icon">
@@ -199,7 +204,7 @@ export default {
 
 .basemap-date-slider {
     position: absolute;
-    bottom: 10px;
+    bottom: 15px;
     width: 100%;
     background-color: rgba(255, 255, 255, 0.95);
     padding: 5px 20px 5px 20px;
@@ -207,6 +212,28 @@ export default {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     z-index: 1001;
     height: var(--basemap-date-slider-height);
+}
+
+.slider-header {
+    margin-bottom: 5px;
+}
+
+.header-content {
+    display: flex;
+    align-items: left;
+    gap: 6px;
+    justify-content: left;
+}
+
+.header-icon {
+    color: #2196f3;
+}
+
+.header-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    text-align: left;
 }
 
 .current-date {

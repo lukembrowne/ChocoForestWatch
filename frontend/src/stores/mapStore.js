@@ -1682,9 +1682,6 @@ export const useMapStore = defineStore('map', () => {
     // Create and add Planet basemap layer
     updateBasemap(defaultDate, 'planet');
 
-    // Update the selected benchmark in the store to reflect Planet imagery is active
-    selectedBenchmark.value = 'planet-nicfi-basemap';
-
     // Make sure the basemap date slider is visible by setting the selected date
     selectedBasemapDate.value = defaultDate;
     updateLayers();

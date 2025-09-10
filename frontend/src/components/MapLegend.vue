@@ -53,7 +53,7 @@ const showBasemapSlider = computed(() => {
 }
 
 .map-legend.with-slider {
-  bottom: 125px;
+  bottom: 150px;
 }
 
 .legend-header {
@@ -115,7 +115,7 @@ const showBasemapSlider = computed(() => {
   }
   
   .map-legend.with-slider {
-    bottom: 125px;
+    bottom: 150px;
   }
   
   .legend-header {

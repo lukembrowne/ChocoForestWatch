@@ -1,13 +1,53 @@
 <template>
   <div class="analysis-panel">
-    <!-- Map Selection Section -->
+    <!-- Map Configuration Section -->
     <div class="benchmark-section">
       <div class="section-header-compact">
-        <span class="section-title-compact">{{ t('analysis.panel.chooseMap') }}</span>
+        <span class="section-title-compact">{{ t('analysis.panel.configureMap') }}</span>
       </div>
       
-      <div class="benchmark-selector-container">
-        <CompactDatasetSelector />
+      <!-- Forest Cover Dataset Subsection -->
+      <div class="subsection-compact">
+        <div class="subsection-header-compact">
+          <span class="subsection-title-compact">{{ t('analysis.panel.forestCoverDataset') }}</span>
+          <q-icon name="info" size="xs" class="subsection-info-icon">
+            <q-tooltip>
+              {{ t('analysis.panel.forestCoverDatasetTooltip') }}
+            </q-tooltip>
+          </q-icon>
+        </div>
+        <div class="benchmark-selector-container">
+          <CompactDatasetSelector />
+        </div>
+      </div>
+
+      <!-- Satellite Basemap Subsection -->
+      <div class="subsection-compact">
+        <div class="subsection-header-compact">
+          <span class="subsection-title-compact">{{ t('analysis.panel.satelliteBasemap') }}</span>
+          <q-icon name="info" size="xs" class="subsection-info-icon">
+            <q-tooltip>
+              {{ t('analysis.panel.satelliteBasemapTooltip') }}
+            </q-tooltip>
+          </q-icon>
+        </div>
+        <div class="planet-control-container">
+          <q-btn
+            :class="{ 'planet-btn-active': isPlanetImageryActive }"
+            class="planet-btn full-width"
+            @click="togglePlanetImagery"
+            size="sm"
+            no-caps
+            flat
+          >
+            <div class="planet-btn-content">
+              <q-icon name="satellite" size="sm" class="planet-icon" />
+              <span class="planet-text">
+                {{ isPlanetImageryActive ? t('analysis.panel.planetImagery.remove') : t('analysis.panel.planetImagery.add') }}
+              </span>
+            </div>
+          </q-btn>
+        </div>
       </div>
     </div>
 
@@ -292,6 +332,15 @@ const hasResults = computed(() =>
   analysisResults.value.forestCover || analysisResults.value.deforestationAlerts
 )
 
+// Planet imagery state
+const isPlanetImageryActive = computed(() => {
+  if (!mapStore.map) return false
+  const planetLayer = mapStore.map.getLayers().getArray().find(layer => 
+    layer.get('id') === 'planet-basemap'
+  )
+  return !!planetLayer
+})
+
 // Get visible datasets for statistics calculation
 const visibleDatasets = computed(() => {
   const visible = mapStore.layers
@@ -543,6 +592,43 @@ function cancelDrawing() {
   console.log("Canceling AOI drawing")
   mapStore.clearSummaryAOI()
  // loadRegionalStats()
+}
+
+// Planet imagery methods
+function togglePlanetImagery() {
+  if (isPlanetImageryActive.value) {
+    removePlanetImagery()
+  } else {
+    addPlanetImagery()
+  }
+}
+
+function addPlanetImagery() {
+  console.log("Adding Planet imagery")
+  mapStore.addPlanetImageryLayer()
+  $q.notify({
+    type: 'positive',
+    message: t('analysis.panel.planetImagery.add'),
+    timeout: 2000,
+    position: 'bottom'
+  })
+}
+
+function removePlanetImagery() {
+  console.log("Removing Planet imagery")
+  if (!mapStore.map) return
+  
+  const layers = mapStore.map.getLayers().getArray()
+  const planetLayer = layers.find(layer => layer.get('id') === 'planet-basemap')
+  if (planetLayer) {
+    mapStore.map.removeLayer(planetLayer)
+    $q.notify({
+      type: 'info',
+      message: t('analysis.panel.planetImagery.remove'),
+      timeout: 2000,
+      position: 'bottom'
+    })
+  }
 }
 
 function clearAndReset() {
@@ -1209,6 +1295,109 @@ onMounted(async () => {
   flex: 1;
 }
 
+/* Subsection Styles */
+.subsection-compact {
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 8px;
+}
+
+.subsection-compact:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.subsection-header-compact {
+  padding: 6px 8px;
+  background: #f8f9fa;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subsection-title-compact {
+  font-size: 12px !important;
+  font-weight: 600;
+  color: #424242;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex: 1;
+}
+
+.subsection-info-icon {
+  opacity: 0.6;
+  cursor: help;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+  color: #424242;
+}
+
+.subsection-info-icon:hover {
+  opacity: 1;
+}
+
+/* Planet Control Styles */
+.planet-control-container {
+  margin: 8px 0;
+}
+
+.planet-btn {
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fafafa;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  text-transform: none;
+  height: 38px;
+  padding: 6px 12px;
+}
+
+.planet-btn:hover {
+  border-color: #2196f3;
+  background: #f3f8ff;
+  transform: translateY(-1px);
+}
+
+.planet-btn-active {
+  background: linear-gradient(135deg, #e8f4fd 0%, #f3f8ff 100%);
+  border-color: #2196f3;
+  color: #1976d2;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.15);
+}
+
+.planet-btn-active:hover {
+  background: linear-gradient(135deg, #e1f0fc 0%, #edf4ff 100%);
+  border-color: #1976d2;
+}
+
+.planet-btn-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.planet-icon {
+  color: #2196f3;
+  transition: all 0.3s ease;
+}
+
+.planet-btn-active .planet-icon {
+  color: #1976d2;
+}
+
+.planet-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #424242;
+  transition: all 0.3s ease;
+}
+
+.planet-btn-active .planet-text {
+  color: #1976d2;
+  font-weight: 600;
+}
+
 /* Responsive adjustments */
 @media (max-width: 600px) {
   .benchmark-select, .method-content-compact, .method-buttons-row {
@@ -1249,6 +1438,18 @@ onMounted(async () => {
   
   .total-area-text {
     font-size: 12px !important;
+  }
+
+  .planet-btn {
+    height: 34px;
+  }
+  
+  .planet-text {
+    font-size: 12px;
+  }
+  
+  .subsection-title-compact {
+    font-size: 11px !important;
   }
 }
 </style>
