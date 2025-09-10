@@ -390,10 +390,10 @@ export default {
       script.async = true
       script.src = `${import.meta.env.VITE_UMAMI_URL}/script.js`
       script.setAttribute('data-website-id', import.meta.env.VITE_UMAMI_WEBSITE_ID)
-      script.onload = () => console.log('✅ Umami script loaded successfully')
+      // script.onload = () => console.log('✅ Umami script loaded successfully')
       script.onerror = (error) => console.error('❌ Umami script failed to load:', error)
       document.head.appendChild(script)
-      console.log('📝 Umami script tag added to DOM')
+      // console.log('📝 Umami script tag added to DOM')
       try {
         // Load language preference from localStorage
         const savedLocale = localStorage.getItem('preferred_language')

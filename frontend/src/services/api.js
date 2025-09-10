@@ -9,7 +9,7 @@ const DEFAULT_PROJECT_ID = import.meta.env.VITE_DEFAULT_PUBLIC_PROJECT_ID;
 
 // Add some debugging
 console.log('API_URL:', API_URL);
-console.log('Environment variables:', import.meta.env);
+// console.log('Environment variables:', import.meta.env);
 
 // Create axios instance with base configuration
 const apiClient = axios.create({

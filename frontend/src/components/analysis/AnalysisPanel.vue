@@ -411,14 +411,19 @@ async function calculateAreaStatistics(geometry = null, areaName = null, isRegio
     console.log('Setting analysisResults to:', newResults)
     analysisResults.value = newResults
     
-    // Dismiss loading notification and show success
+    // Dismiss loading notification
     loadingNotification();
-    $q.notify({
-      type: 'positive',
-      message: 'Area statistics calculated successfully',
-      timeout: 2000,
-      position: 'bottom'
-    });
+    
+    // Only show success notification if we actually got results
+    const hasActualResults = newResults.forestCover || newResults.deforestationAlerts
+    if (hasActualResults) {
+      $q.notify({
+        type: 'positive',
+        message: 'Area statistics calculated successfully',
+        timeout: 2000,
+        position: 'bottom'
+      });
+    }
     
   } catch (error) {
     console.error('Failed to calculate area statistics:', error)
@@ -828,24 +833,24 @@ window.aoiStatsCallback = async () => {
 
 // Automatically load western Ecuador stats when component mounts (if datasets are already available)
 onMounted(async () => {
-  console.log('AnalysisPanel onMounted - checking conditions for auto-load')
-  console.log('- mapStore.summaryAOILayer:', mapStore.summaryAOILayer)
-  console.log('- benchmark.value:', benchmark.value)
-  console.log('- hasResults.value:', hasResults.value)
-  console.log('- visibleDatasetsByType.value:', JSON.stringify(visibleDatasetsByType.value))
+  // console.log('AnalysisPanel onMounted - checking conditions for auto-load')
+  // console.log('- mapStore.summaryAOILayer:', mapStore.summaryAOILayer)
+  // console.log('- benchmark.value:', benchmark.value)
+  // console.log('- hasResults.value:', hasResults.value)
+  // console.log('- visibleDatasetsByType.value:', JSON.stringify(visibleDatasetsByType.value))
   
   // Only load if no custom area has been drawn, we have a selected benchmark, and datasets are available
   if (!mapStore.summaryAOILayer && benchmark.value && 
       (visibleDatasetsByType.value.forestCover.length > 0 || visibleDatasetsByType.value.alerts.length > 0)) {
-    console.log('✓ Conditions met - auto-loading regional statistics on mount')
+    // console.log('✓ Conditions met - auto-loading regional statistics on mount')
     await calculateAreaStatistics(null, 'Western Ecuador', true)
   } else {
-    console.log('✗ Conditions not met for auto-loading on mount (will retry when datasets load)')
-    if (mapStore.summaryAOILayer) console.log('  - Reason: Custom AOI layer exists')
-    if (!benchmark.value) console.log('  - Reason: No benchmark selected')
-    if (visibleDatasetsByType.value.forestCover.length === 0 && visibleDatasetsByType.value.alerts.length === 0) {
-      console.log('  - Reason: No datasets available yet (watcher will handle when they load)')
-    }
+    // console.log('✗ Conditions not met for auto-loading on mount (will retry when datasets load)')
+    // if (mapStore.summaryAOILayer) // console.log('  - Reason: Custom AOI layer exists')
+    // if (!benchmark.value) // console.log('  - Reason: No benchmark selected')
+    // if (visibleDatasetsByType.value.forestCover.length === 0 && visibleDatasetsByType.value.alerts.length === 0) {
+    //   console.log('  - Reason: No datasets available yet (watcher will handle when they load)')
+    // }
   }
 })
 </script>

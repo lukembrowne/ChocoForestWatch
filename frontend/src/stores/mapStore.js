@@ -1941,7 +1941,7 @@ export const useMapStore = defineStore('map', () => {
 
   // GFW click-to-query functionality
   const setupGFWClickHandler = (targetMap) => {
-    console.log("Setting up GFW click handler on map:", targetMap.getTarget());
+    // console.log("Setting up GFW click handler on map:", targetMap.getTarget());
     
     // Remove existing GFW click handler if it exists
     if (targetMap.gfwClickHandler) {
