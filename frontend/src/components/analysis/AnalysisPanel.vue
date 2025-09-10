@@ -156,7 +156,8 @@
 
         <!-- Upload Area -->
         <div v-if="selectedMethod === 'upload'" class="method-panel-compact">
-          <div class="upload-area-compact" 
+          <!-- Show upload area only if no file is uploaded -->
+          <div v-if="!uploadedFile" class="upload-area-compact" 
                :class="{ 'drag-over': isDragOver }" 
                @dragover.prevent="onDragOver" 
                @dragleave.prevent="onDragLeave" 
