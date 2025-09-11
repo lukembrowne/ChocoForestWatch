@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.2] - 2025-09-10
  - Fixed bug with GFW deforestation alert clicking behavior
  - Improve documentation and add MIT license
+ - Better UI for adding Planet imagery in sidepanel
+ - Added 2023 + 2024 Planet imagery to viewer
 
 ## [0.1.1] - 2025-07-14
 

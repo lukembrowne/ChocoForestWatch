@@ -1,3 +1,26 @@
+#!/usr/bin/env python3
+"""
+NICFI STAC Builder
+
+Builds SpatioTemporal Asset Catalog (STAC) metadata for NICFI satellite imagery
+and loads it into PGSTAC database for use with TiTiler.
+
+Usage:
+    # Navigate to ml_pipeline folder and run with poetry:
+    cd ml_pipeline
+    poetry run python ../scripts/build_nicfi_STAC.py
+
+Prerequisites:
+    - NICFI imagery must be uploaded to object storage (use migrate_nicfi_data.sh first)
+    - Database connection configured in environment
+    - ml_pipeline package available
+
+Configuration:
+    - Modify the years list to process specific years
+    - Adjust collection_id format if needed
+    - Update S3 prefix path to match your object storage structure
+"""
+
 #%%
 from ml_pipeline.stac_builder import STACManager, STACManagerConfig
 
@@ -11,9 +34,9 @@ builder = STACManager(STACManagerConfig(use_remote_db=True))
 
 
 # Loop through each year and month and process the imagery
-for year in (["2022"]):      
-   # for month in range(1, 13):
-        month = 12
+for year in (["2024"]):      
+    for month in range(1, 13):
+       # month = 12
         print(f"Processing {year}-{month:02d}")
         builder.process_month(
             year=year,

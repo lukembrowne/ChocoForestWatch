@@ -132,10 +132,10 @@
                   <span class="version-label">{{ t('about.version.number') }}:</span>
                   <span class="version-value">{{ version || 'Loading...' }}</span>
                 </div>
-                <div class="version-item">
+                <!-- <div class="version-item">
                   <span class="version-label">{{ t('about.version.environment') }}:</span>
                   <span class="version-value">{{ environment || 'Loading...' }}</span>
-                </div>
+                </div> -->
               </div>
             </div>
           </div>
