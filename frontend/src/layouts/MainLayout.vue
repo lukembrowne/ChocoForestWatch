@@ -586,6 +586,9 @@ export default {
         // Save language preference to localStorage
         localStorage.setItem('preferred_language', newLocale)
         locale.value = newLocale
+        try {
+          window.umami?.track?.('change_locale', { locale: newLocale })
+        } catch (e) { /* no-op */ }
         $q.notify({
           message: t('notifications.languageUpdated'),
           color: 'positive',

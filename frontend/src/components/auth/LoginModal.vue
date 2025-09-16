@@ -72,7 +72,7 @@
                   dense
                   color="primary"
                   :label="t('auth.login.forgotPassword')"
-                  @click="showResetPassword"
+                  @click="onForgotPasswordClick"
                 />
               </div>
 
@@ -84,6 +84,7 @@
                 :loading="loginLoading"
                 class="full-width q-py-sm"
                 size="lg"
+                data-umami-event="login_submit"
               />
 
               <!-- Create Account Link -->
@@ -94,6 +95,7 @@
                   color="primary"
                   :label="t('auth.login.createAccount')"
                   @click="activeTab = 'register'"
+                  data-umami-event="auth_switch_to_register"
                 />
               </div>
             </q-form>
@@ -179,6 +181,7 @@
                 :loading="registerLoading"
                 class="full-width q-py-sm"
                 size="lg"
+                data-umami-event="register_submit"
               />
 
               <!-- Login Link -->
@@ -189,6 +192,7 @@
                   color="primary"
                   :label="t('auth.login.loginButton')"
                   @click="activeTab = 'login'"
+                  data-umami-event="auth_switch_to_login"
                 />
               </div>
             </q-form>
@@ -314,6 +318,7 @@ const closeModal = () => {
 
 const handleLogin = async () => {
   try {
+    try { window.umami?.track?.('login_attempt') } catch (e) { /* no-op */ }
     loginLoading.value = true
     const response = await authStore.login(loginForm.value.username, loginForm.value.password)
     
@@ -328,6 +333,7 @@ const handleLogin = async () => {
       icon: 'check'
     })
     
+    try { window.umami?.track?.('login_success') } catch (e) { /* no-op */ }
     emit('login-success', response.user)
     closeModal()
     
@@ -338,6 +344,7 @@ const handleLogin = async () => {
       message: errorMessage,
       icon: 'error'
     })
+    try { window.umami?.track?.('login_error', { message: String(errorMessage).slice(0,120) }) } catch (e) { /* no-op */ }
   } finally {
     loginLoading.value = false
   }
@@ -345,6 +352,7 @@ const handleLogin = async () => {
 
 const handleRegister = async () => {
   try {
+    try { window.umami?.track?.('register_attempt') } catch (e) { /* no-op */ }
     registerLoading.value = true
     await authStore.register(
       registerForm.value.username,
@@ -362,6 +370,7 @@ const handleRegister = async () => {
       icon: 'check'
     })
     
+    try { window.umami?.track?.('register_success') } catch (e) { /* no-op */ }
     emit('register-success', { username: registerForm.value.username })
     closeModal()
     
@@ -385,6 +394,7 @@ const handleRegister = async () => {
       timeout: 3000,
       position: 'top'
     })
+    try { window.umami?.track?.('register_error', { message: String(errorMessage).slice(0,120) }) } catch (e) { /* no-op */ }
   } finally {
     registerLoading.value = false
   }
@@ -405,6 +415,7 @@ const handleResetPassword = async () => {
       message: t('auth.resetPassword.success'),
       icon: 'check'
     })
+    try { window.umami?.track?.('reset_password_requested') } catch (e) { /* no-op */ }
     resetEmail.value = ''
   } catch (error) {
     $q.notify({
@@ -412,6 +423,7 @@ const handleResetPassword = async () => {
       message: error.response?.data?.error || t('auth.resetPassword.error'),
       icon: 'error'
     })
+    try { window.umami?.track?.('reset_password_error') } catch (e) { /* no-op */ }
   } finally {
     resetLoading.value = false
   }
@@ -421,6 +433,20 @@ const handleResetPassword = async () => {
 watch(() => props.defaultTab, (newTab) => {
   activeTab.value = newTab
 })
+
+// Track tab changes and modal visibility
+watch(activeTab, (tab) => {
+  try { window.umami?.track?.('auth_tab_change', { tab }) } catch (e) { /* no-op */ }
+})
+
+watch(dialogOpen, (open) => {
+  try { window.umami?.track?.(open ? 'auth_modal_open' : 'auth_modal_close', { tab: activeTab.value }) } catch (e) { /* no-op */ }
+})
+
+const onForgotPasswordClick = () => {
+  try { window.umami?.track?.('reset_password_open') } catch (e) { /* no-op */ }
+  showResetPassword()
+}
 </script>
 
 <style lang="scss" scoped>

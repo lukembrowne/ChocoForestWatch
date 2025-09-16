@@ -39,6 +39,9 @@
             size="sm"
             no-caps
             flat
+            :data-umami-event="'toggle_planet_imagery'"
+            :data-umami-event-action="isPlanetImageryActive ? 'remove' : 'add'"
+            :data-umami-event-date="mapStore.selectedBasemapDate"
           >
             <div class="planet-btn-content">
               <q-icon name="satellite" size="sm" class="planet-icon" />
@@ -124,6 +127,8 @@
             :disable="!benchmark"
             class="full-width action-btn-compact"
             size="sm"
+            :data-umami-event="'calculate_regional_stats'"
+            :data-umami-event-benchmark="mapStore.selectedBenchmark"
           >
             <q-tooltip v-if="!benchmark">{{ t('analysis.panel.selectMapFirst') }}</q-tooltip>
           </q-btn>
@@ -139,6 +144,7 @@
             :disable="!benchmark"
             class="full-width action-btn-compact"
             size="sm"
+            :data-umami-event="'start_aoi_drawing'"
           >
             <q-tooltip v-if="!benchmark">{{ t('analysis.panel.selectMapFirst') }}</q-tooltip>
           </q-btn>
@@ -151,6 +157,7 @@
             class="full-width action-btn-compact"
             outline
             size="sm"
+            :data-umami-event="'cancel_aoi_drawing'"
           />
         </div>
 
@@ -162,7 +169,8 @@
                @dragover.prevent="onDragOver" 
                @dragleave.prevent="onDragLeave" 
                @drop.prevent="onDrop"
-               @click="triggerFileUpload">
+               @click="triggerFileUpload"
+               :data-umami-event="'trigger_upload_aoi'">
             <q-icon name="cloud_upload" size="md" class="upload-icon-compact" />
             <div class="upload-text-compact">{{ t('analysis.panel.upload.dragDrop') }}</div>
             <div class="supported-formats-compact">{{ t('analysis.panel.upload.supportedFormats') }}</div>
@@ -197,6 +205,9 @@
               class="full-width action-btn-compact"
               :disable="!uploadedFile || !benchmark"
               size="sm"
+              :data-umami-event="'calculate_forest_stats'"
+              :data-umami-event-file="uploadedFile?.name"
+              :data-umami-event-benchmark="mapStore.selectedBenchmark"
             />
           </div>
         </div>
@@ -352,7 +363,22 @@
                   <div class="text-caption text-grey-7">{{ a.id }}</div>
                 </q-item-section>
                 <q-item-section side>
-                  <q-btn type="a" :href="assetsTermsAccepted ? a.signed_url : null" :disable="!assetsTermsAccepted" target="_blank" rel="noopener" color="primary" dense no-caps>
+                  <q-btn
+                    type="a"
+                    :href="assetsTermsAccepted ? a.signed_url : null"
+                    :disable="!assetsTermsAccepted"
+                    target="_blank"
+                    rel="noopener"
+                    color="primary"
+                    dense
+                    no-caps
+                    :data-umami-event="'download_imagery'"
+                    :data-umami-event-filename="a.filename"
+                    :data-umami-event-asset-id="a.id"
+                    :data-umami-event-collection-id="currentCollectionId"
+                    :data-umami-event-date="mapStore.selectedBasemapDate"
+                    :data-umami-event-href="a.signed_url"
+                  >
                     {{ t('analysis.panel.exportDialog.download') }}
                   </q-btn>
                 </q-item-section>
@@ -678,6 +704,12 @@ watch(visibleDatasetsByType, async (newValue, oldValue) => {
 // Regional analysis methods
 async function loadRegionalStats() {
   console.log('loadRegionalStats button clicked')
+  try {
+    window.umami?.track?.('calculate_regional_stats', {
+      benchmark: mapStore.selectedBenchmark,
+      area: 'Western Ecuador'
+    })
+  } catch (e) { /* no-op */ }
   await calculateAreaStatistics(null, 'Western Ecuador', true)
   selectedMethod.value = 'regional'
 }
@@ -685,12 +717,22 @@ async function loadRegionalStats() {
 // Drawing methods
 function startDraw() {
   console.log("Starting AOI drawing")
+  try {
+    window.umami?.track?.('start_aoi_drawing', {
+      benchmark: mapStore.selectedBenchmark
+    })
+  } catch (e) { /* no-op */ }
   mapStore.startSummaryAOIDraw()
   selectedMethod.value = 'draw'
 }
 
 function cancelDrawing() {
   console.log("Canceling AOI drawing")
+  try {
+    window.umami?.track?.('cancel_aoi_drawing', {
+      benchmark: mapStore.selectedBenchmark
+    })
+  } catch (e) { /* no-op */ }
   mapStore.clearSummaryAOI()
  // loadRegionalStats()
 }
@@ -706,6 +748,12 @@ function togglePlanetImagery() {
 
 function addPlanetImagery() {
   console.log("Adding Planet imagery")
+  try {
+    window.umami?.track?.('toggle_planet_imagery', {
+      action: 'add',
+      date: mapStore.selectedBasemapDate
+    })
+  } catch (e) { /* no-op */ }
   mapStore.addPlanetImageryLayer()
   $q.notify({
     type: 'positive',
@@ -723,6 +771,12 @@ function removePlanetImagery() {
   const planetLayer = layers.find(layer => layer.get('id') === 'planet-basemap')
   if (planetLayer) {
     mapStore.map.removeLayer(planetLayer)
+    try {
+      window.umami?.track?.('toggle_planet_imagery', {
+        action: 'remove',
+        date: mapStore.selectedBasemapDate
+      })
+    } catch (e) { /* no-op */ }
     $q.notify({
       type: 'info',
       message: t('analysis.panel.planetImagery.remove'),
@@ -772,6 +826,13 @@ const onDrop = (e) => {
 const handleFileUpload = (event) => {
   const file = event.target.files[0]
   if (file) {
+    try {
+      window.umami?.track?.('upload_aoi_file_selected', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      })
+    } catch (e) { /* no-op */ }
     processFile(file)
   }
   event.target.value = ''
@@ -805,6 +866,12 @@ const processFile = async (file) => {
     
   } catch (error) {
     console.error('File upload error:', error)
+    try {
+      window.umami?.track?.('upload_aoi_error', {
+        name: file?.name,
+        message: error?.message
+      })
+    } catch (e) { /* no-op */ }
     uploadProgress.value = null
     $q.notify({
       type: 'negative',
@@ -987,8 +1054,8 @@ const clearUploadedFile = () => {
 
 const calculateForestStats = async () => {
   if (!uploadedGeometry.value) return
-  
-
+ 
+ 
   try {
     // Convert FeatureCollection to a single Feature for the API
     let geometryToSend = uploadedGeometry.value

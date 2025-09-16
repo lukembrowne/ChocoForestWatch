@@ -1283,6 +1283,7 @@ export const useMapStore = defineStore('map', () => {
 
   const setSelectedBasemapDate = async (date) => {
     selectedBasemapDate.value = date;
+    try { window.umami?.track?.('basemap_date_change', { date }) } catch (e) { /* no-op */ }
     await updateBasemap(date, 'planet');
     const isAdmin = authService.getCurrentUser()?.user?.is_superuser === true;
     if (isAdmin) {
@@ -2003,6 +2004,21 @@ export const useMapStore = defineStore('map', () => {
         // Manually add the feature to the layer source to ensure it's available for the callback
         summaryAOILayer.value.getSource().addFeature(feature)
         console.log('Feature added to layer source')
+
+        // Track Umami event for AOI draw complete
+        try {
+          const extent3857 = feature.getGeometry().getExtent();
+          const extent4326 = transformExtent(extent3857, 'EPSG:3857', 'EPSG:4326');
+          const [minX, minY, maxX, maxY] = extent4326.map(v => Number(v.toFixed(5)));
+          const width = +(maxX - minX).toFixed(5);
+          const height = +(maxY - minY).toFixed(5);
+          window.umami?.track?.('aoi_draw_complete', {
+            bbox: `${minX},${minY},${maxX},${maxY}`,
+            width_deg: width,
+            height_deg: height,
+            benchmark: selectedBenchmark.value
+          });
+        } catch (e) { /* no-op */ }
         
         // Trigger callback to notify AnalysisPanel that AOI drawing is complete
         if (window.aoiStatsCallback) {
@@ -2232,6 +2248,19 @@ export const useMapStore = defineStore('map', () => {
 
     // Show the popup - Vue component will handle positioning
     gfwAlertVisible.value = true;
+
+    // Track Umami event for alert click
+    try {
+      const [lon, lat] = toLonLat(coordinate);
+      window.umami?.track?.('gfw_alert_click', {
+        layer: layerTitle,
+        confidence: alertData.confidence ?? null,
+        date: alertData.date ? alertData.date.toISOString().slice(0, 10) : null,
+        lon: Number(lon?.toFixed?.(5) ?? lon),
+        lat: Number(lat?.toFixed?.(5) ?? lat),
+        pixel_value: pixelValue
+      });
+    } catch (e) { /* no-op */ }
   };
 
   const hideGFWAlertPopup = () => {
@@ -2272,6 +2301,11 @@ export const useMapStore = defineStore('map', () => {
 
     // Ensure click handler is set up
     setupGFWClickHandler(targetMap);
+
+    // Track Umami event for year switch
+    try {
+      window.umami?.track?.('gfw_alerts_switch_year', { year: newYear });
+    } catch (e) { /* no-op */ }
 
     $q.notify({
       type: 'positive',

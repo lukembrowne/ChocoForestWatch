@@ -1,7 +1,13 @@
 <template>
   <div>
     <!-- Current Dataset Card or Add Button -->
-    <div v-if="currentDatasetName" class="current-dataset-card" @click="showDialog = true">
+    <div
+      v-if="currentDatasetName"
+      class="current-dataset-card"
+      @click="showDialog = true"
+      :data-umami-event="'open_change_dataset'"
+      :data-umami-event-current-benchmark="currentBenchmark"
+    >
       <div class="current-dataset-header">
         <div class="current-dataset-icon">
           <q-icon :name="getDatasetIcon(currentBenchmark)" />
@@ -36,6 +42,8 @@
           @click.stop="showDialog = true"
           icon="swap_horiz"
           no-caps
+          :data-umami-event="'open_change_dataset'"
+          :data-umami-event-current-benchmark="currentBenchmark"
         >
           {{ t('analysis.panel.changeDataset') }}
         </q-btn>
@@ -51,6 +59,7 @@
       @click="showDialog = true"
       icon="add"
       no-caps
+      data-umami-event="open_change_dataset"
     >
       {{ t('analysis.panel.chooseDataset') }}
     </q-btn>
@@ -87,7 +96,7 @@
                   'table-row-selected': selectedBenchmark === props.row.value
                 }"
                 @click="selectRow(props.row.value)"
-              >
+                >
                 <q-td v-for="col in props.cols" :key="col.name" :props="props">
                   <div v-if="col.name === 'dataset'" class="table-dataset-info">
                     <div class="table-dataset-name">
@@ -260,6 +269,18 @@ export default {
 
     const addBenchmark = (val) => {
       try {
+        // Track dataset change
+        try {
+          const type = getDatasetType(val)
+          const year = getDatasetYear(val)
+          const key = getDatasetKey(val)
+          window.umami?.track?.('change_dataset', {
+            new_benchmark: val,
+            dataset_key: key,
+            type,
+            year
+          })
+        } catch (e) { /* no-op */ }
         // Handle GFW alerts datasets
         if (val.startsWith('datasets-gfw-integrated-alerts-')) {
           const year = val.split('-').pop(); // Extract year from collection ID
