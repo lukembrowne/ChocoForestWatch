@@ -252,6 +252,7 @@ import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import authService from '../../services/auth'
+import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
 
 const props = defineProps({
@@ -320,7 +321,11 @@ const handleLogin = async () => {
   try {
     try { window.umami?.track?.('login_attempt') } catch (e) { /* no-op */ }
     loginLoading.value = true
-    const response = await authStore.login(loginForm.value.username, loginForm.value.password)
+    const response = await authStore.login(
+      loginForm.value.username,
+      loginForm.value.password,
+      loginForm.value.rememberMe
+    )
     
     if (response.user?.preferred_language) {
       locale.value = response.user.preferred_language
@@ -358,11 +363,22 @@ const handleRegister = async () => {
       registerForm.value.username,
       registerForm.value.email,
       registerForm.value.password,
-      registerForm.value.preferred_language.value
+      undefined // preferred_language handled via user settings after login
     )
     
     // Auto login after registration
     await authStore.login(registerForm.value.username, registerForm.value.password)
+    
+    // Persist preferred language via user settings (backend-supported)
+    if (registerForm.value.preferred_language?.value) {
+      try {
+        await api.updateUserSettings({ preferred_language: registerForm.value.preferred_language.value })
+        locale.value = registerForm.value.preferred_language.value
+        localStorage.setItem('userLanguage', registerForm.value.preferred_language.value)
+      } catch (e) {
+        // non-fatal; user can change later
+      }
+    }
     
     $q.notify({
       color: 'positive',

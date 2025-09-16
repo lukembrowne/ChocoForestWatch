@@ -245,7 +245,7 @@
     </q-dialog>
 
     <!-- Welcome Modal for first-time users and help button -->
-    <WelcomeAboutModal mode="welcome" />
+    <WelcomeAboutModal mode="welcome" @open-auth="openAuthModal" />
     
     <!-- About Modal -->
     <WelcomeAboutModal mode="about" />
@@ -253,6 +253,7 @@
     <!-- Login Modal -->
     <LoginModal 
       v-model="showLoginModal" 
+      :defaultTab="loginDefaultTab"
       @login-success="handleLoginSuccess"
       @register-success="handleRegisterSuccess"
     />
@@ -610,6 +611,7 @@ export default {
     const feedbackMessage = ref('')
     const submittingFeedback = ref(false)
     const showLoginModal = ref(false)
+    const loginDefaultTab = ref('login')
 
 
     const feedbackOptions = [
@@ -676,6 +678,11 @@ export default {
       // Auth store will be updated by the login that happens after registration
     }
 
+    const openAuthModal = ({ tab }) => {
+      loginDefaultTab.value = tab === 'register' ? 'register' : 'login'
+      showLoginModal.value = true
+    }
+
 
     return {
       currentSection,
@@ -713,8 +720,10 @@ export default {
       isAdmin,
       welcomeStore,
       showLoginModal,
+      loginDefaultTab,
       handleLoginSuccess,
       handleRegisterSuccess,
+      openAuthModal,
       showAnalysisSidebarPanel
     }
   }
