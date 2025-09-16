@@ -37,6 +37,8 @@ from pyproj import Transformer
 from shapely.ops import transform
 from ml_pipeline.summary_stats import AOISummaryStats
 from django.core.cache import cache
+from urllib.parse import urlparse, unquote
+import boto3
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +131,132 @@ def health_check(request):
         "status": "healthy",
         "timestamp": timezone.now().isoformat()
     })
+
+
+# ---------------------------------------------------------------------------
+# Signed asset URLs for AOI
+# ---------------------------------------------------------------------------
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticatedOrReadOnly])
+def get_signed_asset_urls(request):
+    """Return short-lived signed HTTPS URLs for original COG assets intersecting an AOI.
+
+    Body JSON:
+      - collection_id: required (e.g., "nicfi-2022-01")
+      - bbox: [minX, minY, maxX, maxY] in EPSG:4326 (optional if geometry provided)
+      - geometry: GeoJSON Feature or Geometry in EPSG:4326 (optional)
+
+    Notes:
+      - Uses TiTiler-PgSTAC bbox assets endpoint to find assets.
+      - Signs URLs against DO Spaces origin endpoint (not CDN).
+    """
+    try:
+        data = request.data or {}
+        collection_id = data.get('collection_id')
+        bbox = data.get('bbox')  # [minx, miny, maxx, maxy]
+        geometry = data.get('geometry')
+
+        if not collection_id:
+            return Response({"error": "collection_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Build bbox from geometry if needed
+        if not bbox and geometry:
+            try:
+                if isinstance(geometry, dict) and geometry.get('type') != 'Feature':
+                    feat_geom = {"type": "Feature", "geometry": geometry, "properties": {}}
+                else:
+                    feat_geom = geometry
+                g = shape(feat_geom['geometry'])
+                minx, miny, maxx, maxy = g.bounds
+                bbox = [minx, miny, maxx, maxy]
+            except Exception as exc:
+                return Response({"error": f"Invalid geometry: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not bbox or not (isinstance(bbox, (list, tuple)) and len(bbox) == 4):
+            return Response({"error": "bbox must be [minx,miny,maxx,maxy] in EPSG:4326"}, status=status.HTTP_400_BAD_REQUEST)
+
+        titiler_url = os.environ.get('TITILER_URL') or os.environ.get('VITE_TITILER_URL')
+        if not titiler_url:
+            return Response({"error": "TITILER_URL environment variable not set"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        bbox_str = ",".join(map(str, bbox))
+        assets_url = f"{titiler_url}/collections/{collection_id}/bbox/{bbox_str}/assets"
+
+        # Query TiTiler-PgSTAC for intersecting assets
+        tt_resp = requests.get(assets_url, timeout=60)
+        if tt_resp.status_code != 200:
+            return Response({"error": f"TiTiler request failed: {tt_resp.status_code}", "detail": tt_resp.text}, status=status.HTTP_502_BAD_GATEWAY)
+        items = tt_resp.json()
+        if not isinstance(items, list):
+            items = []
+
+        # Prepare S3 client (DO Spaces compatible)
+        endpoint_url = os.environ.get('AWS_S3_ENDPOINT')
+        # Normalize endpoint URL (require scheme)
+        if endpoint_url and not endpoint_url.startswith(('http://', 'https://')):
+            endpoint_url = f'https://{endpoint_url}'
+        region_name = os.environ.get('AWS_REGION')
+        access_key = os.environ.get('AWS_ACCESS_KEY_ID')
+        secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+
+        if not (endpoint_url and access_key and secret_key):
+            return Response({"error": "Missing AWS/DigitalOcean Spaces credentials env vars"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        from botocore.config import Config
+        s3 = boto3.client(
+            's3',
+            endpoint_url=endpoint_url,
+            region_name=region_name,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            config=Config(signature_version='s3v4', s3={'addressing_style': 'virtual'})
+        )
+
+        results = []
+        for it in items:
+            try:
+                href = it.get('assets', {}).get('data', {}).get('href')
+                if not href or not href.startswith('s3://'):
+                    continue
+                parsed = urlparse(href)
+                bucket = parsed.netloc
+                # path begins with '/'; unquote for spaces and symbols
+                key = unquote(parsed.path.lstrip('/'))
+
+                # Suggested filename
+                filename = os.path.basename(key)
+
+                params = {
+                    'Bucket': bucket,
+                    'Key': key,
+                    'ResponseContentDisposition': f'attachment; filename="{filename}"'
+                }
+
+                url = s3.generate_presigned_url(
+                    'get_object',
+                    Params=params,
+                    ExpiresIn=int(os.environ.get('SIGNED_URL_EXPIRES', '600'))  # 10 minutes default
+                )
+
+                results.append({
+                    'id': it.get('id'),
+                    'bbox': it.get('bbox'),
+                    'filename': filename,
+                    'signed_url': url,
+                })
+            except Exception as exc:
+                logger.warning(f"Failed to sign asset: {exc}")
+                continue
+
+        return Response({
+            'count': len(results),
+            'assets': results,
+        })
+
+    except Exception as exc:
+        logger.exception("Error in get_signed_asset_urls")
+        return Response({"error": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ProjectViewSet(viewsets.ModelViewSet):
     """Projects owned by user; anonymous visitors get read-only access to a single public project."""

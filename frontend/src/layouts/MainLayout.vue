@@ -182,9 +182,10 @@
               @aoi-saved="handleAOISaved"
             />
             <TrainingAndPolygonManager v-if="isAdmin && showTrainingAndPolygonManager" />
-            <SidebarPanel v-if="!isAdmin" />
+            <SidebarPanel v-if="!isAdmin || (isAdmin && showAnalysisSidebarPanel)" />
           </div>
-          <UnifiedAnalysis v-if="isAdmin && showUnifiedAnalysis" />
+          <!-- UnifiedAnalysis deprecated for admins; SidebarPanel replaces it -->
+          <!-- <UnifiedAnalysis v-if="isAdmin && showUnifiedAnalysis" /> -->
           <SystemDashboard v-if="isAdmin && showAdminDashboard" />
           <div class="floating-elements" v-if="!showAOICard && !showUnifiedAnalysis && !showAdminDashboard">
             <BasemapDateSlider class="date-slider" />
@@ -271,7 +272,7 @@ import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
 import SidebarPanel from 'components/sidebar/SidebarPanel.vue'
 import BasemapDateSlider from 'components/BasemapDateSlider.vue'
 import MapLegend from 'components/MapLegend.vue'
-import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
+// import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
 import GFWAlertPopup from 'components/map/GFWAlertPopup.vue'
 import { useRouter, useRoute } from 'vue-router'
 import authService from '../services/auth'
@@ -296,7 +297,7 @@ export default {
     BasemapDateSlider,
     MapLegend,
     ProjectSelection,
-    UnifiedAnalysis,
+    // UnifiedAnalysis,
     SystemDashboard,
     WelcomeAboutModal,
     LoginModal,
@@ -316,6 +317,7 @@ export default {
     const showHotspotVerification = ref(false)
     const showProjectSelection = ref(false)
     const showUnifiedAnalysis = ref(false)
+    const showAnalysisSidebarPanel = ref(false)
     const showAdminDashboard = ref(false)
     const isAdmin = computed(() => currentUser.value?.user?.is_superuser === true)
 
@@ -327,7 +329,7 @@ export default {
       const adminSections = [
         { id: 'projects', name: 'projects', icon: 'folder', component: null },
         { id: 'training', name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager },
-        { id: 'analysis', name: 'Analysis', icon: 'analytics', component: UnifiedAnalysis }
+        { id: 'analysis', name: 'Analysis', icon: 'analytics', component: SidebarPanel }
       ]
 
       // Superuser-only dashboard
@@ -355,6 +357,7 @@ export default {
       showProjectSelection.value || 
       showTrainingAndPolygonManager.value || 
       showUnifiedAnalysis.value || 
+      showAnalysisSidebarPanel.value ||
       showLandCoverAnalysis.value || 
       showDeforestationAnalysis.value || 
       showHotspotVerification.value ||
@@ -453,6 +456,7 @@ export default {
       showProjectSelection.value = false;
       showTrainingAndPolygonManager.value = false;
       showUnifiedAnalysis.value = false;
+      showAnalysisSidebarPanel.value = false;
       showLandCoverAnalysis.value = false;
       showDeforestationAnalysis.value = false;
       showHotspotVerification.value = false;
@@ -463,7 +467,8 @@ export default {
       } else if (section.name === 'Train Model') {
         showTrainingAndPolygonManager.value = true;
       } else if (section.name === 'Analysis') {
-        showUnifiedAnalysis.value = true;
+        // For admins, use the SidebarPanel instead of UnifiedAnalysis
+        showAnalysisSidebarPanel.value = true;
       } else if (section.name === 'Admin Dashboard') {
         showAdminDashboard.value = true;
       } else if (section.name === 'Land Cover') {
@@ -706,7 +711,8 @@ export default {
       welcomeStore,
       showLoginModal,
       handleLoginSuccess,
-      handleRegisterSuccess
+      handleRegisterSuccess,
+      showAnalysisSidebarPanel
     }
   }
 }

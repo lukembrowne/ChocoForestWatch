@@ -148,6 +148,23 @@
         "supportedFormats": "Soporta: GeoJSON, Shapefile (ZIP)",
         "title": "Cargar Archivo de Límites",
         "unsupportedFormat": "Formato de archivo no soportado. Por favor use GeoJSON o Shapefile comprimido."
+      },
+      "exportSave": {
+        "titleImagery": "Imágenes de Planet",
+        "source": "Fuente: NICFI {date}",
+        "hint": "Dibuja o sube un AOI y selecciona una fecha de mapa base.",
+        "downloadImagery": "Descargar Imágenes"
+      },
+      "exportDialog": {
+        "title": "Descargar imágenes satelitales",
+        "collection": "Fuente: Planet Labs, Inc. a través del Programa NICFI",
+        "description": "Las imágenes se entregan como archivo GeoTIFF (.tif) a resolución nativa (4,7 m) con cuatro bandas: Banda 1 = Azul, Banda 2 = Verde, Banda 3 = Rojo, Banda 4 = infrarrojo cercano (NIR). Para la visualización, puede ser necesario reordenar las bandas y ajustar la escala y el brillo en un software SIG como QGIS.",
+        "licenseNotice": "Al usar estas imágenes, cite a Planet Labs Inc. como: \"Imágenes © {year} Planet Labs Inc.\" (el año indica el año de captura) según lo descrito en la licencia.",
+        "licenseLinkText": "Debe aceptar los términos de la Licencia NICFI para usar estas imágenes.",
+        "ack": "Confirmo que estas imágenes se utilizarán con fines no comerciales y que he leído y entiendo los términos y la licencia.",
+        "fetching": "Obteniendo enlaces firmados…",
+        "noAssets": "No se encontraron recursos para este AOI.",
+        "download": "Descargar"
       }
     },
     "runAnalysis": "Ejecutar Análisis",
@@ -419,7 +436,8 @@
     "logout": "Cerrar Sesión",
     "logoutSuccess": "Sesión cerrada exitosamente",
     "save": "Guardar",
-    "showHelp": "Mostrar Ayuda"
+    "showHelp": "Mostrar Ayuda",
+    "required": "requerido"
   },
   "datasets": {
     "cfw-composite-2022": {

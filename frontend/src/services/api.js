@@ -224,6 +224,16 @@ const api = {
         });
     },
 
+    // Signed asset URLs for AOI
+    getSignedAssets(collectionId, bbox, geometry = null) {
+        // bbox: [minx, miny, maxx, maxy] in EPSG:4326
+        return apiClient.post('/assets/signed/', {
+            collection_id: collectionId,
+            bbox,
+            geometry,
+        });
+    },
+
     // Version endpoint
     getVersion() {
         return apiClient.get('/version/');
@@ -256,4 +266,3 @@ export default api;
 
 // Named exports
 export { DEFAULT_PROJECT_ID }
-
