@@ -24,7 +24,8 @@ jobs:
             if [ -d ChocoForestWatch/.git ]; then
               echo "Repo exists – pulling latest commit"
               cd ChocoForestWatch
-              git pull --ff-only
+              git fetch origin
+              git reset --hard origin/main
             else
               echo "Cloning repo for the first time"
               git clone --depth 1 git@github.com:lukembrowne/ChocoForestWatch.git

@@ -39,6 +39,9 @@
             size="sm"
             no-caps
             flat
+            :data-umami-event="'toggle_planet_imagery'"
+            :data-umami-event-action="isPlanetImageryActive ? 'remove' : 'add'"
+            :data-umami-event-date="mapStore.selectedBasemapDate"
           >
             <div class="planet-btn-content">
               <q-icon name="satellite" size="sm" class="planet-icon" />
@@ -124,6 +127,8 @@
             :disable="!benchmark"
             class="full-width action-btn-compact"
             size="sm"
+            :data-umami-event="'calculate_regional_stats'"
+            :data-umami-event-benchmark="mapStore.selectedBenchmark"
           >
             <q-tooltip v-if="!benchmark">{{ t('analysis.panel.selectMapFirst') }}</q-tooltip>
           </q-btn>
@@ -139,6 +144,7 @@
             :disable="!benchmark"
             class="full-width action-btn-compact"
             size="sm"
+            :data-umami-event="'start_aoi_drawing'"
           >
             <q-tooltip v-if="!benchmark">{{ t('analysis.panel.selectMapFirst') }}</q-tooltip>
           </q-btn>
@@ -151,6 +157,7 @@
             class="full-width action-btn-compact"
             outline
             size="sm"
+            :data-umami-event="'cancel_aoi_drawing'"
           />
         </div>
 
@@ -162,7 +169,8 @@
                @dragover.prevent="onDragOver" 
                @dragleave.prevent="onDragLeave" 
                @drop.prevent="onDrop"
-               @click="triggerFileUpload">
+               @click="triggerFileUpload"
+               :data-umami-event="'trigger_upload_aoi'">
             <q-icon name="cloud_upload" size="md" class="upload-icon-compact" />
             <div class="upload-text-compact">{{ t('analysis.panel.upload.dragDrop') }}</div>
             <div class="supported-formats-compact">{{ t('analysis.panel.upload.supportedFormats') }}</div>
@@ -197,6 +205,9 @@
               class="full-width action-btn-compact"
               :disable="!uploadedFile || !benchmark"
               size="sm"
+              :data-umami-event="'calculate_forest_stats'"
+              :data-umami-event-file="uploadedFile?.name"
+              :data-umami-event-benchmark="mapStore.selectedBenchmark"
             />
           </div>
         </div>
@@ -280,15 +291,114 @@
         <span class="missing-text">{{ (analysisResults.forestCover.pct_missing * 100).toFixed(1) }}% {{ t('analysis.panel.results.noData').toLowerCase() }}</span>
       </div>
     </div>
+
+    <!-- Export / Save Section (only when logged in) -->
+    <div class="export-section-compact" v-if="isLoggedIn">
+      <div class="section-header-compact">
+        <span class="section-title-compact">Export / Save</span>
+      </div>
+
+      <div class="export-card-compact">
+        <div class="export-row">
+          <div class="export-info">
+            <div class="export-title">{{ t('analysis.panel.exportSave.titleImagery') }}</div>
+            <div class="export-caption">
+              {{ t('analysis.panel.exportSave.source', { date: mapStore.selectedBasemapDate || '—' }) }}
+            </div>
+            <div v-if="!canDownloadImagery" class="export-hint">
+              {{ t('analysis.panel.exportSave.hint') }}
+            </div>
+          </div>
+          <div class="export-controls">
+            <q-btn
+              color="primary"
+              class="export-btn"
+              no-caps
+              size="sm"
+              :disable="!canDownloadImagery || isFetchingAssets"
+              @click="openAssetsDialog"
+            >
+              <q-icon name="download" class="q-mr-xs" />
+              {{ t('analysis.panel.exportSave.downloadImagery') }}
+            </q-btn>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Original Assets Dialog -->
+    <q-dialog v-model="showAssetsDialog" maximized="false">
+      <q-card class="q-pa-md" style="min-width: 520px; max-width: 720px;" @keyup.esc="showAssetsDialog = false" tabindex="0">
+        <div class="row items-center q-mb-sm">
+          <div class="col">
+            <div class="text-h6">{{ t('analysis.panel.exportDialog.title') }}</div>
+            <div class="text-caption text-grey-7">{{ t('analysis.panel.exportDialog.collection', { collection: currentCollectionId }) }}</div>
+          </div>
+          <div class="col-auto">
+            <q-btn dense flat round icon="close" @click="showAssetsDialog = false" />
+          </div>
+        </div>
+        <q-separator />
+        <div class="q-my-sm">
+          <div class="q-mb-md text-body2">
+            <p>{{ t('analysis.panel.exportDialog.description') }}</p>
+            <p>
+              {{ t('analysis.panel.exportDialog.licenseNotice', { year: (mapStore.selectedBasemapDate || '').slice(0,4) || '20xx' }) }}
+              <a :href="licenseUrl" target="_blank" rel="noopener">{{ t('analysis.panel.exportDialog.licenseLinkText') }}</a>.
+            </p>
+            <q-checkbox v-model="assetsTermsAccepted" color="primary" :label="t('analysis.panel.exportDialog.ack')" />
+          </div>
+          
+          <q-banner v-if="isFetchingAssets" dense class="bg-grey-2">
+            <q-spinner size="16px" class="q-mr-sm" /> {{ t('analysis.panel.exportDialog.fetching') }}
+          </q-banner>
+          <q-banner v-else-if="assetsList.length === 0" dense class="bg-yellow-1 text-grey-9">
+            {{ t('analysis.panel.exportDialog.noAssets') }}
+          </q-banner>
+          <div v-else class="q-mt-sm">
+            <q-list bordered separator>
+              <q-item v-for="(a, idx) in assetsList" :key="a.filename">
+                <q-item-section>
+                  <div class="text-body2">{{ idx + 1 }}. {{ a.filename }}</div>
+                  <div class="text-caption text-grey-7">{{ a.id }}</div>
+                </q-item-section>
+                <q-item-section side>
+                  <q-btn
+                    type="a"
+                    :href="assetsTermsAccepted ? a.signed_url : null"
+                    :disable="!assetsTermsAccepted"
+                    target="_blank"
+                    rel="noopener"
+                    color="primary"
+                    dense
+                    no-caps
+                    :data-umami-event="'download_imagery'"
+                    :data-umami-event-filename="a.filename"
+                    :data-umami-event-asset-id="a.id"
+                    :data-umami-event-collection-id="currentCollectionId"
+                    :data-umami-event-date="mapStore.selectedBasemapDate"
+                    :data-umami-event-href="a.signed_url"
+                  >
+                    {{ t('analysis.panel.exportDialog.download') }}
+                  </q-btn>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </div>
+        </div>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useMapStore } from 'src/stores/mapStore'
+import { useAuthStore } from 'src/stores/authStore'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { GeoJSON } from 'ol/format'
+import { transformExtent } from 'ol/proj'
 import { getArea } from 'ol/sphere'
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
@@ -298,6 +408,7 @@ import api from 'src/services/api'
 import CompactDatasetSelector from '../sidebar/CompactDatasetSelector.vue'
 
 const mapStore = useMapStore()
+const authStore = useAuthStore()
 const { t } = useI18n()
 const $q = useQuasar()
 
@@ -332,6 +443,21 @@ const isRegionalStats = computed(() => analysisResults.value.isRegional)
 const hasResults = computed(() => 
   analysisResults.value.forestCover || analysisResults.value.deforestationAlerts
 )
+
+// Export / Save state
+const canDownloadImagery = computed(() => {
+  // Depend on reactive refs so UI updates when AOI changes
+  const hasAnyAOIRef = !!mapStore.aoiLayer || !!mapStore.summaryAOILayer || !!mapStore.aoi
+  const hasDate = !!mapStore.selectedBasemapDate
+  return hasAnyAOIRef && hasDate
+})
+const isFetchingAssets = ref(false)
+const showAssetsDialog = ref(false)
+const assetsList = ref([])
+const currentCollectionId = ref('')
+const assetsTermsAccepted = ref(false)
+const licenseUrl = 'https://university.planet.com/nicfi-resources/1219786'
+const isLoggedIn = computed(() => !!authStore.currentUser)
 
 // Planet imagery state
 const isPlanetImageryActive = computed(() => {
@@ -578,6 +704,12 @@ watch(visibleDatasetsByType, async (newValue, oldValue) => {
 // Regional analysis methods
 async function loadRegionalStats() {
   console.log('loadRegionalStats button clicked')
+  try {
+    window.umami?.track?.('calculate_regional_stats', {
+      benchmark: mapStore.selectedBenchmark,
+      area: 'Western Ecuador'
+    })
+  } catch (e) { /* no-op */ }
   await calculateAreaStatistics(null, 'Western Ecuador', true)
   selectedMethod.value = 'regional'
 }
@@ -585,12 +717,22 @@ async function loadRegionalStats() {
 // Drawing methods
 function startDraw() {
   console.log("Starting AOI drawing")
+  try {
+    window.umami?.track?.('start_aoi_drawing', {
+      benchmark: mapStore.selectedBenchmark
+    })
+  } catch (e) { /* no-op */ }
   mapStore.startSummaryAOIDraw()
   selectedMethod.value = 'draw'
 }
 
 function cancelDrawing() {
   console.log("Canceling AOI drawing")
+  try {
+    window.umami?.track?.('cancel_aoi_drawing', {
+      benchmark: mapStore.selectedBenchmark
+    })
+  } catch (e) { /* no-op */ }
   mapStore.clearSummaryAOI()
  // loadRegionalStats()
 }
@@ -606,6 +748,12 @@ function togglePlanetImagery() {
 
 function addPlanetImagery() {
   console.log("Adding Planet imagery")
+  try {
+    window.umami?.track?.('toggle_planet_imagery', {
+      action: 'add',
+      date: mapStore.selectedBasemapDate
+    })
+  } catch (e) { /* no-op */ }
   mapStore.addPlanetImageryLayer()
   $q.notify({
     type: 'positive',
@@ -623,6 +771,12 @@ function removePlanetImagery() {
   const planetLayer = layers.find(layer => layer.get('id') === 'planet-basemap')
   if (planetLayer) {
     mapStore.map.removeLayer(planetLayer)
+    try {
+      window.umami?.track?.('toggle_planet_imagery', {
+        action: 'remove',
+        date: mapStore.selectedBasemapDate
+      })
+    } catch (e) { /* no-op */ }
     $q.notify({
       type: 'info',
       message: t('analysis.panel.planetImagery.remove'),
@@ -672,6 +826,13 @@ const onDrop = (e) => {
 const handleFileUpload = (event) => {
   const file = event.target.files[0]
   if (file) {
+    try {
+      window.umami?.track?.('upload_aoi_file_selected', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      })
+    } catch (e) { /* no-op */ }
     processFile(file)
   }
   event.target.value = ''
@@ -705,6 +866,12 @@ const processFile = async (file) => {
     
   } catch (error) {
     console.error('File upload error:', error)
+    try {
+      window.umami?.track?.('upload_aoi_error', {
+        name: file?.name,
+        message: error?.message
+      })
+    } catch (e) { /* no-op */ }
     uploadProgress.value = null
     $q.notify({
       type: 'negative',
@@ -786,6 +953,27 @@ const processGeometry = async (geojson, fileName) => {
   
   // Display features on map
   displayUploadedFeatures(features)
+
+  // Also set AOI layer in mapStore for export/download workflows
+  try {
+    const firstFeature = features[0]
+    if (firstFeature) {
+      const aoiFeature3857 = new GeoJSON().writeFeatureObject(firstFeature, {
+        dataProjection: 'EPSG:3857',
+        featureProjection: 'EPSG:3857'
+      })
+      mapStore.displayAOI(aoiFeature3857)
+      if (features.length > 1) {
+        $q.notify({
+          type: 'info',
+          message: 'Multiple features detected; using the first feature as AOI for export.',
+          timeout: 3000
+        })
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to set AOI layer from uploaded features', e)
+  }
   
   // Zoom to extent
   if (features.length > 0) {
@@ -866,8 +1054,8 @@ const clearUploadedFile = () => {
 
 const calculateForestStats = async () => {
   if (!uploadedGeometry.value) return
-  
-
+ 
+ 
   try {
     // Convert FeatureCollection to a single Feature for the API
     let geometryToSend = uploadedGeometry.value
@@ -916,6 +1104,39 @@ const calculateForestStats = async () => {
 // Set up callback for when AOI stats are calculated
 window.aoiStatsCallback = async () => {
   await refreshAOIStats()
+}
+
+// Export handlers
+function getActiveAOIBbox4326() {
+  const gj = mapStore.getActiveAOIGeometry4326()
+  if (!gj) return null
+  const format = new GeoJSON()
+  const feat = format.readFeature(gj, { dataProjection: 'EPSG:4326', featureProjection: 'EPSG:3857' })
+  const extent3857 = feat.getGeometry().getExtent()
+  const extent4326 = transformExtent(extent3857, 'EPSG:3857', 'EPSG:4326')
+  return [extent4326[0], extent4326[1], extent4326[2], extent4326[3]]
+}
+
+async function openAssetsDialog() {
+  if (!canDownloadImagery.value) return
+  const bbox = getActiveAOIBbox4326()
+  if (!bbox) {
+    $q.notify({ type: 'warning', message: 'No AOI found.', timeout: 2500 })
+    return
+  }
+  try {
+    assetsTermsAccepted.value = false
+    isFetchingAssets.value = true
+    currentCollectionId.value = `nicfi-${mapStore.selectedBasemapDate}`
+    const resp = await api.getSignedAssets(currentCollectionId.value, bbox)
+    assetsList.value = resp.data.assets || []
+    showAssetsDialog.value = true
+  } catch (e) {
+    console.error('Failed to fetch signed assets:', e)
+    $q.notify({ type: 'negative', message: 'Failed to fetch signed asset links', timeout: 4000 })
+  } finally {
+    isFetchingAssets.value = false
+  }
 }
 
 // Automatically load western Ecuador stats when component mounts (if datasets are already available)
@@ -1045,6 +1266,63 @@ onMounted(async () => {
   border-radius: 6px;
   height: 32px;
   font-size: 13px !important;
+}
+
+/* Export / Save Section */
+.export-section-compact {
+  border-top: 1px solid #f0f0f0;
+  margin-top: 8px;
+}
+
+.export-card-compact {
+  background: white;
+  margin: 8px 12px 12px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  padding: 8px;
+}
+
+.export-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.export-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.export-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #2e7d32;
+}
+
+.export-caption {
+  font-size: 12px;
+  color: #666;
+}
+
+.export-hint {
+  font-size: 11px;
+  color: #9e9e9e;
+}
+
+.export-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-format-select {
+  min-width: 140px;
+}
+
+.export-btn {
+  text-transform: none;
 }
 
 /* Upload Compact Styles */

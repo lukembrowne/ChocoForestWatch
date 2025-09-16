@@ -99,6 +99,9 @@ export const useMapStore = defineStore('map', () => {
   const datasetsLoaded = ref(false);
   const selectedBenchmark = ref(null);
 
+  // AOI download state
+  const isDownloadingAOI = ref(false);
+
   // New computed property for visual indicator
   const modeIndicator = computed(() => {
     switch (interactionMode.value) {
@@ -415,6 +418,209 @@ export const useMapStore = defineStore('map', () => {
     };
   };
 
+  // Helper: get current AOI as GeoJSON (EPSG:4326)
+  const getActiveAOIGeometry4326 = () => {
+    const format = new GeoJSON();
+
+    // 1) Prefer on-map summary AOI if present
+    if (summaryAOILayer.value) {
+      const feats = summaryAOILayer.value.getSource().getFeatures();
+      if (feats && feats.length > 0) {
+        const gj = format.writeFeatureObject(feats[0], {
+          dataProjection: 'EPSG:4326',
+          featureProjection: 'EPSG:3857'
+        });
+        return gj;
+      }
+    }
+
+    // 2) Fallback to dedicated AOI layer
+    if (aoiLayer.value) {
+      const feats = aoiLayer.value.getSource().getFeatures();
+      if (feats && feats.length > 0) {
+        const gj = format.writeFeatureObject(feats[0], {
+          dataProjection: 'EPSG:4326',
+          featureProjection: 'EPSG:3857'
+        });
+        return gj;
+      }
+    }
+
+    // 3) Fallback to project AOI stored in backend (assumed EPSG:4326)
+    const projectAOI = projectStore.currentProject?.aoi;
+    if (projectAOI?.geometry) {
+      try {
+        // Normalize through OL to ensure valid GeoJSON Feature in EPSG:4326
+        const feature = format.readFeature(projectAOI, {
+          dataProjection: 'EPSG:4326',
+          featureProjection: 'EPSG:3857'
+        });
+        const gj = format.writeFeatureObject(feature, {
+          dataProjection: 'EPSG:4326',
+          featureProjection: 'EPSG:3857'
+        });
+        return gj;
+      } catch (e) {
+        console.warn('Failed to parse project AOI; ensure it is valid GeoJSON.', e);
+      }
+    }
+
+    return null;
+  };
+
+  // Action: Download Planet NICFI imagery for active AOI using TiTiler-PgSTAC `feature` endpoint
+  const downloadAOIImagery = async (options = {}) => {
+    const {
+      format = 'tif', // 'tif' or 'png'
+      width = null,
+      height = null,
+      rescale = '0,1500',
+      max_size = 5000, // Sets max number of pixels of either width or height, whichever is larger
+      bands = [3, 2, 1], // RGB order used in tiles
+    } = options;
+
+    const geometry = getActiveAOIGeometry4326();
+    if (!geometry) {
+      $q.notify({ type: 'warning', message: 'No AOI found to download.', timeout: 3000 });
+      return;
+    }
+
+    if (!selectedBasemapDate.value) {
+      $q.notify({ type: 'warning', message: 'Select a Planet basemap date first.', timeout: 3000 });
+      return;
+    }
+
+    const titilerURL = import.meta.env.VITE_TITILER_URL;
+    if (!titilerURL) {
+      $q.notify({ type: 'negative', message: 'TiTiler URL not configured.', timeout: 4000 });
+      return;
+    }
+
+    const collectionId = `nicfi-${selectedBasemapDate.value}`;
+
+    // Build endpoint path with optional size and format
+    const sizePart = width && height ? `/${width}x${height}` : '';
+    const ext = format === 'tif' ? '.tif' : format === 'png' ? '.png' : '';
+
+    const params = new URLSearchParams();
+    params.set('assets', 'data');
+    params.set('pixel_selection', 'first');
+    bands.forEach((b) => params.append('bidx', String(b)));
+    if (rescale) params.set('rescale', rescale);
+    if (max_size) params.set('max_size', max_size);
+
+    const url = `${titilerURL}/collections/${collectionId}/feature${sizePart}${ext}?${params.toString()}`;
+
+    const filename = `planet_${collectionId}_aoi_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.${format}`;
+
+    try {
+      isDownloadingAOI.value = true;
+      $q.notify({ type: 'info', message: 'Preparing AOI download…', timeout: 1500 });
+
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(geometry),
+      });
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`Download failed (${resp.status}): ${text}`);
+      }
+
+      const blob = await resp.blob();
+      const link = document.createElement('a');
+      const dlUrl = URL.createObjectURL(blob);
+      link.href = dlUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(dlUrl);
+
+      $q.notify({ type: 'positive', message: 'AOI imagery downloaded.', timeout: 2500 });
+    } catch (err) {
+      console.error('AOI download error:', err);
+      $q.notify({ type: 'negative', message: `AOI download failed: ${err.message}`, timeout: 5000 });
+      throw err;
+    } finally {
+      isDownloadingAOI.value = false;
+    }
+  };
+
+  // Helper: fetch original asset URLs (e.g., COGs) intersecting AOI via Items endpoint
+  const getOriginalAssetURLsForAOI = async () => {
+    const geometry = getActiveAOIGeometry4326();
+    if (!geometry) {
+      $q.notify({ type: 'warning', message: 'No AOI found to export assets.', timeout: 3000 });
+      return [];
+    }
+
+    if (!selectedBasemapDate.value) {
+      $q.notify({ type: 'warning', message: 'Select a Planet basemap date first.', timeout: 3000 });
+      return [];
+    }
+
+    const titilerURL = import.meta.env.VITE_TITILER_URL;
+    const collectionId = `nicfi-${selectedBasemapDate.value}`;
+
+    // Compute bbox from geometry to use bbox assets endpoint
+    const format = new GeoJSON();
+    const feature = format.readFeature(geometry, {
+      dataProjection: 'EPSG:4326',
+      featureProjection: 'EPSG:3857'
+    });
+    const extent3857 = feature.getGeometry().getExtent();
+    const extent4326 = transformExtent(extent3857, 'EPSG:3857', 'EPSG:4326');
+
+    const bboxParam = extent4326.join(',');
+    const url = `${titilerURL}/collections/${collectionId}/bbox/${bboxParam}/assets`;
+
+    try {
+      isLoading.value = true;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`Failed to list items (${resp.status})`);
+      const json = await resp.json();
+
+      const urls = [];
+      // Expect an array of objects with assets.data.href
+      const items = Array.isArray(json) ? json : [];
+      for (const item of items) {
+        const href = item?.assets?.data?.href;
+        if (href) urls.push(href);
+      }
+
+      return urls;
+    } catch (err) {
+      console.error('Failed to fetch original asset URLs:', err);
+      $q.notify({ type: 'negative', message: `Failed to list assets: ${err.message}`, timeout: 5000 });
+      return [];
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // Action: download a manifest file (.txt) listing original asset URLs for manual or scripted download
+  const downloadOriginalAssetsManifest = async () => {
+    const urls = await getOriginalAssetURLsForAOI();
+    if (!urls.length) {
+      $q.notify({ type: 'warning', message: 'No assets found for AOI.', timeout: 3000 });
+      return;
+    }
+    const collectionId = `nicfi-${selectedBasemapDate.value}`;
+    const content = urls.join('\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const link = document.createElement('a');
+    const dlUrl = URL.createObjectURL(blob);
+    link.href = dlUrl;
+    link.download = `assets_${collectionId}_aoi_${new Date().toISOString().slice(0,10)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(dlUrl);
+    $q.notify({ type: 'positive', message: `Saved ${urls.length} asset URL(s).`, timeout: 2500 });
+  };
+
   // Modify existing displayAOI to use the new function
   const displayAOI = (aoiGeojson) => {
     if (!map.value) return;
@@ -426,6 +632,8 @@ export const useMapStore = defineStore('map', () => {
 
     const { layer, source } = createAOILayer(aoiGeojson);
     aoiLayer.value = layer;
+    // Store AOI reference for reactivity/availability checks
+    aoi.value = aoiGeojson;
 
     // Add new AOI layer to map
     map.value.getLayers().insertAt(0, aoiLayer.value);
@@ -1075,6 +1283,7 @@ export const useMapStore = defineStore('map', () => {
 
   const setSelectedBasemapDate = async (date) => {
     selectedBasemapDate.value = date;
+    try { window.umami?.track?.('basemap_date_change', { date }) } catch (e) { /* no-op */ }
     await updateBasemap(date, 'planet');
     const isAdmin = authService.getCurrentUser()?.user?.is_superuser === true;
     if (isAdmin) {
@@ -1795,6 +2004,21 @@ export const useMapStore = defineStore('map', () => {
         // Manually add the feature to the layer source to ensure it's available for the callback
         summaryAOILayer.value.getSource().addFeature(feature)
         console.log('Feature added to layer source')
+
+        // Track Umami event for AOI draw complete
+        try {
+          const extent3857 = feature.getGeometry().getExtent();
+          const extent4326 = transformExtent(extent3857, 'EPSG:3857', 'EPSG:4326');
+          const [minX, minY, maxX, maxY] = extent4326.map(v => Number(v.toFixed(5)));
+          const width = +(maxX - minX).toFixed(5);
+          const height = +(maxY - minY).toFixed(5);
+          window.umami?.track?.('aoi_draw_complete', {
+            bbox: `${minX},${minY},${maxX},${maxY}`,
+            width_deg: width,
+            height_deg: height,
+            benchmark: selectedBenchmark.value
+          });
+        } catch (e) { /* no-op */ }
         
         // Trigger callback to notify AnalysisPanel that AOI drawing is complete
         if (window.aoiStatsCallback) {
@@ -2024,6 +2248,19 @@ export const useMapStore = defineStore('map', () => {
 
     // Show the popup - Vue component will handle positioning
     gfwAlertVisible.value = true;
+
+    // Track Umami event for alert click
+    try {
+      const [lon, lat] = toLonLat(coordinate);
+      window.umami?.track?.('gfw_alert_click', {
+        layer: layerTitle,
+        confidence: alertData.confidence ?? null,
+        date: alertData.date ? alertData.date.toISOString().slice(0, 10) : null,
+        lon: Number(lon?.toFixed?.(5) ?? lon),
+        lat: Number(lat?.toFixed?.(5) ?? lat),
+        pixel_value: pixelValue
+      });
+    } catch (e) { /* no-op */ }
   };
 
   const hideGFWAlertPopup = () => {
@@ -2064,6 +2301,11 @@ export const useMapStore = defineStore('map', () => {
 
     // Ensure click handler is set up
     setupGFWClickHandler(targetMap);
+
+    // Track Umami event for year switch
+    try {
+      window.umami?.track?.('gfw_alerts_switch_year', { year: newYear });
+    } catch (e) { /* no-op */ }
 
     $q.notify({
       type: 'positive',
@@ -2125,6 +2367,7 @@ export const useMapStore = defineStore('map', () => {
     map,
     mapInitialized,
     isLoading,
+    isDownloadingAOI,
     isDrawing,
     aoiLayer,
     selectedClass,
@@ -2204,6 +2447,11 @@ export const useMapStore = defineStore('map', () => {
     // Search actions
     searchLocation,
     zoomToSearchResult,
+    // AOI download
+    downloadAOIImagery,
+    getActiveAOIGeometry4326,
+    getOriginalAssetURLsForAOI,
+    downloadOriginalAssetsManifest,
     // new benchmark actions
     addBenchmarkLayer,
     addGFWAlertsLayer,

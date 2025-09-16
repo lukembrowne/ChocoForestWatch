@@ -148,6 +148,23 @@
         "supportedFormats": "Supports: GeoJSON, Shapefile (ZIP)",
         "title": "Upload Boundary File",
         "unsupportedFormat": "Unsupported file format. Please use GeoJSON or zipped Shapefile."
+      },
+      "exportSave": {
+        "titleImagery": "Planet Imagery",
+        "source": "Source: NICFI {date}",
+        "hint": "Draw or upload an AOI and select a basemap date.",
+        "downloadImagery": "Download Imagery"
+      },
+      "exportDialog": {
+        "title": "Download Satellite Imagery",
+        "collection": "Source: Planet Labs, Inc. via the NICFI Program",
+        "description": "Imagery is delivered as GeoTIFF file (.tif) at native resolution (4.7m) with four bands: Band 1 = Blue, Band 2 = Green, Band 3 = Red, Band 4 = near infra-red (NIR). For visualization, you may need to re-order bands and adjust scaling and brightness in GIS software like QGIS.",
+        "licenseNotice": "When using these images, cite Planet Labs Inc. as: \"Imagery © {year} Planet Labs Inc.\" (year denotes capture year) as described in the license.",
+        "licenseLinkText": "You must agree to the terms of the NICFI License to use this imagery.",
+        "ack": "I confirm this imagery will be used for non-commercial purposes and I have read and understand the terms and license.",
+        "fetching": "Fetching signed URLs…",
+        "noAssets": "No assets found for this AOI.",
+        "download": "Download"
       }
     },
     "runAnalysis": "Run Analysis",
@@ -419,7 +436,8 @@
     "logout": "Logout",
     "logoutSuccess": "Successfully logged out",
     "save": "Save",
-    "showHelp": "Show Help"
+    "showHelp": "Show Help",
+    "required": "required"
   },
   "datasets": {
     "cfw-composite-2022": {

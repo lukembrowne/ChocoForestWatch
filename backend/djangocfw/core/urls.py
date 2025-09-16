@@ -27,4 +27,6 @@ urlpatterns = [
     path('western_ecuador_stats/', views.get_western_ecuador_stats, name='western-ecuador-stats'),
     path('datasets/', views.get_datasets, name='datasets'),
     path('datasets/collections/', views.get_dataset_collections, name='dataset-collections'),
+    # Signed asset URLs for AOI downloads
+    path('assets/signed/', views.get_signed_asset_urls, name='signed-asset-urls'),
 ]

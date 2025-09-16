@@ -152,6 +152,21 @@
             class="dont-show-checkbox"
           />
           <div class="action-buttons">
+            <!-- Login/Register actions visible in Welcome mode -->
+            <q-btn
+              v-if="isWelcomeMode"
+              flat
+              color="primary"
+              :label="t('common.login')"
+              @click="openLogin"
+            />
+            <q-btn
+              v-if="isWelcomeMode"
+              flat
+              color="primary"
+              :label="t('auth.login.createAccount')"
+              @click="openRegister"
+            />
             <q-btn
               unelevated
               size="lg"
@@ -184,7 +199,7 @@ export default {
     }
   },
 
-  setup(props) {
+  setup(props, { emit }) {
     const { t } = useI18n();
     const dontShowAgain = ref(false);
     const welcomeStore = useWelcomeStore();
@@ -211,11 +226,21 @@ export default {
       }
     };
 
+    const openLogin = () => {
+      emit('open-auth', { tab: 'login' })
+    }
+
+    const openRegister = () => {
+      emit('open-auth', { tab: 'register' })
+    }
+
     return {
       showModal,
       isWelcomeMode,
       dontShowAgain,
       closeModal,
+      openLogin,
+      openRegister,
       version,
       environment,
       t

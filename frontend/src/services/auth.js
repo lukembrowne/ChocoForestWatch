@@ -27,12 +27,11 @@ class AuthService {
 
     async register(username, email, password, preferred_language) {
         try {
-            const response = await axios.post(`${API_URL}/auth/register/`, {
-                username,
-                email,
-                password,
-                preferred_language
-            });
+            const payload = { username, email, password };
+            if (preferred_language) {
+                payload.preferred_language = preferred_language;
+            }
+            const response = await axios.post(`${API_URL}/auth/register/`, payload);
             return response.data;
         } catch (error) {
             throw error.response?.data || { error: 'Registration failed' };

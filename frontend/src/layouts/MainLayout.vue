@@ -182,9 +182,10 @@
               @aoi-saved="handleAOISaved"
             />
             <TrainingAndPolygonManager v-if="isAdmin && showTrainingAndPolygonManager" />
-            <SidebarPanel v-if="!isAdmin" />
+            <SidebarPanel v-if="!isAdmin || (isAdmin && showAnalysisSidebarPanel)" />
           </div>
-          <UnifiedAnalysis v-if="isAdmin && showUnifiedAnalysis" />
+          <!-- UnifiedAnalysis deprecated for admins; SidebarPanel replaces it -->
+          <!-- <UnifiedAnalysis v-if="isAdmin && showUnifiedAnalysis" /> -->
           <SystemDashboard v-if="isAdmin && showAdminDashboard" />
           <div class="floating-elements" v-if="!showAOICard && !showUnifiedAnalysis && !showAdminDashboard">
             <BasemapDateSlider class="date-slider" />
@@ -244,7 +245,7 @@
     </q-dialog>
 
     <!-- Welcome Modal for first-time users and help button -->
-    <WelcomeAboutModal mode="welcome" />
+    <WelcomeAboutModal mode="welcome" @open-auth="openAuthModal" />
     
     <!-- About Modal -->
     <WelcomeAboutModal mode="about" />
@@ -252,6 +253,7 @@
     <!-- Login Modal -->
     <LoginModal 
       v-model="showLoginModal" 
+      :defaultTab="loginDefaultTab"
       @login-success="handleLoginSuccess"
       @register-success="handleRegisterSuccess"
     />
@@ -271,7 +273,7 @@ import AOIFloatingCard from 'components/projects/AOIFloatingCard.vue'
 import SidebarPanel from 'components/sidebar/SidebarPanel.vue'
 import BasemapDateSlider from 'components/BasemapDateSlider.vue'
 import MapLegend from 'components/MapLegend.vue'
-import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
+// import UnifiedAnalysis from 'components/analysis/UnifiedAnalysis.vue'
 import GFWAlertPopup from 'components/map/GFWAlertPopup.vue'
 import { useRouter, useRoute } from 'vue-router'
 import authService from '../services/auth'
@@ -296,7 +298,7 @@ export default {
     BasemapDateSlider,
     MapLegend,
     ProjectSelection,
-    UnifiedAnalysis,
+    // UnifiedAnalysis,
     SystemDashboard,
     WelcomeAboutModal,
     LoginModal,
@@ -316,6 +318,7 @@ export default {
     const showHotspotVerification = ref(false)
     const showProjectSelection = ref(false)
     const showUnifiedAnalysis = ref(false)
+    const showAnalysisSidebarPanel = ref(false)
     const showAdminDashboard = ref(false)
     const isAdmin = computed(() => currentUser.value?.user?.is_superuser === true)
 
@@ -327,7 +330,7 @@ export default {
       const adminSections = [
         { id: 'projects', name: 'projects', icon: 'folder', component: null },
         { id: 'training', name: 'Train Model', icon: 'school', component: TrainingAndPolygonManager },
-        { id: 'analysis', name: 'Analysis', icon: 'analytics', component: UnifiedAnalysis }
+        { id: 'analysis', name: 'Analysis', icon: 'analytics', component: SidebarPanel }
       ]
 
       // Superuser-only dashboard
@@ -355,6 +358,7 @@ export default {
       showProjectSelection.value || 
       showTrainingAndPolygonManager.value || 
       showUnifiedAnalysis.value || 
+      showAnalysisSidebarPanel.value ||
       showLandCoverAnalysis.value || 
       showDeforestationAnalysis.value || 
       showHotspotVerification.value ||
@@ -453,6 +457,7 @@ export default {
       showProjectSelection.value = false;
       showTrainingAndPolygonManager.value = false;
       showUnifiedAnalysis.value = false;
+      showAnalysisSidebarPanel.value = false;
       showLandCoverAnalysis.value = false;
       showDeforestationAnalysis.value = false;
       showHotspotVerification.value = false;
@@ -463,7 +468,8 @@ export default {
       } else if (section.name === 'Train Model') {
         showTrainingAndPolygonManager.value = true;
       } else if (section.name === 'Analysis') {
-        showUnifiedAnalysis.value = true;
+        // For admins, use the SidebarPanel instead of UnifiedAnalysis
+        showAnalysisSidebarPanel.value = true;
       } else if (section.name === 'Admin Dashboard') {
         showAdminDashboard.value = true;
       } else if (section.name === 'Land Cover') {
@@ -581,6 +587,9 @@ export default {
         // Save language preference to localStorage
         localStorage.setItem('preferred_language', newLocale)
         locale.value = newLocale
+        try {
+          window.umami?.track?.('change_locale', { locale: newLocale })
+        } catch (e) { /* no-op */ }
         $q.notify({
           message: t('notifications.languageUpdated'),
           color: 'positive',
@@ -602,6 +611,7 @@ export default {
     const feedbackMessage = ref('')
     const submittingFeedback = ref(false)
     const showLoginModal = ref(false)
+    const loginDefaultTab = ref('login')
 
 
     const feedbackOptions = [
@@ -668,6 +678,11 @@ export default {
       // Auth store will be updated by the login that happens after registration
     }
 
+    const openAuthModal = ({ tab }) => {
+      loginDefaultTab.value = tab === 'register' ? 'register' : 'login'
+      showLoginModal.value = true
+    }
+
 
     return {
       currentSection,
@@ -705,8 +720,11 @@ export default {
       isAdmin,
       welcomeStore,
       showLoginModal,
+      loginDefaultTab,
       handleLoginSuccess,
-      handleRegisterSuccess
+      handleRegisterSuccess,
+      openAuthModal,
+      showAnalysisSidebarPanel
     }
   }
 }
